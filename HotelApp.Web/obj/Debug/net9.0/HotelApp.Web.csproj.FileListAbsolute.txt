@@ -67,7 +67,6 @@
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/scopedcss/Views/Shared/_Layout.cshtml.rz.scp.css
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/scopedcss/bundle/HotelApp.Web.styles.css
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/scopedcss/projectbundle/HotelApp.Web.bundle.scp.css
-/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/u6b4j9ztt4-b9sayid5wm.gz
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/rxwakvkfus-61n19gt1b8.gz
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/7g91sqs6mj-xtxxf3hu2r.gz
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/xwpjnidink-bqjiyaj88i.gz
@@ -151,4 +150,5 @@
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/hcih34dean-8zm4x027kb.gz
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/17spjb448e-3gpc0w1sri.gz
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/HotelApp.Web.sourcelink.json
-/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/fzxrofkyxv-6y59pa5iqs.gz
+/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/u6b4j9ztt4-cbbkmz30vy.gz
+/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/fzxrofkyxv-3c9xwj6zr0.gz

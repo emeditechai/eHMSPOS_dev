@@ -1,0 +1,418 @@
+@model IEnumerable<HotelApp.Web.Models.Guest>
+@{
+    ViewData["Title"] = "Guest Management";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-users"></i> Guest Management</h2>
+    <form asp-action="Search" method="get" class="search-form">
+        <input type="text" name="searchTerm" placeholder="Search by name, email, or phone..." value="@ViewBag.SearchTerm" />
+        <button type="submit" class="btn-search">
+            <i class="fas fa-search"></i> Search
+        </button>
+        @if (!string.IsNullOrEmpty(ViewBag.SearchTerm))
+        {
+            <a asp-action="Index" class="btn-cancel">
+                <i class="fas fa-times"></i> Clear
+            </a>
+        }
+    </form>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">
+        <i class="fas fa-check-circle"></i>
+        @TempData["SuccessMessage"]
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-error">
+        <i class="fas fa-exclamation-circle"></i>
+        @TempData["ErrorMessage"]
+    </div>
+}
+
+<!-- Statistics Cards -->
+<div class="stats-grid">
+    <div class="stat-card stat-total">
+        <div class="stat-icon">
+            <i class="fas fa-users"></i>
+        </div>
+        <div class="stat-details">
+            <h3>@ViewBag.TotalGuests</h3>
+            <p>Total Guests</p>
+        </div>
+    </div>
+
+    <div class="stat-card stat-primary">
+        <div class="stat-icon">
+            <i class="fas fa-user-tie"></i>
+        </div>
+        <div class="stat-details">
+            <h3>@ViewBag.PrimaryGuests</h3>
+            <p>Primary Guests</p>
+        </div>
+    </div>
+
+    <div class="stat-card stat-companions">
+        <div class="stat-icon">
+            <i class="fas fa-user-friends"></i>
+        </div>
+        <div class="stat-details">
+            <h3>@ViewBag.CompanionGuests</h3>
+            <p>Companions</p>
+        </div>
+    </div>
+
+    <div class="stat-card stat-recent">
+        <div class="stat-icon">
+            <i class="fas fa-clock"></i>
+        </div>
+        <div class="stat-details">
+            <h3>@ViewBag.RecentGuests</h3>
+            <p>Recent (30 days)</p>
+        </div>
+    </div>
+</div>
+
+<!-- Guest List -->
+<div class="card">
+    <h3><i class="fas fa-list"></i> Guest Directory</h3>
+    
+    @if (Model.Any())
+    {
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Guest Type</th>
+                        <th>Loyalty ID</th>
+                        <th>Last Visit</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var guest in Model)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@guest.FirstName @guest.LastName</strong>
+                                @if (guest.GuestType == "Primary")
+                                {
+                                    <span class="badge badge-primary" style="margin-left: 5px;">
+                                        <i class="fas fa-crown"></i>
+                                    </span>
+                                }
+                            </td>
+                            <td>@guest.Email</td>
+                            <td>@guest.Phone</td>
+                            <td>
+                                @if (guest.GuestType == "Primary")
+                                {
+                                    <span class="badge badge-available">Primary</span>
+                                }
+                                else if (guest.GuestType == "Companion")
+                                {
+                                    <span class="badge badge-muted">Companion</span>
+                                }
+                                else if (guest.GuestType == "Child")
+                                {
+                                    <span class="badge badge-inactive">Child</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-muted">@guest.GuestType</span>
+                                }
+                            </td>
+                            <td>@(guest.LoyaltyId ?? "-")</td>
+                            <td>@guest.LastModifiedDate.ToLocalTime():dd MMM yyyy</td>
+                            <td>
+                                <div class="action-dropdown">
+                                    <button class="action-dropdown-btn" onclick="toggleDropdown(event, '@guest.Id')">
+                                        <span>Actions</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                    <div class="action-dropdown-menu" id="dropdown-@guest.Id">
+                                        <a asp-action="Details" asp-route-id="@guest.Id" class="dropdown-item">
+                                            <i class="fas fa-eye"></i> View Details
+                                        </a>
+                                        <a asp-action="Edit" asp-route-id="@guest.Id" class="dropdown-item">
+                                            <i class="fas fa-edit"></i> Edit Guest
+                                        </a>
+                                        <div class="dropdown-divider"></div>
+                                        <a href="#" class="dropdown-item" onclick="return false;">
+                                            <i class="fas fa-history"></i> Booking History
+                                        </a>
+                                        <a href="#" class="dropdown-item" onclick="return false;">
+                                            <i class="fas fa-envelope"></i> Send Email
+                                        </a>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <i class="fas fa-users"></i>
+            <h3>No Guests Found</h3>
+            <p>Guests will appear here after bookings are created.</p>
+        </div>
+    }
+</div>
+
+<style>
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    border-radius: 10px;
+    padding: 1.5rem;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.stat-card.stat-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.stat-card.stat-companions {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.stat-card.stat-recent {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.stat-icon {
+    font-size: 2.5rem;
+    opacity: 0.9;
+}
+
+.stat-details h3 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.stat-details p {
+    margin: 0;
+    font-size: 0.875rem;
+    opacity: 0.9;
+}
+
+.search-form {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.search-form input {
+    flex: 1;
+    max-width: 400px;
+    padding: 0.5rem 1rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 0.875rem;
+}
+
+.btn-search {
+    background: var(--primary);
+    color: white;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-search:hover {
+    background: var(--secondary);
+}
+
+.badge-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+}
+
+.btn-view {
+    background: #17a2b8;
+    color: white;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.875rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.btn-view:hover {
+    background: #138496;
+}
+
+/* Action Dropdown Styles */
+.data-table tbody td {
+    position: relative;
+}
+
+.action-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.action-dropdown-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s ease;
+    min-width: 100px;
+    justify-content: space-between;
+}
+
+.action-dropdown-btn:hover {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    transform: translateY(-2px);
+}
+
+.action-dropdown-btn i {
+    transition: transform 0.3s ease;
+}
+
+.action-dropdown.active .action-dropdown-btn i {
+    transform: rotate(180deg);
+}
+
+.action-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    min-width: 200px;
+    margin-top: 0.5rem;
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.action-dropdown.active .action-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    color: #333;
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+}
+
+.dropdown-item:first-child {
+    border-radius: 8px 8px 0 0;
+}
+
+.dropdown-item:last-child {
+    border-radius: 0 0 8px 8px;
+}
+
+.dropdown-item:hover {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+}
+
+.dropdown-item i {
+    width: 16px;
+    text-align: center;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: #e0e0e0;
+    margin: 0.25rem 0;
+}
+</style>
+
+<script>
+function toggleDropdown(event, guestId) {
+    event.stopPropagation();
+    const dropdown = event.currentTarget.closest('.action-dropdown');
+    const isActive = dropdown.classList.contains('active');
+    
+    // Close all dropdowns
+    document.querySelectorAll('.action-dropdown').forEach(d => d.classList.remove('active'));
+    
+    // Toggle current dropdown
+    if (!isActive) {
+        dropdown.classList.add('active');
+    }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    if (!event.target.closest('.action-dropdown')) {
+        document.querySelectorAll('.action-dropdown').forEach(d => d.classList.remove('active'));
+    }
+});
+
+// Prevent dropdown from closing when clicking inside
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.action-dropdown-menu').forEach(menu => {
+        menu.addEventListener('click', function(event) {
+            event.stopPropagation();
+        });
+    });
+});
+</script>

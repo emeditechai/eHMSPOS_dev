@@ -1,0 +1,174 @@
+@model HotelApp.Web.Models.Guest
+@{
+    ViewData["Title"] = "Guest Details";
+    var childGuests = ViewBag.ChildGuests as IEnumerable<HotelApp.Web.Models.Guest>;
+    var parentGuest = ViewBag.ParentGuest as HotelApp.Web.Models.Guest;
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-user"></i> Guest Profile</h2>
+    <div style="display: flex; gap: 0.5rem;">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn-edit">
+            <i class="fas fa-edit"></i> Edit Details
+        </a>
+        <a asp-action="Index" class="btn-cancel">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div class="booking-details-grid">
+    <section class="card">
+        <h3><i class="fas fa-user-circle"></i> Personal Information</h3>
+        <p><strong>Name:</strong> @Model.FirstName @Model.LastName</p>
+        <p><strong>Email:</strong> @Model.Email</p>
+        <p><strong>Phone:</strong> @Model.Phone</p>
+        <p><strong>Guest Type:</strong> 
+            @if (Model.GuestType == "Primary")
+            {
+                <span class="badge badge-available">Primary</span>
+            }
+            else if (Model.GuestType == "Companion")
+            {
+                <span class="badge badge-muted">Companion</span>
+            }
+            else if (Model.GuestType == "Child")
+            {
+                <span class="badge badge-inactive">Child</span>
+            }
+        </p>
+        @if (Model.DateOfBirth.HasValue)
+        {
+            <p><strong>Date of Birth:</strong> @Model.DateOfBirth.Value:dd MMM yyyy</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.LoyaltyId))
+        {
+            <p><strong>Loyalty ID:</strong> @Model.LoyaltyId</p>
+        }
+    </section>
+
+    <section class="card">
+        <h3><i class="fas fa-map-marker-alt"></i> Address</h3>
+        @if (!string.IsNullOrWhiteSpace(Model.Address) || !string.IsNullOrWhiteSpace(Model.City))
+        {
+            @if (!string.IsNullOrWhiteSpace(Model.Address))
+            {
+                <p>@Model.Address</p>
+            }
+            <p>
+                @if (!string.IsNullOrWhiteSpace(Model.City))
+                {
+                    @Model.City
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.State))
+                {
+                    <text>, @Model.State</text>
+                }
+            </p>
+            @if (!string.IsNullOrWhiteSpace(Model.Country))
+            {
+                <p><strong>Country:</strong> @Model.Country</p>
+            }
+        }
+        else
+        {
+            <p class="text-muted">No address information available</p>
+        }
+    </section>
+
+    <section class="card">
+        <h3><i class="fas fa-id-card"></i> Identity Information</h3>
+        @if (!string.IsNullOrWhiteSpace(Model.IdentityType) || !string.IsNullOrWhiteSpace(Model.IdentityNumber))
+        {
+            @if (!string.IsNullOrWhiteSpace(Model.IdentityType))
+            {
+                <p><strong>Type:</strong> @Model.IdentityType</p>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.IdentityNumber))
+            {
+                <p><strong>Number:</strong> @Model.IdentityNumber</p>
+            }
+        }
+        else
+        {
+            <p class="text-muted">No identity information available</p>
+        }
+    </section>
+
+    <section class="card">
+        <h3><i class="fas fa-info-circle"></i> Account Info</h3>
+        <p><strong>Status:</strong> 
+            @if (Model.IsActive)
+            {
+                <span class="badge badge-available">Active</span>
+            }
+            else
+            {
+                <span class="badge badge-maintenance">Inactive</span>
+            }
+        </p>
+        <p><strong>Member Since:</strong> @Model.CreatedDate.ToLocalTime():dd MMM yyyy</p>
+        <p><strong>Last Updated:</strong> @Model.LastModifiedDate.ToLocalTime():dd MMM yyyy</p>
+    </section>
+</div>
+
+@if (parentGuest != null)
+{
+    <div class="card">
+        <h3><i class="fas fa-user-tie"></i> Primary Guest</h3>
+        <p>This guest is linked to <strong>@parentGuest.FirstName @parentGuest.LastName</strong></p>
+        <a asp-action="Details" asp-route-id="@parentGuest.Id" class="btn-view">
+            <i class="fas fa-eye"></i> View Primary Guest
+        </a>
+    </div>
+}
+
+@if (Model.GuestType == "Primary" && childGuests != null && childGuests.Any())
+{
+    <div class="card">
+        <h3><i class="fas fa-user-friends"></i> Family Members / Companions (@childGuests.Count())</h3>
+        <div class="table-container">
+            <table class="data-table compact">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Type</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var child in childGuests)
+                    {
+                        <tr>
+                            <td><strong>@child.FirstName @child.LastName</strong></td>
+                            <td>@child.Email</td>
+                            <td>@child.Phone</td>
+                            <td>
+                                @if (child.GuestType == "Child")
+                                {
+                                    <span class="badge badge-inactive">Child</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-muted">Companion</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <a asp-action="Details" asp-route-id="@child.Id" class="btn-view">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    <a asp-action="Edit" asp-route-id="@child.Id" class="btn-edit">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

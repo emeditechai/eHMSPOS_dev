@@ -11,5 +11,6 @@ namespace HotelApp.Web.Repositories
         Task<bool> UpdateAsync(Room room);
         Task<IEnumerable<RoomType>> GetRoomTypesAsync();
         Task<bool> RoomNumberExistsAsync(string roomNumber, int? excludeId = null);
+        Task<bool> IsRoomAvailableAsync(int roomId, DateTime checkInDate, DateTime checkOutDate, string? excludeBookingNumber = null);
     }
 }

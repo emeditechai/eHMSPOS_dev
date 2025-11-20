@@ -1,0 +1,442 @@
+@model HotelApp.Web.ViewModels.BookingDashboardViewModel
+@{
+    ViewData["Title"] = "Bookings Dashboard";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-calendar-check"></i> Bookings Dashboard</h2>
+    <a asp-action="Create" class="btn-create">
+        <i class="fas fa-plus"></i> New Booking
+    </a>
+</div>
+
+@if (TempData["SuccessMessage"] is string successMessage)
+{
+    <div class="alert alert-success">
+        <i class="fas fa-check-circle"></i> @successMessage
+    </div>
+}
+@if (TempData["ErrorMessage"] is string errorMessage)
+{
+    <div class="alert alert-danger">
+        <i class="fas fa-exclamation-triangle"></i> @errorMessage
+    </div>
+}
+
+<!-- Dashboard Cards -->
+<div class="dashboard-cards">
+    <div class="dashboard-card card-blue">
+        <div class="card-icon">
+            <i class="fas fa-calendar-plus"></i>
+        </div>
+        <div class="card-content">
+            <h3>@Model.TodayBookingCount</h3>
+            <p>Today's Bookings</p>
+        </div>
+    </div>
+    
+    <div class="dashboard-card card-green">
+        <div class="card-icon">
+            <i class="fas fa-money-bill-wave"></i>
+        </div>
+        <div class="card-content">
+            <h3>₹@Model.TodayAdvanceAmount.ToString("N0")</h3>
+            <p>Today's Advance Amount</p>
+        </div>
+    </div>
+    
+    <div class="dashboard-card card-orange">
+        <div class="card-icon">
+            <i class="fas fa-sign-in-alt"></i>
+        </div>
+        <div class="card-content">
+            <h3>@Model.TodayCheckInCount</h3>
+            <p>Today's Check-ins</p>
+        </div>
+    </div>
+</div>
+
+@if (Model.Bookings.Any())
+{
+    <div class="table-container" style="overflow: visible;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Booking #</th>
+                    <th>Guest</th>
+                    <th>Stay</th>
+                    <th>Room</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var booking in Model.Bookings)
+                {
+                    <tr>
+                        <td>
+                            <strong>@booking.BookingNumber</strong>
+                            <div class="subtext">@booking.Source / @booking.Channel</div>
+                        </td>
+                        <td>
+                            <strong>@booking.PrimaryGuestFirstName @booking.PrimaryGuestLastName</strong>
+                            <div class="subtext">@booking.PrimaryGuestPhone</div>
+                        </td>
+                        <td>
+                            <div>@booking.CheckInDate.ToString("dd MMM yyyy") - @booking.CheckOutDate.ToString("dd MMM yyyy")</div>
+                            <div class="subtext">@booking.Nights night(s)</div>
+                        </td>
+                        <td>
+                            <div>@booking.RoomType?.TypeName</div>
+                            @if (booking.Room != null)
+                            {
+                                <div class="subtext">Room: @booking.Room.RoomNumber</div>
+                            }
+                            else
+                            {
+                                <div class="subtext text-muted">Not Assigned</div>
+                            }
+                        </td>
+                        <td>
+                            ₹@booking.TotalAmount.ToString("N0")
+                            <div class="subtext">Deposit: ₹@booking.DepositAmount.ToString("N0")</div>
+                        </td>
+                        <td>
+                            <span class="badge badge-available">@booking.Status</span>
+                            <div class="subtext">@booking.PaymentStatus</div>
+                        </td>
+                        <td>@booking.CreatedDate.ToString("dd/MM/yyyy")<br/><span class="subtext">@booking.CreatedDate.ToString("hh:mm tt")</span></td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="btn-action-dropdown" onclick="toggleDropdown(event, 'dropdown-@booking.BookingNumber')">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <div id="dropdown-@booking.BookingNumber" class="dropdown-menu">
+                                    <a asp-action="Details" asp-route-bookingNumber="@booking.BookingNumber" class="dropdown-item">
+                                        <i class="fas fa-eye"></i> View Details
+                                    </a>
+                                    @if (booking.Room == null)
+                                    {
+                                        <a href="#" onclick="assignRoom('@booking.BookingNumber')" class="dropdown-item">
+                                            <i class="fas fa-door-open"></i> Assign Room
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <a href="#" onclick="changeRoom('@booking.BookingNumber')" class="dropdown-item">
+                                            <i class="fas fa-exchange-alt"></i> Change Room
+                                        </a>
+                                    }
+                                    <a href="#" onclick="editRoomType('@booking.BookingNumber')" class="dropdown-item">
+                                        <i class="fas fa-bed"></i> Edit Room Type
+                                    </a>
+                                    <a href="#" onclick="editDates('@booking.BookingNumber')" class="dropdown-item">
+                                        <i class="fas fa-calendar-alt"></i> Edit Dates
+                                    </a>
+                                    <hr class="dropdown-divider" />
+                                    <a href="#" onclick="cancelBooking('@booking.BookingNumber')" class="dropdown-item text-danger">
+                                        <i class="fas fa-times-circle"></i> Cancel Booking
+                                    </a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="empty-state">
+        <i class="fas fa-calendar-check"></i>
+        <h3>No bookings yet</h3>
+        <p>Create your first booking to get started.</p>
+        <a asp-action="Create" class="btn-create">
+            <i class="fas fa-plus"></i> Add Booking
+        </a>
+    </div>
+}
+
+<style>
+    .dashboard-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .dashboard-card {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+    }
+
+    .dashboard-card .card-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        color: white;
+    }
+
+    .card-blue .card-icon {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .card-green .card-icon {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .card-orange .card-icon {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .dashboard-card .card-content h3 {
+        margin: 0;
+        font-size: 32px;
+        font-weight: 700;
+        color: #2d3748;
+    }
+
+    .dashboard-card .card-content p {
+        margin: 5px 0 0 0;
+        font-size: 14px;
+        color: #718096;
+        font-weight: 500;
+    }
+
+    .dropdown {
+        position: relative;
+        display: inline-block;
+    }
+
+    .btn-action-dropdown {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        padding: 6px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        color: white;
+        font-size: 14px;
+        box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 36px;
+        height: 32px;
+    }
+
+    .btn-action-dropdown:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-action-dropdown:active {
+        transform: translateY(0);
+    }
+
+    .dropdown-menu {
+        display: none;
+        position: fixed;
+        background: white;
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+        min-width: 180px;
+        z-index: 10000;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+    }
+
+    .dropdown-menu.show {
+        display: block;
+        animation: dropdownSlide 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @@keyframes dropdownSlide {
+        from {
+            opacity: 0;
+            transform: translateY(-15px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .dropdown-item {
+        display: flex;
+        align-items: center;
+        padding: 10px 14px;
+        color: #374151;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        font-size: 13px;
+        font-weight: 500;
+        border: none;
+        width: 100%;
+        text-align: left;
+        background: white;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .dropdown-item:hover {
+        background: linear-gradient(90deg, #f0f9ff 0%, #e0f2fe 100%);
+        color: #0369a1;
+        padding-left: 18px;
+    }
+
+    .dropdown-item i {
+        margin-right: 10px;
+        width: 16px;
+        font-size: 13px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .dropdown-item.text-danger {
+        color: #dc2626;
+    }
+
+    .dropdown-item.text-danger:hover {
+        background: linear-gradient(90deg, #fef2f2 0%, #fee2e2 100%);
+        color: #b91c1c;
+    }
+
+    .dropdown-divider {
+        margin: 4px 8px;
+        border: none;
+        border-top: 1px solid #f1f5f9;
+    }
+
+    .text-muted {
+        color: #a0aec0 !important;
+        font-style: italic;
+    }
+
+    @@media (max-width: 768px) {
+        .dashboard-cards {
+            grid-template-columns: 1fr;
+        }
+
+        .dashboard-card {
+            padding: 20px;
+        }
+
+        .dashboard-card .card-icon {
+            width: 50px;
+            height: 50px;
+            font-size: 24px;
+        }
+
+        .dashboard-card .card-content h3 {
+            font-size: 24px;
+        }
+    }
+</style>
+
+<script>
+    function toggleDropdown(event, dropdownId) {
+        event.stopPropagation();
+        
+        const button = event.currentTarget;
+        const dropdown = document.getElementById(dropdownId);
+        
+        // Close all other dropdowns
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            if (menu.id !== dropdownId) {
+                menu.classList.remove('show');
+            }
+        });
+        
+        // Toggle current dropdown
+        const isShown = dropdown.classList.contains('show');
+        
+        if (!isShown) {
+            // Position dropdown relative to button
+            const rect = button.getBoundingClientRect();
+            dropdown.style.top = (rect.bottom + 5) + 'px';
+            dropdown.style.right = (window.innerWidth - rect.right) + 'px';
+            dropdown.classList.add('show');
+        } else {
+            dropdown.classList.remove('show');
+        }
+    }
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.dropdown')) {
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+    });
+
+    // Close dropdown on scroll
+    document.addEventListener('scroll', function() {
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            menu.classList.remove('show');
+        });
+    }, true);
+
+    function assignRoom(bookingNumber) {
+        window.location.href = '/Booking/AssignRoom?bookingNumber=' + bookingNumber;
+    }
+
+    function changeRoom(bookingNumber) {
+        window.location.href = '/Booking/AssignRoom?bookingNumber=' + bookingNumber;
+    }
+
+    function editRoomType(bookingNumber) {
+        window.location.href = '/Booking/EditRoomType?bookingNumber=' + bookingNumber;
+    }
+
+    function editDates(bookingNumber) {
+        window.location.href = '/Booking/EditDates?bookingNumber=' + bookingNumber;
+    }
+
+    function cancelBooking(bookingNumber) {
+        if (confirm('Are you sure you want to cancel booking: ' + bookingNumber + '?\n\nThis action cannot be undone.')) {
+            fetch('/Booking/Cancel', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                },
+                body: JSON.stringify({ bookingNumber: bookingNumber })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Booking cancelled successfully');
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while cancelling the booking');
+            });
+        }
+    }
+</script>

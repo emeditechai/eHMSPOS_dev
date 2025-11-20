@@ -1,0 +1,71 @@
+@model HotelApp.Web.Models.Booking
+@{
+    ViewData["Title"] = "Edit Room Type";
+    var roomTypes = ViewBag.RoomTypes as IEnumerable<HotelApp.Web.Models.RoomType>;
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-bed"></i> Edit Room Type</h2>
+    <a asp-action="List" class="btn-cancel">
+        <i class="fas fa-arrow-left"></i> Back to List
+    </a>
+</div>
+
+<div class="form-container">
+    <div class="booking-info-card" style="margin-bottom: 25px; padding: 20px; background: #f7fafc; border-radius: 8px;">
+        <h3 style="margin-bottom: 15px; color: var(--primary);">Current Booking Details</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div>
+                <strong>Booking #:</strong> @Model.BookingNumber
+            </div>
+            <div>
+                <strong>Guest:</strong> @Model.PrimaryGuestFirstName @Model.PrimaryGuestLastName
+            </div>
+            <div>
+                <strong>Current Room Type:</strong> @Model.RoomType?.TypeName
+            </div>
+            <div>
+                <strong>Dates:</strong> @Model.CheckInDate.ToString("dd MMM yyyy") - @Model.CheckOutDate.ToString("dd MMM yyyy")
+            </div>
+            <div>
+                <strong>Current Amount:</strong> ₹@Model.TotalAmount.ToString("N0")
+            </div>
+        </div>
+    </div>
+
+    <h3 style="margin-bottom: 20px;">Change Room Type</h3>
+
+    <div class="alert alert-info" style="margin-bottom: 20px;">
+        <i class="fas fa-info-circle"></i>
+        Changing the room type will recalculate the booking amount. This feature is coming soon.
+    </div>
+
+    <form method="post">
+        @Html.AntiForgeryToken()
+
+        <div class="form-group">
+            <label>Select New Room Type</label>
+            <select name="newRoomTypeId" class="form-control" required>
+                <option value="">-- Select Room Type --</option>
+                @if (roomTypes != null)
+                {
+                    foreach (var roomType in roomTypes)
+                    {
+                        <option value="@roomType.Id" selected="@(roomType.Id == Model.RoomTypeId)">
+                            @roomType.TypeName - ₹@roomType.BaseRate.ToString("N0") per night
+                        </option>
+                    }
+                }
+            </select>
+        </div>
+
+        <div class="form-actions">
+            <button type="button" class="btn-save" onclick="alert('This feature is coming soon!')">
+                <i class="fas fa-save"></i> Update Room Type
+            </button>
+            <a asp-action="List" class="btn-cancel">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>

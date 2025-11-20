@@ -64,11 +64,11 @@
                             </a>
                         </div>
                     </div>
-                    <a href="#" class="menu-item">
+                    <a asp-controller="Booking" asp-action="List" class="menu-item @(controller == "Booking" ? "active" : string.Empty)">
                         <i class="fas fa-calendar-check"></i>
                         <span>Bookings</span>
                     </a>
-                    <a href="#" class="menu-item">
+                    <a asp-controller="Guest" asp-action="Index" class="menu-item @(controller == "Guest" ? "active" : string.Empty)">
                         <i class="fas fa-users"></i>
                         <span>Guests</span>
                     </a>

@@ -135,5 +135,32 @@ namespace HotelApp.Web.Repositories
             var count = await _dbConnection.ExecuteScalarAsync<int>(sql, new { RoomNumber = roomNumber, ExcludeId = excludeId });
             return count > 0;
         }
+
+        public async Task<bool> IsRoomAvailableAsync(int roomId, DateTime checkInDate, DateTime checkOutDate, string? excludeBookingNumber = null)
+        {
+            // Check if room has any conflicting bookings
+            var sql = @"
+                SELECT COUNT(1)
+                FROM BookingRoomNights brn
+                INNER JOIN Bookings b ON brn.BookingId = b.Id
+                WHERE brn.RoomId = @RoomId
+                    AND brn.StayDate >= @CheckInDate
+                    AND brn.StayDate < @CheckOutDate
+                    AND b.Status NOT IN ('Cancelled', 'No-Show')
+                    AND (@ExcludeBookingNumber IS NULL OR b.BookingNumber != @ExcludeBookingNumber)";
+
+            var conflictCount = await _dbConnection.ExecuteScalarAsync<int>(
+                sql,
+                new
+                {
+                    RoomId = roomId,
+                    CheckInDate = checkInDate.Date,
+                    CheckOutDate = checkOutDate.Date,
+                    ExcludeBookingNumber = excludeBookingNumber
+                }
+            );
+
+            return conflictCount == 0;
+        }
     }
 }

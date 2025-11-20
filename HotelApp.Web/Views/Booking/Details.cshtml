@@ -1,0 +1,235 @@
+@model HotelApp.Web.Models.Booking
+@{
+    ViewData["Title"] = $"Booking {Model.BookingNumber}";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-id-card"></i> Booking @Model.BookingNumber</h2>
+    <a asp-action="List" class="btn-cancel">
+        <i class="fas fa-arrow-left"></i> Back to Bookings
+    </a>
+</div>
+
+<div class="booking-details-grid">
+    <section class="card">
+        <h3><i class="fas fa-info-circle"></i> Status</h3>
+        <p><strong>Status:</strong> <span class="badge badge-available">@Model.Status</span></p>
+        <p><strong>Payment:</strong> @Model.PaymentStatus</p>
+        <p><strong>Channel:</strong> @Model.Channel</p>
+        <p><strong>Source:</strong> @Model.Source</p>
+        <p><strong>Customer Type:</strong> @Model.CustomerType</p>
+    </section>
+
+    <section class="card">
+        <h3><i class="fas fa-bed"></i> Stay</h3>
+        <p><strong>Room Type:</strong> @Model.RoomType?.TypeName</p>
+        <p><strong>Room:</strong> @Model.Room?.RoomNumber</p>
+        <p><strong>Dates:</strong> @Model.CheckInDate:dd MMM yyyy - @Model.CheckOutDate:dd MMM yyyy (@Model.Nights night(s))</p>
+        <p><strong>Guests:</strong> @Model.Adults adult(s), @Model.Children child(ren)</p>
+        @if (!string.IsNullOrWhiteSpace(Model.SpecialRequests))
+        {
+            <p><strong>Requests:</strong> @Model.SpecialRequests</p>
+        }
+    </section>
+
+    <section class="card">
+        <h3><i class="fas fa-user"></i> Guest</h3>
+        <p><strong>Name:</strong> @Model.PrimaryGuestFirstName @Model.PrimaryGuestLastName</p>
+        <p><strong>Email:</strong> @Model.PrimaryGuestEmail</p>
+        <p><strong>Phone:</strong> @Model.PrimaryGuestPhone</p>
+        @if (!string.IsNullOrWhiteSpace(Model.LoyaltyId))
+        {
+            <p><strong>Loyalty ID:</strong> @Model.LoyaltyId</p>
+        }
+    </section>
+
+    <section class="card">
+        <h3><i class="fas fa-file-invoice"></i> Financials</h3>
+        <p><strong>Room Total:</strong> ₹@Model.BaseAmount.ToString("N2")</p>
+        <p><strong>CGST (@(((Model.CGSTAmount / Model.BaseAmount * 100).ToString("N2")))%):</strong> ₹@Model.CGSTAmount.ToString("N2")</p>
+        <p><strong>SGST (@(((Model.SGSTAmount / Model.BaseAmount * 100).ToString("N2")))%):</strong> ₹@Model.SGSTAmount.ToString("N2")</p>
+        <p><strong>Total GST:</strong> ₹@Model.TaxAmount.ToString("N2")</p>
+        <p><strong>Discount:</strong> ₹@Model.DiscountAmount.ToString("N2")</p>
+        <p><strong>Grand Total:</strong> ₹@Model.TotalAmount.ToString("N2")</p>
+        <p><strong>Deposit:</strong> ₹@Model.DepositAmount.ToString("N2")</p>
+        <p><strong>Balance:</strong> ₹@Model.BalanceAmount.ToString("N2")</p>
+    </section>
+</div>
+
+<div class="card">
+    <h3><i class="fas fa-users"></i> Additional Guests</h3>
+    @if (Model.Guests.Any())
+    {
+        <ul class="simple-list">
+            @foreach (var guest in Model.Guests)
+            {
+                <li>
+                    <strong>@guest.FullName</strong>
+                    @if (!string.IsNullOrWhiteSpace(guest.Email))
+                    {
+                        <span>- @guest.Email</span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(guest.Phone))
+                    {
+                        <span>- @guest.Phone</span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(guest.GuestType))
+                    {
+                        <span class="badge badge-muted">@guest.GuestType</span>
+                    }
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p>No guest records found.</p>
+    }
+</div>
+
+<div class="card">
+    <h3><i class="fas fa-money-bill"></i> Payments</h3>
+    @if (Model.Payments.Any())
+    {
+        <table class="data-table compact">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Method</th>
+                    <th>Status</th>
+                    <th>Reference</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var payment in Model.Payments)
+                {
+                    <tr>
+                        <td>@payment.PaidOn:dd MMM yyyy</td>
+                        <td>₹@payment.Amount.ToString("N2")</td>
+                        <td>@payment.PaymentMethod</td>
+                        <td>@payment.Status</td>
+                        <td>@payment.PaymentReference</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p>No payments captured yet.</p>
+    }
+</div>
+
+<div class="card">
+    <h3><i class="fas fa-calendar"></i> Nightly Breakdown</h3>
+    @if (Model.RoomNights.Any())
+    {
+        <table class="data-table compact">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Rate</th>
+                    <th>CGST</th>
+                    <th>SGST</th>
+                    <th>Total GST</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var night in Model.RoomNights)
+                {
+                    <tr>
+                        <td>@night.StayDate:dd MMM yyyy</td>
+                        <td>₹@night.RateAmount.ToString("N2")</td>
+                        <td>₹@night.CGSTAmount.ToString("N2")</td>
+                        <td>₹@night.SGSTAmount.ToString("N2")</td>
+                        <td>₹@night.TaxAmount.ToString("N2")</td>
+                        <td>@night.Status</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p>No nightly data recorded.</p>
+    }
+</div>
+
+@{
+    var auditLogs = ViewBag.AuditLogs as IEnumerable<HotelApp.Web.Models.BookingAuditLog>;
+}
+<div class="card">
+    <h3><i class="fas fa-history"></i> Audit Trail</h3>
+    @if (auditLogs != null && auditLogs.Any())
+    {
+        <div class="audit-trail">
+            @foreach (var log in auditLogs)
+            {
+                <div class="audit-entry">
+                    <div class="audit-header">
+                        <span class="audit-action @GetActionClass(log.ActionType)">
+                            <i class="@GetActionIcon(log.ActionType)"></i> @log.ActionType
+                        </span>
+                        <span class="audit-timestamp">@log.PerformedAt.ToLocalTime():dd MMM yyyy hh:mm tt</span>
+                    </div>
+                    <div class="audit-description">@log.ActionDescription</div>
+                    @if (!string.IsNullOrWhiteSpace(log.OldValue) || !string.IsNullOrWhiteSpace(log.NewValue))
+                    {
+                        <div class="audit-values">
+                            @if (!string.IsNullOrWhiteSpace(log.OldValue))
+                            {
+                                <div class="audit-old-value">
+                                    <strong>Before:</strong> @log.OldValue
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(log.NewValue))
+                            {
+                                <div class="audit-new-value">
+                                    <strong>After:</strong> @log.NewValue
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <p>No audit trail available. Changes will be tracked here.</p>
+    }
+</div>
+
+@functions {
+    private string GetActionClass(string actionType)
+    {
+        return actionType switch
+        {
+            "Created" => "action-created",
+            "DatesChanged" => "action-dates-changed",
+            "RoomAssigned" => "action-room-assigned",
+            "RoomChanged" => "action-room-changed",
+            "PaymentReceived" => "action-payment",
+            "StatusChanged" => "action-status",
+            "Cancelled" => "action-cancelled",
+            _ => "action-other"
+        };
+    }
+
+    private string GetActionIcon(string actionType)
+    {
+        return actionType switch
+        {
+            "Created" => "fas fa-plus-circle",
+            "DatesChanged" => "fas fa-calendar-alt",
+            "RoomAssigned" => "fas fa-door-open",
+            "RoomChanged" => "fas fa-exchange-alt",
+            "PaymentReceived" => "fas fa-money-bill-wave",
+            "StatusChanged" => "fas fa-flag",
+            "Cancelled" => "fas fa-ban",
+            _ => "fas fa-info-circle"
+        };
+    }
+}

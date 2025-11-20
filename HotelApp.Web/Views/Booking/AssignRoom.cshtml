@@ -1,0 +1,131 @@
+@model HotelApp.Web.Models.Booking
+@{
+    ViewData["Title"] = "Assign Room";
+    var availableRooms = ViewBag.AvailableRooms as IEnumerable<HotelApp.Web.Models.Room>;
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-door-open"></i> Assign Room to Booking</h2>
+    <a asp-action="List" class="btn-cancel">
+        <i class="fas fa-arrow-left"></i> Back to List
+    </a>
+</div>
+
+<div class="form-container">
+    <div class="booking-info-card" style="margin-bottom: 25px; padding: 20px; background: #f7fafc; border-radius: 8px;">
+        <h3 style="margin-bottom: 15px; color: var(--primary);">Booking Details</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div>
+                <strong>Booking #:</strong> @Model.BookingNumber
+            </div>
+            <div>
+                <strong>Guest:</strong> @Model.PrimaryGuestFirstName @Model.PrimaryGuestLastName
+            </div>
+            <div>
+                <strong>Room Type:</strong> @Model.RoomType?.TypeName
+            </div>
+            <div>
+                <strong>Check-in:</strong> @Model.CheckInDate.ToString("dd MMM yyyy")
+            </div>
+            <div>
+                <strong>Check-out:</strong> @Model.CheckOutDate.ToString("dd MMM yyyy")
+            </div>
+            <div>
+                <strong>Nights:</strong> @Model.Nights
+            </div>
+        </div>
+    </div>
+
+    <h3 style="margin-bottom: 20px;">Select Available Room</h3>
+
+    @if (availableRooms != null && availableRooms.Any())
+    {
+        <form asp-action="AssignRoom" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="bookingNumber" value="@Model.BookingNumber" />
+
+            <div class="room-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-bottom: 25px;">
+                @foreach (var room in availableRooms)
+                {
+                    <label class="room-card" for="room-@room.Id" style="border: 2px solid #e2e8f0; border-radius: 10px; padding: 20px; cursor: pointer; transition: all 0.2s; display: block;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h4 style="margin: 0; color: var(--primary);">Room @room.RoomNumber</h4>
+                            <input type="radio" id="room-@room.Id" name="roomId" value="@room.Id" required style="width: 20px; height: 20px;" onchange="highlightSelectedRoom(this)">
+                        </div>
+                        <div style="font-size: 14px; color: #718096;">
+                            <div><strong>Floor:</strong> @(room.FloorName ?? $"Floor {room.Floor}")</div>
+                            <div><strong>Status:</strong> <span class="badge badge-available">@room.Status</span></div>
+                        </div>
+                    </label>
+                }
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-save" id="assignRoomBtn">
+                    <i class="fas fa-check"></i> Assign Selected Room
+                </button>
+                <a asp-action="List" class="btn-cancel">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        </form>
+    }
+    else
+    {
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            No available rooms found for this room type.
+        </div>
+        <a asp-action="List" class="btn-cancel">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+    }
+</div>
+
+<script>
+    function highlightSelectedRoom(radio) {
+        // Remove selected styling from all cards
+        document.querySelectorAll('.room-card').forEach(card => {
+            card.style.borderColor = '#e2e8f0';
+            card.style.backgroundColor = 'white';
+        });
+
+        // Add selected styling to the parent label of the checked radio
+        if (radio.checked) {
+            const parentLabel = radio.closest('.room-card');
+            if (parentLabel) {
+                parentLabel.style.borderColor = '#667eea';
+                parentLabel.style.backgroundColor = '#f0f9ff';
+                parentLabel.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.2)';
+            }
+        }
+    }
+
+    // Initialize on page load if there's a pre-selected room
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkedRadio = document.querySelector('input[name="roomId"]:checked');
+        if (checkedRadio) {
+            highlightSelectedRoom(checkedRadio);
+        }
+
+        // Add form validation
+        const form = document.querySelector('form');
+        const assignBtn = document.getElementById('assignRoomBtn');
+        
+        if (form && assignBtn) {
+            form.addEventListener('submit', function(e) {
+                const selectedRoom = document.querySelector('input[name="roomId"]:checked');
+                
+                if (!selectedRoom) {
+                    e.preventDefault();
+                    alert('Please select a room before submitting.');
+                    return false;
+                }
+                
+                // Disable button to prevent double submission
+                assignBtn.disabled = true;
+                assignBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Assigning...';
+            });
+        }
+    });
+</script>

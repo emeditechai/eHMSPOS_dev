@@ -1,0 +1,193 @@
+@model HotelApp.Web.Models.Guest
+@{
+    ViewData["Title"] = "Edit Guest";
+    var childGuests = ViewBag.ChildGuests as IEnumerable<HotelApp.Web.Models.Guest>;
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-user-edit"></i> Edit Guest Details</h2>
+    <a asp-action="Index" class="btn-cancel">
+        <i class="fas fa-arrow-left"></i> Back to Guest List
+    </a>
+</div>
+
+<div class="form-container">
+    <form asp-action="Edit" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="CreatedDate" />
+        <input type="hidden" asp-for="GuestType" />
+        <input type="hidden" asp-for="ParentGuestId" />
+        
+        <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+        <h3 style="margin-bottom: 1.5rem; color: var(--primary);">
+            <i class="fas fa-user"></i> Personal Information
+        </h3>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="FirstName">First Name <span class="text-danger">*</span></label>
+                <input asp-for="FirstName" type="text" required />
+                <span asp-validation-for="FirstName" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="LastName">Last Name <span class="text-danger">*</span></label>
+                <input asp-for="LastName" type="text" required />
+                <span asp-validation-for="LastName" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="Email">Email <span class="text-danger">*</span></label>
+                <input asp-for="Email" type="email" required />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Phone">Phone <span class="text-danger">*</span></label>
+                <input asp-for="Phone" type="tel" required />
+                <span asp-validation-for="Phone" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="DateOfBirth">Date of Birth</label>
+                <input asp-for="DateOfBirth" type="date" />
+                <span asp-validation-for="DateOfBirth" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="LoyaltyId">Loyalty ID</label>
+                <input asp-for="LoyaltyId" type="text" />
+                <span asp-validation-for="LoyaltyId" class="text-danger"></span>
+            </div>
+        </div>
+
+        <h3 style="margin: 2rem 0 1.5rem; color: var(--primary);">
+            <i class="fas fa-map-marker-alt"></i> Address Information
+        </h3>
+
+        <div class="form-group">
+            <label asp-for="Address">Address</label>
+            <textarea asp-for="Address" rows="2"></textarea>
+            <span asp-validation-for="Address" class="text-danger"></span>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="City">City</label>
+                <input asp-for="City" type="text" />
+                <span asp-validation-for="City" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="State">State</label>
+                <input asp-for="State" type="text" />
+                <span asp-validation-for="State" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Country">Country</label>
+                <input asp-for="Country" type="text" />
+                <span asp-validation-for="Country" class="text-danger"></span>
+            </div>
+        </div>
+
+        <h3 style="margin: 2rem 0 1.5rem; color: var(--primary);">
+            <i class="fas fa-id-card"></i> Identity Information
+        </h3>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="IdentityType">Identity Type</label>
+                <select asp-for="IdentityType">
+                    <option value="">-- Select Identity Type --</option>
+                    <option value="Passport">Passport</option>
+                    <option value="National ID">National ID</option>
+                    <option value="Driver License">Driver License</option>
+                    <option value="Aadhar Card">Aadhar Card</option>
+                    <option value="PAN Card">PAN Card</option>
+                    <option value="Other">Other</option>
+                </select>
+                <span asp-validation-for="IdentityType" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="IdentityNumber">Identity Number</label>
+                <input asp-for="IdentityNumber" type="text" />
+                <span asp-validation-for="IdentityNumber" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="IsActive">Status</label>
+                <select asp-for="IsActive">
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+                <span asp-validation-for="IsActive" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-save">
+                <i class="fas fa-save"></i> Save Changes
+            </button>
+            <a asp-action="Index" class="btn-cancel">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+@if (Model.GuestType == "Primary" && childGuests != null && childGuests.Any())
+{
+    <div class="card" style="margin-top: 2rem;">
+        <h3><i class="fas fa-user-friends"></i> Family Members / Companions</h3>
+        <div class="table-container">
+            <table class="data-table compact">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Type</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var child in childGuests)
+                    {
+                        <tr>
+                            <td><strong>@child.FirstName @child.LastName</strong></td>
+                            <td>@child.Email</td>
+                            <td>@child.Phone</td>
+                            <td>
+                                @if (child.GuestType == "Child")
+                                {
+                                    <span class="badge badge-inactive">Child</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-muted">Companion</span>
+                                }
+                            </td>
+                            <td>
+                                <a asp-action="Edit" asp-route-id="@child.Id" class="btn-edit">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

@@ -9,6 +9,8 @@ namespace HotelApp.Web.Models
         public decimal BaseRate { get; set; }
         public decimal ExtraPaxRate { get; set; }
         public decimal TaxPercentage { get; set; }
+        public decimal CGSTPercentage { get; set; }
+        public decimal SGSTPercentage { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
         public bool IsWeekdayRate { get; set; } = true;

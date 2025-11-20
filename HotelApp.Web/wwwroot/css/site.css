@@ -29,3 +29,118 @@ body {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
   text-align: start;
 }
+/* Audit Trail Styles */
+.audit-trail {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.audit-entry {
+    padding: 1rem;
+    border-left: 3px solid var(--primary);
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.audit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.audit-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.action-created {
+    background: #d4edda;
+    color: #155724;
+    border-left-color: #28a745;
+}
+
+.action-dates-changed {
+    background: #fff3cd;
+    color: #856404;
+    border-left-color: #ffc107;
+}
+
+.action-room-assigned,
+.action-room-changed {
+    background: #d1ecf1;
+    color: #0c5460;
+    border-left-color: #17a2b8;
+}
+
+.action-payment {
+    background: #d4edda;
+    color: #155724;
+    border-left-color: #28a745;
+}
+
+.action-status {
+    background: #e2e3e5;
+    color: #383d41;
+    border-left-color: #6c757d;
+}
+
+.action-cancelled {
+    background: #f8d7da;
+    color: #721c24;
+    border-left-color: #dc3545;
+}
+
+.action-other {
+    background: #e7f3ff;
+    color: #004085;
+    border-left-color: #007bff;
+}
+
+.audit-timestamp {
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+
+.audit-description {
+    margin-bottom: 0.75rem;
+    color: #333;
+}
+
+.audit-values {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #dee2e6;
+}
+
+.audit-old-value,
+.audit-new-value {
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+.audit-old-value {
+    background: #fff3cd;
+    border-left: 3px solid #ffc107;
+}
+
+.audit-new-value {
+    background: #d4edda;
+    border-left: 3px solid #28a745;
+}
+
+.audit-old-value strong,
+.audit-new-value strong {
+    display: block;
+    margin-bottom: 0.25rem;
+}

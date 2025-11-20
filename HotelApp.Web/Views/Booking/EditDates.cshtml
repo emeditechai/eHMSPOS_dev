@@ -1,0 +1,92 @@
+@model HotelApp.Web.Models.Booking
+@{
+    ViewData["Title"] = "Edit Dates";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-calendar-alt"></i> Edit Booking Dates</h2>
+    <a asp-action="List" class="btn-cancel">
+        <i class="fas fa-arrow-left"></i> Back to List
+    </a>
+</div>
+
+<div class="form-container">
+    <div class="booking-info-card" style="margin-bottom: 25px; padding: 20px; background: #f7fafc; border-radius: 8px;">
+        <h3 style="margin-bottom: 15px; color: var(--primary);">Current Booking Details</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div>
+                <strong>Booking #:</strong> @Model.BookingNumber
+            </div>
+            <div>
+                <strong>Guest:</strong> @Model.PrimaryGuestFirstName @Model.PrimaryGuestLastName
+            </div>
+            <div>
+                <strong>Room Type:</strong> @Model.RoomType?.TypeName
+            </div>
+            <div>
+                <strong>Current Check-in:</strong> @Model.CheckInDate.ToString("dd MMM yyyy")
+            </div>
+            <div>
+                <strong>Current Check-out:</strong> @Model.CheckOutDate.ToString("dd MMM yyyy")
+            </div>
+            <div>
+                <strong>Nights:</strong> @Model.Nights
+            </div>
+        </div>
+    </div>
+
+    <h3 style="margin-bottom: 20px;">Modify Stay Dates</h3>
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger" style="margin-bottom: 20px;">
+            <i class="fas fa-exclamation-triangle"></i>
+            @TempData["ErrorMessage"]
+        </div>
+    }
+
+    <div class="alert alert-warning" style="margin-bottom: 20px;">
+        <i class="fas fa-info-circle"></i>
+        Changing dates will check room availability and recalculate the booking amount.
+    </div>
+
+    <form asp-action="EditDates" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="bookingNumber" value="@Model.BookingNumber" />
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>New Check-in Date</label>
+                <input type="date" name="newCheckInDate" value="@Model.CheckInDate.ToString("yyyy-MM-dd")" class="form-control" required />
+            </div>
+
+            <div class="form-group">
+                <label>New Check-out Date</label>
+                <input type="date" name="newCheckOutDate" value="@Model.CheckOutDate.ToString("yyyy-MM-dd")" class="form-control" required />
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-save">
+                <i class="fas fa-save"></i> Update Dates
+            </button>
+            <a asp-action="Details" asp-route-bookingNumber="@Model.BookingNumber" class="btn-cancel">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Set minimum date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.querySelector('input[name="newCheckInDate"]').setAttribute('min', today);
+    
+    // Update checkout min date when checkin changes
+    document.querySelector('input[name="newCheckInDate"]').addEventListener('change', function() {
+        const checkInDate = new Date(this.value);
+        checkInDate.setDate(checkInDate.getDate() + 1);
+        const minCheckOut = checkInDate.toISOString().split('T')[0];
+        document.querySelector('input[name="newCheckOutDate"]').setAttribute('min', minCheckOut);
+    });
+</script>

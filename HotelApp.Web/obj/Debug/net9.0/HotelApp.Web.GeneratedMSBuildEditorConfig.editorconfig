@@ -24,6 +24,30 @@ build_property.EnableCodeStyleSeverity =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQWNjb3VudC9Mb2dpbi5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
+[/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/Booking/AssignRoom.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQm9va2luZy9Bc3NpZ25Sb29tLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/Booking/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQm9va2luZy9DcmVhdGUuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/Booking/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQm9va2luZy9EZXRhaWxzLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/Booking/EditDates.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQm9va2luZy9FZGl0RGF0ZXMuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/Booking/EditRoomType.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQm9va2luZy9FZGl0Um9vbVR5cGUuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/Booking/List.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQm9va2luZy9MaXN0LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
 [/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/Dashboard/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3MvRGFzaGJvYXJkL0luZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
@@ -38,6 +62,18 @@ build_metadata.AdditionalFiles.CssScope =
 
 [/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/FloorMaster/List.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3MvRmxvb3JNYXN0ZXIvTGlzdC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/Guest/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvR3Vlc3QvRGV0YWlscy5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/Guest/Edit.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvR3Vlc3QvRWRpdC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/Guest/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvR3Vlc3QvSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
 [/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/Home/Index.cshtml]
