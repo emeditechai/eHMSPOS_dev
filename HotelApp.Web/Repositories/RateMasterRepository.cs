@@ -95,17 +95,7 @@ namespace HotelApp.Web.Repositories
             return affectedRows > 0;
         }
 
-        public async Task<bool> DeleteAsync(int id)
-        {
-            var sql = @"
-                UPDATE RateMaster
-                SET IsActive = 0,
-                    LastModifiedDate = GETDATE()
-                WHERE Id = @Id";
-
-            var affectedRows = await _dbConnection.ExecuteAsync(sql, new { Id = id });
-            return affectedRows > 0;
-        }
+        // Delete removed per business rule
 
         public async Task<IEnumerable<RoomType>> GetRoomTypesAsync()
         {

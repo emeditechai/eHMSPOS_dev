@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "izQCEDhhj6TAnBcB3AaUR9cZDtH2HCWIXk60/PkqhaE=",
+  "Hash": "JjHE889sKYL5vwRAWSFvPYWkBCkwcWoxbtmW9EbY04g=",
   "Source": "HotelApp.Web",
   "BasePath": "_content/HotelApp.Web",
   "Mode": "Default",
@@ -479,12 +479,12 @@
       "OriginalItemSpec": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/lib/bootstrap/dist/css/bootstrap.rtl.css"
     },
     {
-      "Identity": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/fzxrofkyxv-jton2lkyrl.gz",
+      "Identity": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/fzxrofkyxv-6y59pa5iqs.gz",
       "SourceId": "HotelApp.Web",
       "SourceType": "Discovered",
       "ContentRoot": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/",
       "BasePath": "_content/HotelApp.Web",
-      "RelativePath": "css/master-pages#[.{fingerprint=jton2lkyrl}]?.css.gz",
+      "RelativePath": "css/master-pages#[.{fingerprint=6y59pa5iqs}]?.css.gz",
       "AssetKind": "All",
       "AssetMode": "All",
       "AssetRole": "Alternative",
@@ -493,8 +493,8 @@
       "RelatedAsset": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/css/master-pages.css",
       "AssetTraitName": "Content-Encoding",
       "AssetTraitValue": "gzip",
-      "Fingerprint": "2f7nilud0t",
-      "Integrity": "spShovAhG8f2EZ0FIMCk4qlnzn3dtxzW5w6quNU0t04=",
+      "Fingerprint": "912izyc0e9",
+      "Integrity": "M5pR60Ijh+uw6stnYJ39wq3v727+cZYKMoLJY+oVAlw=",
       "CopyToOutputDirectory": "Never",
       "CopyToPublishDirectory": "PreserveNewest",
       "OriginalItemSpec": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/css/master-pages.css"
@@ -1543,8 +1543,8 @@
       "RelatedAsset": "",
       "AssetTraitName": "",
       "AssetTraitValue": "",
-      "Fingerprint": "jton2lkyrl",
-      "Integrity": "mazrzxcxGBGqyspIRd6x0dCeGLyiqhauwmw/7lKt4lo=",
+      "Fingerprint": "6y59pa5iqs",
+      "Integrity": "oohYRgy7TrPi6SQS3wVEzCRf6Xkp65c9v3mjjJqaQCE=",
       "CopyToOutputDirectory": "Never",
       "CopyToPublishDirectory": "PreserveNewest",
       "OriginalItemSpec": "wwwroot/css/master-pages.css"
@@ -3492,13 +3492,13 @@
       ]
     },
     {
-      "Route": "css/master-pages.css",
-      "AssetFile": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/fzxrofkyxv-jton2lkyrl.gz",
+      "Route": "css/master-pages.6y59pa5iqs.css",
+      "AssetFile": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/fzxrofkyxv-6y59pa5iqs.gz",
       "Selectors": [
         {
           "Name": "Content-Encoding",
           "Value": "gzip",
-          "Quality": "0.000583771162"
+          "Quality": "0.000466200466"
         }
       ],
       "ResponseHeaders": [
@@ -3508,19 +3508,19 @@
         },
         {
           "Name": "Content-Length",
-          "Value": "1712"
+          "Value": "2144"
         },
         {
           "Name": "ETag",
-          "Value": "\"spShovAhG8f2EZ0FIMCk4qlnzn3dtxzW5w6quNU0t04=\""
+          "Value": "\"M5pR60Ijh+uw6stnYJ39wq3v727+cZYKMoLJY+oVAlw=\""
         },
         {
           "Name": "Last-Modified",
-          "Value": "Wed, 19 Nov 2025 17:58:42 GMT"
+          "Value": "Thu, 20 Nov 2025 05:40:56 GMT"
         },
         {
           "Name": "Cache-Control",
-          "Value": "no-cache"
+          "Value": "max-age=31536000, immutable"
         },
         {
           "Name": "Content-Encoding",
@@ -3536,18 +3536,26 @@
         },
         {
           "Name": "ETag",
-          "Value": "W/\"mazrzxcxGBGqyspIRd6x0dCeGLyiqhauwmw/7lKt4lo=\""
+          "Value": "W/\"oohYRgy7TrPi6SQS3wVEzCRf6Xkp65c9v3mjjJqaQCE=\""
         }
       ],
       "EndpointProperties": [
         {
+          "Name": "fingerprint",
+          "Value": "6y59pa5iqs"
+        },
+        {
+          "Name": "label",
+          "Value": "css/master-pages.css"
+        },
+        {
           "Name": "integrity",
-          "Value": "sha256-mazrzxcxGBGqyspIRd6x0dCeGLyiqhauwmw/7lKt4lo="
+          "Value": "sha256-oohYRgy7TrPi6SQS3wVEzCRf6Xkp65c9v3mjjJqaQCE="
         }
       ]
     },
     {
-      "Route": "css/master-pages.css",
+      "Route": "css/master-pages.6y59pa5iqs.css",
       "AssetFile": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/css/master-pages.css",
       "Selectors": [],
       "ResponseHeaders": [
@@ -3557,7 +3565,7 @@
         },
         {
           "Name": "Content-Length",
-          "Value": "6965"
+          "Value": "8774"
         },
         {
           "Name": "Content-Type",
@@ -3565,121 +3573,21 @@
         },
         {
           "Name": "ETag",
-          "Value": "\"mazrzxcxGBGqyspIRd6x0dCeGLyiqhauwmw/7lKt4lo=\""
+          "Value": "\"oohYRgy7TrPi6SQS3wVEzCRf6Xkp65c9v3mjjJqaQCE=\""
         },
         {
           "Name": "Last-Modified",
-          "Value": "Wed, 19 Nov 2025 17:58:42 GMT"
-        },
-        {
-          "Name": "Cache-Control",
-          "Value": "no-cache"
-        }
-      ],
-      "EndpointProperties": [
-        {
-          "Name": "integrity",
-          "Value": "sha256-mazrzxcxGBGqyspIRd6x0dCeGLyiqhauwmw/7lKt4lo="
-        }
-      ]
-    },
-    {
-      "Route": "css/master-pages.css.gz",
-      "AssetFile": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/fzxrofkyxv-jton2lkyrl.gz",
-      "Selectors": [],
-      "ResponseHeaders": [
-        {
-          "Name": "Accept-Ranges",
-          "Value": "bytes"
-        },
-        {
-          "Name": "Content-Length",
-          "Value": "1712"
-        },
-        {
-          "Name": "Content-Type",
-          "Value": "text/css"
-        },
-        {
-          "Name": "ETag",
-          "Value": "\"spShovAhG8f2EZ0FIMCk4qlnzn3dtxzW5w6quNU0t04=\""
-        },
-        {
-          "Name": "Last-Modified",
-          "Value": "Wed, 19 Nov 2025 17:58:42 GMT"
-        },
-        {
-          "Name": "Cache-Control",
-          "Value": "no-cache"
-        },
-        {
-          "Name": "Content-Encoding",
-          "Value": "gzip"
-        },
-        {
-          "Name": "Vary",
-          "Value": "Content-Encoding"
-        }
-      ],
-      "EndpointProperties": [
-        {
-          "Name": "integrity",
-          "Value": "sha256-spShovAhG8f2EZ0FIMCk4qlnzn3dtxzW5w6quNU0t04="
-        }
-      ]
-    },
-    {
-      "Route": "css/master-pages.jton2lkyrl.css",
-      "AssetFile": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/fzxrofkyxv-jton2lkyrl.gz",
-      "Selectors": [
-        {
-          "Name": "Content-Encoding",
-          "Value": "gzip",
-          "Quality": "0.000583771162"
-        }
-      ],
-      "ResponseHeaders": [
-        {
-          "Name": "Accept-Ranges",
-          "Value": "bytes"
-        },
-        {
-          "Name": "Content-Length",
-          "Value": "1712"
-        },
-        {
-          "Name": "ETag",
-          "Value": "\"spShovAhG8f2EZ0FIMCk4qlnzn3dtxzW5w6quNU0t04=\""
-        },
-        {
-          "Name": "Last-Modified",
-          "Value": "Wed, 19 Nov 2025 17:58:42 GMT"
+          "Value": "Thu, 20 Nov 2025 05:40:56 GMT"
         },
         {
           "Name": "Cache-Control",
           "Value": "max-age=31536000, immutable"
-        },
-        {
-          "Name": "Content-Encoding",
-          "Value": "gzip"
-        },
-        {
-          "Name": "Vary",
-          "Value": "Content-Encoding"
-        },
-        {
-          "Name": "Content-Type",
-          "Value": "text/css"
-        },
-        {
-          "Name": "ETag",
-          "Value": "W/\"mazrzxcxGBGqyspIRd6x0dCeGLyiqhauwmw/7lKt4lo=\""
         }
       ],
       "EndpointProperties": [
         {
           "Name": "fingerprint",
-          "Value": "jton2lkyrl"
+          "Value": "6y59pa5iqs"
         },
         {
           "Name": "label",
@@ -3687,13 +3595,13 @@
         },
         {
           "Name": "integrity",
-          "Value": "sha256-mazrzxcxGBGqyspIRd6x0dCeGLyiqhauwmw/7lKt4lo="
+          "Value": "sha256-oohYRgy7TrPi6SQS3wVEzCRf6Xkp65c9v3mjjJqaQCE="
         }
       ]
     },
     {
-      "Route": "css/master-pages.jton2lkyrl.css",
-      "AssetFile": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/css/master-pages.css",
+      "Route": "css/master-pages.6y59pa5iqs.css.gz",
+      "AssetFile": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/fzxrofkyxv-6y59pa5iqs.gz",
       "Selectors": [],
       "ResponseHeaders": [
         {
@@ -3702,7 +3610,7 @@
         },
         {
           "Name": "Content-Length",
-          "Value": "6965"
+          "Value": "2144"
         },
         {
           "Name": "Content-Type",
@@ -3710,56 +3618,11 @@
         },
         {
           "Name": "ETag",
-          "Value": "\"mazrzxcxGBGqyspIRd6x0dCeGLyiqhauwmw/7lKt4lo=\""
+          "Value": "\"M5pR60Ijh+uw6stnYJ39wq3v727+cZYKMoLJY+oVAlw=\""
         },
         {
           "Name": "Last-Modified",
-          "Value": "Wed, 19 Nov 2025 17:58:42 GMT"
-        },
-        {
-          "Name": "Cache-Control",
-          "Value": "max-age=31536000, immutable"
-        }
-      ],
-      "EndpointProperties": [
-        {
-          "Name": "fingerprint",
-          "Value": "jton2lkyrl"
-        },
-        {
-          "Name": "label",
-          "Value": "css/master-pages.css"
-        },
-        {
-          "Name": "integrity",
-          "Value": "sha256-mazrzxcxGBGqyspIRd6x0dCeGLyiqhauwmw/7lKt4lo="
-        }
-      ]
-    },
-    {
-      "Route": "css/master-pages.jton2lkyrl.css.gz",
-      "AssetFile": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/fzxrofkyxv-jton2lkyrl.gz",
-      "Selectors": [],
-      "ResponseHeaders": [
-        {
-          "Name": "Accept-Ranges",
-          "Value": "bytes"
-        },
-        {
-          "Name": "Content-Length",
-          "Value": "1712"
-        },
-        {
-          "Name": "Content-Type",
-          "Value": "text/css"
-        },
-        {
-          "Name": "ETag",
-          "Value": "\"spShovAhG8f2EZ0FIMCk4qlnzn3dtxzW5w6quNU0t04=\""
-        },
-        {
-          "Name": "Last-Modified",
-          "Value": "Wed, 19 Nov 2025 17:58:42 GMT"
+          "Value": "Thu, 20 Nov 2025 05:40:56 GMT"
         },
         {
           "Name": "Cache-Control",
@@ -3777,7 +3640,7 @@
       "EndpointProperties": [
         {
           "Name": "fingerprint",
-          "Value": "jton2lkyrl"
+          "Value": "6y59pa5iqs"
         },
         {
           "Name": "label",
@@ -3785,7 +3648,144 @@
         },
         {
           "Name": "integrity",
-          "Value": "sha256-spShovAhG8f2EZ0FIMCk4qlnzn3dtxzW5w6quNU0t04="
+          "Value": "sha256-M5pR60Ijh+uw6stnYJ39wq3v727+cZYKMoLJY+oVAlw="
+        }
+      ]
+    },
+    {
+      "Route": "css/master-pages.css",
+      "AssetFile": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/fzxrofkyxv-6y59pa5iqs.gz",
+      "Selectors": [
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip",
+          "Quality": "0.000466200466"
+        }
+      ],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "2144"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"M5pR60Ijh+uw6stnYJ39wq3v727+cZYKMoLJY+oVAlw=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Thu, 20 Nov 2025 05:40:56 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "no-cache"
+        },
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip"
+        },
+        {
+          "Name": "Vary",
+          "Value": "Content-Encoding"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/css"
+        },
+        {
+          "Name": "ETag",
+          "Value": "W/\"oohYRgy7TrPi6SQS3wVEzCRf6Xkp65c9v3mjjJqaQCE=\""
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-oohYRgy7TrPi6SQS3wVEzCRf6Xkp65c9v3mjjJqaQCE="
+        }
+      ]
+    },
+    {
+      "Route": "css/master-pages.css",
+      "AssetFile": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/css/master-pages.css",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "8774"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/css"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"oohYRgy7TrPi6SQS3wVEzCRf6Xkp65c9v3mjjJqaQCE=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Thu, 20 Nov 2025 05:40:56 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "no-cache"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-oohYRgy7TrPi6SQS3wVEzCRf6Xkp65c9v3mjjJqaQCE="
+        }
+      ]
+    },
+    {
+      "Route": "css/master-pages.css.gz",
+      "AssetFile": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/fzxrofkyxv-6y59pa5iqs.gz",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "2144"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "text/css"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"M5pR60Ijh+uw6stnYJ39wq3v727+cZYKMoLJY+oVAlw=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Thu, 20 Nov 2025 05:40:56 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "no-cache"
+        },
+        {
+          "Name": "Content-Encoding",
+          "Value": "gzip"
+        },
+        {
+          "Name": "Vary",
+          "Value": "Content-Encoding"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-M5pR60Ijh+uw6stnYJ39wq3v727+cZYKMoLJY+oVAlw="
         }
       ]
     },

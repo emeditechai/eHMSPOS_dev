@@ -2,8 +2,6 @@
 @{
     ViewData["Title"] = "Create Rate";
     var roomTypes = ViewBag.RoomTypes as IEnumerable<HotelApp.Web.Models.RoomType>;
-    var customerTypes = ViewBag.CustomerTypes as IEnumerable<string>;
-    var sources = ViewBag.Sources as IEnumerable<string>;
 }
 
 <div class="page-header">
@@ -35,10 +33,8 @@
                 <label asp-for="CustomerType">Customer Type <span class="text-danger">*</span></label>
                 <select asp-for="CustomerType" required>
                     <option value="">-- Select Customer Type --</option>
-                    @foreach (var customerType in customerTypes ?? Enumerable.Empty<string>())
-                    {
-                        <option value="@customerType">@customerType</option>
-                    }
+                    <option value="B2C">B2C</option>
+                    <option value="B2B">B2B</option>
                 </select>
                 <span asp-validation-for="CustomerType" class="text-danger"></span>
             </div>
@@ -47,10 +43,11 @@
                 <label asp-for="Source">Source <span class="text-danger">*</span></label>
                 <select asp-for="Source" required>
                     <option value="">-- Select Source --</option>
-                    @foreach (var source in sources ?? Enumerable.Empty<string>())
-                    {
-                        <option value="@source">@source</option>
-                    }
+                    <option value="WalkIn">WalkIn</option>
+                    <option value="Phone">Phone</option>
+                    <option value="Websites">Websites</option>
+                    <option value="OTA">OTA</option>
+                    <option value="Reference">Reference</option>
                 </select>
                 <span asp-validation-for="Source" class="text-danger"></span>
             </div>

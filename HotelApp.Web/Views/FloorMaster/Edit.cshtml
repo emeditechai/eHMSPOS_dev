@@ -1,0 +1,81 @@
+@model HotelApp.Web.Models.Floor
+@{
+    var isReadOnly = (bool?)(ViewBag.IsReadOnly) ?? false;
+    ViewData["Title"] ??= isReadOnly ? "Floor Details" : "Edit Floor";
+    var headingText = ViewData["Title"]?.ToString() ?? (isReadOnly ? "Floor Details" : "Edit Floor");
+    string FormatDate(DateTime date) => date == default ? "Not recorded" : date.ToString("dd MMM yyyy HH:mm");
+    string FormatUser(int? userId) => userId.HasValue ? $"User #{userId}" : "System";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-edit"></i> @headingText</h2>
+    <a asp-action="List" class="btn-cancel">
+        <i class="fas fa-arrow-left"></i> Back to List
+    </a>
+</div>
+
+<div class="form-container @(isReadOnly ? "form-readonly" : string.Empty)">
+    <form asp-action="Edit" method="post">
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="CreatedDate" />
+        <input type="hidden" asp-for="CreatedBy" />
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+        @if (Model != null && (Model.CreatedDate != default || Model.LastModifiedDate != default))
+        {
+            <div class="audit-info">
+                <div class="audit-item">
+                    <span class="audit-label">Created</span>
+                    <span class="audit-value">@FormatDate(Model.CreatedDate)</span>
+                    <span class="audit-subtext">@FormatUser(Model.CreatedBy)</span>
+                </div>
+                <div class="audit-item">
+                    <span class="audit-label">Last Updated</span>
+                    <span class="audit-value">@FormatDate(Model.LastModifiedDate)</span>
+                    <span class="audit-subtext">@FormatUser(Model.LastModifiedBy)</span>
+                </div>
+            </div>
+        }
+
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="FloorName">Floor Name <span class="text-danger">*</span></label>
+                <input asp-for="FloorName" type="text" placeholder="e.g., Ground Floor" required readonly="@(isReadOnly ? "readonly" : null)" />
+                <span asp-validation-for="FloorName" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="IsActive">Status</label>
+                <select asp-for="IsActive" disabled="@(isReadOnly ? "disabled" : null)">
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+        </div>
+
+        @if (isReadOnly)
+        {
+            <div class="form-actions">
+                <a asp-action="List" class="btn-cancel">
+                    <i class="fas fa-arrow-left"></i> Back to List
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="form-actions">
+                <button type="submit" class="btn-save">
+                    <i class="fas fa-save"></i> Update Floor
+                </button>
+                <a asp-action="List" class="btn-cancel">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        }
+    </form>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

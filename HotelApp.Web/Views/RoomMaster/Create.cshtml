@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "Create Room";
     var roomTypes = ViewBag.RoomTypes as IEnumerable<HotelApp.Web.Models.RoomType> ?? Enumerable.Empty<HotelApp.Web.Models.RoomType>();
+    var floors = ViewBag.Floors as IEnumerable<HotelApp.Web.Models.Floor> ?? Enumerable.Empty<HotelApp.Web.Models.Floor>();
     var statuses = ViewBag.Statuses as IEnumerable<string> ?? Array.Empty<string>();
 }
 
@@ -36,9 +37,9 @@
                     <label asp-for="Floor">Floor <span class="text-danger">*</span></label>
                     <select asp-for="Floor" required>
                         <option value="">-- Select Floor --</option>
-                        @for (int i = 1; i <= 10; i++)
+                        @foreach (var floor in floors)
                         {
-                            <option value="@i">@i</option>
+                            <option value="@floor.Id">@floor.FloorName</option>
                         }
                     </select>
                     <span asp-validation-for="Floor" class="text-danger"></span>

@@ -1,3 +1,4 @@
+using System.Linq;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using HotelApp.Web.Models;
@@ -9,10 +10,12 @@ namespace HotelApp.Web.Controllers
     public class RoomMasterController : Controller
     {
         private readonly IRoomRepository _roomRepository;
+        private readonly IFloorRepository _floorRepository;
 
-        public RoomMasterController(IRoomRepository roomRepository)
+        public RoomMasterController(IRoomRepository roomRepository, IFloorRepository floorRepository)
         {
             _roomRepository = roomRepository;
+            _floorRepository = floorRepository;
         }
 
         // GET: RoomMaster/List
@@ -25,8 +28,7 @@ namespace HotelApp.Web.Controllers
         // GET: RoomMaster/Create
         public async Task<IActionResult> Create()
         {
-            ViewBag.RoomTypes = await _roomRepository.GetRoomTypesAsync();
-            ViewBag.Statuses = new List<string> { "Available", "Occupied", "Cleaning", "Maintenance", "Out of Order" };
+            await PopulateRoomLookupsAsync();
             return View();
         }
 
@@ -35,6 +37,8 @@ namespace HotelApp.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Room room)
         {
+            await ValidateFloorAsync(room.Floor);
+
             if (await _roomRepository.RoomNumberExistsAsync(room.RoomNumber))
             {
                 ModelState.AddModelError("RoomNumber", "Room number already exists");
@@ -48,8 +52,7 @@ namespace HotelApp.Web.Controllers
                 return RedirectToAction(nameof(List));
             }
 
-            ViewBag.RoomTypes = await _roomRepository.GetRoomTypesAsync();
-            ViewBag.Statuses = new List<string> { "Available", "Occupied", "Cleaning", "Maintenance", "Out of Order" };
+            await PopulateRoomLookupsAsync();
             return View(room);
         }
 
@@ -62,9 +65,22 @@ namespace HotelApp.Web.Controllers
                 return NotFound();
             }
 
-            ViewBag.RoomTypes = await _roomRepository.GetRoomTypesAsync();
-            ViewBag.Statuses = new List<string> { "Available", "Occupied", "Cleaning", "Maintenance", "Out of Order" };
+            await PopulateRoomLookupsAsync();
             return View(room);
+        }
+
+        // GET: RoomMaster/Details/5
+        public async Task<IActionResult> Details(int id)
+        {
+            var room = await _roomRepository.GetByIdAsync(id);
+            if (room == null)
+            {
+                return NotFound();
+            }
+            await PopulateRoomLookupsAsync();
+            ViewBag.IsReadOnly = true;
+            ViewData["Title"] = "View Room";
+            return View("Edit", room);
         }
 
         // POST: RoomMaster/Edit/5
@@ -76,6 +92,8 @@ namespace HotelApp.Web.Controllers
             {
                 return BadRequest();
             }
+
+            await ValidateFloorAsync(room.Floor);
 
             if (await _roomRepository.RoomNumberExistsAsync(room.RoomNumber, room.Id))
             {
@@ -89,19 +107,27 @@ namespace HotelApp.Web.Controllers
                 return RedirectToAction(nameof(List));
             }
 
-            ViewBag.RoomTypes = await _roomRepository.GetRoomTypesAsync();
-            ViewBag.Statuses = new List<string> { "Available", "Occupied", "Cleaning", "Maintenance", "Out of Order" };
+            await PopulateRoomLookupsAsync();
             return View(room);
         }
 
-        // POST: RoomMaster/Delete/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Delete(int id)
+        // Delete functionality removed (business rule: no deletions)
+
+        private async Task PopulateRoomLookupsAsync()
         {
-            await _roomRepository.DeleteAsync(id);
-            TempData["SuccessMessage"] = "Room deleted successfully!";
-            return RedirectToAction(nameof(List));
+            ViewBag.RoomTypes = await _roomRepository.GetRoomTypesAsync();
+            ViewBag.Statuses = new List<string> { "Available", "Occupied", "Cleaning", "Maintenance", "Out of Order" };
+            var floors = await _floorRepository.GetAllAsync();
+            ViewBag.Floors = floors.Where(f => f.IsActive).OrderBy(f => f.FloorName).ToList();
+        }
+
+        private async Task ValidateFloorAsync(int floorId)
+        {
+            var floor = await _floorRepository.GetByIdAsync(floorId);
+            if (floor == null || !floor.IsActive)
+            {
+                ModelState.AddModelError("Floor", "Selected floor is inactive or unavailable. Please pick an active floor from Floor Master.");
+            }
         }
     }
 }

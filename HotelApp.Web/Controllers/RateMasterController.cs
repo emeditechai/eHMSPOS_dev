@@ -86,6 +86,22 @@ namespace HotelApp.Web.Controllers
             return View(rate);
         }
 
+        // GET: RateMaster/Details/5
+        public async Task<IActionResult> Details(int id)
+        {
+            var rate = await _rateMasterRepository.GetByIdAsync(id);
+            if (rate == null)
+            {
+                return NotFound();
+            }
+            ViewBag.RoomTypes = await _rateMasterRepository.GetRoomTypesAsync();
+            ViewBag.CustomerTypes = await _rateMasterRepository.GetCustomerTypesAsync();
+            ViewBag.Sources = await _rateMasterRepository.GetSourcesAsync();
+            ViewBag.IsReadOnly = true;
+            ViewData["Title"] = "View Rate";
+            return View("Edit", rate);
+        }
+
         // POST: RateMaster/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -114,14 +130,6 @@ namespace HotelApp.Web.Controllers
             return View(rate);
         }
 
-        // POST: RateMaster/Delete/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Delete(int id)
-        {
-            await _rateMasterRepository.DeleteAsync(id);
-            TempData["SuccessMessage"] = "Rate deleted successfully!";
-            return RedirectToAction(nameof(List));
-        }
+        // Delete functionality removed (business rule: no deletions)
     }
 }

@@ -16,9 +16,11 @@ namespace HotelApp.Web.Repositories
         public async Task<IEnumerable<Room>> GetAllAsync()
         {
             var sql = @"
-                SELECT r.*, rt.TypeName, rt.Description, rt.BaseRate, rt.MaxOccupancy, rt.Amenities
+                SELECT r.*, f.FloorName AS FloorName,
+                       rt.Id AS RoomTypeId, rt.TypeName, rt.Description, rt.BaseRate, rt.MaxOccupancy, rt.Amenities
                 FROM Rooms r
                 INNER JOIN RoomTypes rt ON r.RoomTypeId = rt.Id
+                LEFT JOIN Floors f ON r.Floor = f.Id
                 WHERE r.IsActive = 1
                 ORDER BY r.RoomNumber";
 
@@ -38,9 +40,11 @@ namespace HotelApp.Web.Repositories
         public async Task<Room?> GetByIdAsync(int id)
         {
             var sql = @"
-                SELECT r.*, rt.TypeName, rt.Description, rt.BaseRate, rt.MaxOccupancy, rt.Amenities
+                SELECT r.*, f.FloorName AS FloorName,
+                       rt.Id AS RoomTypeId, rt.TypeName, rt.Description, rt.BaseRate, rt.MaxOccupancy, rt.Amenities
                 FROM Rooms r
                 INNER JOIN RoomTypes rt ON r.RoomTypeId = rt.Id
+                LEFT JOIN Floors f ON r.Floor = f.Id
                 WHERE r.Id = @Id AND r.IsActive = 1";
 
             var rooms = await _dbConnection.QueryAsync<Room, RoomType, Room>(
@@ -60,9 +64,11 @@ namespace HotelApp.Web.Repositories
         public async Task<Room?> GetByRoomNumberAsync(string roomNumber)
         {
             var sql = @"
-                SELECT r.*, rt.TypeName, rt.Description, rt.BaseRate, rt.MaxOccupancy, rt.Amenities
+                SELECT r.*, f.FloorName AS FloorName,
+                       rt.Id AS RoomTypeId, rt.TypeName, rt.Description, rt.BaseRate, rt.MaxOccupancy, rt.Amenities
                 FROM Rooms r
                 INNER JOIN RoomTypes rt ON r.RoomTypeId = rt.Id
+                LEFT JOIN Floors f ON r.Floor = f.Id
                 WHERE r.RoomNumber = @RoomNumber AND r.IsActive = 1";
 
             var rooms = await _dbConnection.QueryAsync<Room, RoomType, Room>(
@@ -107,17 +113,7 @@ namespace HotelApp.Web.Repositories
             return affectedRows > 0;
         }
 
-        public async Task<bool> DeleteAsync(int id)
-        {
-            var sql = @"
-                UPDATE Rooms
-                SET IsActive = 0,
-                    LastModifiedDate = GETDATE()
-                WHERE Id = @Id";
-
-            var affectedRows = await _dbConnection.ExecuteAsync(sql, new { Id = id });
-            return affectedRows > 0;
-        }
+        // Delete removed per business rule
 
         public async Task<IEnumerable<RoomType>> GetRoomTypesAsync()
         {

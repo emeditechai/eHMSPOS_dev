@@ -6,6 +6,7 @@ namespace HotelApp.Web.Models
         public string RoomNumber { get; set; } = string.Empty;
         public int RoomTypeId { get; set; }
         public int Floor { get; set; }
+        public string? FloorName { get; set; }
         public string Status { get; set; } = "Available";
         public string? Notes { get; set; }
         public bool IsActive { get; set; } = true;

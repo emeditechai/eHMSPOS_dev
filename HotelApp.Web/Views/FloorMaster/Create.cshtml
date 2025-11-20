@@ -1,0 +1,46 @@
+@model HotelApp.Web.Models.Floor
+@{
+    ViewData["Title"] = "Create Floor";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-layer-group"></i> Floor Master</h2>
+</div>
+
+<div class="form-container">
+    <h3 style="margin-bottom: 25px; color: var(--primary);">Add New Floor</h3>
+    
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="FloorName">Floor Name <span class="text-danger">*</span></label>
+                <input asp-for="FloorName" type="text" placeholder="e.g., Ground Floor" required />
+                <span asp-validation-for="FloorName" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="IsActive">Status</label>
+                <select asp-for="IsActive">
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-save">
+                <i class="fas fa-save"></i> Save Floor
+            </button>
+            <a asp-action="List" class="btn-cancel">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

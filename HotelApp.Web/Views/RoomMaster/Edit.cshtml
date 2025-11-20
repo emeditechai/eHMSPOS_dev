@@ -1,32 +1,50 @@
 @model HotelApp.Web.Models.Room
 @{
-    ViewData["Title"] = "Edit Room";
+    var isReadOnly = (bool?)(ViewBag.IsReadOnly) ?? false;
     var roomTypes = ViewBag.RoomTypes as IEnumerable<HotelApp.Web.Models.RoomType> ?? Enumerable.Empty<HotelApp.Web.Models.RoomType>();
+    var floors = ViewBag.Floors as IEnumerable<HotelApp.Web.Models.Floor> ?? Enumerable.Empty<HotelApp.Web.Models.Floor>();
     var statuses = ViewBag.Statuses as IEnumerable<string> ?? Array.Empty<string>();
+    ViewData["Title"] ??= isReadOnly ? "Room Details" : "Edit Room";
+    var headingText = ViewData["Title"]?.ToString() ?? (isReadOnly ? "Room Details" : "Edit Room");
+    string FormatDate(DateTime date) => date == default ? "Not recorded" : date.ToString("dd MMM yyyy HH:mm");
 }
 
 <div class="main-content">
     <div class="page-header">
-        <h2><i class="fas fa-door-open"></i> Room Master</h2>
+        <h2><i class="fas fa-door-open"></i> @headingText</h2>
     </div>
 
-    <div class="form-container">
-        <h3 style="margin-bottom:25px;color:var(--primary);">Edit Room - @Model.RoomNumber</h3>
+    <div class="form-container @(isReadOnly ? "form-readonly" : string.Empty)">
+        <h3 style="margin-bottom:25px;color:var(--primary);">@(isReadOnly ? $"Room {Model.RoomNumber} Overview" : $"Edit Room - {Model.RoomNumber}")</h3>
         <form asp-action="Edit" method="post">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="Id" />
             <input type="hidden" asp-for="CreatedDate" />
             <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
 
+            @if (Model != null && (Model.CreatedDate != default || Model.LastModifiedDate != default))
+            {
+                <div class="audit-info">
+                    <div class="audit-item">
+                        <span class="audit-label">Created</span>
+                        <span class="audit-value">@FormatDate(Model.CreatedDate)</span>
+                    </div>
+                    <div class="audit-item">
+                        <span class="audit-label">Last Updated</span>
+                        <span class="audit-value">@FormatDate(Model.LastModifiedDate)</span>
+                    </div>
+                </div>
+            }
+
             <div class="form-row">
                 <div class="form-group">
                     <label asp-for="RoomNumber">Room Number <span class="text-danger">*</span></label>
-                    <input asp-for="RoomNumber" type="text" required />
+                    <input asp-for="RoomNumber" type="text" required readonly="@(isReadOnly ? "readonly" : null)" />
                     <span asp-validation-for="RoomNumber" class="text-danger"></span>
                 </div>
                 <div class="form-group">
                     <label asp-for="RoomTypeId">Room Type <span class="text-danger">*</span></label>
-                    <select asp-for="RoomTypeId" required>
+                    <select asp-for="RoomTypeId" required disabled="@(isReadOnly ? "disabled" : null)">
                         <option value="">-- Select Room Type --</option>
                         @foreach (var roomType in roomTypes)
                         {
@@ -37,18 +55,18 @@
                 </div>
                 <div class="form-group">
                     <label asp-for="Floor">Floor <span class="text-danger">*</span></label>
-                    <select asp-for="Floor" required>
+                    <select asp-for="Floor" required disabled="@(isReadOnly ? "disabled" : null)">
                         <option value="">-- Select Floor --</option>
-                        @for (int i = 1; i <= 10; i++)
+                        @foreach (var floor in floors)
                         {
-                            <option value="@i">@i</option>
+                            <option value="@floor.Id">@floor.FloorName</option>
                         }
                     </select>
                     <span asp-validation-for="Floor" class="text-danger"></span>
                 </div>
                 <div class="form-group">
                     <label asp-for="Status">Status <span class="text-danger">*</span></label>
-                    <select asp-for="Status" required>
+                    <select asp-for="Status" required disabled="@(isReadOnly ? "disabled" : null)">
                         <option value="">-- Select Status --</option>
                         @foreach (var status in statuses)
                         {
@@ -62,7 +80,7 @@
             <div class="form-row">
                 <div class="form-group form-group-full">
                     <label asp-for="Notes">Notes</label>
-                    <textarea asp-for="Notes"></textarea>
+                    <textarea asp-for="Notes" readonly="@(isReadOnly ? "readonly" : null)"></textarea>
                     <span asp-validation-for="Notes" class="text-danger"></span>
                 </div>
             </div>
@@ -70,20 +88,31 @@
             <div class="form-row">
                 <div class="form-group">
                     <div class="form-check">
-                        <input asp-for="IsActive" type="checkbox" />
+                        <input asp-for="IsActive" type="checkbox" disabled="@(isReadOnly ? "disabled" : null)" />
                         <label asp-for="IsActive">Is Active</label>
                     </div>
                 </div>
             </div>
 
-            <div class="form-actions">
-                <button type="submit" class="btn-save">
-                    <i class="fas fa-save"></i> Update Room
-                </button>
-                <a asp-action="List" class="btn-cancel">
-                    <i class="fas fa-times"></i> Cancel
-                </a>
-            </div>
+            @if (isReadOnly)
+            {
+                <div class="form-actions">
+                    <a asp-action="List" class="btn-cancel">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            }
+            else
+            {
+                <div class="form-actions">
+                    <button type="submit" class="btn-save">
+                        <i class="fas fa-save"></i> Update Room
+                    </button>
+                    <a asp-action="List" class="btn-cancel">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                </div>
+            }
         </form>
     </div>
 </div>
