@@ -1,0 +1,99 @@
+@model HotelApp.Web.Models.LoginViewModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LuxStay Hotels | Member Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="~/css/login.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="container">
+        <div class="welcome-section">
+            <h1>Welcome to LuxStay</h1>
+            <p>Experience luxury and comfort at our world-class hotels. Sign in to access exclusive member benefits, manage your bookings, and enjoy personalized services.</p>
+            <ul class="features">
+                <li><i class="fas fa-check-circle"></i> Easy booking management</li>
+                <li><i class="fas fa-check-circle"></i> Exclusive member discounts</li>
+                <li><i class="fas fa-check-circle"></i> Personalized recommendations</li>
+                <li><i class="fas fa-check-circle"></i> Priority customer support</li>
+            </ul>
+        </div>
+        
+        <div class="login-section">
+            <div class="logo">
+                <h2>Lux<span>Stay</span></h2>
+            </div>
+            
+            <div class="login-form">
+                <h3>Member Login</h3>
+                
+                <form asp-action="Login" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="ReturnUrl" />
+                    
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                            {
+                                <div>@err.ErrorMessage</div>
+                            }
+                        </div>
+                    }
+                    
+                    <div class="form-group">
+                        <label asp-for="Username">Email Address</label>
+                        <div class="input-with-icon">
+                            <i class="fas fa-envelope"></i>
+                            <input asp-for="Username" type="text" placeholder="Enter your email" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label asp-for="Password">Password</label>
+                        <div class="input-with-icon">
+                            <i class="fas fa-lock"></i>
+                            <input asp-for="Password" type="password" placeholder="Enter your password" required>
+                        </div>
+                    </div>
+                    
+                    <div class="options">
+                        <div class="remember-me">
+                            <input type="checkbox" id="remember">
+                            <label for="remember">Remember me</label>
+                        </div>
+                        <a href="#" class="forgot-password">Forgot Password?</a>
+                    </div>
+                    
+                    <button type="submit" class="login-btn">Sign In</button>
+                </form>
+                
+                <div class="divider">
+                    <span>Or sign in with</span>
+                </div>
+                
+                <div class="social-login">
+                    <div class="social-btn facebook">
+                        <i class="fab fa-facebook-f"></i>
+                    </div>
+                    <div class="social-btn google">
+                        <i class="fab fa-google"></i>
+                    </div>
+                    <div class="social-btn twitter">
+                        <i class="fab fa-twitter"></i>
+                    </div>
+                </div>
+                
+                <div class="signup-link">
+                    Don't have an account? <a href="#">Sign up now</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

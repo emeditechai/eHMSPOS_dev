@@ -1,0 +1,94 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - LuxStay Hotel</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-pO12H1Y0QHZkT8BlC5Z7lF4GSx7N6zGyF/F7fs/3Gzdh0dX8GZFODdgNpTiFqouBZfyqCk41Z1YyFz+fkDaog==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/master-pages.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @RenderSection("Styles", required: false)
+</head>
+<body>
+    @{
+        var controller = (string?)ViewContext.RouteData.Values["Controller"] ?? string.Empty;
+        var action = (string?)ViewContext.RouteData.Values["Action"] ?? string.Empty;
+        var isLoginPage = controller.Equals("Account", StringComparison.OrdinalIgnoreCase) && action.Equals("Login", StringComparison.OrdinalIgnoreCase);
+        var displayName = User.FindFirst("displayName")?.Value ?? User.Identity?.Name ?? "Guest";
+        bool roomsNavActive = controller is "Rooms" or "RoomMaster" or "RateMaster";
+    }
+
+    @if (!isLoginPage)
+    {
+        <nav class="top-navbar">
+            <div class="navbar-container">
+                <a asp-controller="Dashboard" asp-action="Index" class="navbar-brand">
+                    <i class="fas fa-hotel"></i>
+                    <span>LuxStay Hotel</span>
+                </a>
+                <div class="navbar-menu">
+                    <a asp-controller="Dashboard" asp-action="Index" class="menu-item @(controller == "Dashboard" ? "active" : string.Empty)">
+                        <i class="fas fa-home"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <div class="menu-item has-dropdown @(roomsNavActive ? "active" : string.Empty)">
+                        <i class="fas fa-bed"></i>
+                        <span>Rooms</span>
+                        <i class="fas fa-chevron-down dropdown-icon"></i>
+                        <div class="dropdown-menu">
+                            <a asp-controller="Rooms" asp-action="Dashboard" class="@(controller == "Rooms" ? "active" : string.Empty)">
+                                <i class="fas fa-th-large"></i>
+                                <span>Room Dashboard</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+                            <a asp-controller="RoomMaster" asp-action="List" class="@(controller == "RoomMaster" ? "active" : string.Empty)">
+                                <i class="fas fa-door-open"></i>
+                                <span>Room Master</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+                            <a asp-controller="RateMaster" asp-action="List" class="@(controller == "RateMaster" ? "active" : string.Empty)">
+                                <i class="fas fa-tags"></i>
+                                <span>Rate Master</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <a href="#" class="menu-item">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>Bookings</span>
+                    </a>
+                    <a href="#" class="menu-item">
+                        <i class="fas fa-users"></i>
+                        <span>Guests</span>
+                    </a>
+                    <a href="#" class="menu-item">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Reports</span>
+                    </a>
+                    <a href="#" class="menu-item">
+                        <i class="fas fa-cog"></i>
+                        <span>Settings</span>
+                    </a>
+                </div>
+                <div class="navbar-user">
+                    <span><i class="fas fa-user-circle"></i> @displayName</span>
+                    <form asp-controller="Account" asp-action="Logout" method="post">
+                        @Html.AntiForgeryToken()
+                        <button type="submit"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                    </form>
+                </div>
+            </div>
+        </nav>
+    }
+
+    <div class="@(isLoginPage ? string.Empty : "main-content-wrapper")">
+        @RenderBody()
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/3.2.12/jquery.validate.unobtrusive.min.js"></script>
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

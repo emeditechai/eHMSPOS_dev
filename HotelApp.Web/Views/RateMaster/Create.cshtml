@@ -1,0 +1,130 @@
+@model HotelApp.Web.Models.RateMaster
+@{
+    ViewData["Title"] = "Create Rate";
+    var roomTypes = ViewBag.RoomTypes as IEnumerable<HotelApp.Web.Models.RoomType>;
+    var customerTypes = ViewBag.CustomerTypes as IEnumerable<string>;
+    var sources = ViewBag.Sources as IEnumerable<string>;
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-tags"></i> Rate Master</h2>
+</div>
+
+<div class="form-container">
+    <h3 style="margin-bottom: 25px; color: var(--primary);">Add New Rate</h3>
+    
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+        
+        <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="RoomTypeId">Room Type <span class="text-danger">*</span></label>
+                <select asp-for="RoomTypeId" required>
+                    <option value="">-- Select Room Type --</option>
+                    @foreach (var roomType in roomTypes ?? Enumerable.Empty<HotelApp.Web.Models.RoomType>())
+                    {
+                        <option value="@roomType.Id">@roomType.TypeName</option>
+                    }
+                </select>
+                <span asp-validation-for="RoomTypeId" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="CustomerType">Customer Type <span class="text-danger">*</span></label>
+                <select asp-for="CustomerType" required>
+                    <option value="">-- Select Customer Type --</option>
+                    @foreach (var customerType in customerTypes ?? Enumerable.Empty<string>())
+                    {
+                        <option value="@customerType">@customerType</option>
+                    }
+                </select>
+                <span asp-validation-for="CustomerType" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Source">Source <span class="text-danger">*</span></label>
+                <select asp-for="Source" required>
+                    <option value="">-- Select Source --</option>
+                    @foreach (var source in sources ?? Enumerable.Empty<string>())
+                    {
+                        <option value="@source">@source</option>
+                    }
+                </select>
+                <span asp-validation-for="Source" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="BaseRate">Base Rate (₹) <span class="text-danger">*</span></label>
+                <input asp-for="BaseRate" type="number" step="0.01" placeholder="0" required />
+                <span asp-validation-for="BaseRate" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="ExtraPaxRate">Extra Pax Rate (₹) <span class="text-danger">*</span></label>
+                <input asp-for="ExtraPaxRate" type="number" step="0.01" placeholder="0" required />
+                <span asp-validation-for="ExtraPaxRate" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="TaxPercentage">Tax % <span class="text-danger">*</span></label>
+                <input asp-for="TaxPercentage" type="number" step="0.01" placeholder="0" required />
+                <span asp-validation-for="TaxPercentage" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="StartDate">Start Date <span class="text-danger">*</span></label>
+                <input asp-for="StartDate" type="date" required />
+                <span asp-validation-for="StartDate" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="EndDate">End Date <span class="text-danger">*</span></label>
+                <input asp-for="EndDate" type="date" required />
+                <span asp-validation-for="EndDate" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="IsWeekdayRate">Weekday Rate? <span class="text-danger">*</span></label>
+                <select asp-for="IsWeekdayRate" required>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                </select>
+                <span asp-validation-for="IsWeekdayRate" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="ApplyDiscount">Apply Discount</label>
+                <input asp-for="ApplyDiscount" type="text" placeholder="e.g., 10%" />
+                <span asp-validation-for="ApplyDiscount" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="IsDynamicRate">Dynamic Rate? <span class="text-danger">*</span></label>
+                <select asp-for="IsDynamicRate" required>
+                    <option value="false">No</option>
+                    <option value="true">Yes</option>
+                </select>
+                <span asp-validation-for="IsDynamicRate" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-save">
+                <i class="fas fa-save"></i> Save Rate
+            </button>
+            <a asp-action="List" class="btn-cancel">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

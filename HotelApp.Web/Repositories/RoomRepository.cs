@@ -1,0 +1,143 @@
+using System.Data;
+using Dapper;
+using HotelApp.Web.Models;
+
+namespace HotelApp.Web.Repositories
+{
+    public class RoomRepository : IRoomRepository
+    {
+        private readonly IDbConnection _dbConnection;
+
+        public RoomRepository(IDbConnection dbConnection)
+        {
+            _dbConnection = dbConnection;
+        }
+
+        public async Task<IEnumerable<Room>> GetAllAsync()
+        {
+            var sql = @"
+                SELECT r.*, rt.TypeName, rt.Description, rt.BaseRate, rt.MaxOccupancy, rt.Amenities
+                FROM Rooms r
+                INNER JOIN RoomTypes rt ON r.RoomTypeId = rt.Id
+                WHERE r.IsActive = 1
+                ORDER BY r.RoomNumber";
+
+            var rooms = await _dbConnection.QueryAsync<Room, RoomType, Room>(
+                sql,
+                (room, roomType) =>
+                {
+                    room.RoomType = roomType;
+                    return room;
+                },
+                splitOn: "TypeName"
+            );
+
+            return rooms;
+        }
+
+        public async Task<Room?> GetByIdAsync(int id)
+        {
+            var sql = @"
+                SELECT r.*, rt.TypeName, rt.Description, rt.BaseRate, rt.MaxOccupancy, rt.Amenities
+                FROM Rooms r
+                INNER JOIN RoomTypes rt ON r.RoomTypeId = rt.Id
+                WHERE r.Id = @Id AND r.IsActive = 1";
+
+            var rooms = await _dbConnection.QueryAsync<Room, RoomType, Room>(
+                sql,
+                (room, roomType) =>
+                {
+                    room.RoomType = roomType;
+                    return room;
+                },
+                new { Id = id },
+                splitOn: "TypeName"
+            );
+
+            return rooms.FirstOrDefault();
+        }
+
+        public async Task<Room?> GetByRoomNumberAsync(string roomNumber)
+        {
+            var sql = @"
+                SELECT r.*, rt.TypeName, rt.Description, rt.BaseRate, rt.MaxOccupancy, rt.Amenities
+                FROM Rooms r
+                INNER JOIN RoomTypes rt ON r.RoomTypeId = rt.Id
+                WHERE r.RoomNumber = @RoomNumber AND r.IsActive = 1";
+
+            var rooms = await _dbConnection.QueryAsync<Room, RoomType, Room>(
+                sql,
+                (room, roomType) =>
+                {
+                    room.RoomType = roomType;
+                    return room;
+                },
+                new { RoomNumber = roomNumber },
+                splitOn: "TypeName"
+            );
+
+            return rooms.FirstOrDefault();
+        }
+
+        public async Task<int> CreateAsync(Room room)
+        {
+            var sql = @"
+                INSERT INTO Rooms (RoomNumber, RoomTypeId, Floor, Status, Notes, IsActive, CreatedDate, LastModifiedDate)
+                VALUES (@RoomNumber, @RoomTypeId, @Floor, @Status, @Notes, @IsActive, GETDATE(), GETDATE());
+                SELECT CAST(SCOPE_IDENTITY() as int)";
+
+            var id = await _dbConnection.ExecuteScalarAsync<int>(sql, room);
+            return id;
+        }
+
+        public async Task<bool> UpdateAsync(Room room)
+        {
+            var sql = @"
+                UPDATE Rooms
+                SET RoomNumber = @RoomNumber,
+                    RoomTypeId = @RoomTypeId,
+                    Floor = @Floor,
+                    Status = @Status,
+                    Notes = @Notes,
+                    IsActive = @IsActive,
+                    LastModifiedDate = GETDATE()
+                WHERE Id = @Id";
+
+            var affectedRows = await _dbConnection.ExecuteAsync(sql, room);
+            return affectedRows > 0;
+        }
+
+        public async Task<bool> DeleteAsync(int id)
+        {
+            var sql = @"
+                UPDATE Rooms
+                SET IsActive = 0,
+                    LastModifiedDate = GETDATE()
+                WHERE Id = @Id";
+
+            var affectedRows = await _dbConnection.ExecuteAsync(sql, new { Id = id });
+            return affectedRows > 0;
+        }
+
+        public async Task<IEnumerable<RoomType>> GetRoomTypesAsync()
+        {
+            var sql = @"
+                SELECT Id, TypeName, Description, BaseRate, MaxOccupancy, Amenities
+                FROM RoomTypes
+                WHERE IsActive = 1
+                ORDER BY TypeName";
+
+            return await _dbConnection.QueryAsync<RoomType>(sql);
+        }
+
+        public async Task<bool> RoomNumberExistsAsync(string roomNumber, int? excludeId = null)
+        {
+            var sql = excludeId.HasValue
+                ? "SELECT COUNT(1) FROM Rooms WHERE RoomNumber = @RoomNumber AND Id != @ExcludeId AND IsActive = 1"
+                : "SELECT COUNT(1) FROM Rooms WHERE RoomNumber = @RoomNumber AND IsActive = 1";
+
+            var count = await _dbConnection.ExecuteScalarAsync<int>(sql, new { RoomNumber = roomNumber, ExcludeId = excludeId });
+            return count > 0;
+        }
+    }
+}

@@ -1,0 +1,18 @@
+namespace HotelApp.Web.Models
+{
+    public class Room
+    {
+        public int Id { get; set; }
+        public string RoomNumber { get; set; } = string.Empty;
+        public int RoomTypeId { get; set; }
+        public int Floor { get; set; }
+        public string Status { get; set; } = "Available";
+        public string? Notes { get; set; }
+        public bool IsActive { get; set; } = true;
+        public DateTime CreatedDate { get; set; }
+        public DateTime LastModifiedDate { get; set; }
+        
+        // Navigation property
+        public RoomType? RoomType { get; set; }
+    }
+}

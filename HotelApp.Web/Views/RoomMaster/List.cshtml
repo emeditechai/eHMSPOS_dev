@@ -1,0 +1,85 @@
+@model IEnumerable<HotelApp.Web.Models.Room>
+@{
+    ViewData["Title"] = "Room Master";
+}
+
+<div class="page-header">
+        <h2><i class="fas fa-door-open"></i> Room Master</h2>
+        <a asp-action="Create" class="btn-create">
+            <i class="fas fa-plus"></i> Add New Room
+        </a>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle"></i>
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
+    @if (Model.Any())
+    {
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Room Number</th>
+                        <th>Room Type</th>
+                        <th>Floor</th>
+                        <th>Max Occupancy</th>
+                        <th>Base Rate</th>
+                        <th>Status</th>
+                        <th>Amenities</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var room in Model)
+                    {
+                        var badgeClass = room.Status?.ToLower() switch
+                        {
+                            "available" => "badge-available",
+                            "occupied" => "badge-occupied",
+                            "cleaning" => "badge-cleaning",
+                            "maintenance" => "badge-maintenance",
+                            _ => "badge-active"
+                        };
+                        <tr>
+                            <td><strong>@room.RoomNumber</strong></td>
+                            <td>@room.RoomType?.TypeName</td>
+                            <td>@room.Floor</td>
+                            <td>@room.RoomType?.MaxOccupancy</td>
+                            <td><i class="fas fa-rupee-sign"></i>@room.RoomType?.BaseRate.ToString("N0")</td>
+                            <td><span class="badge @badgeClass">@room.Status</span></td>
+                            <td>@(room.RoomType?.Amenities ?? "-")</td>
+                            <td>
+                                <div class="action-buttons">
+                                    <a asp-action="Edit" asp-route-id="@room.Id" class="btn-edit">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    <form asp-action="Delete" asp-route-id="@room.Id" method="post" onsubmit="return confirm('Delete room @room.RoomNumber?');">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn-delete">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <i class="fas fa-door-open"></i>
+            <h3>No Rooms Found</h3>
+            <p>Get started by adding your first room</p>
+            <a asp-action="Create" class="btn-create">
+                <i class="fas fa-plus"></i> Add New Room
+            </a>
+        </div>
+    }

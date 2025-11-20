@@ -1,0 +1,472 @@
+:root {
+    --primary: #1a2a6c;
+    --secondary: #b21f1f;
+    --accent: #fdbb2d;
+    --light: #f8f9fa;
+    --dark: #212529;
+    --gray: #6c757d;
+    --success: #28a745;
+    --warning: #ffc107;
+    --danger: #dc3545;
+    --info: #17a2b8;
+}
+
+.room-dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.room-dashboard-header h1 {
+    font-size: 1.8rem;
+    color: var(--dark);
+    font-weight: 600;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-filter, .btn-new-booking {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+}
+
+.btn-filter {
+    background: white;
+    color: var(--primary);
+    border: 1px solid #ddd;
+}
+
+.btn-filter:hover {
+    background: var(--light);
+}
+
+.btn-new-booking {
+    background: var(--info);
+    color: white;
+}
+
+.btn-new-booking:hover {
+    background: #138496;
+    transform: translateY(-2px);
+}
+
+/* Status Cards */
+.status-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.status-card {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.status-card h3 {
+    font-size: 0.9rem;
+    color: var(--gray);
+    font-weight: 500;
+    margin-bottom: 10px;
+}
+
+.status-card .value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.status-card.available .value {
+    color: var(--success);
+}
+
+.status-card.occupied .value {
+    color: var(--danger);
+}
+
+.status-card.maintenance .value {
+    color: var(--warning);
+}
+
+.status-card.cleaning .value {
+    color: var(--info);
+}
+
+.status-card .change {
+    font-size: 0.85rem;
+    color: var(--gray);
+}
+
+/* Room Grid */
+.room-content {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.room-availability-section {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.section-header h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.floor-tabs {
+    display: flex;
+    gap: 10px;
+}
+
+.floor-tab {
+    padding: 8px 20px;
+    border: 1px solid #ddd;
+    background: white;
+    color: var(--dark);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.floor-tab.active {
+    background: var(--info);
+    color: white;
+    border-color: var(--info);
+}
+
+.floor-tab:hover:not(.active) {
+    background: var(--light);
+}
+
+/* Room Cards Grid */
+.room-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.room-card {
+    border: 2px solid;
+    border-radius: 10px;
+    padding: 15px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.room-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.room-card.available {
+    background: #d4edda;
+    border-color: var(--success);
+}
+
+.room-card.occupied {
+    background: #f8d7da;
+    border-color: var(--danger);
+}
+
+.room-card.maintenance {
+    background: #fff3cd;
+    border-color: var(--warning);
+}
+
+.room-card.cleaning {
+    background: #d1ecf1;
+    border-color: var(--info);
+}
+
+.room-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+    color: var(--dark);
+}
+
+.room-type {
+    font-size: 0.85rem;
+    color: var(--gray);
+    margin-bottom: 10px;
+}
+
+.room-status-badge {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+}
+
+.room-status-badge.available {
+    background: var(--success);
+}
+
+.room-status-badge.occupied {
+    background: var(--danger);
+}
+
+.room-status-badge.maintenance {
+    background: var(--warning);
+    color: var(--dark);
+}
+
+.room-status-badge.cleaning {
+    background: var(--info);
+}
+
+/* Legend */
+.legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+}
+
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+}
+
+.legend-color.available {
+    background: var(--success);
+}
+
+.legend-color.occupied {
+    background: var(--danger);
+}
+
+.legend-color.maintenance {
+    background: var(--warning);
+}
+
+.legend-color.cleaning {
+    background: var(--info);
+}
+
+/* Right Sidebar */
+.room-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.calendar-widget, .room-details-widget {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.calendar-widget h3, .room-details-widget h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: var(--dark);
+}
+
+.calendar-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.calendar-nav h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.calendar-nav button {
+    background: none;
+    border: 1px solid #ddd;
+    width: 30px;
+    height: 30px;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.calendar-nav button:hover {
+    background: var(--light);
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+}
+
+.calendar-header {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--gray);
+    font-weight: 600;
+    padding: 5px;
+}
+
+.calendar-day {
+    text-align: center;
+    padding: 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s;
+}
+
+.calendar-day:hover {
+    background: var(--light);
+}
+
+.calendar-day.today {
+    background: var(--primary);
+    color: white;
+    font-weight: 600;
+}
+
+.calendar-day.selected {
+    background: var(--info);
+    color: white;
+}
+
+/* Room Details */
+.room-details-widget {
+    background: #f8f9fa;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 15px 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.detail-row:last-child {
+    border-bottom: 1px solid #e0e0e0;
+    margin-bottom: 20px;
+}
+
+.detail-label {
+    color: #9ca3af;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.detail-value {
+    color: var(--dark);
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.room-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.btn-check-in, .btn-maintenance {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 1rem;
+}
+
+.btn-check-in {
+    background: var(--info);
+    color: white;
+}
+
+.btn-check-in:hover {
+    background: #138496;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(23, 162, 184, 0.3);
+}
+
+.btn-maintenance {
+    background: white;
+    color: var(--info);
+    border: 2px solid var(--info);
+}
+
+.btn-maintenance:hover {
+    background: var(--info);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(23, 162, 184, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .room-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 992px) {
+    .room-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .room-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .room-dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .status-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .room-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

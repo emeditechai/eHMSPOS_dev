@@ -1,0 +1,89 @@
+@model HotelApp.Web.Models.Room
+@{
+    ViewData["Title"] = "Edit Room";
+    var roomTypes = ViewBag.RoomTypes as IEnumerable<HotelApp.Web.Models.RoomType> ?? Enumerable.Empty<HotelApp.Web.Models.RoomType>();
+    var statuses = ViewBag.Statuses as IEnumerable<string> ?? Array.Empty<string>();
+}
+
+<div class="main-content">
+    <div class="page-header">
+        <h2><i class="fas fa-door-open"></i> Room Master</h2>
+    </div>
+
+    <div class="form-container">
+        <h3 style="margin-bottom:25px;color:var(--primary);">Edit Room - @Model.RoomNumber</h3>
+        <form asp-action="Edit" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="CreatedDate" />
+            <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label asp-for="RoomNumber">Room Number <span class="text-danger">*</span></label>
+                    <input asp-for="RoomNumber" type="text" required />
+                    <span asp-validation-for="RoomNumber" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="RoomTypeId">Room Type <span class="text-danger">*</span></label>
+                    <select asp-for="RoomTypeId" required>
+                        <option value="">-- Select Room Type --</option>
+                        @foreach (var roomType in roomTypes)
+                        {
+                            <option value="@roomType.Id">@roomType.TypeName (Max: @roomType.MaxOccupancy, Rate: ₹@roomType.BaseRate.ToString("N0"))</option>
+                        }
+                    </select>
+                    <span asp-validation-for="RoomTypeId" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Floor">Floor <span class="text-danger">*</span></label>
+                    <select asp-for="Floor" required>
+                        <option value="">-- Select Floor --</option>
+                        @for (int i = 1; i <= 10; i++)
+                        {
+                            <option value="@i">@i</option>
+                        }
+                    </select>
+                    <span asp-validation-for="Floor" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Status">Status <span class="text-danger">*</span></label>
+                    <select asp-for="Status" required>
+                        <option value="">-- Select Status --</option>
+                        @foreach (var status in statuses)
+                        {
+                            <option value="@status">@status</option>
+                        }
+                    </select>
+                    <span asp-validation-for="Status" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group form-group-full">
+                    <label asp-for="Notes">Notes</label>
+                    <textarea asp-for="Notes"></textarea>
+                    <span asp-validation-for="Notes" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <div class="form-check">
+                        <input asp-for="IsActive" type="checkbox" />
+                        <label asp-for="IsActive">Is Active</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-save">
+                    <i class="fas fa-save"></i> Update Room
+                </button>
+                <a asp-action="List" class="btn-cancel">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>

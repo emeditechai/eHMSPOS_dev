@@ -1,0 +1,218 @@
+@{
+    ViewData["Title"] = "Dashboard";
+    var displayName = User.Claims.FirstOrDefault(c => c.Type == "displayName")?.Value ?? User.Identity?.Name ?? "User";
+}
+
+<div class="main-content">
+    <div class="top-bar">
+        <div class="page-title">
+            <h1>Dashboard Overview</h1>
+            <p>Welcome back, @displayName! Here's what's happening today.</p>
+        </div>
+        <div class="user-info">
+            <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="User Profile">
+            <div class="user-details">
+                <div class="user-name">@displayName</div>
+                <div class="user-role">Hotel Manager</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-cards">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Total Guests</div>
+                <div class="card-icon" style="background-color: var(--primary);">
+                    <i class="fas fa-users"></i>
+                </div>
+            </div>
+            <div class="card-value">1,248</div>
+            <div class="card-change positive">
+                <i class="fas fa-arrow-up"></i> 12% from last month
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Occupancy Rate</div>
+                <div class="card-icon" style="background-color: var(--secondary);">
+                    <i class="fas fa-bed"></i>
+                </div>
+            </div>
+            <div class="card-value">78%</div>
+            <div class="card-change positive">
+                <i class="fas fa-arrow-up"></i> 5% from last week
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Revenue</div>
+                <div class="card-icon" style="background-color: var(--accent);">
+                    <i class="fas fa-rupee-sign"></i>
+                </div>
+            </div>
+            <div class="card-value">₹42,580</div>
+            <div class="card-change positive">
+                <i class="fas fa-arrow-up"></i> 8% from last month
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Check-ins Today</div>
+                <div class="card-icon" style="background-color: var(--success);">
+                    <i class="fas fa-door-open"></i>
+                </div>
+            </div>
+            <div class="card-value">24</div>
+            <div class="card-change negative">
+                <i class="fas fa-arrow-down"></i> 3 from yesterday
+            </div>
+        </div>
+    </div>
+
+    <div class="charts-section">
+        <div class="chart-card">
+            <div class="chart-header">
+                <div class="chart-title">Revenue Overview</div>
+                <div>
+                    <select class="chart-filter">
+                        <option>Last 7 Days</option>
+                        <option>Last 30 Days</option>
+                        <option>Last 3 Months</option>
+                    </select>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <div class="chart-header">
+                <div class="chart-title">Room Types</div>
+            </div>
+            <div class="chart-container">
+                <canvas id="roomTypeChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="recent-bookings">
+        <div class="section-header">
+            <div class="section-title">Recent Bookings</div>
+            <a href="#" class="view-all">View All</a>
+        </div>
+
+        <table class="bookings-table">
+            <thead>
+                <tr>
+                    <th>Guest Name</th>
+                    <th>Room Type</th>
+                    <th>Check-in</th>
+                    <th>Check-out</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Michael Brown</td>
+                    <td>Deluxe Suite</td>
+                    <td>Jun 12, 2023</td>
+                    <td>Jun 15, 2023</td>
+                    <td><span class="status confirmed">Confirmed</span></td>
+                    <td><button class="action-btn">Details</button></td>
+                </tr>
+                <tr>
+                    <td>Jennifer Wilson</td>
+                    <td>Executive Room</td>
+                    <td>Jun 14, 2023</td>
+                    <td>Jun 16, 2023</td>
+                    <td><span class="status pending">Pending</span></td>
+                    <td><button class="action-btn">Confirm</button></td>
+                </tr>
+                <tr>
+                    <td>Robert Davis</td>
+                    <td>Presidential Suite</td>
+                    <td>Jun 10, 2023</td>
+                    <td>Jun 17, 2023</td>
+                    <td><span class="status confirmed">Confirmed</span></td>
+                    <td><button class="action-btn">Details</button></td>
+                </tr>
+                <tr>
+                    <td>Emily Johnson</td>
+                    <td>Standard Room</td>
+                    <td>Jun 15, 2023</td>
+                    <td>Jun 18, 2023</td>
+                    <td><span class="status cancelled">Cancelled</span></td>
+                    <td><button class="action-btn">Details</button></td>
+                </tr>
+                <tr>
+                    <td>Thomas Miller</td>
+                    <td>Family Suite</td>
+                    <td>Jun 18, 2023</td>
+                    <td>Jun 22, 2023</td>
+                    <td><span class="status confirmed">Confirmed</span></td>
+                    <td><button class="action-btn">Details</button></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const revenueCtx = document.getElementById('revenueChart')?.getContext('2d');
+            if (revenueCtx) {
+                new Chart(revenueCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                        datasets: [{
+                            label: 'Revenue (₹)',
+                            data: [3200, 4500, 3800, 5100, 6200, 7800, 6900],
+                            borderColor: '#1a2a6c',
+                            backgroundColor: 'rgba(26, 42, 108, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, grid: { drawBorder: false } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+
+            const roomTypeCtx = document.getElementById('roomTypeChart')?.getContext('2d');
+            if (roomTypeCtx) {
+                new Chart(roomTypeCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Standard', 'Deluxe', 'Executive', 'Suite'],
+                        datasets: [{
+                            data: [35, 25, 20, 20],
+                            backgroundColor: ['#1a2a6c', '#b21f1f', '#fdbb2d', '#28a745'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom' } }
+                    }
+                });
+            }
+        });
+    </script>
+}

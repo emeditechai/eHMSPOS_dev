@@ -1,0 +1,260 @@
+@{
+    ViewData["Title"] = "Room Dashboard";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/room-dashboard.css" />
+}
+
+<!-- Main Content -->
+<div class="main-content">
+    <!-- Header -->
+    <div class="room-dashboard-header">
+        <h1>Room Availability Dashboard</h1>
+        <div class="header-actions">
+            <button class="btn-filter">
+                <i class="fas fa-filter"></i>
+                Filter
+            </button>
+            <button class="btn-new-booking">
+                <i class="fas fa-plus"></i>
+                New Booking
+            </button>
+        </div>
+    </div>
+
+    <!-- Status Cards -->
+    <div class="status-cards">
+        <div class="status-card available">
+            <h3>Available Rooms</h3>
+            <div class="value">24</div>
+            <div class="change">+2 from yesterday</div>
+        </div>
+        <div class="status-card occupied">
+            <h3>Occupied Rooms</h3>
+            <div class="value">16</div>
+            <div class="change">-3 from yesterday</div>
+        </div>
+        <div class="status-card maintenance">
+            <h3>Under Maintenance</h3>
+            <div class="value">4</div>
+            <div class="change">No change</div>
+        </div>
+        <div class="status-card cleaning">
+            <h3>Cleaning in Progress</h3>
+            <div class="value">6</div>
+            <div class="change">+1 from yesterday</div>
+        </div>
+    </div>
+
+    <!-- Room Grid and Sidebar -->
+    <div class="room-content">
+        <!-- Room Availability Section -->
+        <div class="room-availability-section">
+            <div class="section-header">
+                <h2>Room Availability</h2>
+                <div class="floor-tabs">
+                    <button class="floor-tab">All Floors</button>
+                    <button class="floor-tab active">Floor 1</button>
+                    <button class="floor-tab">Floor 2</button>
+                    <button class="floor-tab">Floor 3</button>
+                </div>
+            </div>
+
+            <div class="room-grid">
+                <div class="room-card available" onclick="selectRoom(101, 'Standard', 'Available')">
+                    <div class="room-number">101</div>
+                    <div class="room-type">Standard</div>
+                    <span class="room-status-badge available">Available</span>
+                </div>
+                <div class="room-card occupied" onclick="selectRoom(102, 'Standard', 'Occupied')">
+                    <div class="room-number">102</div>
+                    <div class="room-type">Standard</div>
+                    <span class="room-status-badge occupied">Occupied</span>
+                </div>
+                <div class="room-card cleaning" onclick="selectRoom(103, 'Deluxe', 'Cleaning')">
+                    <div class="room-number">103</div>
+                    <div class="room-type">Deluxe</div>
+                    <span class="room-status-badge cleaning">Cleaning</span>
+                </div>
+                <div class="room-card maintenance" onclick="selectRoom(104, 'Suite', 'Maintenance')">
+                    <div class="room-number">104</div>
+                    <div class="room-type">Suite</div>
+                    <span class="room-status-badge maintenance">Maintenance</span>
+                </div>
+                <div class="room-card available" onclick="selectRoom(105, 'Standard', 'Available')">
+                    <div class="room-number">105</div>
+                    <div class="room-type">Standard</div>
+                    <span class="room-status-badge available">Available</span>
+                </div>
+                <div class="room-card occupied" onclick="selectRoom(106, 'Deluxe', 'Occupied')">
+                    <div class="room-number">106</div>
+                    <div class="room-type">Deluxe</div>
+                    <span class="room-status-badge occupied">Occupied</span>
+                </div>
+                <div class="room-card available" onclick="selectRoom(107, 'Standard', 'Available')">
+                    <div class="room-number">107</div>
+                    <div class="room-type">Standard</div>
+                    <span class="room-status-badge available">Available</span>
+                </div>
+                <div class="room-card occupied" onclick="selectRoom(108, 'Suite', 'Occupied')">
+                    <div class="room-number">108</div>
+                    <div class="room-type">Suite</div>
+                    <span class="room-status-badge occupied">Occupied</span>
+                </div>
+                <div class="room-card cleaning" onclick="selectRoom(109, 'Deluxe', 'Cleaning')">
+                    <div class="room-number">109</div>
+                    <div class="room-type">Deluxe</div>
+                    <span class="room-status-badge cleaning">Cleaning</span>
+                </div>
+                <div class="room-card available" onclick="selectRoom(110, 'Standard', 'Available')">
+                    <div class="room-number">110</div>
+                    <div class="room-type">Standard</div>
+                    <span class="room-status-badge available">Available</span>
+                </div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color available"></div>
+                    <span>Available</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color occupied"></div>
+                    <span>Occupied</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color maintenance"></div>
+                    <span>Maintenance</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color cleaning"></div>
+                    <span>Cleaning</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="room-sidebar">
+            <!-- Calendar Widget -->
+            <div class="calendar-widget">
+                <h3>October 2023</h3>
+                <div class="calendar-nav">
+                    <button><i class="fas fa-chevron-left"></i></button>
+                    <h4>October 2023</h4>
+                    <button><i class="fas fa-chevron-right"></i></button>
+                </div>
+                <div class="calendar-grid">
+                    <div class="calendar-header">Sun</div>
+                    <div class="calendar-header">Mon</div>
+                    <div class="calendar-header">Tue</div>
+                    <div class="calendar-header">Wed</div>
+                    <div class="calendar-header">Thu</div>
+                    <div class="calendar-header">Fri</div>
+                    <div class="calendar-header">Sat</div>
+                    
+                    <div class="calendar-day"></div>
+                    <div class="calendar-day"></div>
+                    <div class="calendar-day"></div>
+                    <div class="calendar-day"></div>
+                    <div class="calendar-day"></div>
+                    <div class="calendar-day"></div>
+                    <div class="calendar-day">1</div>
+                    
+                    <div class="calendar-day">2</div>
+                    <div class="calendar-day">3</div>
+                    <div class="calendar-day">4</div>
+                    <div class="calendar-day">5</div>
+                    <div class="calendar-day">6</div>
+                    <div class="calendar-day">7</div>
+                    <div class="calendar-day">8</div>
+                    
+                    <div class="calendar-day">9</div>
+                    <div class="calendar-day">10</div>
+                    <div class="calendar-day">11</div>
+                    <div class="calendar-day">12</div>
+                    <div class="calendar-day">13</div>
+                    <div class="calendar-day">14</div>
+                    <div class="calendar-day">15</div>
+                    
+                    <div class="calendar-day">16</div>
+                    <div class="calendar-day">17</div>
+                    <div class="calendar-day">18</div>
+                    <div class="calendar-day today">19</div>
+                    <div class="calendar-day">20</div>
+                    <div class="calendar-day">21</div>
+                    <div class="calendar-day">22</div>
+                    
+                    <div class="calendar-day">23</div>
+                    <div class="calendar-day">24</div>
+                    <div class="calendar-day">25</div>
+                    <div class="calendar-day">26</div>
+                    <div class="calendar-day">27</div>
+                    <div class="calendar-day">28</div>
+                    <div class="calendar-day">29</div>
+                    
+                    <div class="calendar-day">30</div>
+                </div>
+            </div>
+
+            <!-- Room Details Widget -->
+            <div class="room-details-widget">
+                <h3>Room Details</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Room Number:</span>
+                    <span class="detail-value" id="roomNumber">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Room Type:</span>
+                    <span class="detail-value" id="roomType">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Status:</span>
+                    <span class="detail-value" id="roomStatus">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Floor:</span>
+                    <span class="detail-value" id="roomFloor">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Rate:</span>
+                    <span class="detail-value" id="roomRate">-</span>
+                </div>
+                <div class="room-actions">
+                    <button class="btn-check-in">Check In</button>
+                    <button class="btn-maintenance">Maintenance</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function selectRoom(number, type, status) {
+            document.getElementById('roomNumber').textContent = number;
+            document.getElementById('roomType').textContent = type;
+            document.getElementById('roomStatus').textContent = status;
+            
+            // Calculate floor from room number
+            const floor = Math.floor(number / 100);
+            document.getElementById('roomFloor').textContent = floor;
+            
+            // Set rates based on room type
+            const rates = {
+                'Standard': '₹2,500',
+                'Deluxe': '₹4,500',
+                'Suite': '₹8,500'
+            };
+            document.getElementById('roomRate').textContent = rates[type] || '-';
+        }
+
+        // Floor tabs functionality
+        document.querySelectorAll('.floor-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.floor-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    </script>
+}
