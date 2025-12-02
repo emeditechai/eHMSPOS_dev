@@ -4,7 +4,7 @@ using HotelApp.Web.Repositories;
 
 namespace HotelApp.Web.Controllers
 {
-    public class GuestController : Controller
+    public class GuestController : BaseController
     {
         private readonly IGuestRepository _guestRepository;
 
@@ -128,7 +128,7 @@ namespace HotelApp.Web.Controllers
 
         private async Task<List<Guest>> GetAllGuestsAsync()
         {
-            var guests = await _guestRepository.GetAllAsync();
+            var guests = await _guestRepository.GetAllByBranchAsync(CurrentBranchID);
             return guests.ToList();
         }
     }

@@ -6,7 +6,7 @@ using HotelApp.Web.Repositories;
 namespace HotelApp.Web.Controllers
 {
     [Authorize]
-    public class FloorMasterController : Controller
+    public class FloorMasterController : BaseController
     {
         private readonly IFloorRepository _floorRepository;
 
@@ -18,7 +18,7 @@ namespace HotelApp.Web.Controllers
         // GET: FloorMaster/List
         public async Task<IActionResult> List()
         {
-            var floors = await _floorRepository.GetAllAsync();
+            var floors = await _floorRepository.GetByBranchAsync(CurrentBranchID);
             return View(floors);
         }
 
@@ -35,14 +35,15 @@ namespace HotelApp.Web.Controllers
         {
             if (ModelState.IsValid)
             {
-                // Check if floor name already exists
-                if (await _floorRepository.FloorNameExistsAsync(floor.FloorName))
+                // Check if floor name already exists in this branch
+                if (await _floorRepository.FloorNameExistsAsync(floor.FloorName, CurrentBranchID))
                 {
-                    ModelState.AddModelError("FloorName", "A floor with this name already exists.");
+                    ModelState.AddModelError("FloorName", "A floor with this name already exists in this branch.");
                     return View(floor);
                 }
 
                 floor.CreatedBy = GetCurrentUserId();
+                floor.BranchID = CurrentBranchID;
                 await _floorRepository.CreateAsync(floor);
                 TempData["SuccessMessage"] = "Floor created successfully!";
                 return RedirectToAction(nameof(List));
@@ -88,10 +89,10 @@ namespace HotelApp.Web.Controllers
 
             if (ModelState.IsValid)
             {
-                // Check if floor name already exists (excluding current floor)
-                if (await _floorRepository.FloorNameExistsAsync(floor.FloorName, floor.Id))
+                // Check if floor name already exists in this branch (excluding current floor)
+                if (await _floorRepository.FloorNameExistsAsync(floor.FloorName, CurrentBranchID, floor.Id))
                 {
-                    ModelState.AddModelError("FloorName", "A floor with this name already exists.");
+                    ModelState.AddModelError("FloorName", "A floor with this name already exists in this branch.");
                     return View(floor);
                 }
 

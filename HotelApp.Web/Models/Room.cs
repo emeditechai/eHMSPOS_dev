@@ -9,6 +9,7 @@ namespace HotelApp.Web.Models
         public string? FloorName { get; set; }
         public string Status { get; set; } = "Available";
         public string? Notes { get; set; }
+        public int BranchID { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime CreatedDate { get; set; }
         public DateTime LastModifiedDate { get; set; }

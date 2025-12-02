@@ -52,7 +52,7 @@
                     foreach (var roomType in roomTypes)
                     {
                         <option value="@roomType.Id" selected="@(roomType.Id == Model.RoomTypeId)">
-                            @roomType.TypeName - ₹@roomType.BaseRate.ToString("N0") per night
+                            @roomType.TypeName (Max: @roomType.MaxOccupancy)
                         </option>
                     }
                 }

@@ -28,7 +28,6 @@
                         <th>Room Type</th>
                         <th>Floor</th>
                         <th>Max Occupancy</th>
-                        <th>Base Rate</th>
                         <th>Status</th>
                         <th>Amenities</th>
                         <th>Actions</th>
@@ -50,7 +49,6 @@
                             <td>@room.RoomType?.TypeName</td>
                             <td>@(string.IsNullOrWhiteSpace(room.FloorName) ? $"Floor #{room.Floor}" : room.FloorName)</td>
                             <td>@room.RoomType?.MaxOccupancy</td>
-                            <td><i class="fas fa-rupee-sign"></i>@room.RoomType?.BaseRate.ToString("N0")</td>
                             <td><span class="badge @badgeClass">@room.Status</span></td>
                             <td>@(room.RoomType?.Amenities ?? "-")</td>
                             <td>

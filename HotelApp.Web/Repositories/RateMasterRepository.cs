@@ -16,7 +16,7 @@ namespace HotelApp.Web.Repositories
         public async Task<IEnumerable<RateMaster>> GetAllAsync()
         {
             var sql = @"
-                SELECT rm.*, rt.TypeName, rt.Description, rt.BaseRate as RoomTypeBaseRate, rt.MaxOccupancy, rt.Amenities
+                SELECT rm.*, rt.TypeName, rt.Description, rt.BaseRate as RoomTypeBaseRate, rt.MaxOccupancy, rt.Amenities, rt.BranchID
                 FROM RateMaster rm
                 INNER JOIN RoomTypes rt ON rm.RoomTypeId = rt.Id
                 WHERE rm.IsActive = 1
@@ -29,6 +29,29 @@ namespace HotelApp.Web.Repositories
                     rate.RoomType = roomType;
                     return rate;
                 },
+                splitOn: "TypeName"
+            );
+
+            return rates;
+        }
+        
+        public async Task<IEnumerable<RateMaster>> GetByBranchAsync(int branchId)
+        {
+            var sql = @"
+                SELECT rm.*, rt.TypeName, rt.Description, rt.BaseRate as RoomTypeBaseRate, rt.MaxOccupancy, rt.Amenities, rt.BranchID
+                FROM RateMaster rm
+                INNER JOIN RoomTypes rt ON rm.RoomTypeId = rt.Id
+                WHERE rm.IsActive = 1 AND rm.BranchID = @BranchId
+                ORDER BY rm.StartDate DESC, rt.TypeName";
+
+            var rates = await _dbConnection.QueryAsync<RateMaster, RoomType, RateMaster>(
+                sql,
+                (rate, roomType) =>
+                {
+                    rate.RoomType = roomType;
+                    return rate;
+                },
+                new { BranchId = branchId },
                 splitOn: "TypeName"
             );
 
@@ -61,11 +84,11 @@ namespace HotelApp.Web.Repositories
         {
             var sql = @"
                 INSERT INTO RateMaster (RoomTypeId, CustomerType, Source, BaseRate, ExtraPaxRate, TaxPercentage, 
-                                       StartDate, EndDate, IsWeekdayRate, ApplyDiscount, IsDynamicRate, 
-                                       IsActive, CreatedDate, CreatedBy, LastModifiedDate)
+                                       CGSTPercentage, SGSTPercentage, StartDate, EndDate, IsWeekdayRate, 
+                                       ApplyDiscount, IsDynamicRate, BranchID, IsActive, CreatedDate, CreatedBy, LastModifiedDate)
                 VALUES (@RoomTypeId, @CustomerType, @Source, @BaseRate, @ExtraPaxRate, @TaxPercentage,
-                        @StartDate, @EndDate, @IsWeekdayRate, @ApplyDiscount, @IsDynamicRate,
-                        @IsActive, GETDATE(), @CreatedBy, GETDATE());
+                        @CGSTPercentage, @SGSTPercentage, @StartDate, @EndDate, @IsWeekdayRate, 
+                        @ApplyDiscount, @IsDynamicRate, @BranchID, @IsActive, GETDATE(), @CreatedBy, GETDATE());
                 SELECT CAST(SCOPE_IDENTITY() as int)";
 
             var id = await _dbConnection.ExecuteScalarAsync<int>(sql, rate);
@@ -82,6 +105,8 @@ namespace HotelApp.Web.Repositories
                     BaseRate = @BaseRate,
                     ExtraPaxRate = @ExtraPaxRate,
                     TaxPercentage = @TaxPercentage,
+                    CGSTPercentage = @CGSTPercentage,
+                    SGSTPercentage = @SGSTPercentage,
                     StartDate = @StartDate,
                     EndDate = @EndDate,
                     IsWeekdayRate = @IsWeekdayRate,

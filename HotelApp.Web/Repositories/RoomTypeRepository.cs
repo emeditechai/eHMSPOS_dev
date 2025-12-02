@@ -16,12 +16,24 @@ namespace HotelApp.Web.Repositories
         public async Task<IEnumerable<RoomType>> GetAllAsync()
         {
             var sql = @"
-                SELECT Id, TypeName, Description, BaseRate, MaxOccupancy, Amenities, 
+                SELECT Id, TypeName, Description, BaseRate, MaxOccupancy, Amenities, BranchID,
                        IsActive, CreatedDate, LastModifiedDate, CreatedBy, LastModifiedBy
                 FROM RoomTypes
                 ORDER BY TypeName";
             
             return await _connection.QueryAsync<RoomType>(sql);
+        }
+        
+        public async Task<IEnumerable<RoomType>> GetByBranchAsync(int branchId)
+        {
+            var sql = @"
+                SELECT Id, TypeName, Description, BaseRate, MaxOccupancy, Amenities, BranchID,
+                       IsActive, CreatedDate, LastModifiedDate, CreatedBy, LastModifiedBy
+                FROM RoomTypes
+                WHERE BranchID = @BranchId
+                ORDER BY TypeName";
+            
+            return await _connection.QueryAsync<RoomType>(sql, new { BranchId = branchId });
         }
 
         public async Task<RoomType?> GetByIdAsync(int id)
@@ -38,9 +50,9 @@ namespace HotelApp.Web.Repositories
         public async Task<int> CreateAsync(RoomType roomType)
         {
             var sql = @"
-                INSERT INTO RoomTypes (TypeName, Description, BaseRate, MaxOccupancy, Amenities, 
+                INSERT INTO RoomTypes (TypeName, Description, BaseRate, MaxOccupancy, Amenities, BranchID,
                                        IsActive, CreatedDate, LastModifiedDate, CreatedBy)
-                VALUES (@TypeName, @Description, @BaseRate, @MaxOccupancy, @Amenities, 
+                VALUES (@TypeName, @Description, @BaseRate, @MaxOccupancy, @Amenities, @BranchID,
                         @IsActive, GETDATE(), GETDATE(), @CreatedBy);
                 SELECT CAST(SCOPE_IDENTITY() as int)";
             
@@ -51,6 +63,7 @@ namespace HotelApp.Web.Repositories
                 roomType.BaseRate,
                 roomType.MaxOccupancy,
                 roomType.Amenities,
+                roomType.BranchID,
                 roomType.IsActive,
                 roomType.CreatedBy
             });
@@ -87,13 +100,13 @@ namespace HotelApp.Web.Repositories
 
         // Delete removed per business rule
 
-        public async Task<bool> RoomTypeNameExistsAsync(string typeName, int? excludeId = null)
+        public async Task<bool> RoomTypeNameExistsAsync(string typeName, int branchId, int? excludeId = null)
         {
             var sql = excludeId.HasValue
-                ? "SELECT COUNT(1) FROM RoomTypes WHERE TypeName = @TypeName AND Id != @ExcludeId"
-                : "SELECT COUNT(1) FROM RoomTypes WHERE TypeName = @TypeName";
+                ? "SELECT COUNT(1) FROM RoomTypes WHERE TypeName = @TypeName AND BranchID = @BranchId AND Id != @ExcludeId"
+                : "SELECT COUNT(1) FROM RoomTypes WHERE TypeName = @TypeName AND BranchID = @BranchId";
             
-            var count = await _connection.ExecuteScalarAsync<int>(sql, new { TypeName = typeName, ExcludeId = excludeId });
+            var count = await _connection.ExecuteScalarAsync<int>(sql, new { TypeName = typeName, BranchId = branchId, ExcludeId = excludeId });
             return count > 0;
         }
     }

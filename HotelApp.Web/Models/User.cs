@@ -13,6 +13,7 @@ public class User
     public string? Phone { get; set; }
     public string? FullName { get; set; }
     public int? Role { get; set; }
+    public int BranchID { get; set; }
     public bool IsActive { get; set; } = true;
     public bool IsLockedOut { get; set; } = false;
     public int FailedLoginAttempts { get; set; } = 0;

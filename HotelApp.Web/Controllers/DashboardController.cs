@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace HotelApp.Web.Controllers;
 
 [Authorize]
-public class DashboardController : Controller
+public class DashboardController : BaseController
 {
     public IActionResult Index()
     {

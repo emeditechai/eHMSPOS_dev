@@ -37,6 +37,31 @@ namespace HotelApp.Web.Repositories
             return rooms;
         }
 
+        public async Task<IEnumerable<Room>> GetAllByBranchAsync(int branchId)
+        {
+            var sql = @"
+                SELECT r.*, f.FloorName AS FloorName,
+                       rt.Id AS RoomTypeId, rt.TypeName, rt.Description, rt.BaseRate, rt.MaxOccupancy, rt.Amenities
+                FROM Rooms r
+                INNER JOIN RoomTypes rt ON r.RoomTypeId = rt.Id
+                LEFT JOIN Floors f ON r.Floor = f.Id
+                WHERE r.IsActive = 1 AND r.BranchID = @BranchId
+                ORDER BY r.RoomNumber";
+
+            var rooms = await _dbConnection.QueryAsync<Room, RoomType, Room>(
+                sql,
+                (room, roomType) =>
+                {
+                    room.RoomType = roomType;
+                    return room;
+                },
+                new { BranchId = branchId },
+                splitOn: "TypeName"
+            );
+
+            return rooms;
+        }
+
         public async Task<Room?> GetByIdAsync(int id)
         {
             var sql = @"
@@ -88,8 +113,8 @@ namespace HotelApp.Web.Repositories
         public async Task<int> CreateAsync(Room room)
         {
             var sql = @"
-                INSERT INTO Rooms (RoomNumber, RoomTypeId, Floor, Status, Notes, IsActive, CreatedDate, LastModifiedDate)
-                VALUES (@RoomNumber, @RoomTypeId, @Floor, @Status, @Notes, @IsActive, GETDATE(), GETDATE());
+                INSERT INTO Rooms (RoomNumber, RoomTypeId, Floor, Status, Notes, BranchID, IsActive, CreatedDate, LastModifiedDate)
+                VALUES (@RoomNumber, @RoomTypeId, @Floor, @Status, @Notes, @BranchID, @IsActive, GETDATE(), GETDATE());
                 SELECT CAST(SCOPE_IDENTITY() as int)";
 
             var id = await _dbConnection.ExecuteScalarAsync<int>(sql, room);
@@ -118,21 +143,32 @@ namespace HotelApp.Web.Repositories
         public async Task<IEnumerable<RoomType>> GetRoomTypesAsync()
         {
             var sql = @"
-                SELECT Id, TypeName, Description, BaseRate, MaxOccupancy, Amenities
+                SELECT Id, TypeName, Description, BaseRate, MaxOccupancy, Amenities, BranchID
                 FROM RoomTypes
                 WHERE IsActive = 1
                 ORDER BY TypeName";
 
             return await _dbConnection.QueryAsync<RoomType>(sql);
         }
+        
+        public async Task<IEnumerable<RoomType>> GetRoomTypesByBranchAsync(int branchId)
+        {
+            var sql = @"
+                SELECT Id, TypeName, Description, BaseRate, MaxOccupancy, Amenities, BranchID
+                FROM RoomTypes
+                WHERE IsActive = 1 AND BranchID = @BranchId
+                ORDER BY TypeName";
 
-        public async Task<bool> RoomNumberExistsAsync(string roomNumber, int? excludeId = null)
+            return await _dbConnection.QueryAsync<RoomType>(sql, new { BranchId = branchId });
+        }
+
+        public async Task<bool> RoomNumberExistsAsync(string roomNumber, int branchId, int? excludeId = null)
         {
             var sql = excludeId.HasValue
-                ? "SELECT COUNT(1) FROM Rooms WHERE RoomNumber = @RoomNumber AND Id != @ExcludeId AND IsActive = 1"
-                : "SELECT COUNT(1) FROM Rooms WHERE RoomNumber = @RoomNumber AND IsActive = 1";
+                ? "SELECT COUNT(1) FROM Rooms WHERE RoomNumber = @RoomNumber AND BranchID = @BranchId AND Id != @ExcludeId AND IsActive = 1"
+                : "SELECT COUNT(1) FROM Rooms WHERE RoomNumber = @RoomNumber AND BranchID = @BranchId AND IsActive = 1";
 
-            var count = await _dbConnection.ExecuteScalarAsync<int>(sql, new { RoomNumber = roomNumber, ExcludeId = excludeId });
+            var count = await _dbConnection.ExecuteScalarAsync<int>(sql, new { RoomNumber = roomNumber, BranchId = branchId, ExcludeId = excludeId });
             return count > 0;
         }
 

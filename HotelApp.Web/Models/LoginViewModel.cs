@@ -13,5 +13,11 @@ public class LoginViewModel
     [Display(Name = "Password")]
     public string Password { get; set; } = string.Empty;
 
+    [Display(Name = "Branch")]
+    public int BranchID { get; set; }
+
     public string? ReturnUrl { get; set; }
+    
+    // For dropdown
+    public List<Branch>? AvailableBranches { get; set; }
 }

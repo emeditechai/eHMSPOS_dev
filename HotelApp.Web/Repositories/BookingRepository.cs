@@ -30,6 +30,7 @@ namespace HotelApp.Web.Repositories
                 WHERE RoomTypeId = @RoomTypeId
                   AND CustomerType = @CustomerType
                   AND Source = @Source
+                  AND BranchID = @BranchID
                   AND @CheckInDate >= StartDate
                   AND @CheckOutDate <= EndDate
                   AND IsActive = 1
@@ -44,11 +45,15 @@ namespace HotelApp.Web.Repositories
                 return null;
             }
 
+            // Primary rate source is RateMaster. RoomType.BaseRate is only a fallback (should be 0 or configured in Rate Master)
             var nightlyBase = ratePlan?.BaseRate ?? roomType.BaseRate;
             var nightlyExtra = ratePlan?.ExtraPaxRate ?? 0;
             var taxPercentage = ratePlan?.TaxPercentage ?? 0;
-            var cgstPercentage = ratePlan?.CGSTPercentage ?? (taxPercentage / 2);
-            var sgstPercentage = ratePlan?.SGSTPercentage ?? (taxPercentage / 2);
+            
+            // If CGST/SGST are 0 or NULL, split the tax percentage equally
+            var cgstPercentage = (ratePlan?.CGSTPercentage > 0 ? ratePlan.CGSTPercentage : taxPercentage / 2);
+            var sgstPercentage = (ratePlan?.SGSTPercentage > 0 ? ratePlan.SGSTPercentage : taxPercentage / 2);
+            
             var totalGuests = request.Adults + request.Children;
             var extraGuests = Math.Max(0, totalGuests - roomType.MaxOccupancy);
 
@@ -116,14 +121,14 @@ namespace HotelApp.Web.Repositories
                     CheckInDate, CheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
                     BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
                     BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
-                    PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, CreatedBy,
+                    PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, BranchID, CreatedBy,
                     LastModifiedBy)
                 VALUES (
                     @BookingNumber, @Status, @PaymentStatus, @Channel, @Source, @CustomerType,
                     @CheckInDate, @CheckOutDate, @Nights, @RoomTypeId, @RoomId, @RatePlanId,
                     @BaseAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @DiscountAmount, @TotalAmount, @DepositAmount,
                     @BalanceAmount, @Adults, @Children, @PrimaryGuestFirstName, @PrimaryGuestLastName,
-                    @PrimaryGuestEmail, @PrimaryGuestPhone, @LoyaltyId, @SpecialRequests, @CreatedBy,
+                    @PrimaryGuestEmail, @PrimaryGuestPhone, @LoyaltyId, @SpecialRequests, @BranchID, @CreatedBy,
                     @LastModifiedBy);
                 SELECT CAST(SCOPE_IDENTITY() as int);";
 
@@ -250,12 +255,31 @@ namespace HotelApp.Web.Repositories
                     CheckInDate, CheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
                     BaseAmount, TaxAmount, DiscountAmount, TotalAmount, DepositAmount,
                     BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
-                    PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests,
+                    PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, BranchID,
                     CreatedDate, CreatedBy, LastModifiedDate, LastModifiedBy
                 FROM Bookings
                 ORDER BY CreatedDate DESC";
 
             var bookings = (await _dbConnection.QueryAsync<Booking>(sql, new { Take = take })).ToList();
+            await PopulateRelatedCollectionsAsync(bookings);
+            return bookings;
+        }
+        
+        public async Task<IEnumerable<Booking>> GetRecentByBranchAsync(int branchId, int take = 25)
+        {
+            const string sql = @"
+                SELECT TOP (@Take)
+                    Id, BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
+                    CheckInDate, CheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
+                    BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
+                    BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
+                    PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, BranchID,
+                    CreatedDate, CreatedBy, LastModifiedDate, LastModifiedBy
+                FROM Bookings
+                WHERE BranchID = @BranchId
+                ORDER BY CreatedDate DESC";
+
+            var bookings = (await _dbConnection.QueryAsync<Booking>(sql, new { BranchId = branchId, Take = take })).ToList();
             await PopulateRelatedCollectionsAsync(bookings);
             return bookings;
         }
@@ -266,9 +290,9 @@ namespace HotelApp.Web.Repositories
                 SELECT
                     Id, BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
                     CheckInDate, CheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
-                    BaseAmount, TaxAmount, DiscountAmount, TotalAmount, DepositAmount,
+                    BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
                     BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
-                    PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests,
+                    PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, BranchID,
                     CreatedDate, CreatedBy, LastModifiedDate, LastModifiedBy
                 FROM Bookings
                 WHERE BookingNumber = @BookingNumber";
@@ -707,6 +731,97 @@ namespace HotelApp.Web.Repositories
                 NewValue = newValue,
                 PerformedBy = performedBy
             }, transaction);
+        }
+
+        public async Task<IEnumerable<BookingPayment>> GetPaymentsAsync(int bookingId)
+        {
+            const string sql = @"
+                SELECT * FROM BookingPayments 
+                WHERE BookingId = @BookingId 
+                ORDER BY PaidOn DESC";
+
+            return await _dbConnection.QueryAsync<BookingPayment>(sql, new { BookingId = bookingId });
+        }
+
+        public async Task<bool> AddPaymentAsync(BookingPayment payment, int performedBy)
+        {
+            if (_dbConnection.State != ConnectionState.Open)
+            {
+                _dbConnection.Open();
+            }
+
+            using var transaction = _dbConnection.BeginTransaction();
+
+            try
+            {
+                // Insert payment
+                const string insertPaymentSql = @"
+                    INSERT INTO BookingPayments (BookingId, Amount, PaymentMethod, PaymentReference, Status, PaidOn, Notes, CardType, CardLastFourDigits, BankId, ChequeDate)
+                    VALUES (@BookingId, @Amount, @PaymentMethod, @PaymentReference, @Status, @PaidOn, @Notes, @CardType, @CardLastFourDigits, @BankId, @ChequeDate)";
+
+                await _dbConnection.ExecuteAsync(insertPaymentSql, payment, transaction);
+
+                // Update booking deposit and balance
+                const string updateBookingSql = @"
+                    UPDATE Bookings 
+                    SET DepositAmount = DepositAmount + @Amount,
+                        BalanceAmount = BalanceAmount - @Amount,
+                        PaymentStatus = CASE 
+                            WHEN (BalanceAmount - @Amount) <= 0 THEN 'Paid'
+                            WHEN (DepositAmount + @Amount) > 0 THEN 'Partially Paid'
+                            ELSE 'Pending'
+                        END,
+                        LastModifiedBy = @PerformedBy,
+                        LastModifiedDate = GETDATE()
+                    WHERE Id = @BookingId";
+
+                await _dbConnection.ExecuteAsync(updateBookingSql, new 
+                { 
+                    BookingId = payment.BookingId, 
+                    Amount = payment.Amount,
+                    PerformedBy = performedBy
+                }, transaction);
+
+                // Get booking details for audit log
+                const string getBookingSql = "SELECT BookingNumber, DepositAmount, BalanceAmount FROM Bookings WHERE Id = @BookingId";
+                var booking = await _dbConnection.QueryFirstOrDefaultAsync<dynamic>(getBookingSql, new { BookingId = payment.BookingId }, transaction);
+
+                if (booking != null)
+                {
+                    // Add audit log
+                    await AddAuditLogAsync(
+                        payment.BookingId,
+                        booking.BookingNumber,
+                        "Payment",
+                        $"Payment of ₹{payment.Amount:N2} recorded via {payment.PaymentMethod}",
+                        null,
+                        $"Deposit: ₹{booking.DepositAmount:N2}, Balance: ₹{booking.BalanceAmount:N2}",
+                        performedBy,
+                        transaction
+                    );
+                }
+
+                transaction.Commit();
+                return true;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+
+        public async Task<Booking?> GetLastBookingByGuestPhoneAsync(string phone)
+        {
+            const string sql = @"
+                SELECT TOP 1 b.* 
+                FROM Bookings b
+                INNER JOIN BookingGuests bg ON b.Id = bg.BookingId
+                WHERE bg.Phone = @Phone 
+                    AND bg.IsPrimary = 1
+                ORDER BY b.CreatedDate DESC";
+
+            return await _dbConnection.QueryFirstOrDefaultAsync<Booking>(sql, new { Phone = phone });
         }
     }
 }

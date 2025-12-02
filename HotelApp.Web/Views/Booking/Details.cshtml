@@ -1,115 +1,617 @@
 @model HotelApp.Web.Models.Booking
 @{
     ViewData["Title"] = $"Booking {Model.BookingNumber}";
+    var statusClass = Model.Status switch
+    {
+        "Confirmed" => "status-confirmed",
+        "CheckedIn" => "status-checkedin",
+        "CheckedOut" => "status-checkedout",
+        "Cancelled" => "status-cancelled",
+        "Pending" => "status-pending",
+        _ => "status-default"
+    };
 }
 
-<div class="page-header">
-    <h2><i class="fas fa-id-card"></i> Booking @Model.BookingNumber</h2>
-    <a asp-action="List" class="btn-cancel">
-        <i class="fas fa-arrow-left"></i> Back to Bookings
-    </a>
+<style>
+    .booking-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    .booking-header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .booking-number {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .booking-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1.25rem;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+    }
+    .status-confirmed { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+    .status-checkedin { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    .status-checkedout { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); color: #333; }
+    .status-cancelled { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .status-pending { background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); color: #333; }
+    
+    .details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .detail-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.25rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border: 1px solid #e5e7eb;
+        transition: all 0.3s ease;
+    }
+    .detail-card:hover {
+        box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        transform: translateY(-2px);
+    }
+    
+    .card-header {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.85rem;
+        border-bottom: 2px solid #f3f4f6;
+    }
+    .card-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        color: white;
+    }
+    .icon-stay { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .icon-guest { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .icon-finance { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    .icon-info { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+    
+    .card-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0;
+    }
+    
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 0.6rem 0;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .detail-row:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+    .detail-label {
+        color: #6b7280;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    .detail-value {
+        color: #1f2937;
+        font-weight: 600;
+        text-align: right;
+        font-size: 0.9rem;
+    }
+    
+    .financial-summary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    .financial-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    .financial-item {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 8px;
+        padding: 1rem;
+        text-align: center;
+    }
+    .financial-label {
+        font-size: 0.8rem;
+        opacity: 0.9;
+        margin-bottom: 0.4rem;
+    }
+    .financial-amount {
+        font-size: 1.4rem;
+        font-weight: 700;
+    }
+    .financial-grand-total {
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .section-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border: 1px solid #e5e7eb;
+    }
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.85rem;
+        border-bottom: 2px solid #f3f4f6;
+    }
+    .section-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.15rem;
+    }
+    .section-title {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin: 0;
+    }
+    
+    .modern-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .modern-table thead th {
+        background: #f9fafb;
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: #374151;
+        font-size: 0.9rem;
+        border-bottom: 2px solid #e5e7eb;
+    }
+    .modern-table tbody td {
+        padding: 1rem;
+        border-bottom: 1px solid #f3f4f6;
+        color: #1f2937;
+    }
+    .modern-table tbody tr:hover {
+        background: #f9fafb;
+    }
+    
+    .guest-list {
+        display: grid;
+        gap: 1rem;
+    }
+    .guest-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: #f9fafb;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+    }
+    .guest-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 1.2rem;
+    }
+    .guest-info {
+        flex: 1;
+    }
+    .guest-name {
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 0.25rem;
+    }
+    .guest-details {
+        font-size: 0.9rem;
+        color: #6b7280;
+    }
+    .guest-type-badge {
+        background: #667eea;
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .audit-timeline {
+        position: relative;
+        padding-left: 2rem;
+    }
+    .audit-timeline::before {
+        content: '';
+        position: absolute;
+        left: 8px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #e5e7eb;
+    }
+    .audit-item {
+        position: relative;
+        padding-bottom: 2rem;
+    }
+    .audit-item:last-child {
+        padding-bottom: 0;
+    }
+    .audit-dot {
+        position: absolute;
+        left: -1.6rem;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: white;
+        border: 3px solid #667eea;
+        z-index: 1;
+    }
+    .audit-content {
+        background: #f9fafb;
+        padding: 1.25rem;
+        border-radius: 8px;
+        border-left: 3px solid #667eea;
+    }
+    .audit-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+    .audit-action {
+        font-weight: 600;
+        color: #1f2937;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .audit-time {
+        font-size: 0.85rem;
+        color: #6b7280;
+    }
+    .audit-desc {
+        color: #4b5563;
+        margin-bottom: 0.5rem;
+    }
+    .audit-changes {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid #e5e7eb;
+    }
+    .audit-old {
+        background: #fef2f2;
+        padding: 0.75rem;
+        border-radius: 6px;
+        border-left: 3px solid #ef4444;
+    }
+    .audit-new {
+        background: #f0fdf4;
+        padding: 0.75rem;
+        border-radius: 6px;
+        border-left: 3px solid #10b981;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    .btn-modern {
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+    }
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    .btn-secondary {
+        background: white;
+        color: #667eea;
+        border: 2px solid #667eea;
+    }
+    .btn-secondary:hover {
+        background: #667eea;
+        color: white;
+    }
+</style>
+
+<div class="booking-header">
+    <div class="booking-header-content">
+        <h1 class="booking-number">
+            <i class="fas fa-bookmark"></i>
+            @Model.BookingNumber
+        </h1>
+        <span class="booking-status-badge @statusClass">
+            <i class="fas fa-circle" style="font-size: 0.6rem;"></i>
+            @Model.Status
+        </span>
+    </div>
+    <div class="action-buttons">
+        <a asp-action="List" class="btn-modern btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Bookings
+        </a>
+    </div>
 </div>
 
-<div class="booking-details-grid">
-    <section class="card">
-        <h3><i class="fas fa-info-circle"></i> Status</h3>
-        <p><strong>Status:</strong> <span class="badge badge-available">@Model.Status</span></p>
-        <p><strong>Payment:</strong> @Model.PaymentStatus</p>
-        <p><strong>Channel:</strong> @Model.Channel</p>
-        <p><strong>Source:</strong> @Model.Source</p>
-        <p><strong>Customer Type:</strong> @Model.CustomerType</p>
-    </section>
+<div class="details-grid">
+    <div class="detail-card">
+        <div class="card-header">
+            <div class="card-icon icon-info">
+                <i class="fas fa-info-circle"></i>
+            </div>
+            <h3 class="card-title">Booking Information</h3>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Payment Status</span>
+            <span class="detail-value">@Model.PaymentStatus</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Channel</span>
+            <span class="detail-value">@Model.Channel</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Source</span>
+            <span class="detail-value">@Model.Source</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Customer Type</span>
+            <span class="detail-value">@Model.CustomerType</span>
+        </div>
+    </div>
 
-    <section class="card">
-        <h3><i class="fas fa-bed"></i> Stay</h3>
-        <p><strong>Room Type:</strong> @Model.RoomType?.TypeName</p>
-        <p><strong>Room:</strong> @Model.Room?.RoomNumber</p>
-        <p><strong>Dates:</strong> @Model.CheckInDate:dd MMM yyyy - @Model.CheckOutDate:dd MMM yyyy (@Model.Nights night(s))</p>
-        <p><strong>Guests:</strong> @Model.Adults adult(s), @Model.Children child(ren)</p>
+    <div class="detail-card">
+        <div class="card-header">
+            <div class="card-icon icon-stay">
+                <i class="fas fa-bed"></i>
+            </div>
+            <h3 class="card-title">Stay Details</h3>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Room Type</span>
+            <span class="detail-value">@Model.RoomType?.TypeName</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Room Number</span>
+            <span class="detail-value">@(Model.Room?.RoomNumber ?? "Not Assigned")</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Check-In</span>
+            <span class="detail-value">@Model.CheckInDate.ToString("dd MMM yyyy")</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Check-Out</span>
+            <span class="detail-value">@Model.CheckOutDate.ToString("dd MMM yyyy")</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Duration</span>
+            <span class="detail-value">@Model.Nights Night(s)</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Guests</span>
+            <span class="detail-value">@Model.Adults Adult(s), @Model.Children Child(ren)</span>
+        </div>
         @if (!string.IsNullOrWhiteSpace(Model.SpecialRequests))
         {
-            <p><strong>Requests:</strong> @Model.SpecialRequests</p>
+            <div class="detail-row">
+                <span class="detail-label">Special Requests</span>
+                <span class="detail-value">@Model.SpecialRequests</span>
+            </div>
         }
-    </section>
+    </div>
 
-    <section class="card">
-        <h3><i class="fas fa-user"></i> Guest</h3>
-        <p><strong>Name:</strong> @Model.PrimaryGuestFirstName @Model.PrimaryGuestLastName</p>
-        <p><strong>Email:</strong> @Model.PrimaryGuestEmail</p>
-        <p><strong>Phone:</strong> @Model.PrimaryGuestPhone</p>
+    <div class="detail-card">
+        <div class="card-header">
+            <div class="card-icon icon-guest">
+                <i class="fas fa-user"></i>
+            </div>
+            <h3 class="card-title">Primary Guest</h3>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Name</span>
+            <span class="detail-value">@Model.PrimaryGuestFirstName @Model.PrimaryGuestLastName</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Email</span>
+            <span class="detail-value">@Model.PrimaryGuestEmail</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Phone</span>
+            <span class="detail-value">@Model.PrimaryGuestPhone</span>
+        </div>
         @if (!string.IsNullOrWhiteSpace(Model.LoyaltyId))
         {
-            <p><strong>Loyalty ID:</strong> @Model.LoyaltyId</p>
+            <div class="detail-row">
+                <span class="detail-label">Loyalty ID</span>
+                <span class="detail-value">@Model.LoyaltyId</span>
+            </div>
         }
-    </section>
-
-    <section class="card">
-        <h3><i class="fas fa-file-invoice"></i> Financials</h3>
-        <p><strong>Room Total:</strong> ₹@Model.BaseAmount.ToString("N2")</p>
-        <p><strong>CGST (@(((Model.CGSTAmount / Model.BaseAmount * 100).ToString("N2")))%):</strong> ₹@Model.CGSTAmount.ToString("N2")</p>
-        <p><strong>SGST (@(((Model.SGSTAmount / Model.BaseAmount * 100).ToString("N2")))%):</strong> ₹@Model.SGSTAmount.ToString("N2")</p>
-        <p><strong>Total GST:</strong> ₹@Model.TaxAmount.ToString("N2")</p>
-        <p><strong>Discount:</strong> ₹@Model.DiscountAmount.ToString("N2")</p>
-        <p><strong>Grand Total:</strong> ₹@Model.TotalAmount.ToString("N2")</p>
-        <p><strong>Deposit:</strong> ₹@Model.DepositAmount.ToString("N2")</p>
-        <p><strong>Balance:</strong> ₹@Model.BalanceAmount.ToString("N2")</p>
-    </section>
+    </div>
 </div>
 
-<div class="card">
-    <h3><i class="fas fa-users"></i> Additional Guests</h3>
+<div class="financial-summary">
+    <h2 style="margin: 0 0 0.25rem 0; font-size: 1.3rem;">💰 Financial Summary</h2>
+    <p style="opacity: 0.9; margin: 0 0 1rem 0; font-size: 0.9rem;">Complete breakdown of charges and payments</p>
+    
+    <div class="financial-grid">
+        <div class="financial-item">
+            <div class="financial-label">Room Total</div>
+            <div class="financial-amount">₹@Model.BaseAmount.ToString("N2")</div>
+        </div>
+        <div class="financial-item">
+            <div class="financial-label">CGST @((Model.BaseAmount > 0 ? (Model.CGSTAmount / Model.BaseAmount * 100) : 0).ToString("0.00"))%</div>
+            <div class="financial-amount">₹@Model.CGSTAmount.ToString("N2")</div>
+        </div>
+        <div class="financial-item">
+            <div class="financial-label">SGST @((Model.BaseAmount > 0 ? (Model.SGSTAmount / Model.BaseAmount * 100) : 0).ToString("0.00"))%</div>
+            <div class="financial-amount">₹@Model.SGSTAmount.ToString("N2")</div>
+        </div>
+        <div class="financial-item">
+            <div class="financial-label">Total GST</div>
+            <div class="financial-amount">₹@Model.TaxAmount.ToString("N2")</div>
+        </div>
+        <div class="financial-item">
+            <div class="financial-label">Discount</div>
+            <div class="financial-amount">₹@Model.DiscountAmount.ToString("N2")</div>
+        </div>
+        <div class="financial-item financial-grand-total">
+            <div class="financial-label">Grand Total</div>
+            <div class="financial-amount">₹@Model.TotalAmount.ToString("N2")</div>
+        </div>
+        <div class="financial-item">
+            <div class="financial-label">Deposit</div>
+            <div class="financial-amount">₹@Model.DepositAmount.ToString("N2")</div>
+        </div>
+        <div class="financial-item">
+            <div class="financial-label">Balance Due</div>
+            <div class="financial-amount">₹@Model.BalanceAmount.ToString("N2")</div>
+        </div>
+    </div>
+</div>
+
+<div class="section-card">
+    <div class="section-header">
+        <div class="section-icon">
+            <i class="fas fa-users"></i>
+        </div>
+        <h3 class="section-title">Additional Guests</h3>
+    </div>
     @if (Model.Guests.Any())
     {
-        <ul class="simple-list">
+        <div class="guest-list">
             @foreach (var guest in Model.Guests)
             {
-                <li>
-                    <strong>@guest.FullName</strong>
-                    @if (!string.IsNullOrWhiteSpace(guest.Email))
-                    {
-                        <span>- @guest.Email</span>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(guest.Phone))
-                    {
-                        <span>- @guest.Phone</span>
-                    }
+                <div class="guest-item">
+                    <div class="guest-avatar">
+                        @(guest.FullName?.Substring(0, 1).ToUpper() ?? "G")
+                    </div>
+                    <div class="guest-info">
+                        <div class="guest-name">@guest.FullName</div>
+                        <div class="guest-details">
+                            @if (!string.IsNullOrWhiteSpace(guest.Email))
+                            {
+                                <span><i class="fas fa-envelope"></i> @guest.Email</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(guest.Phone))
+                            {
+                                <span style="margin-left: 1rem;"><i class="fas fa-phone"></i> @guest.Phone</span>
+                            }
+                        </div>
+                    </div>
                     @if (!string.IsNullOrWhiteSpace(guest.GuestType))
                     {
-                        <span class="badge badge-muted">@guest.GuestType</span>
+                        <span class="guest-type-badge">@guest.GuestType</span>
                     }
-                </li>
+                </div>
             }
-        </ul>
+        </div>
     }
     else
     {
-        <p>No guest records found.</p>
+        <p style="color: #6b7280; text-align: center; padding: 2rem 0;">No additional guests recorded for this booking.</p>
     }
 </div>
 
-<div class="card">
-    <h3><i class="fas fa-money-bill"></i> Payments</h3>
-    @if (Model.Payments.Any())
+<div class="section-card">
+    <div class="section-header">
+        <div class="section-icon">
+            <i class="fas fa-money-bill-wave"></i>
+        </div>
+        <h3 class="section-title">Payment History</h3>
+        @if (Model.BalanceAmount > 0)
+        {
+            <button type="button" class="btn btn-primary" onclick="showPaymentModal()" style="margin-left: auto;">
+                <i class="fas fa-plus"></i> Add Payment
+            </button>
+        }
+    </div>
+    @{
+        var payments = ViewBag.Payments as IEnumerable<HotelApp.Web.Models.BookingPayment> ?? Enumerable.Empty<HotelApp.Web.Models.BookingPayment>();
+    }
+    @if (payments.Any())
     {
-        <table class="data-table compact">
+        <table class="modern-table">
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Amount</th>
-                    <th>Method</th>
-                    <th>Status</th>
-                    <th>Reference</th>
+                    <th><i class="fas fa-calendar"></i> Date</th>
+                    <th><i class="fas fa-rupee-sign"></i> Amount</th>
+                    <th><i class="fas fa-credit-card"></i> Method</th>
+                    <th><i class="fas fa-check-circle"></i> Status</th>
+                    <th><i class="fas fa-hashtag"></i> Reference</th>
+                    <th><i class="fas fa-sticky-note"></i> Notes</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var payment in Model.Payments)
+                @foreach (var payment in payments)
                 {
                     <tr>
-                        <td>@payment.PaidOn:dd MMM yyyy</td>
-                        <td>₹@payment.Amount.ToString("N2")</td>
-                        <td>@payment.PaymentMethod</td>
-                        <td>@payment.Status</td>
-                        <td>@payment.PaymentReference</td>
+                        <td>@payment.PaidOn.ToString("dd MMM yyyy, hh:mm tt")</td>
+                        <td><strong>₹@payment.Amount.ToString("N2")</strong></td>
+                        <td><span class="badge badge-info">@payment.PaymentMethod</span></td>
+                        <td><span class="badge badge-success">@payment.Status</span></td>
+                        <td style="font-family: monospace;">@(payment.PaymentReference ?? "-")</td>
+                        <td>@(payment.Notes ?? "-")</td>
                     </tr>
                 }
             </tbody>
@@ -117,34 +619,42 @@
     }
     else
     {
-        <p>No payments captured yet.</p>
+        <p style="color: #6b7280; text-align: center; padding: 2rem 0;">
+            <i class="fas fa-info-circle" style="font-size: 2rem; opacity: 0.3; margin-bottom: 0.5rem;"></i><br>
+            No payments recorded yet.
+        </p>
     }
 </div>
 
-<div class="card">
-    <h3><i class="fas fa-calendar"></i> Nightly Breakdown</h3>
+<div class="section-card">
+    <div class="section-header">
+        <div class="section-icon">
+            <i class="fas fa-calendar-day"></i>
+        </div>
+        <h3 class="section-title">Nightly Rate Breakdown</h3>
+    </div>
     @if (Model.RoomNights.Any())
     {
-        <table class="data-table compact">
+        <table class="modern-table">
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Rate</th>
-                    <th>CGST</th>
-                    <th>SGST</th>
-                    <th>Total GST</th>
-                    <th>Status</th>
+                    <th><i class="fas fa-calendar"></i> Date</th>
+                    <th><i class="fas fa-rupee-sign"></i> Room Rate</th>
+                    <th><i class="fas fa-percentage"></i> CGST</th>
+                    <th><i class="fas fa-percentage"></i> SGST</th>
+                    <th><i class="fas fa-calculator"></i> Total Tax</th>
+                    <th><i class="fas fa-check-circle"></i> Status</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var night in Model.RoomNights)
                 {
                     <tr>
-                        <td>@night.StayDate:dd MMM yyyy</td>
+                        <td><strong>@night.StayDate.ToString("ddd, dd MMM yyyy")</strong></td>
                         <td>₹@night.RateAmount.ToString("N2")</td>
                         <td>₹@night.CGSTAmount.ToString("N2")</td>
                         <td>₹@night.SGSTAmount.ToString("N2")</td>
-                        <td>₹@night.TaxAmount.ToString("N2")</td>
+                        <td><strong>₹@night.TaxAmount.ToString("N2")</strong></td>
                         <td>@night.Status</td>
                     </tr>
                 }
@@ -153,52 +663,80 @@
     }
     else
     {
-        <p>No nightly data recorded.</p>
+        <div style="text-align: center; padding: 2.5rem 0;">
+            <i class="fas fa-calendar-times" style="font-size: 3rem; color: #d1d5db; margin-bottom: 1rem;"></i>
+            <p style="color: #6b7280; font-weight: 500; margin-bottom: 0.5rem;">No nightly breakdown available</p>
+            <p style="color: #9ca3af; font-size: 0.9rem;">
+                Nightly rate details will be generated automatically when:<br/>
+                • The booking is confirmed, or<br/>
+                • A room is assigned to this booking
+            </p>
+        </div>
     }
 </div>
 
 @{
     var auditLogs = ViewBag.AuditLogs as IEnumerable<HotelApp.Web.Models.BookingAuditLog>;
 }
-<div class="card">
-    <h3><i class="fas fa-history"></i> Audit Trail</h3>
+<div class="section-card">
+    <div class="section-header">
+        <div class="section-icon">
+            <i class="fas fa-history"></i>
+        </div>
+        <h3 class="section-title">Activity Timeline</h3>
+    </div>
     @if (auditLogs != null && auditLogs.Any())
     {
-        <div class="audit-trail">
+        <div class="audit-timeline">
             @foreach (var log in auditLogs)
             {
-                <div class="audit-entry">
-                    <div class="audit-header">
-                        <span class="audit-action @GetActionClass(log.ActionType)">
-                            <i class="@GetActionIcon(log.ActionType)"></i> @log.ActionType
-                        </span>
-                        <span class="audit-timestamp">@log.PerformedAt.ToLocalTime():dd MMM yyyy hh:mm tt</span>
-                    </div>
-                    <div class="audit-description">@log.ActionDescription</div>
-                    @if (!string.IsNullOrWhiteSpace(log.OldValue) || !string.IsNullOrWhiteSpace(log.NewValue))
-                    {
-                        <div class="audit-values">
-                            @if (!string.IsNullOrWhiteSpace(log.OldValue))
-                            {
-                                <div class="audit-old-value">
-                                    <strong>Before:</strong> @log.OldValue
-                                </div>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(log.NewValue))
-                            {
-                                <div class="audit-new-value">
-                                    <strong>After:</strong> @log.NewValue
-                                </div>
-                            }
+                <div class="audit-item">
+                    <div class="audit-dot"></div>
+                    <div class="audit-content">
+                        <div class="audit-header-row">
+                            <div class="audit-action">
+                                <i class="@GetActionIcon(log.ActionType)"></i>
+                                <span>@log.ActionType</span>
+                            </div>
+                            <div class="audit-time">
+                                <i class="fas fa-clock"></i> @log.PerformedAt.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt")
+                            </div>
                         </div>
-                    }
+                        <div class="audit-desc">@log.ActionDescription</div>
+                        @if (!string.IsNullOrWhiteSpace(log.OldValue) || !string.IsNullOrWhiteSpace(log.NewValue))
+                        {
+                            <div class="audit-changes">
+                                @if (!string.IsNullOrWhiteSpace(log.OldValue))
+                                {
+                                    <div class="audit-old">
+                                        <div style="font-weight: 600; margin-bottom: 0.25rem; color: #dc2626;">
+                                            <i class="fas fa-minus-circle"></i> Previous Value
+                                        </div>
+                                        <div>@log.OldValue</div>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(log.NewValue))
+                                {
+                                    <div class="audit-new">
+                                        <div style="font-weight: 600; margin-bottom: 0.25rem; color: #059669;">
+                                            <i class="fas fa-plus-circle"></i> New Value
+                                        </div>
+                                        <div>@log.NewValue</div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
                 </div>
             }
         </div>
     }
     else
     {
-        <p>No audit trail available. Changes will be tracked here.</p>
+        <p style="color: #6b7280; text-align: center; padding: 2rem 0;">
+            <i class="fas fa-info-circle" style="font-size: 2rem; display: block; margin-bottom: 1rem; opacity: 0.5;"></i>
+            No activity recorded yet. All changes to this booking will appear here.
+        </p>
     }
 </div>
 
@@ -232,4 +770,468 @@
             _ => "fas fa-info-circle"
         };
     }
+}
+
+<!-- Payment Modal -->
+<div id="paymentModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-rupee-sign"></i> Record Payment</h3>
+            <button type="button" class="close-btn" onclick="closePaymentModal()">&times;</button>
+        </div>
+        <form id="paymentForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" id="bookingNumber" name="bookingNumber" value="@Model.BookingNumber" />
+            
+            <div class="form-group">
+                <label for="amount">Amount (₹) *</label>
+                <input type="number" id="amount" name="amount" step="0.01" min="0.01" max="@Model.BalanceAmount" 
+                       class="form-control" required placeholder="Enter payment amount" />
+                <small class="text-muted">Balance Amount: ₹@Model.BalanceAmount.ToString("N2")</small>
+            </div>
+
+            <div class="form-group">
+                <label for="paymentMethod">Payment Method *</label>
+                <select id="paymentMethod" name="paymentMethod" class="form-control" required onchange="handlePaymentMethodChange()">
+                    <option value="">Select payment method</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Card">Card</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="UPI">UPI</option>
+                    <option value="BankTransfer">Bank Transfer</option>
+                </select>
+            </div>
+
+            <!-- Card-specific fields -->
+            <div id="cardFields" style="display: none;">
+                <div class="form-group">
+                    <label for="cardType">Card Type *</label>
+                    <select id="cardType" name="cardType" class="form-control">
+                        <option value="">Select card type</option>
+                        <option value="VISA">VISA</option>
+                        <option value="MASTER">MASTER</option>
+                        <option value="AMERICAN_EXPRESS">AMERICAN EXPRESS</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="cardLastFourDigits">Card Last 4 Digits *</label>
+                    <input type="text" id="cardLastFourDigits" name="cardLastFourDigits" class="form-control" 
+                           placeholder="1234" maxlength="4" pattern="[0-9]{4}" />
+                    <small class="text-muted">Enter last 4 digits of card</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="cardBankId">Bank Name *</label>
+                    <select id="cardBankId" name="cardBankId" class="form-control">
+                        <option value="">Select bank</option>
+                        @{
+                            var banks = ViewBag.Banks as IEnumerable<HotelApp.Web.Models.Bank> ?? Enumerable.Empty<HotelApp.Web.Models.Bank>();
+                            foreach (var bank in banks)
+                            {
+                                <option value="@bank.Id">@bank.BankName</option>
+                            }
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <!-- Cheque-specific fields -->
+            <div id="chequeFields" style="display: none;">
+                <div class="form-group">
+                    <label for="chequeBankId">Bank Name *</label>
+                    <select id="chequeBankId" name="chequeBankId" class="form-control">
+                        <option value="">Select bank</option>
+                        @foreach (var bank in banks)
+                        {
+                            <option value="@bank.Id">@bank.BankName</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="chequeDate">Cheque Date *</label>
+                    <input type="date" id="chequeDate" name="chequeDate" class="form-control" 
+                           max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="paymentReference">Payment Reference</label>
+                <input type="text" id="paymentReference" name="paymentReference" class="form-control" 
+                       placeholder="Transaction ID, Cheque No., etc." />
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Notes</label>
+                <textarea id="notes" name="notes" class="form-control" rows="2" 
+                          placeholder="Additional notes (optional)"></textarea>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closePaymentModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-check"></i> Record Payment
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        width: 90%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+        animation: slideIn 0.3s ease-out;
+    }
+
+    @@keyframes slideIn {
+        from {
+            transform: translateY(-30px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem;
+        border-bottom: 1px solid #e5e7eb;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px 12px 0 0;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 1.8rem;
+        color: white;
+        cursor: pointer;
+        line-height: 1;
+        opacity: 0.8;
+        transition: opacity 0.2s;
+    }
+
+    .close-btn:hover {
+        opacity: 1;
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        padding: 1.25rem 1.5rem;
+        background: #f9fafb;
+        border-radius: 0 0 12px 12px;
+    }
+
+    #paymentForm {
+        padding: 1.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #374151;
+        font-size: 0.9rem;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .text-muted {
+        display: block;
+        font-size: 0.85rem;
+        color: #6b7280;
+        margin-top: 0.3rem;
+    }
+
+    .btn {
+        padding: 0.65rem 1.25rem;
+        border: none;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.95rem;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+        background: #e5e7eb;
+        color: #374151;
+    }
+
+    .btn-secondary:hover {
+        background: #d1d5db;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        margin-bottom: 1rem;
+    }
+
+    .badge {
+        padding: 0.35rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .badge-info {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .badge-success {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    /* Override SweetAlert2 z-index to appear above payment modal */
+    .swal2-container {
+        z-index: 99999 !important;
+    }
+</style>
+
+@section Scripts {
+<script>
+    function showPaymentModal() {
+        document.getElementById('paymentModal').style.display = 'flex';
+        document.getElementById('amount').focus();
+    }
+
+    function closePaymentModal() {
+        document.getElementById('paymentModal').style.display = 'none';
+        document.getElementById('paymentForm').reset();
+        document.getElementById('cardFields').style.display = 'none';
+        document.getElementById('chequeFields').style.display = 'none';
+    }
+
+    function handlePaymentMethodChange() {
+        const paymentMethod = document.getElementById('paymentMethod').value;
+        const cardFields = document.getElementById('cardFields');
+        const chequeFields = document.getElementById('chequeFields');
+        
+        // Hide all conditional fields
+        cardFields.style.display = 'none';
+        chequeFields.style.display = 'none';
+        
+        // Clear required attributes
+        document.getElementById('cardType').removeAttribute('required');
+        document.getElementById('cardLastFourDigits').removeAttribute('required');
+        document.getElementById('cardBankId').removeAttribute('required');
+        document.getElementById('chequeBankId').removeAttribute('required');
+        document.getElementById('chequeDate').removeAttribute('required');
+        
+        // Show relevant fields and set required attributes
+        if (paymentMethod === 'Card') {
+            cardFields.style.display = 'block';
+            document.getElementById('cardType').setAttribute('required', 'required');
+            document.getElementById('cardLastFourDigits').setAttribute('required', 'required');
+            document.getElementById('cardBankId').setAttribute('required', 'required');
+        } else if (paymentMethod === 'Cheque') {
+            chequeFields.style.display = 'block';
+            document.getElementById('chequeBankId').setAttribute('required', 'required');
+            document.getElementById('chequeDate').setAttribute('required', 'required');
+        }
+    }
+
+    $(document).ready(function() {
+        // Test if SweetAlert2 is loaded
+        console.log('SweetAlert2 loaded:', typeof Swal !== 'undefined');
+        
+        document.getElementById('paymentForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const paymentMethod = formData.get('paymentMethod');
+            const amount = parseFloat(formData.get('amount'));
+            
+            const data = {
+                bookingNumber: formData.get('bookingNumber'),
+                amount: amount,
+                paymentMethod: paymentMethod,
+                paymentReference: formData.get('paymentReference'),
+                notes: formData.get('notes')
+            };
+
+            // Add card-specific fields
+            if (paymentMethod === 'Card') {
+                data.cardType = formData.get('cardType');
+                data.cardLastFourDigits = formData.get('cardLastFourDigits');
+                data.bankId = formData.get('cardBankId');
+                
+                // Validate card last 4 digits
+                if (!/^\d{4}$/.test(data.cardLastFourDigits)) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Invalid Card Number',
+                        text: 'Please enter exactly 4 digits for card number',
+                        confirmButtonColor: '#667eea'
+                    });
+                    return;
+                }
+            }
+
+            // Add cheque-specific fields
+            if (paymentMethod === 'Cheque') {
+                data.bankId = formData.get('chequeBankId');
+                data.chequeDate = formData.get('chequeDate');
+            }
+
+            // Show confirmation dialog before recording payment
+            const result = await Swal.fire({
+                title: 'Confirm Payment',
+                html: `Are you sure you want to record this payment?<br><br>
+                       <strong>Amount:</strong> ₹${amount.toFixed(2)}<br>
+                       <strong>Method:</strong> ${paymentMethod}`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#667eea',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, Record Payment',
+                cancelButtonText: 'Cancel'
+            });
+
+            // If user clicks "Cancel", stop here
+            if (!result.isConfirmed) {
+                return;
+            }
+
+            // Get anti-forgery token
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+            try {
+                const response = await fetch('@Url.Action("AddPayment", "Booking")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'RequestVerificationToken': token
+                    },
+                    body: new URLSearchParams(data)
+                });
+
+                const apiResult = await response.json();
+
+                if (apiResult.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: apiResult.message,
+                        confirmButtonColor: '#667eea',
+                        timer: 2000,
+                        timerProgressBar: true
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: apiResult.message,
+                        confirmButtonColor: '#667eea'
+                    });
+                }
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Payment Error',
+                    text: 'An error occurred while recording payment. Please try again.',
+                    confirmButtonColor: '#667eea'
+                });
+                console.error('Payment error:', error);
+            }
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('paymentModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePaymentModal();
+            }
+        });
+
+        // Validate card digits input
+        document.getElementById('cardLastFourDigits').addEventListener('input', function(e) {
+            this.value = this.value.replace(/\D/g, '').slice(0, 4);
+        });
+
+        // Show booking created confirmation
+        @if (TempData["BookingCreated"] != null && TempData["BookingCreated"]?.ToString() == "true")
+        {
+            var bookingNum = TempData["BookingNumber"]?.ToString() ?? "";
+            var bookingAmt = TempData["BookingAmount"]?.ToString() ?? "0.00";
+            <text>
+            Swal.fire({
+                icon: 'success',
+                title: 'Booking Created Successfully!',
+                html: '<p>Booking <strong>@bookingNum</strong> has been confirmed.</p><p>Total Amount: <strong>₹@bookingAmt</strong></p>',
+                confirmButtonColor: '#667eea',
+                confirmButtonText: 'Great!',
+                timer: 5000,
+                timerProgressBar: true
+            });
+            </text>
+        }
+    });
+</script>
 }

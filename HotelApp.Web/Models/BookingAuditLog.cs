@@ -9,6 +9,7 @@ namespace HotelApp.Web.Models
         public string ActionDescription { get; set; } = string.Empty;
         public string? OldValue { get; set; }
         public string? NewValue { get; set; }
+        public int BranchID { get; set; }
         public int? PerformedBy { get; set; }
         public DateTime PerformedAt { get; set; }
     }

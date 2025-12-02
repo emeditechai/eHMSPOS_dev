@@ -12,29 +12,29 @@
       <EndpointProperties><![CDATA[[{"Name":"integrity","Value":"sha256-05tOG/Ui1OV7IfuYgP2EhhkfkuBGRX5Kk\u002BYL30l2vis="}]]]></EndpointProperties>
       <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"no-cache"},{"Name":"Content-Length","Value":"8974"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u002205tOG/Ui1OV7IfuYgP2EhhkfkuBGRX5Kk\u002BYL30l2vis=\u0022"},{"Name":"Last-Modified","Value":"Thu, 20 Nov 2025 03:17:44 GMT"}]]]></ResponseHeaders>
     </StaticWebAssetEndpoint>
-    <StaticWebAssetEndpoint Include="_content/HotelApp.Web/css/login.83a56j92dc.css">
-      <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\css\login.css'))</AssetFile>
-      <Selectors><![CDATA[[]]]></Selectors>
-      <EndpointProperties><![CDATA[[{"Name":"fingerprint","Value":"83a56j92dc"},{"Name":"integrity","Value":"sha256-VMSI7KksGGBbV4GQmwxDkQpRUQswkALHw6ihD0yKtcw="},{"Name":"label","Value":"_content/HotelApp.Web/css/login.css"}]]]></EndpointProperties>
-      <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"max-age=31536000, immutable"},{"Name":"Content-Length","Value":"4736"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u0022VMSI7KksGGBbV4GQmwxDkQpRUQswkALHw6ihD0yKtcw=\u0022"},{"Name":"Last-Modified","Value":"Wed, 19 Nov 2025 16:50:51 GMT"}]]]></ResponseHeaders>
-    </StaticWebAssetEndpoint>
     <StaticWebAssetEndpoint Include="_content/HotelApp.Web/css/login.css">
       <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\css\login.css'))</AssetFile>
       <Selectors><![CDATA[[]]]></Selectors>
-      <EndpointProperties><![CDATA[[{"Name":"integrity","Value":"sha256-VMSI7KksGGBbV4GQmwxDkQpRUQswkALHw6ihD0yKtcw="}]]]></EndpointProperties>
-      <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"no-cache"},{"Name":"Content-Length","Value":"4736"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u0022VMSI7KksGGBbV4GQmwxDkQpRUQswkALHw6ihD0yKtcw=\u0022"},{"Name":"Last-Modified","Value":"Wed, 19 Nov 2025 16:50:51 GMT"}]]]></ResponseHeaders>
+      <EndpointProperties><![CDATA[[{"Name":"integrity","Value":"sha256-Xkzt/tlwAjGss2yA2xfb8NiLsXzLDUoQ6BRmaJ180NU="}]]]></EndpointProperties>
+      <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"no-cache"},{"Name":"Content-Length","Value":"5283"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u0022Xkzt/tlwAjGss2yA2xfb8NiLsXzLDUoQ6BRmaJ180NU=\u0022"},{"Name":"Last-Modified","Value":"Tue, 02 Dec 2025 07:47:42 GMT"}]]]></ResponseHeaders>
+    </StaticWebAssetEndpoint>
+    <StaticWebAssetEndpoint Include="_content/HotelApp.Web/css/login.i835cioyqt.css">
+      <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\css\login.css'))</AssetFile>
+      <Selectors><![CDATA[[]]]></Selectors>
+      <EndpointProperties><![CDATA[[{"Name":"fingerprint","Value":"i835cioyqt"},{"Name":"integrity","Value":"sha256-Xkzt/tlwAjGss2yA2xfb8NiLsXzLDUoQ6BRmaJ180NU="},{"Name":"label","Value":"_content/HotelApp.Web/css/login.css"}]]]></EndpointProperties>
+      <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"max-age=31536000, immutable"},{"Name":"Content-Length","Value":"5283"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u0022Xkzt/tlwAjGss2yA2xfb8NiLsXzLDUoQ6BRmaJ180NU=\u0022"},{"Name":"Last-Modified","Value":"Tue, 02 Dec 2025 07:47:42 GMT"}]]]></ResponseHeaders>
     </StaticWebAssetEndpoint>
     <StaticWebAssetEndpoint Include="_content/HotelApp.Web/css/master-pages.3c9xwj6zr0.css">
       <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\css\master-pages.css'))</AssetFile>
       <Selectors><![CDATA[[]]]></Selectors>
       <EndpointProperties><![CDATA[[{"Name":"fingerprint","Value":"3c9xwj6zr0"},{"Name":"integrity","Value":"sha256-feZx\u002B0\u002BtvCqW1vZVt94rvehs9qVc5pFtxf9o9iAy4TU="},{"Name":"label","Value":"_content/HotelApp.Web/css/master-pages.css"}]]]></EndpointProperties>
-      <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"max-age=31536000, immutable"},{"Name":"Content-Length","Value":"9002"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u0022feZx\u002B0\u002BtvCqW1vZVt94rvehs9qVc5pFtxf9o9iAy4TU=\u0022"},{"Name":"Last-Modified","Value":"Thu, 20 Nov 2025 09:48:41 GMT"}]]]></ResponseHeaders>
+      <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"max-age=31536000, immutable"},{"Name":"Content-Length","Value":"9002"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u0022feZx\u002B0\u002BtvCqW1vZVt94rvehs9qVc5pFtxf9o9iAy4TU=\u0022"},{"Name":"Last-Modified","Value":"Thu, 20 Nov 2025 10:13:42 GMT"}]]]></ResponseHeaders>
     </StaticWebAssetEndpoint>
     <StaticWebAssetEndpoint Include="_content/HotelApp.Web/css/master-pages.css">
       <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\css\master-pages.css'))</AssetFile>
       <Selectors><![CDATA[[]]]></Selectors>
       <EndpointProperties><![CDATA[[{"Name":"integrity","Value":"sha256-feZx\u002B0\u002BtvCqW1vZVt94rvehs9qVc5pFtxf9o9iAy4TU="}]]]></EndpointProperties>
-      <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"no-cache"},{"Name":"Content-Length","Value":"9002"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u0022feZx\u002B0\u002BtvCqW1vZVt94rvehs9qVc5pFtxf9o9iAy4TU=\u0022"},{"Name":"Last-Modified","Value":"Thu, 20 Nov 2025 09:48:41 GMT"}]]]></ResponseHeaders>
+      <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"no-cache"},{"Name":"Content-Length","Value":"9002"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u0022feZx\u002B0\u002BtvCqW1vZVt94rvehs9qVc5pFtxf9o9iAy4TU=\u0022"},{"Name":"Last-Modified","Value":"Thu, 20 Nov 2025 10:13:42 GMT"}]]]></ResponseHeaders>
     </StaticWebAssetEndpoint>
     <StaticWebAssetEndpoint Include="_content/HotelApp.Web/css/room-dashboard.8zm4x027kb.css">
       <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\css\room-dashboard.css'))</AssetFile>

@@ -4,16 +4,21 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using HotelApp.Web.Models;
 using HotelApp.Web.Services;
+using HotelApp.Web.Repositories;
 
 namespace HotelApp.Web.Controllers;
 
 public class AccountController : Controller
 {
     private readonly IAuthService _authService;
+    private readonly IBranchRepository _branchRepository;
+    private readonly IUserBranchRepository _userBranchRepository;
 
-    public AccountController(IAuthService authService)
+    public AccountController(IAuthService authService, IBranchRepository branchRepository, IUserBranchRepository userBranchRepository)
     {
         _authService = authService;
+        _branchRepository = branchRepository;
+        _userBranchRepository = userBranchRepository;
     }
 
     [HttpGet]
@@ -23,7 +28,11 @@ public class AccountController : Controller
         {
             return RedirectToAction("Index", "Dashboard");
         }
-        return View(new LoginViewModel { ReturnUrl = returnUrl });
+        
+        return View(new LoginViewModel 
+        { 
+            ReturnUrl = returnUrl
+        });
     }
 
     [HttpPost]
@@ -35,6 +44,7 @@ public class AccountController : Controller
             return View(model);
         }
 
+        // Validate credentials
         var user = await _authService.ValidateCredentialsAsync(model.Username, model.Password);
         if (user == null)
         {
@@ -42,28 +52,109 @@ public class AccountController : Controller
             return View(model);
         }
 
+        // Store authenticated user info in TempData for branch selection
+        TempData["AuthenticatedUserId"] = user.Id;
+        TempData["AuthenticatedUsername"] = user.Username;
+        TempData["AuthenticatedUserEmail"] = user.Email;
+        TempData["AuthenticatedUserFullName"] = user.FullName ?? $"{user.FirstName} {user.LastName}".Trim();
+        TempData["AuthenticatedUserRole"] = user.Role;
+        TempData["ReturnUrl"] = model.ReturnUrl;
+
+        // Redirect to branch selection
+        return RedirectToAction(nameof(SelectBranch));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> SelectBranch()
+    {
+        // Check if user is authenticated via TempData
+        if (TempData["AuthenticatedUserId"] == null)
+        {
+            return RedirectToAction(nameof(Login));
+        }
+
+        var userId = (int)TempData["AuthenticatedUserId"];
+
+        // Keep TempData for POST
+        TempData.Keep();
+
+        // Load only branches assigned to this user
+        var userBranches = await _userBranchRepository.GetBranchesByUserIdAsync(userId);
+        var model = new LoginViewModel
+        {
+            AvailableBranches = userBranches.ToList(),
+            Username = TempData["AuthenticatedUsername"]?.ToString() ?? "",
+            ReturnUrl = TempData["ReturnUrl"]?.ToString()
+        };
+
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SelectBranch(LoginViewModel model)
+    {
+        // Retrieve authenticated user info from TempData
+        if (TempData["AuthenticatedUserId"] == null)
+        {
+            return RedirectToAction(nameof(Login));
+        }
+
+        var userId = (int)TempData["AuthenticatedUserId"];
+        var username = TempData["AuthenticatedUsername"]?.ToString() ?? "";
+        var email = TempData["AuthenticatedUserEmail"]?.ToString() ?? "";
+        var fullName = TempData["AuthenticatedUserFullName"]?.ToString() ?? "";
+        var role = TempData["AuthenticatedUserRole"] as int?;
+        var returnUrl = TempData["ReturnUrl"]?.ToString();
+
+        if (model.BranchID == 0)
+        {
+            ModelState.AddModelError("BranchID", "Please select a branch");
+            var branches = await _branchRepository.GetActiveBranchesAsync();
+            model.AvailableBranches = branches.ToList();
+            return View(model);
+        }
+
+        // Verify the selected branch is active
+        var selectedBranch = await _branchRepository.GetBranchByIdAsync(model.BranchID);
+        if (selectedBranch == null || !selectedBranch.IsActive)
+        {
+            ModelState.AddModelError("BranchID", "Selected branch is not available");
+            var branches = await _branchRepository.GetActiveBranchesAsync();
+            model.AvailableBranches = branches.ToList();
+            return View(model);
+        }
+
+        // Create claims and complete authentication
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Name, user.Username),
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim("displayName", user.FullName ?? $"{user.FirstName} {user.LastName}".Trim() ?? user.Username),
-            new Claim("fullName", user.FullName ?? string.Empty)
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+            new Claim(ClaimTypes.Name, username),
+            new Claim(ClaimTypes.Email, email),
+            new Claim("displayName", fullName),
+            new Claim("fullName", fullName),
+            new Claim("BranchID", model.BranchID.ToString()),
+            new Claim("BranchName", selectedBranch.BranchName)
         };
         
-        if (user.Role.HasValue)
+        if (role.HasValue)
         {
-            claims.Add(new Claim(ClaimTypes.Role, user.Role.Value.ToString()));
+            claims.Add(new Claim(ClaimTypes.Role, role.Value.ToString()));
         }
 
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);
 
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+        
+        // Store selected BranchID in session for easy access
+        HttpContext.Session.SetInt32("BranchID", model.BranchID);
+        HttpContext.Session.SetInt32("UserId", userId);
+        HttpContext.Session.SetString("BranchName", selectedBranch.BranchName);
 
-        if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
+        if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
         {
-            return Redirect(model.ReturnUrl);
+            return Redirect(returnUrl);
         }
 
         return RedirectToAction("Index", "Dashboard");

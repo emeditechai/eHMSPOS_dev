@@ -1,0 +1,58 @@
+@model HotelApp.Web.Models.Branch
+
+@{
+    ViewData["Title"] = "Delete Branch";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-exclamation-triangle"></i> Delete Branch</h2>
+    <a asp-action="Index" class="btn-secondary">
+        <i class="fas fa-arrow-left"></i> Back to List
+    </a>
+</div>
+
+<div class="alert alert-danger">
+    <i class="fas fa-exclamation-circle"></i>
+    <strong>Warning:</strong> Are you sure you want to delete this branch? This action cannot be undone.
+</div>
+
+<div class="details-container">
+    <div class="details-grid">
+        <div class="detail-item">
+            <label>Branch Code:</label>
+            <div class="detail-value">
+                <strong class="badge-code">@Model.BranchCode</strong>
+            </div>
+        </div>
+        <div class="detail-item">
+            <label>Branch Name:</label>
+            <div class="detail-value">@Model.BranchName</div>
+        </div>
+
+        <div class="detail-item">
+            <label>City:</label>
+            <div class="detail-value">@Model.City</div>
+        </div>
+        <div class="detail-item">
+            <label>State:</label>
+            <div class="detail-value">@Model.State</div>
+        </div>
+
+        <div class="detail-item full-width">
+            <label>Address:</label>
+            <div class="detail-value">@Model.Address</div>
+        </div>
+    </div>
+</div>
+
+<div class="form-actions">
+    <form asp-action="Delete" method="post" style="display: inline;">
+        <input type="hidden" asp-for="BranchID" />
+        <button type="submit" class="btn-danger" onclick="return confirm('Are you sure you want to delete this branch?');">
+            <i class="fas fa-trash"></i> Delete Branch
+        </button>
+    </form>
+    <a asp-action="Index" class="btn-secondary">
+        <i class="fas fa-times-circle"></i> Cancel
+    </a>
+</div>

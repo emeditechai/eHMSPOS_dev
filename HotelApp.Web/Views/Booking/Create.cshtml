@@ -210,13 +210,25 @@
                 <div class="card-header">
                     <i class="fas fa-user-circle"></i>
                     <h3>Guest Details</h3>
-                    <span id="guestFoundBadge" class="guest-lookup-indicator" style="display:none;">Guest Found</span>
+                    <span id="guestFoundBadge" class="guest-lookup-indicator" style="display:none;">
+                        <i class="fas fa-check-circle"></i> Returning Guest
+                    </span>
                 </div>
                 
                 <div class="form-field">
                     <label asp-for="PrimaryGuestPhone">Mobile Number <span style="color: #e53e3e;">*</span></label>
                     <input asp-for="PrimaryGuestPhone" id="guestPhone" placeholder="Enter mobile number" />
                     <span asp-validation-for="PrimaryGuestPhone" class="text-danger"></span>
+                    <div id="phoneLoader" style="display:none; margin-top: 5px; color: #667eea; font-size: 13px;">
+                        <i class="fas fa-spinner fa-spin"></i> Looking up guest...
+                    </div>
+                </div>
+
+                <div id="lastBookingInfo" style="display:none; background: #e6f3ff; padding: 12px; border-radius: 6px; margin-bottom: 15px; border-left: 3px solid #667eea;">
+                    <div style="font-size: 13px; color: #2d3748;">
+                        <strong><i class="fas fa-info-circle"></i> Last Booking:</strong><br>
+                        <span id="lastBookingDetails" style="margin-left: 20px;"></span>
+                    </div>
                 </div>
 
                 <div class="form-row-inline">
@@ -408,38 +420,86 @@
                 clearTimeout(typingTimer);
                 const phone = $(this).val().trim();
                 
+                // Hide previous results
+                $('#guestFoundBadge').hide();
+                $('#lastBookingInfo').hide();
+                $('#phoneLoader').hide();
+                
                 if (phone.length >= 10) {
+                    $('#phoneLoader').show();
                     typingTimer = setTimeout(function() {
                         lookupGuest(phone);
                     }, doneTypingInterval);
                 } else {
-                    $('#guestFoundBadge').hide();
+                    // Clear fields if phone is incomplete
+                    if (phone.length === 0) {
+                        clearGuestFields();
+                    }
                 }
             });
 
             function lookupGuest(phone) {
                 $.ajax({
-                    url: '@Url.Action("LookupGuest", "Booking")',
+                    url: '@Url.Action("LookupGuestByPhone", "Booking")',
                     type: 'GET',
                     data: { phone: phone },
                     success: function(response) {
-                        if (response.found) {
-                            $('#guestFirstName').val(response.firstName);
-                            $('#guestLastName').val(response.lastName);
-                            $('#guestEmail').val(response.email);
-                            $('#guestLoyalty').val(response.loyaltyId || '');
+                        $('#phoneLoader').hide();
+                        
+                        if (response.success && response.found) {
+                            // Auto-fill guest details
+                            $('#guestFirstName').val(response.guest.firstName);
+                            $('#guestLastName').val(response.guest.lastName);
+                            $('#guestEmail').val(response.guest.email);
+                            $('#guestLoyalty').val(response.guest.loyaltyId || '');
+                            
+                            // Show returning guest badge
                             $('#guestFoundBadge').fadeIn();
                             
-                            // Optional: Show a friendly toast notification
-                            console.log('Guest data loaded from previous records');
+                            // Show last booking info if available
+                            if (response.lastBooking) {
+                                const lastBookingHtml = `
+                                    Booking <strong>${response.lastBooking.bookingNumber}</strong><br>
+                                    <span style="margin-left: 20px;">Check-in: ${response.lastBooking.checkInDate} | Check-out: ${response.lastBooking.checkOutDate}</span><br>
+                                    <span style="margin-left: 20px; color: #718096; font-size: 12px;">Booked on: ${response.lastBooking.createdDate}</span>
+                                `;
+                                $('#lastBookingDetails').html(lastBookingHtml);
+                                $('#lastBookingInfo').fadeIn();
+                            }
+                            
+                            // Show SweetAlert notification
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Welcome Back!',
+                                text: 'Guest details loaded from previous records',
+                                toast: true,
+                                position: 'top-end',
+                                showConfirmButton: false,
+                                timer: 3000,
+                                timerProgressBar: true
+                            });
                         } else {
-                            $('#guestFoundBadge').hide();
+                            // New guest - clear fields
+                            clearGuestFields(true);
                         }
                     },
                     error: function() {
+                        $('#phoneLoader').hide();
                         console.log('Error looking up guest');
                     }
                 });
+            }
+
+            function clearGuestFields(keepPhone = false) {
+                if (!keepPhone) {
+                    $('#guestPhone').val('');
+                }
+                $('#guestFirstName').val('');
+                $('#guestLastName').val('');
+                $('#guestEmail').val('');
+                $('#guestLoyalty').val('');
+                $('#guestFoundBadge').hide();
+                $('#lastBookingInfo').hide();
             }
         });
     </script>

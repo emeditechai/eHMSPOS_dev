@@ -1,0 +1,125 @@
+@model IEnumerable<HotelApp.Web.Models.User>
+@{
+    ViewData["Title"] = "User Management";
+    var usersWithData = ViewBag.UsersWithBranchesAndRoles as List<(HotelApp.Web.Models.User user, List<HotelApp.Web.Models.Branch> branches, List<HotelApp.Web.Models.Role> roles)> ?? new();
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-users-cog"></i> User Management</h2>
+    <a asp-action="Create" class="btn-create">
+        <i class="fas fa-plus"></i> Add New User
+    </a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">
+        <i class="fas fa-check-circle"></i>
+        @TempData["SuccessMessage"]
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">
+        <i class="fas fa-exclamation-circle"></i>
+        @TempData["ErrorMessage"]
+    </div>
+}
+
+@if (Model.Any())
+{
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Full Name</th>
+                    <th>Email</th>
+                    <th>Roles</th>
+                    <th>Assigned Branches</th>
+                    <th>Last Login</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var userData in usersWithData)
+                {
+                    var user = userData.user;
+                    var branches = userData.branches;
+                    var roles = userData.roles;
+                    var statusBadgeClass = user.IsActive ? "badge-available" : "badge-maintenance";
+                    <tr>
+                        <td><strong>@user.Username</strong></td>
+                        <td>@(user.FullName ?? $"{user.FirstName} {user.LastName}")</td>
+                        <td>@user.Email</td>
+                        <td>
+                            @if (roles.Any())
+                            {
+                                <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                    @foreach (var role in roles.Take(2))
+                                    {
+                                        <span class="badge badge-active" style="font-size: 11px;">@role.Name</span>
+                                    }
+                                    @if (roles.Count > 2)
+                                    {
+                                        <span class="badge badge-occupied" style="font-size: 11px;">+@(roles.Count - 2) more</span>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="text-muted">No Roles</span>
+                            }
+                        </td>
+                        <td>
+                            @if (branches.Any())
+                            {
+                                <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                    @foreach (var branch in branches.Take(2))
+                                    {
+                                        <span class="badge badge-cleaning" style="font-size: 11px;">@branch.BranchCode</span>
+                                    }
+                                    @if (branches.Count > 2)
+                                    {
+                                        <span class="badge badge-occupied" style="font-size: 11px;">+@(branches.Count - 2) more</span>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="badge badge-maintenance">No branches</span>
+                            }
+                        </td>
+                        <td>@(user.LastLoginDate.HasValue ? user.LastLoginDate.Value.ToString("dd MMM yyyy") : "Never")</td>
+                        <td><span class="badge @statusBadgeClass">@(user.IsActive ? "Active" : "Inactive")</span></td>
+                        <td>
+                            <div class="action-buttons">
+                                <a asp-action="Details" asp-route-id="@user.Id" class="btn-action btn-view" title="View User">
+                                    <i class="fas fa-eye"></i>
+                                    <span>View</span>
+                                </a>
+                                <a asp-action="Edit" asp-route-id="@user.Id" class="btn-action btn-edit" title="Edit User">
+                                    <i class="fas fa-pen"></i>
+                                    <span>Edit</span>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="empty-state">
+        <i class="fas fa-users-cog"></i>
+        <h3>No Users Found</h3>
+        <p>Get started by adding your first user</p>
+        <a asp-action="Create" class="btn-create">
+            <i class="fas fa-plus"></i> Add New User
+        </a>
+    </div>
+}

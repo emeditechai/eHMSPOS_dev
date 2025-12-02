@@ -1,0 +1,121 @@
+@model HotelApp.Web.ViewModels.UserCreateViewModel
+
+@{
+    ViewData["Title"] = "Create User";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-users-cog"></i> User Management</h2>
+</div>
+
+<div class="form-container">
+    <h3 style="margin-bottom:25px;color:var(--primary);">Add New User</h3>
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="Username">Username <span class="text-danger">*</span></label>
+                <input asp-for="Username" type="text" placeholder="Enter username" required />
+                <span asp-validation-for="Username" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Email">Email <span class="text-danger">*</span></label>
+                <input asp-for="Email" type="email" placeholder="user@example.com" required />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="FirstName">First Name <span class="text-danger">*</span></label>
+                <input asp-for="FirstName" type="text" placeholder="Enter first name" required />
+                <span asp-validation-for="FirstName" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="LastName">Last Name <span class="text-danger">*</span></label>
+                <input asp-for="LastName" type="text" placeholder="Enter last name" required />
+                <span asp-validation-for="LastName" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="Password">Password <span class="text-danger">*</span></label>
+                <input asp-for="Password" type="password" placeholder="Enter password" required />
+                <span asp-validation-for="Password" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ConfirmPassword">Confirm Password <span class="text-danger">*</span></label>
+                <input asp-for="ConfirmPassword" type="password" placeholder="Re-enter password" required />
+                <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group form-group-full">
+                <label>Assign Roles <span class="text-danger">*</span></label>
+                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: #f9f9f9;">
+                    @if (Model.AvailableRoles.Any())
+                    {
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
+                            @foreach (var role in Model.AvailableRoles)
+                            {
+                                <label style="display: flex; align-items: center; padding: 10px; background: white; border-radius: 5px; cursor: pointer; border: 1px solid #e0e0e0;">
+                                    <input type="checkbox" name="SelectedRoleIds" value="@role.Id" 
+                                           @(Model.SelectedRoleIds.Contains(role.Id) ? "checked" : "")
+                                           style="margin-right: 10px;" />
+                                    <span style="font-weight: 500;">@role.Name</span>
+                                </label>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p style="color: #999; text-align: center;">No roles available</p>
+                    }
+                </div>
+                <span asp-validation-for="SelectedRoleIds" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group form-group-full">
+                <label>Assign Branches <span class="text-danger">*</span></label>
+                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: #f9f9f9; max-height: 250px; overflow-y: auto;">
+                    @if (Model.AvailableBranches.Any())
+                    {
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px;">
+                            @foreach (var branch in Model.AvailableBranches)
+                            {
+                                <label style="display: flex; align-items: center; padding: 8px; background: white; border-radius: 5px; cursor: pointer; border: 1px solid #e0e0e0;">
+                                    <input type="checkbox" name="SelectedBranchIds" value="@branch.BranchID" 
+                                           @(Model.SelectedBranchIds.Contains(branch.BranchID) ? "checked" : "")
+                                           style="margin-right: 8px;" />
+                                    <span style="font-weight: 500;">@branch.BranchName</span>
+                                    <span style="margin-left: auto; font-size: 11px; color: #666;">@branch.BranchCode</span>
+                                </label>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p style="color: #999; text-align: center;">No branches available</p>
+                    }
+                </div>
+                <span asp-validation-for="SelectedBranchIds" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-save">
+                <i class="fas fa-save"></i> Save User
+            </button>
+            <a asp-action="Index" class="btn-cancel">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

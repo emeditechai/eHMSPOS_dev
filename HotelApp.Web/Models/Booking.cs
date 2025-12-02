@@ -33,6 +33,7 @@ namespace HotelApp.Web.Models
         public string PrimaryGuestPhone { get; set; } = string.Empty;
         public string? LoyaltyId { get; set; }
         public string? SpecialRequests { get; set; }
+        public int BranchID { get; set; }
         public DateTime CreatedDate { get; set; }
         public int? CreatedBy { get; set; }
         public DateTime LastModifiedDate { get; set; }
@@ -67,6 +68,10 @@ namespace HotelApp.Web.Models
         public string Status { get; set; } = "Captured";
         public DateTime PaidOn { get; set; }
         public string? Notes { get; set; }
+        public string? CardType { get; set; }
+        public string? CardLastFourDigits { get; set; }
+        public int? BankId { get; set; }
+        public DateTime? ChequeDate { get; set; }
     }
 
     public class BookingRoomNight

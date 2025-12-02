@@ -16,11 +16,22 @@ namespace HotelApp.Web.Repositories
         public async Task<IEnumerable<Floor>> GetAllAsync()
         {
             var sql = @"
-                SELECT Id, FloorName, IsActive, CreatedDate, LastModifiedDate, CreatedBy, LastModifiedBy
+                SELECT Id, FloorName, BranchID, IsActive, CreatedDate, LastModifiedDate, CreatedBy, LastModifiedBy
                 FROM Floors
                 ORDER BY FloorName";
             
             return await _connection.QueryAsync<Floor>(sql);
+        }
+        
+        public async Task<IEnumerable<Floor>> GetByBranchAsync(int branchId)
+        {
+            var sql = @"
+                SELECT Id, FloorName, BranchID, IsActive, CreatedDate, LastModifiedDate, CreatedBy, LastModifiedBy
+                FROM Floors
+                WHERE BranchID = @BranchId
+                ORDER BY FloorName";
+            
+            return await _connection.QueryAsync<Floor>(sql, new { BranchId = branchId });
         }
 
         public async Task<Floor?> GetByIdAsync(int id)
@@ -36,13 +47,14 @@ namespace HotelApp.Web.Repositories
         public async Task<int> CreateAsync(Floor floor)
         {
             var sql = @"
-                INSERT INTO Floors (FloorName, IsActive, CreatedDate, LastModifiedDate, CreatedBy)
-                VALUES (@FloorName, @IsActive, GETDATE(), GETDATE(), @CreatedBy);
+                INSERT INTO Floors (FloorName, BranchID, IsActive, CreatedDate, LastModifiedDate, CreatedBy)
+                VALUES (@FloorName, @BranchID, @IsActive, GETDATE(), GETDATE(), @CreatedBy);
                 SELECT CAST(SCOPE_IDENTITY() as int)";
             
             return await _connection.ExecuteScalarAsync<int>(sql, new
             {
                 floor.FloorName,
+                floor.BranchID,
                 floor.IsActive,
                 floor.CreatedBy
             });
@@ -71,13 +83,13 @@ namespace HotelApp.Web.Repositories
 
         // Delete removed per business rule
 
-        public async Task<bool> FloorNameExistsAsync(string floorName, int? excludeId = null)
+        public async Task<bool> FloorNameExistsAsync(string floorName, int branchId, int? excludeId = null)
         {
             var sql = excludeId.HasValue
-                ? "SELECT COUNT(1) FROM Floors WHERE FloorName = @FloorName AND Id != @ExcludeId"
-                : "SELECT COUNT(1) FROM Floors WHERE FloorName = @FloorName";
+                ? "SELECT COUNT(1) FROM Floors WHERE FloorName = @FloorName AND BranchID = @BranchId AND Id != @ExcludeId"
+                : "SELECT COUNT(1) FROM Floors WHERE FloorName = @FloorName AND BranchID = @BranchId";
             
-            var count = await _connection.ExecuteScalarAsync<int>(sql, new { FloorName = floorName, ExcludeId = excludeId });
+            var count = await _connection.ExecuteScalarAsync<int>(sql, new { FloorName = floorName, BranchId = branchId, ExcludeId = excludeId });
             return count > 0;
         }
     }

@@ -7,21 +7,23 @@ using HotelApp.Web.Repositories;
 namespace HotelApp.Web.Controllers
 {
     [Authorize]
-    public class RoomMasterController : Controller
+    public class RoomMasterController : BaseController
     {
         private readonly IRoomRepository _roomRepository;
         private readonly IFloorRepository _floorRepository;
+        private readonly IRateMasterRepository _rateMasterRepository;
 
-        public RoomMasterController(IRoomRepository roomRepository, IFloorRepository floorRepository)
+        public RoomMasterController(IRoomRepository roomRepository, IFloorRepository floorRepository, IRateMasterRepository rateMasterRepository)
         {
             _roomRepository = roomRepository;
             _floorRepository = floorRepository;
+            _rateMasterRepository = rateMasterRepository;
         }
 
         // GET: RoomMaster/List
         public async Task<IActionResult> List()
         {
-            var rooms = await _roomRepository.GetAllAsync();
+            var rooms = await _roomRepository.GetAllByBranchAsync(CurrentBranchID);
             return View(rooms);
         }
 
@@ -39,14 +41,15 @@ namespace HotelApp.Web.Controllers
         {
             await ValidateFloorAsync(room.Floor);
 
-            if (await _roomRepository.RoomNumberExistsAsync(room.RoomNumber))
+            if (await _roomRepository.RoomNumberExistsAsync(room.RoomNumber, CurrentBranchID))
             {
-                ModelState.AddModelError("RoomNumber", "Room number already exists");
+                ModelState.AddModelError("RoomNumber", "Room number already exists in this branch");
             }
 
             if (ModelState.IsValid)
             {
                 room.IsActive = true;
+                room.BranchID = CurrentBranchID;
                 await _roomRepository.CreateAsync(room);
                 TempData["SuccessMessage"] = "Room created successfully!";
                 return RedirectToAction(nameof(List));
@@ -95,9 +98,9 @@ namespace HotelApp.Web.Controllers
 
             await ValidateFloorAsync(room.Floor);
 
-            if (await _roomRepository.RoomNumberExistsAsync(room.RoomNumber, room.Id))
+            if (await _roomRepository.RoomNumberExistsAsync(room.RoomNumber, CurrentBranchID, room.Id))
             {
-                ModelState.AddModelError("RoomNumber", "Room number already exists");
+                ModelState.AddModelError("RoomNumber", "Room number already exists in this branch");
             }
 
             if (ModelState.IsValid)
@@ -115,9 +118,21 @@ namespace HotelApp.Web.Controllers
 
         private async Task PopulateRoomLookupsAsync()
         {
-            ViewBag.RoomTypes = await _roomRepository.GetRoomTypesAsync();
+            // Get room types
+            var roomTypes = await _roomRepository.GetRoomTypesByBranchAsync(CurrentBranchID);
+            
+            // Get active rates for display
+            var rates = await _rateMasterRepository.GetByBranchAsync(CurrentBranchID);
+            var today = DateTime.Today;
+            var activeRates = rates
+                .Where(r => r.StartDate <= today && r.EndDate >= today)
+                .GroupBy(r => r.RoomTypeId)
+                .ToDictionary(g => g.Key, g => g.FirstOrDefault());
+            
+            ViewBag.RoomTypes = roomTypes;
+            ViewBag.ActiveRates = activeRates; // Dictionary of RoomTypeId -> RateMaster
             ViewBag.Statuses = new List<string> { "Available", "Occupied", "Cleaning", "Maintenance", "Out of Order" };
-            var floors = await _floorRepository.GetAllAsync();
+            var floors = await _floorRepository.GetByBranchAsync(CurrentBranchID);
             ViewBag.Floors = floors.Where(f => f.IsActive).OrderBy(f => f.FloorName).ToList();
         }
 

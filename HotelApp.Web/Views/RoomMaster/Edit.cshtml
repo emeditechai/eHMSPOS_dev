@@ -43,15 +43,24 @@
                     <span asp-validation-for="RoomNumber" class="text-danger"></span>
                 </div>
                 <div class="form-group">
-                    <label asp-for="RoomTypeId">Room Type <span class="text-danger">*</span></label>
+                    <label asp-for="RoomTypeId">Room Rate <span class="text-danger">*</span></label>
                     <select asp-for="RoomTypeId" required disabled="@(isReadOnly ? "disabled" : null)">
-                        <option value="">-- Select Room Type --</option>
-                        @foreach (var roomType in roomTypes)
+                        <option value="">-- Select Room Rate --</option>
+                        @{
+                            var activeRates = ViewBag.ActiveRates as Dictionary<int, HotelApp.Web.Models.RateMaster>;
+                        }
+                        @if (roomTypes != null)
                         {
-                            <option value="@roomType.Id">@roomType.TypeName (Max: @roomType.MaxOccupancy, Rate: ₹@roomType.BaseRate.ToString("N0"))</option>
+                            foreach (var roomType in roomTypes)
+                            {
+                                var rate = activeRates?.ContainsKey(roomType.Id) == true ? activeRates[roomType.Id] : null;
+                                var rateInfo = rate != null ? $"₹{rate.BaseRate:N0}" : "No Rate";
+                                <option value="@roomType.Id">@roomType.TypeName (Max: @roomType.MaxOccupancy, Rate: @rateInfo)</option>
+                            }
                         }
                     </select>
                     <span asp-validation-for="RoomTypeId" class="text-danger"></span>
+                    <small class="form-text text-muted">Rates are managed in Rate Master. Showing current active rates.</small>
                 </div>
                 <div class="form-group">
                     <label asp-for="Floor">Floor <span class="text-danger">*</span></label>

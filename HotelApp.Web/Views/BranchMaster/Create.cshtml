@@ -1,0 +1,82 @@
+@model HotelApp.Web.Models.Branch
+
+@{
+    ViewData["Title"] = "Create Branch";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-building"></i> Branch Master</h2>
+</div>
+
+<div class="form-container">
+    <h3 style="margin-bottom:25px;color:var(--primary);">Add New Branch</h3>
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="BranchName">Branch Name <span class="text-danger">*</span></label>
+                <input asp-for="BranchName" type="text" placeholder="e.g., Mumbai Branch" required />
+                <span asp-validation-for="BranchName" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="BranchCode">Branch Code <span class="text-danger">*</span></label>
+                <input asp-for="BranchCode" type="text" placeholder="e.g., MUM" required />
+                <span asp-validation-for="BranchCode" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Country">Country <span class="text-danger">*</span></label>
+                <input asp-for="Country" type="text" placeholder="e.g., India" required />
+                <span asp-validation-for="Country" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="State">State <span class="text-danger">*</span></label>
+                <input asp-for="State" type="text" placeholder="e.g., Maharashtra" required />
+                <span asp-validation-for="State" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="City">City <span class="text-danger">*</span></label>
+                <input asp-for="City" type="text" placeholder="e.g., Mumbai" required />
+                <span asp-validation-for="City" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Pincode">Pincode <span class="text-danger">*</span></label>
+                <input asp-for="Pincode" type="text" placeholder="e.g., 400001" required />
+                <span asp-validation-for="Pincode" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="IsHOBranch">Is Head Office</label>
+                <input asp-for="IsHOBranch" type="checkbox" />
+            </div>
+            <div class="form-group">
+                <label asp-for="IsActive">Is Active</label>
+                <input asp-for="IsActive" type="checkbox" checked />
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group form-group-full">
+                <label asp-for="Address">Address <span class="text-danger">*</span></label>
+                <textarea asp-for="Address" placeholder="Enter complete branch address" required></textarea>
+                <span asp-validation-for="Address" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-save">
+                <i class="fas fa-save"></i> Save Branch
+            </button>
+            <a asp-action="Index" class="btn-cancel">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

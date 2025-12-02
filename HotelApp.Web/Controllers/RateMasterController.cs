@@ -7,26 +7,28 @@ using System.Security.Claims;
 namespace HotelApp.Web.Controllers
 {
     [Authorize]
-    public class RateMasterController : Controller
+    public class RateMasterController : BaseController
     {
         private readonly IRateMasterRepository _rateMasterRepository;
+        private readonly IRoomRepository _roomRepository;
 
-        public RateMasterController(IRateMasterRepository rateMasterRepository)
+        public RateMasterController(IRateMasterRepository rateMasterRepository, IRoomRepository roomRepository)
         {
             _rateMasterRepository = rateMasterRepository;
+            _roomRepository = roomRepository;
         }
 
         // GET: RateMaster/List
         public async Task<IActionResult> List()
         {
-            var rates = await _rateMasterRepository.GetAllAsync();
+            var rates = await _rateMasterRepository.GetByBranchAsync(CurrentBranchID);
             return View(rates);
         }
 
         // GET: RateMaster/Create
         public async Task<IActionResult> Create()
         {
-            ViewBag.RoomTypes = await _rateMasterRepository.GetRoomTypesAsync();
+            ViewBag.RoomTypes = await _roomRepository.GetRoomTypesByBranchAsync(CurrentBranchID);
             ViewBag.CustomerTypes = await _rateMasterRepository.GetCustomerTypesAsync();
             ViewBag.Sources = await _rateMasterRepository.GetSourcesAsync();
             
@@ -59,13 +61,14 @@ namespace HotelApp.Web.Controllers
                 {
                     rate.CreatedBy = userIdInt;
                 }
+                rate.BranchID = CurrentBranchID;
                 
                 await _rateMasterRepository.CreateAsync(rate);
                 TempData["SuccessMessage"] = "Rate created successfully!";
                 return RedirectToAction(nameof(List));
             }
 
-            ViewBag.RoomTypes = await _rateMasterRepository.GetRoomTypesAsync();
+            ViewBag.RoomTypes = await _roomRepository.GetRoomTypesByBranchAsync(CurrentBranchID);
             ViewBag.CustomerTypes = await _rateMasterRepository.GetCustomerTypesAsync();
             ViewBag.Sources = await _rateMasterRepository.GetSourcesAsync();
             return View(rate);
@@ -80,7 +83,7 @@ namespace HotelApp.Web.Controllers
                 return NotFound();
             }
 
-            ViewBag.RoomTypes = await _rateMasterRepository.GetRoomTypesAsync();
+            ViewBag.RoomTypes = await _roomRepository.GetRoomTypesByBranchAsync(CurrentBranchID);
             ViewBag.CustomerTypes = await _rateMasterRepository.GetCustomerTypesAsync();
             ViewBag.Sources = await _rateMasterRepository.GetSourcesAsync();
             return View(rate);
@@ -94,7 +97,7 @@ namespace HotelApp.Web.Controllers
             {
                 return NotFound();
             }
-            ViewBag.RoomTypes = await _rateMasterRepository.GetRoomTypesAsync();
+            ViewBag.RoomTypes = await _roomRepository.GetRoomTypesByBranchAsync(CurrentBranchID);
             ViewBag.CustomerTypes = await _rateMasterRepository.GetCustomerTypesAsync();
             ViewBag.Sources = await _rateMasterRepository.GetSourcesAsync();
             ViewBag.IsReadOnly = true;
@@ -124,7 +127,7 @@ namespace HotelApp.Web.Controllers
                 return RedirectToAction(nameof(List));
             }
 
-            ViewBag.RoomTypes = await _rateMasterRepository.GetRoomTypesAsync();
+            ViewBag.RoomTypes = await _roomRepository.GetRoomTypesByBranchAsync(CurrentBranchID);
             ViewBag.CustomerTypes = await _rateMasterRepository.GetCustomerTypesAsync();
             ViewBag.Sources = await _rateMasterRepository.GetSourcesAsync();
             return View(rate);

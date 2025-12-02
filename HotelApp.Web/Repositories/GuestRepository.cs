@@ -24,15 +24,26 @@ namespace HotelApp.Web.Repositories
             return await _dbConnection.QueryFirstOrDefaultAsync<Guest>(sql, new { Phone = phone });
         }
 
+        public async Task<Guest?> GetByPhoneAndBranchAsync(string phone, int branchId)
+        {
+            const string sql = @"
+                SELECT TOP 1 *
+                FROM Guests
+                WHERE Phone = @Phone AND BranchID = @BranchId AND IsActive = 1
+                ORDER BY LastModifiedDate DESC";
+
+            return await _dbConnection.QueryFirstOrDefaultAsync<Guest>(sql, new { Phone = phone, BranchId = branchId });
+        }
+
         public async Task<int> CreateAsync(Guest guest)
         {
             const string sql = @"
                 INSERT INTO Guests (FirstName, LastName, Email, Phone, Address, City, State, Country,
                                    IdentityType, IdentityNumber, DateOfBirth, LoyaltyId, GuestType, 
-                                   ParentGuestId, IsActive, CreatedDate, LastModifiedDate)
+                                   ParentGuestId, BranchID, IsActive, CreatedDate, LastModifiedDate)
                 VALUES (@FirstName, @LastName, @Email, @Phone, @Address, @City, @State, @Country,
                         @IdentityType, @IdentityNumber, @DateOfBirth, @LoyaltyId, @GuestType,
-                        @ParentGuestId, @IsActive, GETDATE(), GETDATE());
+                        @ParentGuestId, @BranchID, @IsActive, GETDATE(), GETDATE());
                 SELECT CAST(SCOPE_IDENTITY() as int);";
 
             return await _dbConnection.ExecuteScalarAsync<int>(sql, guest);
@@ -56,6 +67,7 @@ namespace HotelApp.Web.Repositories
                     LoyaltyId = @LoyaltyId,
                     GuestType = @GuestType,
                     ParentGuestId = @ParentGuestId,
+                    BranchID = @BranchID,
                     IsActive = @IsActive,
                     LastModifiedDate = GETDATE()
                 WHERE Id = @Id";
@@ -149,6 +161,17 @@ namespace HotelApp.Web.Repositories
                 ORDER BY LastModifiedDate DESC";
 
             return await _dbConnection.QueryAsync<Guest>(sql);
+        }
+
+        public async Task<IEnumerable<Guest>> GetAllByBranchAsync(int branchId)
+        {
+            const string sql = @"
+                SELECT *
+                FROM Guests
+                WHERE IsActive = 1 AND BranchID = @BranchId
+                ORDER BY LastModifiedDate DESC";
+
+            return await _dbConnection.QueryAsync<Guest>(sql, new { BranchId = branchId });
         }
     }
 }

@@ -16,6 +16,7 @@ namespace HotelApp.Web.Models
         public bool IsWeekdayRate { get; set; } = true;
         public string? ApplyDiscount { get; set; }
         public bool IsDynamicRate { get; set; }
+        public int BranchID { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime CreatedDate { get; set; }
         public int? CreatedBy { get; set; }

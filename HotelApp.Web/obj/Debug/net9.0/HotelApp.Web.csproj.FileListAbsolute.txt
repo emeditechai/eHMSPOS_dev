@@ -145,10 +145,10 @@
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/HotelApp.Web.pdb
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/HotelApp.Web.genruntimeconfig.cache
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/ref/HotelApp.Web.dll
-/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/jb81mcvper-83a56j92dc.gz
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/bin/Debug/net9.0/BCrypt.Net-Next.dll
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/hcih34dean-8zm4x027kb.gz
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/17spjb448e-3gpc0w1sri.gz
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/HotelApp.Web.sourcelink.json
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/u6b4j9ztt4-cbbkmz30vy.gz
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/fzxrofkyxv-3c9xwj6zr0.gz
+/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/jb81mcvper-i835cioyqt.gz

@@ -12,5 +12,6 @@ namespace HotelApp.Web.Repositories
         Task<IEnumerable<Guest>> GetChildGuestsAsync(int parentGuestId);
         Task<Guest?> FindOrCreateGuestAsync(string firstName, string lastName, string email, string phone, string guestType, int? parentGuestId = null);
         Task<IEnumerable<Guest>> GetAllAsync();
+        Task<IEnumerable<Guest>> GetAllByBranchAsync(int branchId);
     }
 }

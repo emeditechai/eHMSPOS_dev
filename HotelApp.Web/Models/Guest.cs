@@ -17,6 +17,7 @@ namespace HotelApp.Web.Models
         public string? LoyaltyId { get; set; }
         public string GuestType { get; set; } = "Primary"; // Primary, Companion, Child
         public int? ParentGuestId { get; set; }
+        public int BranchID { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime CreatedDate { get; set; }
         public DateTime LastModifiedDate { get; set; }

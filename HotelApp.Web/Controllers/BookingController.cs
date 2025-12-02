@@ -9,7 +9,7 @@ using HotelApp.Web.ViewModels;
 namespace HotelApp.Web.Controllers
 {
     [Authorize]
-    public class BookingController : Controller
+    public class BookingController : BaseController
     {
         private static readonly IReadOnlyList<string> CustomerTypes = new[] { "B2C", "B2B" };
         private static readonly IReadOnlyList<string> Sources = new[] { "WalkIn", "Phone", "Website", "OTA", "Reference" };
@@ -18,6 +18,7 @@ namespace HotelApp.Web.Controllers
         {
             { "Cash", "Cash" },
             { "Card", "Card" },
+            { "Cheque", "Cheque" },
             { "UPI", "UPI" },
             { "BankTransfer", "Bank Transfer" }
         };
@@ -25,12 +26,14 @@ namespace HotelApp.Web.Controllers
         private readonly IBookingRepository _bookingRepository;
         private readonly IRoomRepository _roomRepository;
         private readonly IGuestRepository _guestRepository;
+        private readonly IBankRepository _bankRepository;
 
-        public BookingController(IBookingRepository bookingRepository, IRoomRepository roomRepository, IGuestRepository guestRepository)
+        public BookingController(IBookingRepository bookingRepository, IRoomRepository roomRepository, IGuestRepository guestRepository, IBankRepository bankRepository)
         {
             _bookingRepository = bookingRepository;
             _roomRepository = roomRepository;
             _guestRepository = guestRepository;
+            _bankRepository = bankRepository;
         }
 
         public async Task<IActionResult> List()
@@ -40,7 +43,7 @@ namespace HotelApp.Web.Controllers
                 TodayBookingCount = await _bookingRepository.GetTodayBookingCountAsync(),
                 TodayAdvanceAmount = await _bookingRepository.GetTodayAdvanceAmountAsync(),
                 TodayCheckInCount = await _bookingRepository.GetTodayCheckInCountAsync(),
-                Bookings = await _bookingRepository.GetRecentAsync()
+                Bookings = await _bookingRepository.GetRecentByBranchAsync(CurrentBranchID)
             };
             return View(viewModel);
         }
@@ -62,6 +65,14 @@ namespace HotelApp.Web.Controllers
             // Get audit log for this booking
             var auditLogs = await _bookingRepository.GetAuditLogAsync(booking.Id);
             ViewBag.AuditLogs = auditLogs;
+
+            // Get payments for this booking
+            var payments = await _bookingRepository.GetPaymentsAsync(booking.Id);
+            ViewBag.Payments = payments;
+
+            // Get all banks for payment modal
+            var banks = await _bankRepository.GetAllActiveAsync();
+            ViewBag.Banks = banks;
 
             return View(booking);
         }
@@ -112,7 +123,8 @@ namespace HotelApp.Web.Controllers
                 CustomerType = model.CustomerType,
                 Source = model.Source,
                 Adults = model.Adults,
-                Children = model.Children
+                Children = model.Children,
+                BranchID = CurrentBranchID
             };
 
             var quote = await _bookingRepository.GetQuoteAsync(quoteRequest);
@@ -176,6 +188,7 @@ namespace HotelApp.Web.Controllers
                 PrimaryGuestPhone = model.PrimaryGuestPhone,
                 LoyaltyId = model.LoyaltyId,
                 SpecialRequests = model.SpecialRequests,
+                BranchID = CurrentBranchID,
                 CreatedBy = createdBy,
                 LastModifiedBy = createdBy
             };
@@ -211,7 +224,9 @@ namespace HotelApp.Web.Controllers
 
             var result = await _bookingRepository.CreateBookingAsync(booking, guests, payments, roomNights);
 
-            TempData["SuccessMessage"] = $"Booking {result.BookingNumber} confirmed.";
+            TempData["BookingCreated"] = "true";
+            TempData["BookingNumber"] = result.BookingNumber;
+            TempData["BookingAmount"] = quote.GrandTotal.ToString("N2");
             return RedirectToAction(nameof(Details), new { bookingNumber = result.BookingNumber });
         }
 
@@ -242,9 +257,60 @@ namespace HotelApp.Web.Controllers
             }
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddPayment(string bookingNumber, decimal amount, string paymentMethod, string? paymentReference, string? notes, string? cardType, string? cardLastFourDigits, int? bankId, DateTime? chequeDate)
+        {
+            if (string.IsNullOrWhiteSpace(bookingNumber))
+            {
+                return Json(new { success = false, message = "Booking number is required." });
+            }
+
+            if (amount <= 0)
+            {
+                return Json(new { success = false, message = "Payment amount must be greater than zero." });
+            }
+
+            var booking = await _bookingRepository.GetByBookingNumberAsync(bookingNumber);
+            if (booking == null)
+            {
+                return Json(new { success = false, message = "Booking not found." });
+            }
+
+            if (amount > booking.BalanceAmount)
+            {
+                return Json(new { success = false, message = $"Payment amount cannot exceed balance amount of ₹{booking.BalanceAmount:N2}." });
+            }
+
+            var payment = new BookingPayment
+            {
+                BookingId = booking.Id,
+                Amount = amount,
+                PaymentMethod = paymentMethod,
+                PaymentReference = paymentReference,
+                Status = "Captured",
+                PaidOn = DateTime.Now,
+                Notes = notes,
+                CardType = cardType,
+                CardLastFourDigits = cardLastFourDigits,
+                BankId = bankId,
+                ChequeDate = chequeDate
+            };
+
+            var currentUserId = GetCurrentUserId() ?? 0;
+            var success = await _bookingRepository.AddPaymentAsync(payment, currentUserId);
+
+            if (success)
+            {
+                return Json(new { success = true, message = $"Payment of ₹{amount:N2} recorded successfully." });
+            }
+
+            return Json(new { success = false, message = "Failed to record payment. Please try again." });
+        }
+
         private async Task PopulateLookupsAsync()
         {
-            ViewBag.RoomTypes = await _roomRepository.GetRoomTypesAsync();
+            ViewBag.RoomTypes = await _roomRepository.GetRoomTypesByBranchAsync(CurrentBranchID);
             ViewBag.CustomerTypes = CustomerTypes;
             ViewBag.Sources = Sources;
             ViewBag.Channels = Channels;
@@ -307,7 +373,7 @@ namespace HotelApp.Web.Controllers
             }
 
             // Get all rooms and filter available ones for this booking's room type
-            var allRooms = await _roomRepository.GetAllAsync();
+            var allRooms = await _roomRepository.GetAllByBranchAsync(CurrentBranchID);
             var availableRooms = allRooms.Where(r => r.RoomTypeId == booking.RoomTypeId && r.Status == "Available").ToList();
 
             ViewBag.AvailableRooms = availableRooms;
@@ -384,7 +450,7 @@ namespace HotelApp.Web.Controllers
                 return RedirectToAction(nameof(List));
             }
 
-            var roomTypes = await _roomRepository.GetRoomTypesAsync();
+            var roomTypes = await _roomRepository.GetRoomTypesByBranchAsync(CurrentBranchID);
             ViewBag.RoomTypes = roomTypes;
             ViewBag.Booking = booking;
 
@@ -474,7 +540,8 @@ namespace HotelApp.Web.Controllers
                     Adults = booking.Adults,
                     Children = booking.Children,
                     CustomerType = booking.CustomerType,
-                    Source = booking.Source
+                    Source = booking.Source,
+                    BranchID = CurrentBranchID
                 };
 
                 var quote = await _bookingRepository.GetQuoteAsync(quoteRequest);
@@ -540,6 +607,47 @@ namespace HotelApp.Web.Controllers
             // TODO: Implement CancelBooking method in repository
             TempData["SuccessMessage"] = $"Booking {request.BookingNumber} cancelled successfully";
             return Json(new { success = true });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> LookupGuestByPhone(string phone)
+        {
+            if (string.IsNullOrWhiteSpace(phone))
+            {
+                return Json(new { success = false, message = "Phone number is required" });
+            }
+
+            // Get guest by phone for current branch only
+            var guest = await _guestRepository.GetByPhoneAsync(phone);
+            
+            if (guest == null || guest.BranchID != CurrentBranchID)
+            {
+                return Json(new { success = false, found = false });
+            }
+
+            // Get last booking for this guest
+            var lastBooking = await _bookingRepository.GetLastBookingByGuestPhoneAsync(phone);
+
+            return Json(new 
+            { 
+                success = true,
+                found = true,
+                guest = new 
+                {
+                    firstName = guest.FirstName,
+                    lastName = guest.LastName,
+                    email = guest.Email,
+                    phone = guest.Phone,
+                    loyaltyId = guest.LoyaltyId
+                },
+                lastBooking = lastBooking != null ? new 
+                {
+                    bookingNumber = lastBooking.BookingNumber,
+                    checkInDate = lastBooking.CheckInDate.ToString("dd MMM yyyy"),
+                    checkOutDate = lastBooking.CheckOutDate.ToString("dd MMM yyyy"),
+                    createdDate = lastBooking.CreatedDate.ToString("dd MMM yyyy")
+                } : null
+            });
         }
     }
 

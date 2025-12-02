@@ -6,7 +6,7 @@ using HotelApp.Web.Repositories;
 namespace HotelApp.Web.Controllers
 {
     [Authorize]
-    public class RoomTypeMasterController : Controller
+    public class RoomTypeMasterController : BaseController
     {
         private readonly IRoomTypeRepository _roomTypeRepository;
 
@@ -18,7 +18,7 @@ namespace HotelApp.Web.Controllers
         // GET: RoomTypeMaster/List
         public async Task<IActionResult> List()
         {
-            var roomTypes = await _roomTypeRepository.GetAllAsync();
+            var roomTypes = await _roomTypeRepository.GetByBranchAsync(CurrentBranchID);
             return View(roomTypes);
         }
 
@@ -35,14 +35,16 @@ namespace HotelApp.Web.Controllers
         {
             if (ModelState.IsValid)
             {
-                // Check if room type name already exists
-                if (await _roomTypeRepository.RoomTypeNameExistsAsync(roomType.TypeName))
+                // Check if room type name already exists in this branch
+                if (await _roomTypeRepository.RoomTypeNameExistsAsync(roomType.TypeName, CurrentBranchID))
                 {
-                    ModelState.AddModelError("TypeName", "A room type with this name already exists.");
+                    ModelState.AddModelError("TypeName", "A room type with this name already exists in this branch.");
                     return View(roomType);
                 }
 
                 roomType.CreatedBy = GetCurrentUserId();
+                roomType.BranchID = CurrentBranchID;
+                roomType.BaseRate = 0; // Base rate is managed in Rate Master
                 await _roomTypeRepository.CreateAsync(roomType);
                 TempData["SuccessMessage"] = "Room Type created successfully!";
                 return RedirectToAction(nameof(List));
@@ -83,19 +85,20 @@ namespace HotelApp.Web.Controllers
         {
             if (id != roomType.Id)
             {
-                return NotFound();
+                return BadRequest();
             }
 
             if (ModelState.IsValid)
             {
-                // Check if room type name already exists (excluding current room type)
-                if (await _roomTypeRepository.RoomTypeNameExistsAsync(roomType.TypeName, roomType.Id))
+                // Check if room type name already exists in this branch (excluding current record)
+                if (await _roomTypeRepository.RoomTypeNameExistsAsync(roomType.TypeName, CurrentBranchID, roomType.Id))
                 {
-                    ModelState.AddModelError("TypeName", "A room type with this name already exists.");
+                    ModelState.AddModelError("TypeName", "A room type with this name already exists in this branch.");
                     return View(roomType);
                 }
 
-                roomType.LastModifiedBy = GetCurrentUserId();
+                roomType.BaseRate = 0; // Base rate is managed in Rate Master
+                await _roomTypeRepository.UpdateAsync(roomType);
                 await _roomTypeRepository.UpdateAsync(roomType);
                 TempData["SuccessMessage"] = "Room Type updated successfully!";
                 return RedirectToAction(nameof(List));

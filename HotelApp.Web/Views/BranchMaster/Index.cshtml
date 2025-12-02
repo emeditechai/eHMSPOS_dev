@@ -1,0 +1,88 @@
+@model IEnumerable<HotelApp.Web.Models.Branch>
+@{
+    ViewData["Title"] = "Branch Master";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-building"></i> Branch Master</h2>
+    <a asp-action="Create" class="btn-create">
+        <i class="fas fa-plus"></i> Add New Branch
+    </a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">
+        <i class="fas fa-check-circle"></i>
+        @TempData["SuccessMessage"]
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">
+        <i class="fas fa-exclamation-circle"></i>
+        @TempData["ErrorMessage"]
+    </div>
+}
+
+@if (Model.Any())
+{
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Branch Code</th>
+                    <th>Branch Name</th>
+                    <th>City</th>
+                    <th>State</th>
+                    <th>Country</th>
+                    <th>Pincode</th>
+                    <th>HO Branch</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var branch in Model)
+                {
+                    var statusBadgeClass = branch.IsActive ? "badge-available" : "badge-maintenance";
+                    var hoBadgeClass = branch.IsHOBranch ? "badge-active" : "badge-cleaning";
+                    <tr>
+                        <td><strong>@branch.BranchCode</strong></td>
+                        <td>@branch.BranchName</td>
+                        <td>@branch.City</td>
+                        <td>@branch.State</td>
+                        <td>@branch.Country</td>
+                        <td>@branch.Pincode</td>
+                        <td><span class="badge @hoBadgeClass">@(branch.IsHOBranch ? "HO" : "Branch")</span></td>
+                        <td><span class="badge @statusBadgeClass">@(branch.IsActive ? "Active" : "Inactive")</span></td>
+                        <td>
+                            <div class="action-buttons">
+                                <a asp-action="Details" asp-route-id="@branch.BranchID" class="btn-action btn-view" title="View Branch">
+                                    <i class="fas fa-eye"></i>
+                                    <span>View</span>
+                                </a>
+                                <a asp-action="Edit" asp-route-id="@branch.BranchID" class="btn-action btn-edit" title="Edit Branch">
+                                    <i class="fas fa-pen"></i>
+                                    <span>Edit</span>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="empty-state">
+        <i class="fas fa-building"></i>
+        <h3>No Branches Found</h3>
+        <p>Get started by adding your first branch</p>
+        <a asp-action="Create" class="btn-create">
+            <i class="fas fa-plus"></i> Add New Branch
+        </a>
+    </div>
+}

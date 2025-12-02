@@ -1,0 +1,85 @@
+@model HotelApp.Web.Models.User
+@{
+    ViewData["Title"] = "Delete User";
+    var userBranches = ViewBag.UserBranches as IEnumerable<HotelApp.Web.Models.Branch> ?? Enumerable.Empty<HotelApp.Web.Models.Branch>();
+    var roleName = Model.Role switch
+    {
+        1 => "Administrator",
+        2 => "Manager",
+        3 => "Receptionist",
+        4 => "Staff",
+        _ => "N/A"
+    };
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-exclamation-triangle"></i> Delete User</h2>
+    <a asp-action="Index" class="btn-cancel">
+        <i class="fas fa-arrow-left"></i> Back to List
+    </a>
+</div>
+
+<div class="alert alert-danger">
+    <i class="fas fa-exclamation-circle"></i>
+    <strong>Warning:</strong> Are you sure you want to deactivate this user? This action will prevent the user from logging in.
+</div>
+
+<div class="details-container">
+    <div class="details-grid">
+        <div class="detail-item">
+            <label>Username:</label>
+            <div class="detail-value">
+                <strong>@Model.Username</strong>
+            </div>
+        </div>
+        <div class="detail-item">
+            <label>Email:</label>
+            <div class="detail-value">@Model.Email</div>
+        </div>
+
+        <div class="detail-item">
+            <label>Full Name:</label>
+            <div class="detail-value">@(Model.FullName ?? $"{Model.FirstName} {Model.LastName}")</div>
+        </div>
+        <div class="detail-item">
+            <label>Role:</label>
+            <div class="detail-value">
+                <span class="badge badge-active">@roleName</span>
+            </div>
+        </div>
+
+        <div class="detail-item full-width">
+            <label>Assigned Branches:</label>
+            <div class="detail-value">
+                @if (userBranches.Any())
+                {
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        @foreach (var branch in userBranches)
+                        {
+                            <span class="badge badge-available" style="font-size: 13px;">
+                                @branch.BranchName (@branch.BranchCode)
+                            </span>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <span class="badge badge-maintenance">No branches assigned</span>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="form-actions">
+    <form asp-action="Delete" method="post" style="display: inline;">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+        <button type="submit" class="btn-delete" onclick="return confirm('Are you sure you want to deactivate this user?');" style="background: #dc3545; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer;">
+            <i class="fas fa-trash"></i> Deactivate User
+        </button>
+    </form>
+    <a asp-action="Index" class="btn-cancel">
+        <i class="fas fa-times-circle"></i> Cancel
+    </a>
+</div>

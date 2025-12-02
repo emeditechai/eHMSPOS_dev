@@ -9,6 +9,7 @@ namespace HotelApp.Web.Models
         public string Source { get; set; } = string.Empty;
         public int Adults { get; set; }
         public int Children { get; set; }
+        public int BranchID { get; set; }
     }
 
     public class BookingQuoteResult

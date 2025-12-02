@@ -28,12 +28,6 @@
             </div>
 
             <div class="form-group">
-                <label asp-for="BaseRate">Base Rate (₹) <span class="text-danger">*</span></label>
-                <input asp-for="BaseRate" type="number" step="0.01" min="0" placeholder="e.g., 2500" required />
-                <span asp-validation-for="BaseRate" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
                 <label asp-for="IsActive">Status</label>
                 <select asp-for="IsActive">
                     <option value="true">Active</option>
