@@ -273,6 +273,14 @@
       "PackagePath": "staticwebassets/lib/jquery/dist/jquery.slim.min.map"
     },
     {
+      "Id": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/uploads/guests/guest_05f58f4f-f155-458d-8e93-5cbd6813e02b.jpeg",
+      "PackagePath": "staticwebassets/uploads/guests/guest_05f58f4f-f155-458d-8e93-5cbd6813e02b.jpeg"
+    },
+    {
+      "Id": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/uploads/guests/guest_c79466ea-42d4-4e71-bcca-67846349db4f.jpg",
+      "PackagePath": "staticwebassets/uploads/guests/guest_c79466ea-42d4-4e71-bcca-67846349db4f.jpg"
+    },
+    {
       "Id": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/uploads/logos/logo_20251203224529.jpeg",
       "PackagePath": "staticwebassets/uploads/logos/logo_20251203224529.jpeg"
     },

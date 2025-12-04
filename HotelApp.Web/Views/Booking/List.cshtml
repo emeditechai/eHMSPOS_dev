@@ -54,6 +54,38 @@
             <p>Today's Check-ins</p>
         </div>
     </div>
+    
+    <div class="dashboard-card card-purple">
+        <div class="card-icon">
+            <i class="fas fa-sign-out-alt"></i>
+        </div>
+        <div class="card-content">
+            <h3>@Model.TodayCheckOutCount</h3>
+            <p>Today's Check-outs</p>
+        </div>
+    </div>
+</div>
+
+<!-- Date Filters -->
+<div class="filters-container">
+    <form method="get" asp-action="List" class="date-filter-form">
+        <div class="filter-group">
+            <label for="fromDate">From Check-In Date:</label>
+            <input type="date" id="fromDate" name="fromDate" class="form-control" value="@Model.FromDate?.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="filter-group">
+            <label for="toDate">To Check-In Date:</label>
+            <input type="date" id="toDate" name="toDate" class="form-control" value="@Model.ToDate?.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn-filter-apply">
+                <i class="fas fa-filter"></i> Apply Filter
+            </button>
+            <a asp-action="List" class="btn-filter-clear">
+                <i class="fas fa-times"></i> Clear
+            </a>
+        </div>
+    </form>
 </div>
 
 @if (Model.Bookings.Any())
@@ -106,6 +138,18 @@
                         <td>
                             <span class="badge badge-available">@booking.Status</span>
                             <div class="subtext">@booking.PaymentStatus</div>
+                            @if (booking.ActualCheckOutDate.HasValue)
+                            {
+                                <div class="subtext" style="margin-top: 4px; color: #28a745; font-weight: 600;">
+                                    <i class="fas fa-check-circle" style="font-size: 10px;"></i> Checked Out: @booking.ActualCheckOutDate.Value.ToString("dd MMM yyyy hh:mm tt")
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="subtext" style="margin-top: 4px; color: #dc3545; font-weight: 500;">
+                                    <i class="fas fa-calendar-check" style="font-size: 10px;"></i> Out: @booking.CheckOutDate.ToString("dd MMM yyyy")
+                                </div>
+                            }
                         </td>
                         <td>@booking.CreatedDate.ToString("dd/MM/yyyy")<br/><span class="subtext">@booking.CreatedDate.ToString("hh:mm tt")</span></td>
                         <td>
@@ -205,6 +249,95 @@ else
 
     .card-orange .card-icon {
         background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .card-purple .card-icon {
+        background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
+    }
+
+    /* Date Filters */
+    .filters-container {
+        background: white;
+        border-radius: 12px;
+        padding: 20px 25px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .date-filter-form {
+        display: flex;
+        align-items: flex-end;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        min-width: 180px;
+    }
+
+    .filter-group label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .filter-group .form-control {
+        padding: 8px 12px;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .filter-group .form-control:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .btn-filter-apply, .btn-filter-clear {
+        padding: 8px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        border: none;
+    }
+
+    .btn-filter-apply {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .btn-filter-apply:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-filter-clear {
+        background: white;
+        color: #6b7280;
+        border: 2px solid #e5e7eb;
+    }
+
+    .btn-filter-clear:hover {
+        background: #f9fafb;
+        border-color: #d1d5db;
+        color: #374151;
     }
 
     .dashboard-card .card-content h3 {

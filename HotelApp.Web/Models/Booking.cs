@@ -13,6 +13,7 @@ namespace HotelApp.Web.Models
         public string CustomerType { get; set; } = string.Empty;
         public DateTime CheckInDate { get; set; }
         public DateTime CheckOutDate { get; set; }
+        public DateTime? ActualCheckOutDate { get; set; }
         public int Nights { get; set; }
         public int RoomTypeId { get; set; }
         public int? RoomId { get; set; }
@@ -56,6 +57,17 @@ namespace HotelApp.Web.Models
         public string? Phone { get; set; }
         public string? GuestType { get; set; }
         public bool IsPrimary { get; set; }
+        public string? RelationshipToPrimary { get; set; }
+        public int? Age { get; set; }
+        public DateTime? DateOfBirth { get; set; }
+        public string? IdentityType { get; set; }
+        public string? IdentityNumber { get; set; }
+        public string? DocumentPath { get; set; }
+        public DateTime CreatedDate { get; set; }
+        public int? CreatedBy { get; set; }
+        public bool IsActive { get; set; } = true;
+        public DateTime? ModifiedDate { get; set; }
+        public int? ModifiedBy { get; set; }
     }
 
     public class BookingPayment

@@ -314,20 +314,24 @@
 }
 
 .calendar-nav button {
-    background: none;
-    border: 1px solid #ddd;
-    width: 30px;
-    height: 30px;
-    border-radius: 5px;
+    background: white;
+    border: 2px solid var(--info);
+    color: var(--info);
+    width: 35px;
+    height: 35px;
+    border-radius: 6px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.3s;
+    font-size: 14px;
 }
 
 .calendar-nav button:hover {
-    background: var(--light);
+    background: var(--info);
+    color: white;
+    transform: scale(1.05);
 }
 
 .calendar-grid {

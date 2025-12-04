@@ -262,6 +262,34 @@
         font-size: 0.8rem;
         font-weight: 600;
     }
+
+    .btn-icon {
+        background: transparent;
+        border: 1px solid #d1d5db;
+        color: #6b7280;
+        padding: 0.375rem 0.5rem;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.875rem;
+    }
+
+    .btn-icon:hover {
+        background: #f3f4f6;
+        border-color: #9ca3af;
+        color: #374151;
+    }
+
+    .btn-icon-danger {
+        color: #dc2626;
+        border-color: #fca5a5;
+    }
+
+    .btn-icon-danger:hover {
+        background: #fee2e2;
+        border-color: #dc2626;
+        color: #991b1b;
+    }
     
     .audit-timeline {
         position: relative;
@@ -536,32 +564,71 @@
             <i class="fas fa-users"></i>
         </div>
         <h3 class="section-title">Additional Guests</h3>
+        <button type="button" class="btn btn-primary" onclick="showAddGuestModal()" style="margin-left: auto;">
+            <i class="fas fa-user-plus"></i> Add Guest
+        </button>
     </div>
     @if (Model.Guests.Any())
     {
         <div class="guest-list">
             @foreach (var guest in Model.Guests)
             {
-                <div class="guest-item">
-                    <div class="guest-avatar">
-                        @(guest.FullName?.Substring(0, 1).ToUpper() ?? "G")
+                <div class="guest-item" style="flex-direction: column; align-items: flex-start;">
+                    <div style="display: flex; align-items: center; width: 100%; margin-bottom: 0.5rem;">
+                        <div class="guest-avatar">
+                            @(guest.FullName?.Substring(0, 1).ToUpper() ?? "G")
+                        </div>
+                        <div class="guest-info" style="flex: 1;">
+                            <div class="guest-name">
+                                @guest.FullName
+                                @if (!string.IsNullOrWhiteSpace(guest.RelationshipToPrimary))
+                                {
+                                    <span style="color: #6b7280; font-weight: normal; font-size: 0.875rem;">(@guest.RelationshipToPrimary)</span>
+                                }
+                            </div>
+                            <div class="guest-details">
+                                @if (!string.IsNullOrWhiteSpace(guest.Email))
+                                {
+                                    <span><i class="fas fa-envelope"></i> @guest.Email</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(guest.Phone))
+                                {
+                                    <span style="margin-left: 1rem;"><i class="fas fa-phone"></i> @guest.Phone</span>
+                                }
+                                @if (guest.Age.HasValue)
+                                {
+                                    <span style="margin-left: 1rem;"><i class="fas fa-birthday-cake"></i> @guest.Age years</span>
+                                }
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(guest.GuestType))
+                        {
+                            <span class="guest-type-badge">@guest.GuestType</span>
+                        }
+                        @if (!guest.IsPrimary)
+                        {
+                            <div style="margin-left: 0.5rem; display: flex; gap: 0.5rem;">
+                                <button type="button" class="btn-icon" onclick="showEditGuestModal(@guest.Id, '@Html.Raw(guest.FullName?.Replace("'", "\\'"))', '@guest.Email', '@guest.Phone', '@guest.GuestType', '@guest.RelationshipToPrimary', @(guest.Age?.ToString() ?? "null"), '@(guest.DateOfBirth?.ToString("yyyy-MM-dd") ?? "")', '@guest.IdentityType', '@guest.IdentityNumber')" title="Edit Guest">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="btn-icon btn-icon-danger" onclick="deleteGuest(@guest.Id, '@Html.Raw(guest.FullName?.Replace("'", "\\'"))')" title="Remove Guest">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        }
                     </div>
-                    <div class="guest-info">
-                        <div class="guest-name">@guest.FullName</div>
-                        <div class="guest-details">
-                            @if (!string.IsNullOrWhiteSpace(guest.Email))
+                    @if (!string.IsNullOrWhiteSpace(guest.IdentityType) || !string.IsNullOrWhiteSpace(guest.IdentityNumber))
+                    {
+                        <div style="padding-left: 3.5rem; color: #6b7280; font-size: 0.875rem;">
+                            @if (!string.IsNullOrWhiteSpace(guest.IdentityType))
                             {
-                                <span><i class="fas fa-envelope"></i> @guest.Email</span>
+                                <span><i class="fas fa-id-card"></i> @guest.IdentityType</span>
                             }
-                            @if (!string.IsNullOrWhiteSpace(guest.Phone))
+                            @if (!string.IsNullOrWhiteSpace(guest.IdentityNumber))
                             {
-                                <span style="margin-left: 1rem;"><i class="fas fa-phone"></i> @guest.Phone</span>
+                                <span style="margin-left: 1rem;">@guest.IdentityNumber</span>
                             }
                         </div>
-                    </div>
-                    @if (!string.IsNullOrWhiteSpace(guest.GuestType))
-                    {
-                        <span class="guest-type-badge">@guest.GuestType</span>
                     }
                 </div>
             }
@@ -878,6 +945,224 @@
     </div>
 </div>
 
+<!-- Add Guest Modal -->
+<div id="addGuestModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-user-plus"></i> Add Additional Guest</h3>
+            <button type="button" class="close-btn" onclick="closeAddGuestModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="addGuestForm">
+            <input type="hidden" name="bookingNumber" value="@Model.BookingNumber" />
+            
+            <div class="form-group">
+                <label for="guestFullName">Full Name *</label>
+                <input type="text" id="guestFullName" name="fullName" class="form-control" 
+                       placeholder="Enter guest full name" required />
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="relationshipToPrimary">Relationship to Primary Guest *</label>
+                    <select id="relationshipToPrimary" name="relationshipToPrimary" class="form-control" required>
+                        <option value="">Select Relationship</option>
+                        <option value="Spouse">Spouse</option>
+                        <option value="Child">Child</option>
+                        <option value="Parent">Parent</option>
+                        <option value="Sibling">Sibling</option>
+                        <option value="Friend">Friend</option>
+                        <option value="Colleague">Colleague</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="guestType">Guest Type *</label>
+                    <select id="guestType" name="guestType" class="form-control" required>
+                        <option value="">Select Type</option>
+                        <option value="Adult">Adult</option>
+                        <option value="Child">Child</option>
+                        <option value="Infant">Infant</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="guestEmail">Email</label>
+                    <input type="email" id="guestEmail" name="email" class="form-control" 
+                           placeholder="guest@example.com" />
+                </div>
+
+                <div class="form-group">
+                    <label for="guestPhone">Phone</label>
+                    <input type="tel" id="guestPhone" name="phone" class="form-control" 
+                           placeholder="Enter phone number" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="age">Age</label>
+                    <input type="number" id="age" name="age" class="form-control" 
+                           placeholder="Enter age" min="0" max="150" />
+                </div>
+
+                <div class="form-group">
+                    <label for="dateOfBirth">Date of Birth</label>
+                    <input type="date" id="dateOfBirth" name="dateOfBirth" class="form-control" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="identityType">Identity Type</label>
+                    <select id="identityType" name="identityType" class="form-control">
+                        <option value="">Select ID Type</option>
+                        <option value="Passport">Passport</option>
+                        <option value="Aadhar Card">Aadhar Card</option>
+                        <option value="Driving License">Driving License</option>
+                        <option value="Voter ID">Voter ID</option>
+                        <option value="PAN Card">PAN Card</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="identityNumber">Identity Number</label>
+                    <input type="text" id="identityNumber" name="identityNumber" class="form-control" 
+                           placeholder="Enter ID number" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="documentUpload">Upload Document (Optional)</label>
+                <input type="file" id="documentUpload" name="document" class="form-control" 
+                       accept="image/*,.pdf" />
+                <small style="color: #6b7280; font-size: 0.875rem;">Accepted: Images, PDF (Max 5MB)</small>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeAddGuestModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-user-plus"></i> Add Guest
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Guest Modal -->
+<div id="editGuestModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-edit"></i> Edit Guest</h3>
+            <button type="button" class="close-btn" onclick="closeEditGuestModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="editGuestForm">
+            <input type="hidden" id="editGuestId" name="guestId" />
+            
+            <div class="form-group">
+                <label for="editGuestFullName">Full Name *</label>
+                <input type="text" id="editGuestFullName" name="fullName" class="form-control" 
+                       placeholder="Enter guest full name" required />
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="editRelationshipToPrimary">Relationship to Primary Guest *</label>
+                    <select id="editRelationshipToPrimary" name="relationshipToPrimary" class="form-control" required>
+                        <option value="">Select Relationship</option>
+                        <option value="Spouse">Spouse</option>
+                        <option value="Child">Child</option>
+                        <option value="Parent">Parent</option>
+                        <option value="Sibling">Sibling</option>
+                        <option value="Friend">Friend</option>
+                        <option value="Colleague">Colleague</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="editGuestType">Guest Type *</label>
+                    <select id="editGuestType" name="guestType" class="form-control" required>
+                        <option value="">Select Type</option>
+                        <option value="Adult">Adult</option>
+                        <option value="Child">Child</option>
+                        <option value="Infant">Infant</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="editGuestEmail">Email</label>
+                    <input type="email" id="editGuestEmail" name="email" class="form-control" 
+                           placeholder="guest@example.com" />
+                </div>
+
+                <div class="form-group">
+                    <label for="editGuestPhone">Phone</label>
+                    <input type="tel" id="editGuestPhone" name="phone" class="form-control" 
+                           placeholder="Enter phone number" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="editAge">Age</label>
+                    <input type="number" id="editAge" name="age" class="form-control" 
+                           placeholder="Enter age" min="0" max="150" />
+                </div>
+
+                <div class="form-group">
+                    <label for="editDateOfBirth">Date of Birth</label>
+                    <input type="date" id="editDateOfBirth" name="dateOfBirth" class="form-control" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="editIdentityType">Identity Type</label>
+                    <select id="editIdentityType" name="identityType" class="form-control">
+                        <option value="">Select ID Type</option>
+                        <option value="Passport">Passport</option>
+                        <option value="Aadhar Card">Aadhar Card</option>
+                        <option value="Driving License">Driving License</option>
+                        <option value="Voter ID">Voter ID</option>
+                        <option value="PAN Card">PAN Card</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="editIdentityNumber">Identity Number</label>
+                    <input type="text" id="editIdentityNumber" name="identityNumber" class="form-control" 
+                           placeholder="Enter ID number" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="editDocumentUpload">Upload Document (Optional)</label>
+                <input type="file" id="editDocumentUpload" name="document" class="form-control" 
+                       accept="image/*,.pdf" />
+                <small style="color: #6b7280; font-size: 0.875rem;">Accepted: Images, PDF (Max 5MB)</small>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeEditGuestModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Update Guest
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <style>
     .modal {
         position: fixed;
@@ -900,8 +1185,10 @@
         width: 90%;
         max-width: 500px;
         max-height: 90vh;
-        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
         animation: slideIn 0.3s ease-out;
+        overflow: hidden;
     }
 
     @@keyframes slideIn {
@@ -919,32 +1206,51 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 1.5rem;
+        padding: 1.25rem 1.5rem;
         border-bottom: 1px solid #e5e7eb;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         border-radius: 12px 12px 0 0;
+        position: sticky;
+        top: 0;
+        z-index: 10;
     }
 
     .modal-header h3 {
         margin: 0;
-        font-size: 1.25rem;
+        font-size: 1.125rem;
         font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .modal-header h3 i {
+        font-size: 1rem;
     }
 
     .close-btn {
-        background: none;
+        background: rgba(255, 255, 255, 0.2);
         border: none;
-        font-size: 1.8rem;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         color: white;
         cursor: pointer;
-        line-height: 1;
-        opacity: 0.8;
-        transition: opacity 0.2s;
+        transition: all 0.2s;
+        flex-shrink: 0;
     }
 
     .close-btn:hover {
-        opacity: 1;
+        background: rgba(255, 255, 255, 0.3);
+        transform: scale(1.05);
+    }
+
+    .close-btn i {
+        font-size: 1.125rem;
     }
 
     .modal-footer {
@@ -954,10 +1260,15 @@
         padding: 1.25rem 1.5rem;
         background: #f9fafb;
         border-radius: 0 0 12px 12px;
+        border-top: 1px solid #e5e7eb;
+        position: sticky;
+        bottom: 0;
     }
 
-    #paymentForm {
+    #paymentForm, #addGuestForm, #editGuestForm {
         padding: 1.5rem;
+        max-height: calc(90vh - 140px);
+        overflow-y: auto;
     }
 
     .form-group {
@@ -970,6 +1281,18 @@
         margin-bottom: 0.5rem;
         color: #374151;
         font-size: 0.9rem;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    @@media (max-width: 640px) {
+        .form-row {
+            grid-template-columns: 1fr;
+        }
     }
 
     .form-control {
@@ -1215,6 +1538,133 @@
             this.value = this.value.replace(/\D/g, '').slice(0, 4);
         });
 
+        // Handle Add Guest Form Submission
+        const addGuestForm = document.getElementById('addGuestForm');
+        if (addGuestForm) {
+            addGuestForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const formData = new FormData(this);
+                
+                // Convert FormData to object (excluding file for now)
+                const data = {};
+                for (let [key, value] of formData.entries()) {
+                    if (key !== 'document') {
+                        // Convert empty strings to null, and parse numeric values
+                        if (value === '') {
+                            data[key] = null;
+                        } else if (key === 'age' && value) {
+                            data[key] = parseInt(value);
+                        } else {
+                            data[key] = value;
+                        }
+                    }
+                }
+
+                console.log('Form data to send:', data);
+
+                // Handle file upload if present
+                const fileInput = document.getElementById('documentUpload');
+                if (fileInput && fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    if (file.size > 5 * 1024 * 1024) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'File Too Large',
+                            text: 'Document size should not exceed 5MB.',
+                            confirmButtonColor: '#667eea'
+                        });
+                        return;
+                    }
+                    
+                    // Upload file first
+                    try {
+                        const uploadFormData = new FormData();
+                        uploadFormData.append('file', file);
+                        
+                        const uploadResponse = await fetch('@Url.Action("UploadGuestDocument", "Booking")', {
+                            method: 'POST',
+                            body: uploadFormData
+                        });
+                        
+                        const uploadResult = await uploadResponse.json();
+                        
+                        if (uploadResult.success) {
+                            data.documentPath = uploadResult.path;
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Upload Failed',
+                                text: uploadResult.message || 'Failed to upload document.',
+                                confirmButtonColor: '#667eea'
+                            });
+                            return;
+                        }
+                    } catch (uploadError) {
+                        console.error('File upload error:', uploadError);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Upload Error',
+                            text: 'Failed to upload document. Please try again.',
+                            confirmButtonColor: '#667eea'
+                        });
+                        return;
+                    }
+                }
+
+                try {
+                    const response = await fetch('@Url.Action("AddGuest", "Booking")', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(data)
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: result.message,
+                            confirmButtonColor: '#667eea',
+                            timer: 2000,
+                            timerProgressBar: true
+                        }).then(() => {
+                            location.reload();
+                        });
+                        window.closeAddGuestModal();
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: result.message,
+                            confirmButtonColor: '#667eea'
+                        });
+                    }
+                } catch (error) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'An error occurred while adding guest. Please try again.',
+                        confirmButtonColor: '#667eea'
+                    });
+                    console.error('Add guest error:', error);
+                }
+            });
+        }
+
+        // Close modal when clicking outside
+        const addGuestModal = document.getElementById('addGuestModal');
+        if (addGuestModal) {
+            addGuestModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    window.closeAddGuestModal();
+                }
+            });
+        }
+
         // Show booking created confirmation
         @if (TempData["BookingCreated"] != null && TempData["BookingCreated"]?.ToString() == "true")
         {
@@ -1233,5 +1683,269 @@
             </text>
         }
     });
+
+    // Add Guest Modal Functions (Global scope for onclick)
+    window.showAddGuestModal = function() {
+        const modal = document.getElementById('addGuestModal');
+        const form = document.getElementById('addGuestForm');
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+        if (form) {
+            form.reset();
+        }
+    };
+
+    window.closeAddGuestModal = function() {
+        const modal = document.getElementById('addGuestModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    };
+
+    // Edit Guest Modal Functions
+    window.showEditGuestModal = function(guestId, fullName, email, phone, guestType, relationship, age, dob, identityType, identityNumber) {
+        const modal = document.getElementById('editGuestModal');
+        if (modal) {
+            document.getElementById('editGuestId').value = guestId;
+            document.getElementById('editGuestFullName').value = fullName || '';
+            document.getElementById('editGuestEmail').value = email || '';
+            document.getElementById('editGuestPhone').value = phone || '';
+            document.getElementById('editGuestType').value = guestType || '';
+            document.getElementById('editRelationshipToPrimary').value = relationship || '';
+            document.getElementById('editAge').value = age || '';
+            document.getElementById('editDateOfBirth').value = dob || '';
+            document.getElementById('editIdentityType').value = identityType || '';
+            document.getElementById('editIdentityNumber').value = identityNumber || '';
+            modal.style.display = 'flex';
+        }
+    };
+
+    window.closeEditGuestModal = function() {
+        const modal = document.getElementById('editGuestModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    };
+
+    // Delete Guest Function
+    window.deleteGuest = async function(guestId, guestName) {
+        const result = await Swal.fire({
+            title: 'Remove Guest?',
+            text: `Are you sure you want to remove ${guestName} from this booking?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Yes, remove',
+            cancelButtonText: 'Cancel'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch('@Url.Action("DeleteGuest", "Booking")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ guestId: guestId })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Removed!',
+                        text: data.message,
+                        confirmButtonColor: '#667eea',
+                        timer: 2000,
+                        timerProgressBar: true
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message,
+                        confirmButtonColor: '#667eea'
+                    });
+                }
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'An error occurred while removing the guest.',
+                    confirmButtonColor: '#667eea'
+                });
+                console.error('Delete guest error:', error);
+            }
+        }
+    };
+
+    // Auto-calculate age from date of birth (Add Guest)
+    const dobInput = document.getElementById('dateOfBirth');
+    const ageInput = document.getElementById('age');
+    if (dobInput && ageInput) {
+        dobInput.addEventListener('change', function() {
+            if (this.value) {
+                const dob = new Date(this.value);
+                const today = new Date();
+                let age = today.getFullYear() - dob.getFullYear();
+                const monthDiff = today.getMonth() - dob.getMonth();
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+                    age--;
+                }
+                ageInput.value = age >= 0 ? age : '';
+            }
+        });
+    }
+
+    // Auto-calculate age from date of birth (Edit Guest)
+    const editDobInput = document.getElementById('editDateOfBirth');
+    const editAgeInput = document.getElementById('editAge');
+    if (editDobInput && editAgeInput) {
+        editDobInput.addEventListener('change', function() {
+            if (this.value) {
+                const dob = new Date(this.value);
+                const today = new Date();
+                let age = today.getFullYear() - dob.getFullYear();
+                const monthDiff = today.getMonth() - dob.getMonth();
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+                    age--;
+                }
+                editAgeInput.value = age >= 0 ? age : '';
+            }
+        });
+    }
+
+    // Handle Edit Guest Form Submission
+    const editGuestForm = document.getElementById('editGuestForm');
+    if (editGuestForm) {
+        editGuestForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            
+            // Convert FormData to object (excluding file for now)
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                if (key !== 'document') {
+                    if (value === '') {
+                        data[key] = null;
+                    } else if (key === 'age' && value) {
+                        data[key] = parseInt(value);
+                    } else if (key === 'guestId') {
+                        data[key] = parseInt(value);
+                    } else {
+                        data[key] = value;
+                    }
+                }
+            }
+
+            // Handle file upload if present
+            const fileInput = document.getElementById('editDocumentUpload');
+            if (fileInput && fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                if (file.size > 5 * 1024 * 1024) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'File Too Large',
+                        text: 'Document size should not exceed 5MB.',
+                        confirmButtonColor: '#667eea'
+                    });
+                    return;
+                }
+                
+                // Upload file first
+                try {
+                    const uploadFormData = new FormData();
+                    uploadFormData.append('file', file);
+                    
+                    const uploadResponse = await fetch('@Url.Action("UploadGuestDocument", "Booking")', {
+                        method: 'POST',
+                        body: uploadFormData
+                    });
+                    
+                    const uploadResult = await uploadResponse.json();
+                    
+                    if (uploadResult.success) {
+                        data.documentPath = uploadResult.path;
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Upload Failed',
+                            text: uploadResult.message || 'Failed to upload document.',
+                            confirmButtonColor: '#667eea'
+                        });
+                        return;
+                    }
+                } catch (uploadError) {
+                    console.error('File upload error:', uploadError);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Upload Error',
+                        text: 'Failed to upload document. Please try again.',
+                        confirmButtonColor: '#667eea'
+                    });
+                    return;
+                }
+            }
+
+            console.log('Edit guest data to send:', data);
+
+            try {
+                const response = await fetch('@Url.Action("UpdateGuest", "Booking")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: result.message,
+                        confirmButtonColor: '#667eea',
+                        timer: 2000,
+                        timerProgressBar: true
+                    }).then(() => {
+                        location.reload();
+                    });
+                    window.closeEditGuestModal();
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: result.message,
+                        confirmButtonColor: '#667eea'
+                    });
+                }
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'An error occurred while updating guest. Please try again.',
+                    confirmButtonColor: '#667eea'
+                });
+                console.error('Edit guest error:', error);
+            }
+        });
+    }
+
+    // Close modals on clicking outside
+    const editGuestModal = document.getElementById('editGuestModal');
+    if (editGuestModal) {
+        editGuestModal.addEventListener('click', function(e) {
+            if (e.target === editGuestModal) {
+                window.closeEditGuestModal();
+            }
+        });
+    }
 </script>
 }

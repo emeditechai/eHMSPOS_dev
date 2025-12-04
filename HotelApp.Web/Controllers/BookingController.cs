@@ -27,23 +27,30 @@ namespace HotelApp.Web.Controllers
         private readonly IRoomRepository _roomRepository;
         private readonly IGuestRepository _guestRepository;
         private readonly IBankRepository _bankRepository;
+        private readonly IHotelSettingsRepository _hotelSettingsRepository;
 
-        public BookingController(IBookingRepository bookingRepository, IRoomRepository roomRepository, IGuestRepository guestRepository, IBankRepository bankRepository)
+        public BookingController(IBookingRepository bookingRepository, IRoomRepository roomRepository, IGuestRepository guestRepository, IBankRepository bankRepository, IHotelSettingsRepository hotelSettingsRepository)
         {
             _bookingRepository = bookingRepository;
             _roomRepository = roomRepository;
             _guestRepository = guestRepository;
             _bankRepository = bankRepository;
+            _hotelSettingsRepository = hotelSettingsRepository;
         }
 
-        public async Task<IActionResult> List()
+        public async Task<IActionResult> List(DateTime? fromDate, DateTime? toDate)
         {
             var viewModel = new BookingDashboardViewModel
             {
                 TodayBookingCount = await _bookingRepository.GetTodayBookingCountAsync(),
                 TodayAdvanceAmount = await _bookingRepository.GetTodayAdvanceAmountAsync(),
                 TodayCheckInCount = await _bookingRepository.GetTodayCheckInCountAsync(),
-                Bookings = await _bookingRepository.GetRecentByBranchAsync(CurrentBranchID)
+                TodayCheckOutCount = await _bookingRepository.GetTodayCheckOutCountAsync(),
+                FromDate = fromDate,
+                ToDate = toDate,
+                Bookings = (fromDate.HasValue || toDate.HasValue) 
+                    ? await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, fromDate, toDate)
+                    : await _bookingRepository.GetRecentByBranchAsync(CurrentBranchID)
             };
             return View(viewModel);
         }
@@ -255,6 +262,240 @@ namespace HotelApp.Web.Controllers
                     Status = "Reserved"
                 };
             }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UploadGuestDocument(IFormFile file)
+        {
+            try
+            {
+                if (file == null || file.Length == 0)
+                {
+                    return Json(new { success = false, message = "No file uploaded." });
+                }
+
+                // Validate file size (5MB max)
+                if (file.Length > 5 * 1024 * 1024)
+                {
+                    return Json(new { success = false, message = "File size should not exceed 5MB." });
+                }
+
+                // Validate file type
+                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".pdf" };
+                var extension = Path.GetExtension(file.FileName).ToLower();
+                if (!allowedExtensions.Contains(extension))
+                {
+                    return Json(new { success = false, message = "Only images (JPG, PNG, GIF) and PDF files are allowed." });
+                }
+
+                // Generate unique filename
+                var fileName = $"guest_{Guid.NewGuid()}{extension}";
+                var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "guests");
+                
+                // Create directory if it doesn't exist
+                if (!Directory.Exists(uploadsFolder))
+                {
+                    Directory.CreateDirectory(uploadsFolder);
+                }
+
+                var filePath = Path.Combine(uploadsFolder, fileName);
+                
+                // Save file
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await file.CopyToAsync(stream);
+                }
+
+                // Return relative path for database storage
+                var relativePath = $"/uploads/guests/{fileName}";
+                return Json(new { success = true, path = relativePath });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error uploading file: {ex.Message}" });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddGuest([FromBody] AddGuestRequest request)
+        {
+            try
+            {
+                Console.WriteLine($"=== AddGuest Request Received ===");
+                Console.WriteLine($"Request is null: {request == null}");
+                
+                if (request == null)
+                {
+                    return Json(new { success = false, message = "Invalid request data." });
+                }
+                
+                Console.WriteLine($"BookingNumber: {request.BookingNumber}");
+                Console.WriteLine($"FullName: {request.FullName}");
+                Console.WriteLine($"Email: {request.Email}");
+                Console.WriteLine($"Phone: {request.Phone}");
+                Console.WriteLine($"GuestType: {request.GuestType}");
+                Console.WriteLine($"RelationshipToPrimary: {request.RelationshipToPrimary}");
+                Console.WriteLine($"Age: {request.Age}");
+                Console.WriteLine($"DateOfBirth: {request.DateOfBirth}");
+                
+                if (string.IsNullOrWhiteSpace(request.BookingNumber) || string.IsNullOrWhiteSpace(request.FullName))
+                {
+                    return Json(new { success = false, message = "Booking number and guest name are required." });
+                }
+
+                var booking = await _bookingRepository.GetByBookingNumberAsync(request.BookingNumber);
+                if (booking == null)
+                {
+                    return Json(new { success = false, message = "Booking not found." });
+                }
+
+                var guest = new BookingGuest
+                {
+                    BookingId = booking.Id,
+                    FullName = request.FullName.Trim(),
+                    Email = request.Email?.Trim(),
+                    Phone = request.Phone?.Trim(),
+                    GuestType = request.GuestType?.Trim(),
+                    IsPrimary = false,
+                    RelationshipToPrimary = request.RelationshipToPrimary?.Trim(),
+                    Age = request.Age,
+                    DateOfBirth = request.DateOfBirth,
+                    IdentityType = request.IdentityType?.Trim(),
+                    IdentityNumber = request.IdentityNumber?.Trim(),
+                    DocumentPath = request.DocumentPath?.Trim(),
+                    CreatedBy = GetCurrentUserId()
+                };
+
+                var branchId = GetCurrentBranchID();
+                var success = await _bookingRepository.AddGuestToBookingAsync(guest, branchId);
+
+                if (success)
+                {
+                    await _bookingRepository.AddAuditLogAsync(
+                        booking.Id,
+                        request.BookingNumber,
+                        "Guest Added",
+                        $"Additional guest added: {request.FullName} ({guest.RelationshipToPrimary ?? "Guest"})",
+                        null,
+                        request.FullName,
+                        GetCurrentUserId()
+                    );
+
+                    return Json(new { success = true, message = "Guest added successfully!" });
+                }
+
+                return Json(new { success = false, message = "Failed to add guest." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error: {ex.Message}" });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateGuest([FromBody] UpdateGuestRequest request)
+        {
+            try
+            {
+                if (request == null || request.GuestId <= 0)
+                {
+                    return Json(new { success = false, message = "Invalid request data." });
+                }
+
+                if (string.IsNullOrWhiteSpace(request.FullName))
+                {
+                    return Json(new { success = false, message = "Guest name is required." });
+                }
+
+                var guest = new BookingGuest
+                {
+                    Id = request.GuestId,
+                    FullName = request.FullName.Trim(),
+                    Email = request.Email?.Trim(),
+                    Phone = request.Phone?.Trim(),
+                    GuestType = request.GuestType?.Trim(),
+                    RelationshipToPrimary = request.RelationshipToPrimary?.Trim(),
+                    Age = request.Age,
+                    DateOfBirth = request.DateOfBirth,
+                    IdentityType = request.IdentityType?.Trim(),
+                    IdentityNumber = request.IdentityNumber?.Trim(),
+                    DocumentPath = request.DocumentPath?.Trim(),
+                    ModifiedBy = GetCurrentUserId()
+                };
+
+                var success = await _bookingRepository.UpdateGuestAsync(guest);
+
+                if (success)
+                {
+                    return Json(new { success = true, message = "Guest updated successfully!" });
+                }
+
+                return Json(new { success = false, message = "Failed to update guest." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error: {ex.Message}" });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> DeleteGuest([FromBody] DeleteGuestRequest request)
+        {
+            try
+            {
+                if (request == null || request.GuestId <= 0)
+                {
+                    return Json(new { success = false, message = "Invalid request data." });
+                }
+
+                var success = await _bookingRepository.DeleteGuestAsync(request.GuestId, GetCurrentUserId() ?? 0);
+
+                if (success)
+                {
+                    return Json(new { success = true, message = "Guest removed successfully!" });
+                }
+
+                return Json(new { success = false, message = "Failed to remove guest. Guest may be the primary guest or already deleted." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error: {ex.Message}" });
+            }
+        }
+
+        public class AddGuestRequest
+        {
+            public string? BookingNumber { get; set; }
+            public string? FullName { get; set; }
+            public string? Email { get; set; }
+            public string? Phone { get; set; }
+            public string? GuestType { get; set; }
+            public string? RelationshipToPrimary { get; set; }
+            public int? Age { get; set; }
+            public DateTime? DateOfBirth { get; set; }
+            public string? IdentityType { get; set; }
+            public string? IdentityNumber { get; set; }
+            public string? DocumentPath { get; set; }
+        }
+
+        public class UpdateGuestRequest
+        {
+            public int GuestId { get; set; }
+            public string? FullName { get; set; }
+            public string? Email { get; set; }
+            public string? Phone { get; set; }
+            public string? GuestType { get; set; }
+            public string? RelationshipToPrimary { get; set; }
+            public int? Age { get; set; }
+            public DateTime? DateOfBirth { get; set; }
+            public string? IdentityType { get; set; }
+            public string? IdentityNumber { get; set; }
+            public string? DocumentPath { get; set; }
+        }
+
+        public class DeleteGuestRequest
+        {
+            public int GuestId { get; set; }
         }
 
         [HttpPost]

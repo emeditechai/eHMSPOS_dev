@@ -40,23 +40,31 @@ namespace HotelApp.Web.Repositories
         public async Task<IEnumerable<Room>> GetAllByBranchAsync(int branchId)
         {
             var sql = @"
-                SELECT r.*, f.FloorName AS FloorName,
-                       rt.Id AS RoomTypeId, rt.TypeName, rt.Description, rt.BaseRate, rt.MaxOccupancy, rt.Amenities
+                SELECT r.Id, r.RoomNumber, r.RoomTypeId, r.Floor, r.Status, r.Notes, 
+                       r.BranchID, r.IsActive, r.CreatedDate, r.LastModifiedDate,
+                       f.FloorName AS FloorName,
+                       rt.Id AS RoomTypeId, rt.TypeName, rt.Description, rt.BaseRate, rt.MaxOccupancy, rt.Amenities,
+                       b.CheckOutDate, b.BookingNumber, b.BalanceAmount
                 FROM Rooms r
                 INNER JOIN RoomTypes rt ON r.RoomTypeId = rt.Id
                 LEFT JOIN Floors f ON r.Floor = f.Id
+                LEFT JOIN Bookings b ON r.Id = b.RoomId 
+                    AND b.Status IN ('Confirmed', 'CheckedIn')
                 WHERE r.IsActive = 1 AND r.BranchID = @BranchId
                 ORDER BY r.RoomNumber";
 
-            var rooms = await _dbConnection.QueryAsync<Room, RoomType, Room>(
+            var rooms = await _dbConnection.QueryAsync<Room, RoomType, DateTime?, string, decimal?, Room>(
                 sql,
-                (room, roomType) =>
+                (room, roomType, checkOutDate, bookingNumber, balanceAmount) =>
                 {
                     room.RoomType = roomType;
+                    room.CheckOutDate = checkOutDate;
+                    room.BookingNumber = bookingNumber;
+                    room.BalanceAmount = balanceAmount;
                     return room;
                 },
                 new { BranchId = branchId },
-                splitOn: "TypeName"
+                splitOn: "RoomTypeId,CheckOutDate,BookingNumber,BalanceAmount"
             );
 
             return rooms;
@@ -197,6 +205,100 @@ namespace HotelApp.Web.Repositories
             );
 
             return conflictCount == 0;
+        }
+
+        public async Task<Dictionary<string, int>> GetRoomStatusCountsAsync(int branchId)
+        {
+            var sql = @"
+                SELECT Status, COUNT(*) as Count
+                FROM Rooms
+                WHERE IsActive = 1 AND BranchID = @BranchId
+                GROUP BY Status";
+
+            var results = await _dbConnection.QueryAsync<(string Status, int Count)>(sql, new { BranchId = branchId });
+            
+            var statusCounts = new Dictionary<string, int>
+            {
+                { "Available", 0 },
+                { "Occupied", 0 },
+                { "Maintenance", 0 },
+                { "Cleaning", 0 }
+            };
+
+            foreach (var (status, count) in results)
+            {
+                if (statusCounts.ContainsKey(status))
+                {
+                    statusCounts[status] = count;
+                }
+            }
+
+            return statusCounts;
+        }
+
+        public async Task<Dictionary<string, int>> GetYesterdayRoomStatusCountsAsync(int branchId)
+        {
+            // For now, return current counts. In production, you'd track historical status changes
+            // or use a StatusHistory table to get yesterday's counts
+            return await GetRoomStatusCountsAsync(branchId);
+        }
+
+        public async Task<bool> UpdateRoomStatusAsync(int roomId, string status, int modifiedBy)
+        {
+            var sql = @"
+                UPDATE Rooms
+                SET Status = @Status,
+                    LastModifiedDate = GETUTCDATE()
+                WHERE Id = @RoomId AND IsActive = 1";
+
+            var rowsAffected = await _dbConnection.ExecuteAsync(sql, new { RoomId = roomId, Status = status });
+            return rowsAffected > 0;
+        }
+
+        public async Task<(bool hasActiveBooking, string? bookingNumber, decimal balanceAmount)> GetActiveBookingForRoomAsync(int roomId)
+        {
+            var sql = @"
+                SELECT TOP 1 
+                    BookingNumber,
+                    BalanceAmount,
+                    PaymentStatus
+                FROM Bookings
+                WHERE RoomId = @RoomId 
+                    AND Status IN ('Confirmed', 'CheckedIn')
+                    AND CAST(GETDATE() AS DATE) BETWEEN CAST(CheckInDate AS DATE) AND CAST(CheckOutDate AS DATE)
+                ORDER BY CheckInDate DESC";
+
+            var booking = await _dbConnection.QueryFirstOrDefaultAsync<dynamic>(sql, new { RoomId = roomId });
+
+            if (booking == null)
+            {
+                return (false, null, 0);
+            }
+
+            return (true, booking.BookingNumber, booking.BalanceAmount);
+        }
+
+        public async Task<(bool hasBooking, string? bookingNumber, decimal balanceAmount, DateTime? checkOutDate)> GetAnyBookingForRoomAsync(int roomId)
+        {
+            var sql = @"
+                SELECT TOP 1 
+                    BookingNumber,
+                    BalanceAmount,
+                    CheckOutDate,
+                    PaymentStatus
+                FROM Bookings
+                WHERE RoomId = @RoomId 
+                    AND Status IN ('Confirmed', 'CheckedIn')
+                ORDER BY CheckInDate DESC";
+
+            var booking = await _dbConnection.QueryFirstOrDefaultAsync<dynamic>(sql, new { RoomId = roomId });
+
+            if (booking == null)
+            {
+                return (false, null, 0, null);
+            }
+
+            return (true, booking.BookingNumber, booking.BalanceAmount, booking.CheckOutDate);
         }
     }
 }

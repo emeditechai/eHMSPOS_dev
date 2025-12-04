@@ -14,6 +14,11 @@ namespace HotelApp.Web.Models
         public DateTime CreatedDate { get; set; }
         public DateTime LastModifiedDate { get; set; }
         
+        // Booking information for occupied rooms
+        public DateTime? CheckOutDate { get; set; }
+        public string? BookingNumber { get; set; }
+        public decimal? BalanceAmount { get; set; }
+        
         // Navigation property
         public RoomType? RoomType { get; set; }
     }

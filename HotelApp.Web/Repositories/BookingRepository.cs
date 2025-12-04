@@ -9,16 +9,23 @@ namespace HotelApp.Web.Repositories
     {
         private readonly IDbConnection _dbConnection;
         private readonly IGuestRepository _guestRepository;
+        private readonly IHotelSettingsRepository _hotelSettingsRepository;
 
-        public BookingRepository(IDbConnection dbConnection, IGuestRepository guestRepository)
+        public BookingRepository(IDbConnection dbConnection, IGuestRepository guestRepository, IHotelSettingsRepository hotelSettingsRepository)
         {
             _dbConnection = dbConnection;
             _guestRepository = guestRepository;
+            _hotelSettingsRepository = hotelSettingsRepository;
         }
 
         public async Task<BookingQuoteResult?> GetQuoteAsync(BookingQuoteRequest request)
         {
-            var nights = (request.CheckOutDate - request.CheckInDate).Days;
+            // Get hotel settings to use check-in/check-out times
+            var hotelSettings = await _hotelSettingsRepository.GetByBranchAsync(request.BranchID);
+            var checkInTime = hotelSettings?.CheckInTime ?? new TimeSpan(14, 0, 0); // Default 2:00 PM
+            var checkOutTime = hotelSettings?.CheckOutTime ?? new TimeSpan(12, 0, 0); // Default 12:00 PM
+            
+            var nights = CalculateNights(request.CheckInDate, request.CheckOutDate, checkInTime, checkOutTime);
             if (nights <= 0)
             {
                 return null;
@@ -270,7 +277,7 @@ namespace HotelApp.Web.Repositories
             const string sql = @"
                 SELECT TOP (@Take)
                     Id, BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
-                    CheckInDate, CheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
+                    CheckInDate, CheckOutDate, ActualCheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
                     BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
                     BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
                     PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, BranchID,
@@ -284,12 +291,42 @@ namespace HotelApp.Web.Repositories
             return bookings;
         }
 
+        public async Task<IEnumerable<Booking>> GetByBranchAndDateRangeAsync(int branchId, DateTime? fromDate, DateTime? toDate, int take = 100)
+        {
+            var sql = @"
+                SELECT TOP (@Take)
+                    Id, BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
+                    CheckInDate, CheckOutDate, ActualCheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
+                    BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
+                    BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
+                    PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, BranchID,
+                    CreatedDate, CreatedBy, LastModifiedDate, LastModifiedBy
+                FROM Bookings
+                WHERE BranchID = @BranchId";
+
+            if (fromDate.HasValue)
+            {
+                sql += " AND CAST(CheckInDate AS DATE) >= CAST(@FromDate AS DATE)";
+            }
+
+            if (toDate.HasValue)
+            {
+                sql += " AND CAST(CheckInDate AS DATE) <= CAST(@ToDate AS DATE)";
+            }
+
+            sql += " ORDER BY CheckInDate DESC, CreatedDate DESC";
+
+            var bookings = (await _dbConnection.QueryAsync<Booking>(sql, new { BranchId = branchId, FromDate = fromDate, ToDate = toDate, Take = take })).ToList();
+            await PopulateRelatedCollectionsAsync(bookings);
+            return bookings;
+        }
+
         public async Task<Booking?> GetByBookingNumberAsync(string bookingNumber)
         {
             const string sql = @"
                 SELECT
                     Id, BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
-                    CheckInDate, CheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
+                    CheckInDate, CheckOutDate, ActualCheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
                     BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
                     BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
                     PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, BranchID,
@@ -319,7 +356,7 @@ namespace HotelApp.Web.Repositories
             var roomIds = bookings.Where(b => b.RoomId.HasValue).Select(b => b.RoomId!.Value).Distinct().ToArray();
             var ratePlanIds = bookings.Where(b => b.RatePlanId.HasValue).Select(b => b.RatePlanId!.Value).Distinct().ToArray();
 
-            const string guestSql = "SELECT * FROM BookingGuests WHERE BookingId IN @Ids";
+            const string guestSql = "SELECT * FROM BookingGuests WHERE BookingId IN @Ids AND IsActive = 1";
             var guests = await _dbConnection.QueryAsync<BookingGuest>(guestSql, new { Ids = bookingIds });
 
             const string paymentSql = "SELECT * FROM BookingPayments WHERE BookingId IN @Ids";
@@ -399,6 +436,37 @@ namespace HotelApp.Web.Repositories
                 AND Status = 'Confirmed'";
             
             return await _dbConnection.ExecuteScalarAsync<int>(sql, new { Today = today });
+        }
+
+        public async Task<int> GetTodayCheckOutCountAsync()
+        {
+            var today = DateTime.Today;
+            const string sql = @"
+                SELECT COUNT(*) 
+                FROM Bookings 
+                WHERE CAST(CheckOutDate AS DATE) = @Today 
+                AND Status IN ('Confirmed', 'CheckedIn')";
+            
+            return await _dbConnection.ExecuteScalarAsync<int>(sql, new { Today = today });
+        }
+
+        public async Task<bool> UpdateActualCheckOutDateAsync(string bookingNumber, DateTime actualCheckOutDate, int performedBy)
+        {
+            const string sql = @"
+                UPDATE Bookings 
+                SET ActualCheckOutDate = @ActualCheckOutDate,
+                    LastModifiedDate = GETDATE(),
+                    LastModifiedBy = @PerformedBy
+                WHERE BookingNumber = @BookingNumber";
+
+            var rowsAffected = await _dbConnection.ExecuteAsync(sql, new 
+            { 
+                BookingNumber = bookingNumber, 
+                ActualCheckOutDate = actualCheckOutDate,
+                PerformedBy = performedBy
+            });
+
+            return rowsAffected > 0;
         }
 
         public async Task<bool> UpdateRoomAssignmentAsync(string bookingNumber, int roomId)
@@ -811,6 +879,118 @@ namespace HotelApp.Web.Repositories
             }
         }
 
+        public async Task<bool> AddGuestToBookingAsync(BookingGuest guest, int branchId)
+        {
+            // Ensure connection is open
+            if (_dbConnection.State != ConnectionState.Open)
+            {
+                _dbConnection.Open();
+            }
+
+            using var transaction = _dbConnection.BeginTransaction();
+            try
+            {
+                // Insert into BookingGuests table
+                const string bookingGuestSql = @"
+                    INSERT INTO BookingGuests (BookingId, FullName, Email, Phone, GuestType, IsPrimary, 
+                                             RelationshipToPrimary, Age, DateOfBirth, IdentityType, 
+                                             IdentityNumber, DocumentPath, CreatedDate, CreatedBy)
+                    VALUES (@BookingId, @FullName, @Email, @Phone, @GuestType, 0, 
+                            @RelationshipToPrimary, @Age, @DateOfBirth, @IdentityType, 
+                            @IdentityNumber, @DocumentPath, GETDATE(), @CreatedBy);
+                    SELECT CAST(SCOPE_IDENTITY() AS INT)";
+
+                var bookingGuestId = await _dbConnection.ExecuteScalarAsync<int>(bookingGuestSql, guest, transaction);
+
+                if (bookingGuestId > 0)
+                {
+                    // Split FullName into FirstName and LastName
+                    var nameParts = guest.FullName.Trim().Split(new[] { ' ' }, 2);
+                    var firstName = nameParts[0];
+                    var lastName = nameParts.Length > 1 ? nameParts[1] : "";
+
+                    // Insert into Guests table for future reference
+                    const string guestSql = @"
+                        INSERT INTO Guests (FirstName, LastName, Email, Phone, GuestType, BranchID, 
+                                          DateOfBirth, IdentityType, IdentityNumber, 
+                                          IsActive, CreatedDate, LastModifiedDate)
+                        VALUES (@FirstName, @LastName, @Email, @Phone, @GuestType, @BranchID, 
+                                @DateOfBirth, @IdentityType, @IdentityNumber, 
+                                1, GETDATE(), GETDATE())";
+
+                    var guestParams = new
+                    {
+                        FirstName = firstName,
+                        LastName = lastName,
+                        Email = guest.Email ?? "",
+                        Phone = guest.Phone ?? "",
+                        GuestType = guest.GuestType ?? "Companion",
+                        BranchID = branchId,
+                        DateOfBirth = guest.DateOfBirth,
+                        IdentityType = guest.IdentityType,
+                        IdentityNumber = guest.IdentityNumber
+                    };
+
+                    await _dbConnection.ExecuteAsync(guestSql, guestParams, transaction);
+                }
+
+                transaction.Commit();
+                return bookingGuestId > 0;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+
+        public async Task<bool> UpdateGuestAsync(BookingGuest guest)
+        {
+            // Ensure connection is open
+            if (_dbConnection.State != ConnectionState.Open)
+            {
+                _dbConnection.Open();
+            }
+
+            const string sql = @"
+                UPDATE BookingGuests 
+                SET FullName = @FullName,
+                    Email = @Email,
+                    Phone = @Phone,
+                    GuestType = @GuestType,
+                    RelationshipToPrimary = @RelationshipToPrimary,
+                    Age = @Age,
+                    DateOfBirth = @DateOfBirth,
+                    IdentityType = @IdentityType,
+                    IdentityNumber = @IdentityNumber,
+                    DocumentPath = @DocumentPath,
+                    ModifiedDate = GETDATE(),
+                    ModifiedBy = @ModifiedBy
+                WHERE Id = @Id AND IsActive = 1";
+
+            var rowsAffected = await _dbConnection.ExecuteAsync(sql, guest);
+            return rowsAffected > 0;
+        }
+
+        public async Task<bool> DeleteGuestAsync(int guestId, int deletedBy)
+        {
+            // Ensure connection is open
+            if (_dbConnection.State != ConnectionState.Open)
+            {
+                _dbConnection.Open();
+            }
+
+            const string sql = @"
+                UPDATE BookingGuests 
+                SET IsActive = 0,
+                    ModifiedDate = GETDATE(),
+                    ModifiedBy = @DeletedBy
+                WHERE Id = @GuestId AND IsPrimary = 0 AND IsActive = 1";
+
+            var rowsAffected = await _dbConnection.ExecuteAsync(sql, new { GuestId = guestId, DeletedBy = deletedBy });
+            return rowsAffected > 0;
+        }
+
         public async Task<Booking?> GetLastBookingByGuestPhoneAsync(string phone)
         {
             const string sql = @"
@@ -822,6 +1002,37 @@ namespace HotelApp.Web.Repositories
                 ORDER BY b.CreatedDate DESC";
 
             return await _dbConnection.QueryFirstOrDefaultAsync<Booking>(sql, new { Phone = phone });
+        }
+
+        /// <summary>
+        /// Calculates the number of nights between check-in and check-out dates,
+        /// considering the hotel's configured check-in and check-out times.
+        /// </summary>
+        /// <param name="checkInDate">Check-in date (date only)</param>
+        /// <param name="checkOutDate">Check-out date (date only)</param>
+        /// <param name="checkInTime">Configured check-in time from Hotel Settings</param>
+        /// <param name="checkOutTime">Configured check-out time from Hotel Settings</param>
+        /// <returns>Number of nights for the stay</returns>
+        private int CalculateNights(DateTime checkInDate, DateTime checkOutDate, TimeSpan checkInTime, TimeSpan checkOutTime)
+        {
+            // Combine dates with their respective times
+            var actualCheckIn = checkInDate.Date.Add(checkInTime);
+            var actualCheckOut = checkOutDate.Date.Add(checkOutTime);
+            
+            // Calculate the time difference
+            var duration = actualCheckOut - actualCheckIn;
+            
+            // Calculate nights: Full 24-hour periods count as nights
+            // Example: Dec 1 3PM to Dec 3 11AM = ~43.5 hours = 1.8 days ≈ 2 nights
+            var nights = (int)Math.Ceiling(duration.TotalHours / 24.0);
+            
+            // Ensure at least 1 night if check-out is after check-in
+            if (nights < 1 && duration.TotalHours > 0)
+            {
+                nights = 1;
+            }
+            
+            return nights;
         }
     }
 }
