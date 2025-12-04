@@ -273,6 +273,10 @@
       "PackagePath": "staticwebassets/lib/jquery/dist/jquery.slim.min.map"
     },
     {
+      "Id": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/uploads/logos/logo_20251203224529.jpeg",
+      "PackagePath": "staticwebassets/uploads/logos/logo_20251203224529.jpeg"
+    },
+    {
       "Id": "obj/Debug/net9.0/staticwebassets/msbuild.HotelApp.Web.Microsoft.AspNetCore.StaticWebAssetEndpoints.props",
       "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssetEndpoints.props"
     },

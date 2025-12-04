@@ -1,0 +1,368 @@
+@model HotelApp.Web.Models.HotelSettings
+@{
+    ViewData["Title"] = "Hotel Settings";
+}
+
+<style>
+    .config-header {
+        background: white;
+        padding: 1.25rem 1.5rem;
+        border-radius: 6px;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    .config-icon {
+        width: 40px;
+        height: 40px;
+        background: #4A90E2;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.25rem;
+    }
+    
+    .config-title h2 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    
+    .config-subtitle {
+        margin: 0;
+        font-size: 0.85rem;
+        color: #7f8c8d;
+    }
+    
+    .settings-section {
+        background: white;
+        border-radius: 6px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #ecf0f1;
+    }
+    
+    .section-header-icon {
+        width: 28px;
+        height: 28px;
+        background: #4A90E2;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.85rem;
+    }
+    
+    .section-header h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #34495e;
+    }
+    
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+        row-gap: 0.75rem;
+    }
+    
+    .info-item {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .info-item.full-width {
+        grid-column: 1 / -1;
+    }
+    
+    .info-label {
+        font-size: 0.75rem;
+        color: #7f8c8d;
+        margin-bottom: 0.35rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    
+    .info-value {
+        font-size: 0.9rem;
+        color: #2c3e50;
+        font-weight: 500;
+        padding: 0.6rem 0.75rem;
+        background: #f8f9fa;
+        border-radius: 4px;
+        border-left: 3px solid #4A90E2;
+    }
+    
+    .info-value.empty {
+        color: #bdc3c7;
+        font-style: italic;
+        border-left-color: #e0e0e0;
+    }
+    
+    .info-value a {
+        color: #4A90E2;
+        text-decoration: none;
+    }
+    
+    .info-value a:hover {
+        text-decoration: underline;
+    }
+    
+    .parameter-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+    
+    .parameter-item {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 1rem;
+        border-radius: 6px;
+        text-align: center;
+        border: 1px solid #e0e0e0;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .parameter-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .parameter-icon {
+        width: 36px;
+        height: 36px;
+        background: #4A90E2;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1rem;
+        margin: 0 auto 0.75rem;
+    }
+    
+    .parameter-label {
+        font-size: 0.8rem;
+        color: #7f8c8d;
+        margin-bottom: 0.35rem;
+        font-weight: 500;
+    }
+    
+    .parameter-value {
+        font-size: 1.25rem;
+        color: #2c3e50;
+        font-weight: 600;
+    }
+    
+    .logo-section {
+        text-align: center;
+    }
+    
+    .logo-preview {
+        width: 150px;
+        height: 150px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 1rem;
+    }
+    
+    .logo-placeholder {
+        color: #bdc3c7;
+        text-align: center;
+    }
+    
+    .logo-placeholder i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+    
+    .edit-button {
+        background: #4A90E2;
+        color: white;
+        border: none;
+        padding: 0.5rem 1.25rem;
+        border-radius: 4px;
+        font-weight: 500;
+        font-size: 0.9rem;
+        text-decoration: none;
+        display: inline-block;
+        transition: background 0.3s ease;
+    }
+    
+    .edit-button:hover {
+        background: #357ABD;
+        color: white;
+    }
+</style>
+
+<div class="container-fluid" style="padding: 1.5rem;">
+    <div class="config-header">
+        <div class="config-icon">
+            <i class="fas fa-hotel"></i>
+        </div>
+        <div class="config-title" style="flex: 1;">
+            <h2>Hotel Settings</h2>
+            <p class="config-subtitle">Manage basic details, taxes and printing</p>
+        </div>
+        <a asp-action="Edit" class="edit-button">
+            <i class="fas fa-edit me-2"></i>Edit
+        </a>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i> @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i> @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <!-- Hotel Details Section -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-header-icon">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <h3>Hotel Details</h3>
+                </div>
+                
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Hotel Name</div>
+                        <div class="info-value @(string.IsNullOrWhiteSpace(Model.HotelName) ? "empty" : "")">
+                            @(string.IsNullOrWhiteSpace(Model.HotelName) ? "Not Set" : Model.HotelName)
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">GST Code</div>
+                        <div class="info-value @(string.IsNullOrWhiteSpace(Model.GSTCode) ? "empty" : "")">
+                            @(string.IsNullOrWhiteSpace(Model.GSTCode) ? "Not Set" : Model.GSTCode)
+                        </div>
+                    </div>
+                    <div class="info-item full-width">
+                        <div class="info-label">Address</div>
+                        <div class="info-value @(string.IsNullOrWhiteSpace(Model.Address) ? "empty" : "")">
+                            @(string.IsNullOrWhiteSpace(Model.Address) ? "Not Set" : Model.Address)
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Contact Number 1</div>
+                        <div class="info-value @(string.IsNullOrWhiteSpace(Model.ContactNumber1) ? "empty" : "")">
+                            <i class="fas fa-phone me-2"></i>@(string.IsNullOrWhiteSpace(Model.ContactNumber1) ? "Not Set" : Model.ContactNumber1)
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Contact Number 2</div>
+                        <div class="info-value @(string.IsNullOrWhiteSpace(Model.ContactNumber2) ? "empty" : "")">
+                            <i class="fas fa-phone me-2"></i>@(string.IsNullOrWhiteSpace(Model.ContactNumber2) ? "Not Set" : Model.ContactNumber2)
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Email Address</div>
+                        <div class="info-value @(string.IsNullOrWhiteSpace(Model.EmailAddress) ? "empty" : "")">
+                            <i class="fas fa-envelope me-2"></i>@(string.IsNullOrWhiteSpace(Model.EmailAddress) ? "Not Set" : Model.EmailAddress)
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Website</div>
+                        <div class="info-value @(string.IsNullOrWhiteSpace(Model.Website) ? "empty" : "")">
+                            @if (!string.IsNullOrWhiteSpace(Model.Website))
+                            {
+                                <i class="fas fa-globe me-2"></i><a href="@Model.Website" target="_blank">@Model.Website</a>
+                            }
+                            else
+                            {
+                                <i class="fas fa-globe me-2"></i><text>Not Set</text>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parameters Section -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-header-icon">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <h3>Operational Parameters</h3>
+                </div>
+                
+                <div class="parameter-grid">
+                    <div class="parameter-item">
+                        <div class="parameter-icon">
+                            <i class="fas fa-sign-in-alt"></i>
+                        </div>
+                        <div class="parameter-label">Check-In Time</div>
+                        <div class="parameter-value">@Model.CheckInTime.ToString(@"hh\:mm")</div>
+                    </div>
+                    <div class="parameter-item">
+                        <div class="parameter-icon">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </div>
+                        <div class="parameter-label">Check-Out Time</div>
+                        <div class="parameter-value">@Model.CheckOutTime.ToString(@"hh\:mm")</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logo Section -->
+        <div class="col-lg-4">
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-header-icon">
+                        <i class="fas fa-image"></i>
+                    </div>
+                    <h3>Hotel Logo</h3>
+                </div>
+                
+                <div class="logo-preview">
+                    @if (!string.IsNullOrWhiteSpace(Model.LogoPath))
+                    {
+                        <img src="@Model.LogoPath" alt="Hotel Logo" class="img-fluid" style="max-height: 140px; max-width: 100%; border-radius: 4px;" onerror="this.parentElement.innerHTML='<div class=\'logo-placeholder\'><i class=\'fas fa-image\'></i><p>Logo not found</p></div>';" />
+                    }
+                    else
+                    {
+                        <div class="logo-placeholder">
+                            <i class="fas fa-image"></i>
+                            <p style="margin-top: 0.75rem; color: #95a5a6; font-size: 0.85rem;">No logo</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
