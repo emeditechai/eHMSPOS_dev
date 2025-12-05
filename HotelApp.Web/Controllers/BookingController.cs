@@ -698,6 +698,80 @@ namespace HotelApp.Web.Controllers
             return View(booking);
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditRoomType(string bookingNumber, int newRoomTypeId)
+        {
+            if (string.IsNullOrWhiteSpace(bookingNumber))
+            {
+                TempData["ErrorMessage"] = "Invalid booking number.";
+                return RedirectToAction(nameof(List));
+            }
+
+            try
+            {
+                var booking = await _bookingRepository.GetByBookingNumberAsync(bookingNumber);
+                if (booking == null)
+                {
+                    TempData["ErrorMessage"] = "Booking not found.";
+                    return RedirectToAction(nameof(List));
+                }
+
+                if (booking.RoomTypeId == newRoomTypeId)
+                {
+                    TempData["InfoMessage"] = "The selected room type is the same as the current one.";
+                    return RedirectToAction(nameof(Details), new { bookingNumber });
+                }
+
+                // Get quote for new room type with existing dates
+                var quoteRequest = new BookingQuoteRequest
+                {
+                    RoomTypeId = newRoomTypeId,
+                    CheckInDate = booking.CheckInDate,
+                    CheckOutDate = booking.CheckOutDate,
+                    CustomerType = string.IsNullOrWhiteSpace(booking.CustomerType) ? "B2C" : booking.CustomerType,
+                    Source = string.IsNullOrWhiteSpace(booking.Source) ? "WalkIn" : booking.Source,
+                    Adults = booking.Adults,
+                    Children = booking.Children,
+                    BranchID = booking.BranchID
+                };
+
+                var quote = await _bookingRepository.GetQuoteAsync(quoteRequest);
+                if (quote == null)
+                {
+                    TempData["ErrorMessage"] = "Unable to calculate new rates for the selected room type.";
+                    return RedirectToAction(nameof(EditRoomType), new { bookingNumber });
+                }
+
+                // Update booking with new room type and amounts
+                var success = await _bookingRepository.UpdateRoomTypeAsync(
+                    bookingNumber,
+                    newRoomTypeId,
+                    quote.TotalRoomRate,
+                    quote.TotalTaxAmount,
+                    quote.TotalCGSTAmount,
+                    quote.TotalSGSTAmount,
+                    quote.GrandTotal
+                );
+
+                if (success)
+                {
+                    TempData["SuccessMessage"] = "Room type updated successfully! New total amount: ₹" + quote.GrandTotal.ToString("N2");
+                    return RedirectToAction(nameof(Details), new { bookingNumber });
+                }
+                else
+                {
+                    TempData["ErrorMessage"] = "Failed to update room type. Please try again.";
+                    return RedirectToAction(nameof(EditRoomType), new { bookingNumber });
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Error updating room type: {ex.Message}";
+                return RedirectToAction(nameof(EditRoomType), new { bookingNumber });
+            }
+        }
+
         [HttpGet]
         public async Task<IActionResult> EditDates(string bookingNumber)
         {

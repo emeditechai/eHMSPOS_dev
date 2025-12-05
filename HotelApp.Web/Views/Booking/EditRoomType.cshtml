@@ -37,11 +37,12 @@
 
     <div class="alert alert-info" style="margin-bottom: 20px;">
         <i class="fas fa-info-circle"></i>
-        Changing the room type will recalculate the booking amount. This feature is coming soon.
+        Changing the room type will recalculate the booking amount based on current rates.
     </div>
 
-    <form method="post">
+    <form asp-action="EditRoomType" method="post">
         @Html.AntiForgeryToken()
+        <input type="hidden" name="bookingNumber" value="@Model.BookingNumber" />
 
         <div class="form-group">
             <label>Select New Room Type</label>
@@ -60,10 +61,10 @@
         </div>
 
         <div class="form-actions">
-            <button type="button" class="btn-save" onclick="alert('This feature is coming soon!')">
+            <button type="submit" class="btn-save">
                 <i class="fas fa-save"></i> Update Room Type
             </button>
-            <a asp-action="List" class="btn-cancel">
+            <a asp-action="Details" asp-route-bookingNumber="@Model.BookingNumber" class="btn-cancel">
                 <i class="fas fa-times"></i> Cancel
             </a>
         </div>

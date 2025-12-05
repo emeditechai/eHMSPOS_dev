@@ -52,6 +52,14 @@
             </div>
 
             <div class="form-group">
+                <label asp-for="Max_RoomAvailability">Max Room Availability</label>
+                <input asp-for="Max_RoomAvailability" type="number" min="0" placeholder="e.g., 10" readonly="@(isReadOnly ? "readonly" : null)" />
+                <span asp-validation-for="Max_RoomAvailability" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
                 <label asp-for="IsActive">Status</label>
                 <select asp-for="IsActive" disabled="@(isReadOnly ? "disabled" : null)">
                     <option value="true">Active</option>

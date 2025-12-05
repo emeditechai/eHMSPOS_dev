@@ -27,6 +27,7 @@
                     <th>Type Name</th>
                     <th>Description</th>
                     <th>Max Occupancy</th>
+                    <th>Max Room Availability</th>
                     <th>Amenities</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -39,6 +40,7 @@
                         <td><strong>@roomType.TypeName</strong></td>
                         <td>@(roomType.Description ?? "-")</td>
                         <td>@roomType.MaxOccupancy</td>
+                        <td>@(roomType.Max_RoomAvailability?.ToString() ?? "-")</td>
                         <td>@(roomType.Amenities ?? "-")</td>
                         <td>
                             @if (roomType.IsActive)

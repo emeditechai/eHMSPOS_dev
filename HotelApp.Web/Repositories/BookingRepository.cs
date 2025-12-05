@@ -450,6 +450,57 @@ namespace HotelApp.Web.Repositories
             return await _dbConnection.ExecuteScalarAsync<int>(sql, new { Today = today });
         }
 
+        public async Task<bool> UpdateRoomTypeAsync(string bookingNumber, int newRoomTypeId, decimal baseAmount, decimal taxAmount, decimal cgstAmount, decimal sgstAmount, decimal totalAmount)
+        {
+            try
+            {
+                var booking = await GetByBookingNumberAsync(bookingNumber);
+                if (booking == null) return false;
+
+                const string sql = @"
+                    UPDATE Bookings
+                    SET RoomTypeId = @RoomTypeId,
+                        BaseAmount = @BaseAmount,
+                        TaxAmount = @TaxAmount,
+                        CGSTAmount = @CGSTAmount,
+                        SGSTAmount = @SGSTAmount,
+                        TotalAmount = @TotalAmount,
+                        BalanceAmount = @TotalAmount - ISNULL((SELECT SUM(Amount) FROM BookingPayments WHERE BookingId = Bookings.Id), 0),
+                        LastModifiedDate = GETDATE()
+                    WHERE BookingNumber = @BookingNumber";
+
+                var rowsAffected = await _dbConnection.ExecuteAsync(sql, new
+                {
+                    BookingNumber = bookingNumber,
+                    RoomTypeId = newRoomTypeId,
+                    BaseAmount = baseAmount,
+                    TaxAmount = taxAmount,
+                    CGSTAmount = cgstAmount,
+                    SGSTAmount = sgstAmount,
+                    TotalAmount = totalAmount
+                });
+
+                if (rowsAffected > 0)
+                {
+                    await AddAuditLogAsync(
+                        booking.Id,
+                        bookingNumber,
+                        "RoomTypeChange",
+                        $"Room type changed",
+                        booking.RoomTypeId.ToString(),
+                        newRoomTypeId.ToString(),
+                        null
+                    );
+                }
+
+                return rowsAffected > 0;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
         public async Task<bool> UpdateActualCheckOutDateAsync(string bookingNumber, DateTime actualCheckOutDate, int performedBy)
         {
             const string sql = @"

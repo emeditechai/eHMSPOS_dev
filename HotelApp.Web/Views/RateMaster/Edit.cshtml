@@ -44,11 +44,9 @@
             <div class="form-group">
                 <label asp-for="RoomTypeId">Room Type</label>
                 <select asp-for="RoomTypeId" class="form-control" disabled="@(isReadOnly ? "disabled" : null)">
-                    <option value="WalkIn">WalkIn</option>
-                    <option value="Phone">Phone</option>
-                    <option value="Websites">Websites</option>
-                    <option value="OTA">OTA</option>
-                    <option value="Reference">Reference</option>
+                    @foreach (var roomType in roomTypes)
+                    {
+                        <option value="@roomType.Id">@roomType.TypeName</option>
                     }
                 </select>
                 <span asp-validation-for="RoomTypeId" class="text-danger"></span>

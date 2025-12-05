@@ -48,8 +48,13 @@ namespace HotelApp.Web.Repositories
                 FROM Rooms r
                 INNER JOIN RoomTypes rt ON r.RoomTypeId = rt.Id
                 LEFT JOIN Floors f ON r.Floor = f.Id
-                LEFT JOIN Bookings b ON r.Id = b.RoomId 
-                    AND b.Status IN ('Confirmed', 'CheckedIn')
+                LEFT JOIN (
+                    SELECT RoomId, CheckOutDate, BookingNumber, BalanceAmount,
+                           ROW_NUMBER() OVER (PARTITION BY RoomId ORDER BY CheckInDate DESC) as rn
+                    FROM Bookings
+                    WHERE Status IN ('Confirmed', 'CheckedIn')
+                        AND CAST(GETDATE() AS DATE) BETWEEN CAST(CheckInDate AS DATE) AND CAST(CheckOutDate AS DATE)
+                ) b ON r.Id = b.RoomId AND b.rn = 1
                 WHERE r.IsActive = 1 AND r.BranchID = @BranchId
                 ORDER BY r.RoomNumber";
 
@@ -172,9 +177,10 @@ namespace HotelApp.Web.Repositories
 
         public async Task<bool> RoomNumberExistsAsync(string roomNumber, int branchId, int? excludeId = null)
         {
+            // Check for room number existence regardless of IsActive status to match database constraint
             var sql = excludeId.HasValue
-                ? "SELECT COUNT(1) FROM Rooms WHERE RoomNumber = @RoomNumber AND BranchID = @BranchId AND Id != @ExcludeId AND IsActive = 1"
-                : "SELECT COUNT(1) FROM Rooms WHERE RoomNumber = @RoomNumber AND BranchID = @BranchId AND IsActive = 1";
+                ? "SELECT COUNT(1) FROM Rooms WHERE RoomNumber = @RoomNumber AND BranchID = @BranchId AND Id != @ExcludeId"
+                : "SELECT COUNT(1) FROM Rooms WHERE RoomNumber = @RoomNumber AND BranchID = @BranchId";
 
             var count = await _dbConnection.ExecuteScalarAsync<int>(sql, new { RoomNumber = roomNumber, BranchId = branchId, ExcludeId = excludeId });
             return count > 0;

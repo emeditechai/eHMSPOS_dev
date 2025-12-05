@@ -135,13 +135,13 @@ namespace HotelApp.Web.Repositories
 
         public async Task<IEnumerable<string>> GetCustomerTypesAsync()
         {
-            var sql = "SELECT DISTINCT CustomerType FROM RateTypes WHERE IsActive = 1 ORDER BY CustomerType";
+            var sql = "SELECT DISTINCT CustomerType FROM RateMaster WHERE IsActive = 1 AND CustomerType IS NOT NULL ORDER BY CustomerType";
             return await _dbConnection.QueryAsync<string>(sql);
         }
 
         public async Task<IEnumerable<string>> GetSourcesAsync()
         {
-            var sql = "SELECT DISTINCT Source FROM RateTypes WHERE IsActive = 1 ORDER BY Source";
+            var sql = "SELECT DISTINCT Source FROM RateMaster WHERE IsActive = 1 AND Source IS NOT NULL ORDER BY Source";
             return await _dbConnection.QueryAsync<string>(sql);
         }
     }

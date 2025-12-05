@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "B/q5/NKNSalb2XkHiEvb32hijDJ7BqsPfg+i6Ef3fbE=",
+  "Hash": "vAfXYjRKvVGX81diHWSfWbsgmTclJBm1GPqvLu71jdo=",
   "Source": "HotelApp.Web",
   "BasePath": "_content/HotelApp.Web",
   "Mode": "Default",
@@ -2913,6 +2913,27 @@
       "CopyToOutputDirectory": "Never",
       "CopyToPublishDirectory": "PreserveNewest",
       "OriginalItemSpec": "wwwroot/uploads/guests/guest_05f58f4f-f155-458d-8e93-5cbd6813e02b.jpeg"
+    },
+    {
+      "Identity": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/uploads/guests/guest_affb60c0-3ce4-4241-aafc-2918735bf24e.jpeg",
+      "SourceId": "HotelApp.Web",
+      "SourceType": "Discovered",
+      "ContentRoot": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/",
+      "BasePath": "_content/HotelApp.Web",
+      "RelativePath": "uploads/guests/guest_affb60c0-3ce4-4241-aafc-2918735bf24e#[.{fingerprint}]?.jpeg",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "Fingerprint": "dce35xvhnt",
+      "Integrity": "XeRhHIzolO03hi4S/RcuMaBoVU0RYwmaVOSSHXel70c=",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot/uploads/guests/guest_affb60c0-3ce4-4241-aafc-2918735bf24e.jpeg"
     },
     {
       "Identity": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/uploads/guests/guest_c79466ea-42d4-4e71-bcca-67846349db4f.jpg",
@@ -23373,6 +23394,88 @@
         {
           "Name": "Last-Modified",
           "Value": "Thu, 04 Dec 2025 16:23:58 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=3600, must-revalidate"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-XeRhHIzolO03hi4S/RcuMaBoVU0RYwmaVOSSHXel70c="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/guests/guest_affb60c0-3ce4-4241-aafc-2918735bf24e.dce35xvhnt.jpeg",
+      "AssetFile": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/uploads/guests/guest_affb60c0-3ce4-4241-aafc-2918735bf24e.jpeg",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "10503"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "image/jpeg"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"XeRhHIzolO03hi4S/RcuMaBoVU0RYwmaVOSSHXel70c=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Thu, 04 Dec 2025 16:36:24 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "dce35xvhnt"
+        },
+        {
+          "Name": "label",
+          "Value": "uploads/guests/guest_affb60c0-3ce4-4241-aafc-2918735bf24e.jpeg"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-XeRhHIzolO03hi4S/RcuMaBoVU0RYwmaVOSSHXel70c="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/guests/guest_affb60c0-3ce4-4241-aafc-2918735bf24e.jpeg",
+      "AssetFile": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/uploads/guests/guest_affb60c0-3ce4-4241-aafc-2918735bf24e.jpeg",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "10503"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "image/jpeg"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"XeRhHIzolO03hi4S/RcuMaBoVU0RYwmaVOSSHXel70c=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Thu, 04 Dec 2025 16:36:24 GMT"
         },
         {
           "Name": "Cache-Control",

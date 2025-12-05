@@ -7,6 +7,7 @@ namespace HotelApp.Web.Models
         public string? Description { get; set; }
         public decimal BaseRate { get; set; }
         public int MaxOccupancy { get; set; }
+        public int? Max_RoomAvailability { get; set; }
         public string? Amenities { get; set; }
         public int BranchID { get; set; }
         public bool IsActive { get; set; } = true;
