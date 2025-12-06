@@ -317,6 +317,13 @@
                         <div class="detail-value">@Model.Country</div>
                     </div>
                 }
+                @if (!string.IsNullOrWhiteSpace(Model.Pincode))
+                {
+                    <div class="detail-row">
+                        <div class="detail-label">Pincode:</div>
+                        <div class="detail-value"><i class="fas fa-map-pin"></i> @Model.Pincode</div>
+                    </div>
+                }
             }
             else
             {

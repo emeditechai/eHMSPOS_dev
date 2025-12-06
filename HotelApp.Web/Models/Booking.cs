@@ -13,6 +13,7 @@ namespace HotelApp.Web.Models
         public string CustomerType { get; set; } = string.Empty;
         public DateTime CheckInDate { get; set; }
         public DateTime CheckOutDate { get; set; }
+        public DateTime? ActualCheckInDate { get; set; }
         public DateTime? ActualCheckOutDate { get; set; }
         public int Nights { get; set; }
         public int RoomTypeId { get; set; }
@@ -63,6 +64,14 @@ namespace HotelApp.Web.Models
         public string? IdentityType { get; set; }
         public string? IdentityNumber { get; set; }
         public string? DocumentPath { get; set; }
+        public string? Address { get; set; }
+        public string? City { get; set; }
+        public string? State { get; set; }
+        public string? Country { get; set; }
+        public string? Pincode { get; set; }
+        public int? CountryId { get; set; }
+        public int? StateId { get; set; }
+        public int? CityId { get; set; }
         public DateTime CreatedDate { get; set; }
         public int? CreatedBy { get; set; }
         public bool IsActive { get; set; } = true;

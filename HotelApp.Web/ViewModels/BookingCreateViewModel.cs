@@ -56,8 +56,29 @@ namespace HotelApp.Web.ViewModels
         [Range(0, 1000000)]
         public decimal DepositAmount { get; set; }
 
+        [Display(Name = "Collect Advance Payment Now")]
+        public bool CollectAdvancePayment { get; set; }
+
         [Required]
-        public string PaymentMethod { get; set; } = "Cash";
+        [Display(Name = "Country")]
+        public int CountryId { get; set; }
+
+        [Required]
+        [Display(Name = "State")]
+        public int StateId { get; set; }
+
+        [Required]
+        [Display(Name = "City")]
+        public int CityId { get; set; }
+
+        [Required]
+        [StringLength(250)]
+        [Display(Name = "Address")]
+        public string AddressLine { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(20)]
+        public string Pincode { get; set; } = string.Empty;
 
         public decimal? QuotedBaseAmount { get; set; }
         public decimal? QuotedTaxAmount { get; set; }

@@ -144,8 +144,10 @@ namespace HotelApp.Web.Repositories
             // Insert/Update guests in Guests table and link to BookingGuests
             Guest? primaryGuest = null;
             const string insertGuestSql = @"
-                INSERT INTO BookingGuests (BookingId, FullName, Email, Phone, GuestType, IsPrimary)
-                VALUES (@BookingId, @FullName, @Email, @Phone, @GuestType, @IsPrimary);";
+                INSERT INTO BookingGuests (BookingId, FullName, Email, Phone, GuestType, IsPrimary, 
+                                         Address, City, State, Country, Pincode, CountryId, StateId, CityId)
+                VALUES (@BookingId, @FullName, @Email, @Phone, @GuestType, @IsPrimary,
+                        @Address, @City, @State, @Country, @Pincode, @CountryId, @StateId, @CityId);";
 
             foreach (var bookingGuest in guests)
             {
@@ -163,10 +165,24 @@ namespace HotelApp.Web.Repositories
                 
                 if (existingGuest != null)
                 {
-                    // Update existing guest
+                    // Update existing guest with all details including address
                     const string updateGuestSql = @"
-                        UPDATE Guests SET FirstName = @FirstName, LastName = @LastName, Email = @Email, 
-                                         GuestType = @GuestType, ParentGuestId = @ParentGuestId, LastModifiedDate = GETDATE()
+                        UPDATE Guests SET 
+                            FirstName = @FirstName, 
+                            LastName = @LastName, 
+                            Email = @Email, 
+                            GuestType = @GuestType, 
+                            ParentGuestId = @ParentGuestId,
+                            Address = @Address,
+                            City = @City,
+                            State = @State,
+                            Country = @Country,
+                            Pincode = @Pincode,
+                            CountryId = @CountryId,
+                            StateId = @StateId,
+                            CityId = @CityId,
+                            BranchID = @BranchID,
+                            LastModifiedDate = GETDATE()
                         WHERE Id = @Id";
                     await _dbConnection.ExecuteAsync(updateGuestSql, new
                     {
@@ -175,7 +191,16 @@ namespace HotelApp.Web.Repositories
                         LastName = lastName,
                         Email = bookingGuest.Email ?? "",
                         GuestType = guestType,
-                        ParentGuestId = parentGuestId
+                        ParentGuestId = parentGuestId,
+                        Address = bookingGuest.Address,
+                        City = bookingGuest.City,
+                        State = bookingGuest.State,
+                        Country = bookingGuest.Country,
+                        Pincode = bookingGuest.Pincode,
+                        CountryId = bookingGuest.CountryId,
+                        StateId = bookingGuest.StateId,
+                        CityId = bookingGuest.CityId,
+                        BranchID = booking.BranchID
                     }, transaction);
                     
                     if (bookingGuest.IsPrimary)
@@ -187,10 +212,18 @@ namespace HotelApp.Web.Repositories
                 }
                 else
                 {
-                    // Create new guest
+                    // Create new guest with all details including address
                     const string insertNewGuestSql = @"
-                        INSERT INTO Guests (FirstName, LastName, Email, Phone, GuestType, ParentGuestId, IsActive, CreatedDate, LastModifiedDate)
-                        VALUES (@FirstName, @LastName, @Email, @Phone, @GuestType, @ParentGuestId, 1, GETDATE(), GETDATE());
+                        INSERT INTO Guests (
+                            FirstName, LastName, Email, Phone, GuestType, ParentGuestId,
+                            Address, City, State, Country, Pincode, CountryId, StateId, CityId,
+                            BranchID, IsActive, CreatedDate, LastModifiedDate
+                        )
+                        VALUES (
+                            @FirstName, @LastName, @Email, @Phone, @GuestType, @ParentGuestId,
+                            @Address, @City, @State, @Country, @Pincode, @CountryId, @StateId, @CityId,
+                            @BranchID, 1, GETDATE(), GETDATE()
+                        );
                         SELECT CAST(SCOPE_IDENTITY() as int);";
                     
                     var newGuestId = await _dbConnection.ExecuteScalarAsync<int>(insertNewGuestSql, new
@@ -200,7 +233,16 @@ namespace HotelApp.Web.Repositories
                         Email = bookingGuest.Email ?? "",
                         Phone = bookingGuest.Phone ?? "",
                         GuestType = guestType,
-                        ParentGuestId = parentGuestId
+                        ParentGuestId = parentGuestId,
+                        Address = bookingGuest.Address,
+                        City = bookingGuest.City,
+                        State = bookingGuest.State,
+                        Country = bookingGuest.Country,
+                        Pincode = bookingGuest.Pincode,
+                        CountryId = bookingGuest.CountryId,
+                        StateId = bookingGuest.StateId,
+                        CityId = bookingGuest.CityId,
+                        BranchID = booking.BranchID
                     }, transaction);
                     
                     if (bookingGuest.IsPrimary)
@@ -223,10 +265,22 @@ namespace HotelApp.Web.Repositories
                 INSERT INTO BookingPayments (BookingId, Amount, PaymentMethod, PaymentReference, Status, PaidOn, Notes)
                 VALUES (@BookingId, @Amount, @PaymentMethod, @PaymentReference, @Status, @PaidOn, @Notes);";
 
+            var depositAccumulator = 0m;
             foreach (var payment in payments)
             {
                 payment.BookingId = bookingId;
                 await _dbConnection.ExecuteAsync(insertPaymentSql, payment, transaction);
+
+                depositAccumulator += payment.Amount;
+                await AddAuditLogAsync(
+                    bookingId,
+                    booking.BookingNumber,
+                    "PaymentReceived",
+                    $"Payment of ₹{payment.Amount:N2} captured via {payment.PaymentMethod}",
+                    null,
+                    $"Total advance collected: ₹{depositAccumulator:N2}",
+                    booking.CreatedBy,
+                    transaction);
             }
 
             const string insertNightSql = @"
@@ -245,6 +299,16 @@ namespace HotelApp.Web.Repositories
                 await _dbConnection.ExecuteAsync(updateRoomStatusSql, new { booking.RoomId }, transaction);
             }
 
+            await AddAuditLogAsync(
+                bookingId,
+                booking.BookingNumber,
+                "Created",
+                $"Booking created for {booking.PrimaryGuestFirstName} {booking.PrimaryGuestLastName}".Trim(),
+                null,
+                $"Stay {booking.CheckInDate:dd MMM yyyy} - {booking.CheckOutDate:dd MMM yyyy}, Total ₹{booking.TotalAmount:N2}, Advance ₹{booking.DepositAmount:N2}",
+                booking.CreatedBy,
+                transaction);
+
             transaction.Commit();
 
             return new BookingCreationResult
@@ -259,7 +323,7 @@ namespace HotelApp.Web.Repositories
             const string sql = @"
                 SELECT TOP (@Take)
                     Id, BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
-                    CheckInDate, CheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
+                    CheckInDate, CheckOutDate, ActualCheckInDate, ActualCheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
                     BaseAmount, TaxAmount, DiscountAmount, TotalAmount, DepositAmount,
                     BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
                     PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, BranchID,
@@ -277,7 +341,7 @@ namespace HotelApp.Web.Repositories
             const string sql = @"
                 SELECT TOP (@Take)
                     Id, BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
-                    CheckInDate, CheckOutDate, ActualCheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
+                    CheckInDate, CheckOutDate, ActualCheckInDate, ActualCheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
                     BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
                     BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
                     PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, BranchID,
@@ -296,7 +360,7 @@ namespace HotelApp.Web.Repositories
             var sql = @"
                 SELECT TOP (@Take)
                     Id, BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
-                    CheckInDate, CheckOutDate, ActualCheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
+                    CheckInDate, CheckOutDate, ActualCheckInDate, ActualCheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
                     BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
                     BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
                     PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, BranchID,
@@ -326,7 +390,7 @@ namespace HotelApp.Web.Repositories
             const string sql = @"
                 SELECT
                     Id, BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
-                    CheckInDate, CheckOutDate, ActualCheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
+                    CheckInDate, CheckOutDate, ActualCheckInDate, ActualCheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
                     BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
                     BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
                     PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, BranchID,
@@ -452,10 +516,30 @@ namespace HotelApp.Web.Repositories
 
         public async Task<bool> UpdateRoomTypeAsync(string bookingNumber, int newRoomTypeId, decimal baseAmount, decimal taxAmount, decimal cgstAmount, decimal sgstAmount, decimal totalAmount)
         {
+            if (_dbConnection.State != ConnectionState.Open)
+            {
+                _dbConnection.Open();
+            }
+
+            using var transaction = _dbConnection.BeginTransaction();
+
             try
             {
-                var booking = await GetByBookingNumberAsync(bookingNumber);
-                if (booking == null) return false;
+                const string getBookingSql = @"
+                    SELECT Id, RoomTypeId, RoomId, Nights, CheckInDate, CheckOutDate
+                    FROM Bookings
+                    WHERE BookingNumber = @BookingNumber";
+
+                var booking = await _dbConnection.QueryFirstOrDefaultAsync<Booking>(
+                    getBookingSql,
+                    new { BookingNumber = bookingNumber },
+                    transaction);
+
+                if (booking == null)
+                {
+                    transaction.Rollback();
+                    return false;
+                }
 
                 const string sql = @"
                     UPDATE Bookings
@@ -478,31 +562,85 @@ namespace HotelApp.Web.Repositories
                     CGSTAmount = cgstAmount,
                     SGSTAmount = sgstAmount,
                     TotalAmount = totalAmount
-                });
+                }, transaction);
 
-                if (rowsAffected > 0)
+                if (rowsAffected == 0)
                 {
-                    await AddAuditLogAsync(
-                        booking.Id,
-                        bookingNumber,
-                        "RoomTypeChange",
-                        $"Room type changed",
-                        booking.RoomTypeId.ToString(),
-                        newRoomTypeId.ToString(),
-                        null
-                    );
+                    transaction.Rollback();
+                    return false;
                 }
 
-                return rowsAffected > 0;
+                if (booking.RoomId.HasValue && booking.Nights > 0)
+                {
+                    const string deleteNightsSql = @"DELETE FROM BookingRoomNights WHERE BookingId = @BookingId";
+                    await _dbConnection.ExecuteAsync(deleteNightsSql, new { BookingId = booking.Id }, transaction);
+
+                    var nightlyRoomAmount = Math.Round(baseAmount / booking.Nights, 2, MidpointRounding.AwayFromZero);
+                    var nightlyTax = Math.Round(taxAmount / booking.Nights, 2, MidpointRounding.AwayFromZero);
+                    var nightlyCGST = Math.Round(cgstAmount / booking.Nights, 2, MidpointRounding.AwayFromZero);
+                    var nightlySGST = Math.Round(sgstAmount / booking.Nights, 2, MidpointRounding.AwayFromZero);
+
+                    const string insertNightSql = @"
+                        INSERT INTO BookingRoomNights (BookingId, RoomId, StayDate, RateAmount, TaxAmount, CGSTAmount, SGSTAmount, Status)
+                        VALUES (@BookingId, @RoomId, @StayDate, @RateAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @Status)";
+
+                    for (var date = booking.CheckInDate.Date; date < booking.CheckOutDate.Date; date = date.AddDays(1))
+                    {
+                        await _dbConnection.ExecuteAsync(
+                            insertNightSql,
+                            new
+                            {
+                                BookingId = booking.Id,
+                                RoomId = booking.RoomId.Value,
+                                StayDate = date,
+                                RateAmount = nightlyRoomAmount,
+                                TaxAmount = nightlyTax,
+                                CGSTAmount = nightlyCGST,
+                                SGSTAmount = nightlySGST,
+                                Status = "Reserved"
+                            },
+                            transaction);
+                    }
+                }
+
+                await AddAuditLogAsync(
+                    booking.Id,
+                    bookingNumber,
+                    "RoomTypeChange",
+                    "Room type changed",
+                    booking.RoomTypeId.ToString(),
+                    newRoomTypeId.ToString(),
+                    null,
+                    transaction);
+
+                transaction.Commit();
+                return true;
             }
-            catch (Exception)
+            catch
             {
-                return false;
+                transaction.Rollback();
+                throw;
             }
         }
 
         public async Task<bool> UpdateActualCheckOutDateAsync(string bookingNumber, DateTime actualCheckOutDate, int performedBy)
         {
+            if (_dbConnection.State != ConnectionState.Open)
+            {
+                _dbConnection.Open();
+            }
+
+            using var transaction = _dbConnection.BeginTransaction();
+
+            const string getBookingSql = @"SELECT Id FROM Bookings WHERE BookingNumber = @BookingNumber";
+            var booking = await _dbConnection.QueryFirstOrDefaultAsync<dynamic>(getBookingSql, new { BookingNumber = bookingNumber }, transaction);
+
+            if (booking == null)
+            {
+                transaction.Rollback();
+                return false;
+            }
+
             const string sql = @"
                 UPDATE Bookings 
                 SET ActualCheckOutDate = @ActualCheckOutDate,
@@ -515,12 +653,29 @@ namespace HotelApp.Web.Repositories
                 BookingNumber = bookingNumber, 
                 ActualCheckOutDate = actualCheckOutDate,
                 PerformedBy = performedBy
-            });
+            }, transaction);
 
-            return rowsAffected > 0;
+            if (rowsAffected == 0)
+            {
+                transaction.Rollback();
+                return false;
+            }
+
+            await AddAuditLogAsync(
+                (int)booking.Id,
+                bookingNumber,
+                "CheckedOut",
+                $"Actual checkout recorded at {actualCheckOutDate:dd MMM yyyy hh:mm tt}",
+                null,
+                actualCheckOutDate.ToString("o"),
+                performedBy,
+                transaction);
+
+            transaction.Commit();
+            return true;
         }
 
-        public async Task<bool> UpdateRoomAssignmentAsync(string bookingNumber, int roomId)
+        public async Task<bool> UpdateRoomAssignmentAsync(string bookingNumber, int roomId, int? performedBy = null)
         {
             if (_dbConnection.State != ConnectionState.Open)
             {
@@ -533,7 +688,7 @@ namespace HotelApp.Web.Repositories
             {
                 // Get current room assignment before updating
                 const string getCurrentRoomSql = @"
-                    SELECT RoomId, Id, CheckInDate, CheckOutDate, TotalAmount, TaxAmount, CGSTAmount, SGSTAmount, Nights
+                    SELECT RoomId, Id, CheckInDate, CheckOutDate, TotalAmount, TaxAmount, CGSTAmount, SGSTAmount, Nights, ActualCheckInDate
                     FROM Bookings 
                     WHERE BookingNumber = @BookingNumber";
 
@@ -550,6 +705,17 @@ namespace HotelApp.Web.Repositories
                 }
 
                 var previousRoomId = booking.RoomId as int?;
+                var actualCheckInDate = booking.ActualCheckInDate == null ? (DateTime?)null : (DateTime)booking.ActualCheckInDate;
+                var shouldCaptureActualCheckIn = !previousRoomId.HasValue && !actualCheckInDate.HasValue;
+                var actualCheckInTimestamp = shouldCaptureActualCheckIn ? DateTime.Now : actualCheckInDate;
+
+                const string roomNumberSql = "SELECT RoomNumber FROM Rooms WHERE Id = @RoomId";
+                var newRoomNumber = await _dbConnection.QueryFirstOrDefaultAsync<string>(roomNumberSql, new { RoomId = roomId }, transaction);
+                string? previousRoomNumber = null;
+                if (previousRoomId.HasValue)
+                {
+                    previousRoomNumber = await _dbConnection.QueryFirstOrDefaultAsync<string>(roomNumberSql, new { RoomId = previousRoomId.Value }, transaction);
+                }
 
                 // If there was a previous room assigned, mark it as Available
                 if (previousRoomId.HasValue && previousRoomId.Value != roomId)
@@ -579,15 +745,26 @@ namespace HotelApp.Web.Repositories
                 );
 
                 // Update the booking with the new room assignment
-                const string updateBookingSql = @"
+                var updateBookingSql = @"
                     UPDATE Bookings 
                     SET RoomId = @RoomId,
-                        LastModifiedDate = GETUTCDATE()
-                    WHERE BookingNumber = @BookingNumber";
+                        LastModifiedDate = GETUTCDATE()";
+
+                if (shouldCaptureActualCheckIn)
+                {
+                    updateBookingSql += ",\n                        ActualCheckInDate = @ActualCheckInDate";
+                }
+
+                updateBookingSql += "\n                    WHERE BookingNumber = @BookingNumber";
 
                 var bookingUpdated = await _dbConnection.ExecuteAsync(
                     updateBookingSql,
-                    new { RoomId = roomId, BookingNumber = bookingNumber },
+                    new
+                    {
+                        RoomId = roomId,
+                        BookingNumber = bookingNumber,
+                        ActualCheckInDate = actualCheckInTimestamp
+                    },
                     transaction
                 );
 
@@ -646,6 +823,37 @@ namespace HotelApp.Web.Repositories
                         },
                         transaction
                     );
+                }
+
+                var actionType = previousRoomId.HasValue && previousRoomId.Value != roomId ? "RoomChanged" : previousRoomId.HasValue ? "RoomAssignmentUpdated" : "RoomAssigned";
+                var description = actionType switch
+                {
+                    "RoomChanged" => $"Room changed from {previousRoomNumber ?? previousRoomId?.ToString() ?? "N/A"} to {newRoomNumber ?? roomId.ToString()}",
+                    "RoomAssignmentUpdated" => $"Room {newRoomNumber ?? roomId.ToString()} assignment refreshed",
+                    _ => $"Room {newRoomNumber ?? roomId.ToString()} assigned to booking"
+                };
+
+                await AddAuditLogAsync(
+                    bookingId,
+                    bookingNumber,
+                    actionType,
+                    description,
+                    previousRoomNumber,
+                    newRoomNumber,
+                    performedBy,
+                    transaction);
+
+                if (shouldCaptureActualCheckIn && actualCheckInTimestamp.HasValue)
+                {
+                    await AddAuditLogAsync(
+                        bookingId,
+                        bookingNumber,
+                        "CheckedIn",
+                        $"Actual check-in recorded at {actualCheckInTimestamp:dd MMM yyyy hh:mm tt}",
+                        null,
+                        actualCheckInTimestamp.Value.ToString("o"),
+                        performedBy,
+                        transaction);
                 }
 
                 transaction.Commit();
@@ -945,10 +1153,12 @@ namespace HotelApp.Web.Repositories
                 const string bookingGuestSql = @"
                     INSERT INTO BookingGuests (BookingId, FullName, Email, Phone, GuestType, IsPrimary, 
                                              RelationshipToPrimary, Age, DateOfBirth, IdentityType, 
-                                             IdentityNumber, DocumentPath, CreatedDate, CreatedBy)
+                                             IdentityNumber, DocumentPath, Address, City, State, Country,
+                                             Pincode, CountryId, StateId, CityId, CreatedDate, CreatedBy)
                     VALUES (@BookingId, @FullName, @Email, @Phone, @GuestType, 0, 
                             @RelationshipToPrimary, @Age, @DateOfBirth, @IdentityType, 
-                            @IdentityNumber, @DocumentPath, GETDATE(), @CreatedBy);
+                            @IdentityNumber, @DocumentPath, @Address, @City, @State, @Country,
+                            @Pincode, @CountryId, @StateId, @CityId, GETDATE(), @CreatedBy);
                     SELECT CAST(SCOPE_IDENTITY() AS INT)";
 
                 var bookingGuestId = await _dbConnection.ExecuteScalarAsync<int>(bookingGuestSql, guest, transaction);
@@ -960,29 +1170,89 @@ namespace HotelApp.Web.Repositories
                     var firstName = nameParts[0];
                     var lastName = nameParts.Length > 1 ? nameParts[1] : "";
 
-                    // Insert into Guests table for future reference
-                    const string guestSql = @"
-                        INSERT INTO Guests (FirstName, LastName, Email, Phone, GuestType, BranchID, 
-                                          DateOfBirth, IdentityType, IdentityNumber, 
-                                          IsActive, CreatedDate, LastModifiedDate)
-                        VALUES (@FirstName, @LastName, @Email, @Phone, @GuestType, @BranchID, 
-                                @DateOfBirth, @IdentityType, @IdentityNumber, 
-                                1, GETDATE(), GETDATE())";
+                    // Check if guest exists by phone in Guests table
+                    const string findGuestSql = "SELECT TOP 1 * FROM Guests WHERE Phone = @Phone AND IsActive = 1 ORDER BY LastModifiedDate DESC";
+                    var existingGuest = await _dbConnection.QueryFirstOrDefaultAsync<Guest>(findGuestSql, new { Phone = guest.Phone }, transaction);
 
-                    var guestParams = new
+                    if (existingGuest != null)
                     {
-                        FirstName = firstName,
-                        LastName = lastName,
-                        Email = guest.Email ?? "",
-                        Phone = guest.Phone ?? "",
-                        GuestType = guest.GuestType ?? "Companion",
-                        BranchID = branchId,
-                        DateOfBirth = guest.DateOfBirth,
-                        IdentityType = guest.IdentityType,
-                        IdentityNumber = guest.IdentityNumber
-                    };
+                        // Update existing guest in Guests table
+                        const string updateGuestSql = @"
+                            UPDATE Guests SET 
+                                FirstName = @FirstName, 
+                                LastName = @LastName, 
+                                Email = @Email, 
+                                GuestType = @GuestType, 
+                                DateOfBirth = @DateOfBirth,
+                                IdentityType = @IdentityType,
+                                IdentityNumber = @IdentityNumber,
+                                Address = @Address,
+                                City = @City,
+                                State = @State,
+                                Country = @Country,
+                                Pincode = @Pincode,
+                                CountryId = @CountryId,
+                                StateId = @StateId,
+                                CityId = @CityId,
+                                BranchID = @BranchID,
+                                LastModifiedDate = GETDATE()
+                            WHERE Id = @Id";
 
-                    await _dbConnection.ExecuteAsync(guestSql, guestParams, transaction);
+                        await _dbConnection.ExecuteAsync(updateGuestSql, new
+                        {
+                            Id = existingGuest.Id,
+                            FirstName = firstName,
+                            LastName = lastName,
+                            Email = guest.Email ?? "",
+                            GuestType = guest.GuestType ?? "Companion",
+                            DateOfBirth = guest.DateOfBirth,
+                            IdentityType = guest.IdentityType,
+                            IdentityNumber = guest.IdentityNumber,
+                            Address = guest.Address,
+                            City = guest.City,
+                            State = guest.State,
+                            Country = guest.Country,
+                            Pincode = guest.Pincode,
+                            CountryId = guest.CountryId,
+                            StateId = guest.StateId,
+                            CityId = guest.CityId,
+                            BranchID = branchId
+                        }, transaction);
+                    }
+                    else
+                    {
+                        // Insert new guest into Guests table
+                        const string insertGuestSql = @"
+                            INSERT INTO Guests (FirstName, LastName, Email, Phone, GuestType, BranchID, 
+                                              DateOfBirth, IdentityType, IdentityNumber, Address, City, State, Country,
+                                              Pincode, CountryId, StateId, CityId,
+                                              IsActive, CreatedDate, LastModifiedDate)
+                            VALUES (@FirstName, @LastName, @Email, @Phone, @GuestType, @BranchID, 
+                                    @DateOfBirth, @IdentityType, @IdentityNumber, @Address, @City, @State, @Country,
+                                    @Pincode, @CountryId, @StateId, @CityId,
+                                    1, GETDATE(), GETDATE())";
+
+                        await _dbConnection.ExecuteAsync(insertGuestSql, new
+                        {
+                            FirstName = firstName,
+                            LastName = lastName,
+                            Email = guest.Email ?? "",
+                            Phone = guest.Phone ?? "",
+                            GuestType = guest.GuestType ?? "Companion",
+                            BranchID = branchId,
+                            DateOfBirth = guest.DateOfBirth,
+                            IdentityType = guest.IdentityType,
+                            IdentityNumber = guest.IdentityNumber,
+                            Address = guest.Address,
+                            City = guest.City,
+                            State = guest.State,
+                            Country = guest.Country,
+                            Pincode = guest.Pincode,
+                            CountryId = guest.CountryId,
+                            StateId = guest.StateId,
+                            CityId = guest.CityId
+                        }, transaction);
+                    }
                 }
 
                 transaction.Commit();
@@ -1015,6 +1285,14 @@ namespace HotelApp.Web.Repositories
                     IdentityType = @IdentityType,
                     IdentityNumber = @IdentityNumber,
                     DocumentPath = @DocumentPath,
+                    Address = @Address,
+                    City = @City,
+                    State = @State,
+                    Country = @Country,
+                    Pincode = @Pincode,
+                    CountryId = @CountryId,
+                    StateId = @StateId,
+                    CityId = @CityId,
                     ModifiedDate = GETDATE(),
                     ModifiedBy = @ModifiedBy
                 WHERE Id = @Id AND IsActive = 1";

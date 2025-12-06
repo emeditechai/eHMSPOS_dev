@@ -28,14 +28,22 @@ namespace HotelApp.Web.Controllers
         private readonly IGuestRepository _guestRepository;
         private readonly IBankRepository _bankRepository;
         private readonly IHotelSettingsRepository _hotelSettingsRepository;
+        private readonly ILocationRepository _locationRepository;
 
-        public BookingController(IBookingRepository bookingRepository, IRoomRepository roomRepository, IGuestRepository guestRepository, IBankRepository bankRepository, IHotelSettingsRepository hotelSettingsRepository)
+        public BookingController(
+            IBookingRepository bookingRepository,
+            IRoomRepository roomRepository,
+            IGuestRepository guestRepository,
+            IBankRepository bankRepository,
+            IHotelSettingsRepository hotelSettingsRepository,
+            ILocationRepository locationRepository)
         {
             _bookingRepository = bookingRepository;
             _roomRepository = roomRepository;
             _guestRepository = guestRepository;
             _bankRepository = bankRepository;
             _hotelSettingsRepository = hotelSettingsRepository;
+            _locationRepository = locationRepository;
         }
 
         public async Task<IActionResult> List(DateTime? fromDate, DateTime? toDate)
@@ -93,11 +101,10 @@ namespace HotelApp.Web.Controllers
                 Adults = 2,
                 CustomerType = CustomerTypes.First(),
                 Source = Sources.First(),
-                Channel = Channels.First(),
-                PaymentMethod = PaymentMethods.Keys.First()
+                Channel = Channels.First()
             };
 
-            await PopulateLookupsAsync();
+            await PopulateLookupsAsync(model);
             return View(model);
         }
 
@@ -105,16 +112,11 @@ namespace HotelApp.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(BookingCreateViewModel model)
         {
-            await PopulateLookupsAsync();
+            await PopulateLookupsAsync(model);
 
             if (model.CheckOutDate <= model.CheckInDate)
             {
                 ModelState.AddModelError(nameof(model.CheckOutDate), "Check-out date must be after check-in date.");
-            }
-
-            if (!PaymentMethods.ContainsKey(model.PaymentMethod))
-            {
-                ModelState.AddModelError(nameof(model.PaymentMethod), "Select a valid payment method.");
             }
 
             if (!ModelState.IsValid)
@@ -200,6 +202,10 @@ namespace HotelApp.Web.Controllers
                 LastModifiedBy = createdBy
             };
 
+            var country = await _locationRepository.GetCountryByIdAsync(model.CountryId);
+            var state = await _locationRepository.GetStateByIdAsync(model.StateId);
+            var city = await _locationRepository.GetCityByIdAsync(model.CityId);
+
             var guests = new List<BookingGuest>
             {
                 new BookingGuest
@@ -208,23 +214,20 @@ namespace HotelApp.Web.Controllers
                     Email = model.PrimaryGuestEmail,
                     Phone = model.PrimaryGuestPhone,
                     GuestType = "Primary",
-                    IsPrimary = true
+                    IsPrimary = true,
+                    Address = model.AddressLine,
+                    CountryId = model.CountryId,
+                    StateId = model.StateId,
+                    CityId = model.CityId,
+                    Country = country?.Name,
+                    State = state?.Name,
+                    City = city?.Name,
+                    Pincode = model.Pincode
                 }
             };
 
             var payments = new List<BookingPayment>();
-            if (model.DepositAmount > 0)
-            {
-                payments.Add(new BookingPayment
-                {
-                    Amount = model.DepositAmount,
-                    PaymentMethod = PaymentMethods[model.PaymentMethod],
-                    PaymentReference = null,
-                    PaidOn = DateTime.UtcNow,
-                    Status = model.DepositAmount >= quote.GrandTotal ? "Captured" : "Advance",
-                    Notes = "Advance deposit"
-                });
-            }
+            // Payments will be collected via modal after redirect if CollectAdvancePayment is true
 
             // Don't create room nights during booking - will be created when room is assigned
             var roomNights = new List<BookingRoomNight>();
@@ -234,6 +237,7 @@ namespace HotelApp.Web.Controllers
             TempData["BookingCreated"] = "true";
             TempData["BookingNumber"] = result.BookingNumber;
             TempData["BookingAmount"] = quote.GrandTotal.ToString("N2");
+            TempData["ShowAdvancePaymentModal"] = model.CollectAdvancePayment ? "true" : "false";
             return RedirectToAction(nameof(Details), new { bookingNumber = result.BookingNumber });
         }
 
@@ -549,13 +553,33 @@ namespace HotelApp.Web.Controllers
             return Json(new { success = false, message = "Failed to record payment. Please try again." });
         }
 
-        private async Task PopulateLookupsAsync()
+        private async Task PopulateLookupsAsync(BookingCreateViewModel? model = null)
         {
             ViewBag.RoomTypes = await _roomRepository.GetRoomTypesByBranchAsync(CurrentBranchID);
             ViewBag.CustomerTypes = CustomerTypes;
             ViewBag.Sources = Sources;
             ViewBag.Channels = Channels;
-            ViewBag.PaymentMethods = PaymentMethods;
+
+            var countries = await _locationRepository.GetCountriesAsync();
+            ViewBag.Countries = countries;
+
+            if (model != null && model.CountryId > 0)
+            {
+                ViewBag.States = await _locationRepository.GetStatesByCountryAsync(model.CountryId);
+            }
+            else
+            {
+                ViewBag.States = Enumerable.Empty<State>();
+            }
+
+            if (model != null && model.StateId > 0)
+            {
+                ViewBag.Cities = await _locationRepository.GetCitiesByStateAsync(model.StateId);
+            }
+            else
+            {
+                ViewBag.Cities = Enumerable.Empty<City>();
+            }
         }
 
         private static string GenerateBookingNumber()
@@ -656,7 +680,7 @@ namespace HotelApp.Web.Controllers
 
             try
             {
-                var success = await _bookingRepository.UpdateRoomAssignmentAsync(bookingNumber, roomId);
+                var success = await _bookingRepository.UpdateRoomAssignmentAsync(bookingNumber, roomId, GetCurrentUserId());
                 
                 if (success)
                 {
@@ -925,6 +949,38 @@ namespace HotelApp.Web.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> GetStates(int countryId)
+        {
+            if (countryId <= 0)
+            {
+                return Json(new { success = false, states = Array.Empty<object>() });
+            }
+
+            var states = await _locationRepository.GetStatesByCountryAsync(countryId);
+            return Json(new
+            {
+                success = true,
+                states = states.Select(s => new { s.Id, s.Name })
+            });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetCities(int stateId)
+        {
+            if (stateId <= 0)
+            {
+                return Json(new { success = false, cities = Array.Empty<object>() });
+            }
+
+            var cities = await _locationRepository.GetCitiesByStateAsync(stateId);
+            return Json(new
+            {
+                success = true,
+                cities = cities.Select(c => new { c.Id, c.Name })
+            });
+        }
+
+        [HttpGet]
         public async Task<IActionResult> LookupGuestByPhone(string phone)
         {
             if (string.IsNullOrWhiteSpace(phone))
@@ -953,7 +1009,12 @@ namespace HotelApp.Web.Controllers
                     lastName = guest.LastName,
                     email = guest.Email,
                     phone = guest.Phone,
-                    loyaltyId = guest.LoyaltyId
+                    loyaltyId = guest.LoyaltyId,
+                    address = guest.Address,
+                    countryId = guest.CountryId,
+                    stateId = guest.StateId,
+                    cityId = guest.CityId,
+                    pincode = guest.Pincode
                 },
                 lastBooking = lastBooking != null ? new 
                 {

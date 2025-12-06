@@ -132,6 +132,12 @@ public class RoomsController : BaseController
                 return Json(new { success = false, message = "No active booking found for this room" });
             }
 
+            if (string.IsNullOrWhiteSpace(bookingNumber))
+            {
+                Console.WriteLine("Active booking detected but booking number is missing");
+                return Json(new { success = false, message = "Unable to determine booking reference for this room. Please open the booking and try again." });
+            }
+
             // Check if payment is cleared
             if (balanceAmount > 0)
             {
@@ -198,6 +204,12 @@ public class RoomsController : BaseController
             if (!hasBooking)
             {
                 return Json(new { success = false, message = "No booking found for this room" });
+            }
+
+            if (string.IsNullOrWhiteSpace(bookingNumber))
+            {
+                Console.WriteLine("Booking detected but booking number is missing (force checkout)");
+                return Json(new { success = false, message = "Unable to determine booking reference for this room. Please open the booking and try again." });
             }
 
             // Check if payment is cleared

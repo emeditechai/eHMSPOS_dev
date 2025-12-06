@@ -469,8 +469,16 @@
             <span class="detail-value">@Model.CheckInDate.ToString("dd MMM yyyy")</span>
         </div>
         <div class="detail-row">
+            <span class="detail-label">Actual Check-In</span>
+            <span class="detail-value">@(Model.ActualCheckInDate.HasValue ? Model.ActualCheckInDate.Value.ToString("dd MMM yyyy hh:mm tt") : "Pending")</span>
+        </div>
+        <div class="detail-row">
             <span class="detail-label">Check-Out</span>
             <span class="detail-value">@Model.CheckOutDate.ToString("dd MMM yyyy")</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Actual Check-Out</span>
+            <span class="detail-value">@(Model.ActualCheckOutDate.HasValue ? Model.ActualCheckOutDate.Value.ToString("dd MMM yyyy hh:mm tt") : "Pending")</span>
         </div>
         <div class="detail-row">
             <span class="detail-label">Duration</span>
@@ -1670,6 +1678,7 @@
         {
             var bookingNum = TempData["BookingNumber"]?.ToString() ?? "";
             var bookingAmt = TempData["BookingAmount"]?.ToString() ?? "0.00";
+            var showPaymentModal = TempData["ShowAdvancePaymentModal"]?.ToString() == "true";
             <text>
             Swal.fire({
                 icon: 'success',
@@ -1679,6 +1688,14 @@
                 confirmButtonText: 'Great!',
                 timer: 5000,
                 timerProgressBar: true
+            }).then(() => {
+                @if (showPaymentModal)
+                {
+                    <text>
+                    // Open payment modal automatically
+                    showPaymentModal();
+                    </text>
+                }
             });
             </text>
         }

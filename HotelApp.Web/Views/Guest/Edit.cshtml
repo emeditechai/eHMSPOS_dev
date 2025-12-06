@@ -71,29 +71,69 @@
             <i class="fas fa-map-marker-alt"></i> Address Information
         </h3>
 
-        <div class="form-group">
-            <label asp-for="Address">Address</label>
-            <textarea asp-for="Address" rows="2"></textarea>
-            <span asp-validation-for="Address" class="text-danger"></span>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="countryAutocomplete">Country <span class="text-danger">*</span></label>
+                <div style="position: relative;">
+                    <input type="text" 
+                           id="countryAutocomplete" 
+                           name="countryAutocomplete"
+                           class="autocomplete-input" 
+                           placeholder="Type to search country..." 
+                           autocomplete="new-password" />
+                    <div id="countryResults" class="autocomplete-results"></div>
+                </div>
+                <input type="hidden" asp-for="CountryId" id="countryDropdown" />
+                <input type="hidden" asp-for="Country" id="countryName" />
+                <span asp-validation-for="CountryId" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label for="stateAutocomplete">State <span class="text-danger">*</span></label>
+                <div style="position: relative;">
+                    <input type="text" 
+                           id="stateAutocomplete" 
+                           name="stateAutocomplete"
+                           class="autocomplete-input" 
+                           placeholder="Select country first..." 
+                           autocomplete="new-password" 
+                           disabled />
+                    <div id="stateResults" class="autocomplete-results"></div>
+                </div>
+                <input type="hidden" asp-for="StateId" id="stateDropdown" />
+                <input type="hidden" asp-for="State" id="stateName" />
+                <span asp-validation-for="StateId" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label for="cityAutocomplete">City <span class="text-danger">*</span></label>
+                <div style="position: relative;">
+                    <input type="text" 
+                           id="cityAutocomplete" 
+                           name="cityAutocomplete"
+                           class="autocomplete-input" 
+                           placeholder="Select state first..." 
+                           autocomplete="new-password" 
+                           disabled />
+                    <div id="cityResults" class="autocomplete-results"></div>
+                </div>
+                <input type="hidden" asp-for="CityId" id="cityDropdown" />
+                <input type="hidden" asp-for="City" id="cityName" />
+                <span asp-validation-for="CityId" class="text-danger"></span>
+            </div>
         </div>
 
         <div class="form-row">
-            <div class="form-group">
-                <label asp-for="City">City</label>
-                <input asp-for="City" type="text" />
-                <span asp-validation-for="City" class="text-danger"></span>
+            <div class="form-group" style="grid-column: span 2;">
+                <label asp-for="Address">Address Line</label>
+                <textarea asp-for="Address" rows="2" placeholder="Enter street address, building name, etc."></textarea>
+                <span asp-validation-for="Address" class="text-danger"></span>
             </div>
 
             <div class="form-group">
-                <label asp-for="State">State</label>
-                <input asp-for="State" type="text" />
-                <span asp-validation-for="State" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="Country">Country</label>
-                <input asp-for="Country" type="text" />
-                <span asp-validation-for="Country" class="text-danger"></span>
+                <label asp-for="Pincode">Pincode</label>
+                <input asp-for="Pincode" type="text" maxlength="10" placeholder="Enter pincode" />
+                <span asp-validation-for="Pincode" class="text-danger"></span>
             </div>
         </div>
 
@@ -190,4 +230,291 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <style>
+        .autocomplete-input {
+            width: 100%;
+        }
+        
+        .autocomplete-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 250px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 9999;
+            display: none;
+            margin-top: 0;
+        }
+        
+        .autocomplete-results.show {
+            display: block;
+        }
+        
+        .autocomplete-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s;
+        }
+        
+        .autocomplete-item:hover,
+        .autocomplete-item.active {
+            background-color: #f0f7ff;
+        }
+        
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        
+        .no-results {
+            padding: 10px 15px;
+            color: #999;
+            font-style: italic;
+        }
+    </style>
+    
+    <script>
+        // Normalize data from ViewBag (PascalCase to camelCase)
+        let countriesRaw = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.Countries ?? new List<object>()));
+        let statesRaw = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.States ?? new List<object>()));
+        let citiesRaw = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.Cities ?? new List<object>()));
+        
+        // Normalize property names to lowercase and ensure arrays
+        let countries = Array.isArray(countriesRaw) ? countriesRaw.map(c => ({ id: c.Id || c.id, name: c.Name || c.name })) : [];
+        let states = Array.isArray(statesRaw) ? statesRaw.map(s => ({ id: s.Id || s.id, name: s.Name || s.name })) : [];
+        let cities = Array.isArray(citiesRaw) ? citiesRaw.map(c => ({ id: c.Id || c.id, name: c.Name || c.name })) : [];
+        
+        let currentFocusIndex = -1;
+
+        $(document).ready(function() {
+            console.log('Countries loaded:', countries.length, countries);
+            console.log('States loaded:', states.length, states);
+            console.log('Cities loaded:', cities.length, cities);
+            
+            if (countries.length === 0) {
+                console.error('No countries loaded! Check if ViewBag.Countries is populated.');
+            }
+            // Initialize autocomplete for country
+            setupAutocomplete('country', countries, function(selectedItem) {
+                $('#countryDropdown').val(selectedItem.id);
+                $('#countryName').val(selectedItem.name);
+                
+                // Reset state and city
+                $('#stateAutocomplete').val('').prop('disabled', true).attr('placeholder', 'Loading states...');
+                $('#stateDropdown').val('');
+                $('#stateName').val('');
+                $('#cityAutocomplete').val('').prop('disabled', true).attr('placeholder', 'Select state first...');
+                $('#cityDropdown').val('');
+                $('#cityName').val('');
+                states = [];
+                cities = [];
+                
+                // Load states for selected country
+                $.get('/Guest/GetStates', { countryId: selectedItem.id }, function(data) {
+                    states = data;
+                    $('#stateAutocomplete').prop('disabled', false).attr('placeholder', 'Type to search state...');
+                    setupAutocomplete('state', states, function(selectedState) {
+                        $('#stateDropdown').val(selectedState.id);
+                        $('#stateName').val(selectedState.name);
+                        
+                        // Reset city
+                        $('#cityAutocomplete').val('').prop('disabled', true).attr('placeholder', 'Loading cities...');
+                        $('#cityDropdown').val('');
+                        $('#cityName').val('');
+                        cities = [];
+                        
+                        // Load cities for selected state
+                        $.get('/Guest/GetCities', { stateId: selectedState.id }, function(cityData) {
+                            cities = cityData;
+                            $('#cityAutocomplete').prop('disabled', false).attr('placeholder', 'Type to search city...');
+                            setupAutocomplete('city', cities, function(selectedCity) {
+                                $('#cityDropdown').val(selectedCity.id);
+                                $('#cityName').val(selectedCity.name);
+                            });
+                        });
+                    });
+                });
+            });
+            
+            // Pre-populate if editing existing guest with location data
+            @if (Model.CountryId.HasValue)
+            {
+                <text>
+                var selectedCountry = countries.find(c => c.id == @Model.CountryId);
+                if (selectedCountry) {
+                    $('#countryAutocomplete').val(selectedCountry.name);
+                    $('#countryDropdown').val(selectedCountry.id);
+                    $('#countryName').val(selectedCountry.name);
+                    
+                    // Load states and pre-select if available
+                    $.get('/Guest/GetStates', { countryId: selectedCountry.id }, function(data) {
+                        states = data;
+                        $('#stateAutocomplete').prop('disabled', false).attr('placeholder', 'Type to search state...');
+                        setupAutocomplete('state', states, function(selectedState) {
+                            $('#stateDropdown').val(selectedState.id);
+                            $('#stateName').val(selectedState.name);
+                            
+                            // Reset city
+                            $('#cityAutocomplete').val('').prop('disabled', true).attr('placeholder', 'Loading cities...');
+                            $('#cityDropdown').val('');
+                            $('#cityName').val('');
+                            cities = [];
+                            
+                            // Load cities for selected state
+                            $.get('/Guest/GetCities', { stateId: selectedState.id }, function(cityData) {
+                                cities = cityData;
+                                $('#cityAutocomplete').prop('disabled', false).attr('placeholder', 'Type to search city...');
+                                setupAutocomplete('city', cities, function(selectedCity) {
+                                    $('#cityDropdown').val(selectedCity.id);
+                                    $('#cityName').val(selectedCity.name);
+                                });
+                            });
+                        });
+                        
+                        @if (Model.StateId.HasValue)
+                        {
+                            <text>
+                            var selectedState = states.find(s => s.id == @Model.StateId);
+                            if (selectedState) {
+                                $('#stateAutocomplete').val(selectedState.name);
+                                $('#stateDropdown').val(selectedState.id);
+                                $('#stateName').val(selectedState.name);
+                                
+                                // Load cities and pre-select if available
+                                $.get('/Guest/GetCities', { stateId: selectedState.id }, function(cityData) {
+                                    cities = cityData;
+                                    $('#cityAutocomplete').prop('disabled', false).attr('placeholder', 'Type to search city...');
+                                    setupAutocomplete('city', cities, function(selectedCity) {
+                                        $('#cityDropdown').val(selectedCity.id);
+                                        $('#cityName').val(selectedCity.name);
+                                    });
+                                    
+                                    @if (Model.CityId.HasValue)
+                                    {
+                                        <text>
+                                        var selectedCity = cities.find(c => c.id == @Model.CityId);
+                                        if (selectedCity) {
+                                            $('#cityAutocomplete').val(selectedCity.name);
+                                            $('#cityDropdown').val(selectedCity.id);
+                                            $('#cityName').val(selectedCity.name);
+                                        }
+                                        </text>
+                                    }
+                                });
+                            }
+                            </text>
+                        }
+                    });
+                }
+                </text>
+            }
+        });
+
+        function setupAutocomplete(fieldName, dataSource, onSelect) {
+            const input = $(`#${fieldName}Autocomplete`);
+            const resultsDiv = $(`#${fieldName}Results`);
+            const hiddenField = $(`#${fieldName}Dropdown`);
+            
+            console.log(`Setting up autocomplete for ${fieldName}, data source length:`, dataSource ? dataSource.length : 0);
+            
+            if (!dataSource || !Array.isArray(dataSource)) {
+                console.error(`Invalid data source for ${fieldName}:`, dataSource);
+                dataSource = [];
+            }
+            
+            input.off('input keydown blur');
+            
+            input.on('input', function() {
+                const searchTerm = $(this).val().toLowerCase();
+                
+                console.log(`Input event for ${fieldName}, search term:`, searchTerm);
+                
+                if (searchTerm.length === 0) {
+                    resultsDiv.removeClass('show').html('');
+                    currentFocusIndex = -1;
+                    return;
+                }
+                
+                const filteredData = dataSource.filter(item => 
+                    item && item.name && item.name.toLowerCase().includes(searchTerm)
+                );
+                
+                console.log(`Filtered ${fieldName} data:`, filteredData.length, filteredData);
+                
+                if (filteredData.length === 0) {
+                    resultsDiv.addClass('show').html('<div class="no-results">No results found</div>');
+                    currentFocusIndex = -1;
+                    return;
+                }
+                
+                let html = '';
+                filteredData.forEach((item, index) => {
+                    html += `<div class="autocomplete-item" data-id="${item.id}" data-name="${item.name}" data-index="${index}">${item.name}</div>`;
+                });
+                
+                resultsDiv.addClass('show').html(html);
+                currentFocusIndex = -1;
+                
+                // Handle click on result item
+                $('.autocomplete-item').off('click').on('click', function() {
+                    const selectedId = $(this).data('id');
+                    const selectedName = $(this).data('name');
+                    
+                    input.val(selectedName);
+                    resultsDiv.removeClass('show').html('');
+                    currentFocusIndex = -1;
+                    
+                    if (onSelect) {
+                        onSelect({ id: selectedId, name: selectedName });
+                    }
+                });
+            });
+            
+            // Handle keyboard navigation
+            input.on('keydown', function(e) {
+                const items = resultsDiv.find('.autocomplete-item');
+                
+                if (items.length === 0) return;
+                
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    currentFocusIndex = (currentFocusIndex + 1) % items.length;
+                    updateActiveItem(items);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    currentFocusIndex = currentFocusIndex <= 0 ? items.length - 1 : currentFocusIndex - 1;
+                    updateActiveItem(items);
+                } else if (e.key === 'Enter' && currentFocusIndex >= 0) {
+                    e.preventDefault();
+                    items.eq(currentFocusIndex).click();
+                } else if (e.key === 'Escape') {
+                    resultsDiv.removeClass('show').html('');
+                    currentFocusIndex = -1;
+                }
+            });
+            
+            // Close results when clicking outside
+            input.on('blur', function() {
+                setTimeout(() => {
+                    resultsDiv.removeClass('show').html('');
+                    currentFocusIndex = -1;
+                }, 200);
+            });
+        }
+        
+        function updateActiveItem(items) {
+            items.removeClass('active');
+            if (currentFocusIndex >= 0 && currentFocusIndex < items.length) {
+                items.eq(currentFocusIndex).addClass('active');
+                items.eq(currentFocusIndex)[0].scrollIntoView({ block: 'nearest' });
+            }
+        }
+    </script>
 }

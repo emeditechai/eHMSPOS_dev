@@ -1,12 +1,12 @@
 @model HotelApp.Web.ViewModels.BookingCreateViewModel
 @using HotelApp.Web.Models
+@using Microsoft.AspNetCore.Mvc.Rendering
 @{
     ViewData["Title"] = "Create Booking";
     var roomTypes = ViewBag.RoomTypes as IEnumerable<RoomType> ?? Enumerable.Empty<RoomType>();
     var customerTypes = ViewBag.CustomerTypes as IEnumerable<string> ?? Enumerable.Empty<string>();
     var sources = ViewBag.Sources as IEnumerable<string> ?? Enumerable.Empty<string>();
     var channels = ViewBag.Channels as IEnumerable<string> ?? Enumerable.Empty<string>();
-    var paymentMethods = ViewBag.PaymentMethods as IReadOnlyDictionary<string, string> ?? new Dictionary<string, string>();
 }
 
 <style>
@@ -58,6 +58,7 @@
 
 .form-field {
     margin-bottom: 18px;
+    position: relative;
 }
 
 .form-field label {
@@ -165,6 +166,70 @@
 .btn-secondary-booking:hover {
     border-color: #a0aec0;
     background: #f7fafc;
+}
+
+.autocomplete-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.autocomplete-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.autocomplete-input:disabled {
+    background-color: #f7fafc;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.autocomplete-results {
+    position: absolute;
+    width: 100%;
+    max-height: 250px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    margin-top: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    display: none;
+}
+
+.autocomplete-results.active {
+    display: block;
+}
+
+.autocomplete-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.selected {
+    background: #edf2f7;
+    color: #667eea;
+    font-weight: 500;
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-no-results {
+    padding: 10px 12px;
+    color: #718096;
+    font-style: italic;
+    text-align: center;
 }
 
 .guest-lookup-indicator {
@@ -342,29 +407,57 @@
                 </div>
             </div>
 
-            <!-- Payment & Quote Card -->
+            <!-- Other Info Card -->
             <div class="booking-card">
                 <div class="card-header">
-                    <i class="fas fa-credit-card"></i>
-                    <h3>Payment & Summary</h3>
+                    <i class="fas fa-address-card"></i>
+                    <h3>Other Info</h3>
                 </div>
 
-                <div class="form-row-inline">
-                    <div class="form-field">
-                        <label asp-for="DepositAmount">Deposit Amount</label>
-                        <input asp-for="DepositAmount" type="number" min="0" step="0.01" placeholder="0.00" />
-                        <span asp-validation-for="DepositAmount" class="text-danger"></span>
-                    </div>
-                    <div class="form-field">
-                        <label asp-for="PaymentMethod">Payment Method <span style="color: #e53e3e;">*</span></label>
-                        <select asp-for="PaymentMethod">
-                            @foreach (var method in paymentMethods)
-                            {
-                                <option value="@method.Key">@method.Value</option>
-                            }
-                        </select>
-                        <span asp-validation-for="PaymentMethod" class="text-danger"></span>
-                    </div>
+                <div class="form-field">
+                    <label asp-for="CountryId">Country <span style="color: #e53e3e;">*</span></label>
+                    <input type="text" id="countryAutocomplete" class="form-control autocomplete-input" placeholder="Start typing country name..." autocomplete="off" />
+                    <input type="hidden" asp-for="CountryId" id="countryDropdown" />
+                    <div id="countryResults" class="autocomplete-results"></div>
+                    <span asp-validation-for="CountryId" class="text-danger"></span>
+                </div>
+
+                <div class="form-field">
+                    <label asp-for="StateId">State <span style="color: #e53e3e;">*</span></label>
+                    <input type="text" id="stateAutocomplete" class="form-control autocomplete-input" placeholder="Select country first..." autocomplete="off" disabled />
+                    <input type="hidden" asp-for="StateId" id="stateDropdown" />
+                    <div id="stateResults" class="autocomplete-results"></div>
+                    <span asp-validation-for="StateId" class="text-danger"></span>
+                </div>
+
+                <div class="form-field">
+                    <label asp-for="CityId">City <span style="color: #e53e3e;">*</span></label>
+                    <input type="text" id="cityAutocomplete" class="form-control autocomplete-input" placeholder="Select state first..." autocomplete="off" disabled />
+                    <input type="hidden" asp-for="CityId" id="cityDropdown" />
+                    <div id="cityResults" class="autocomplete-results"></div>
+                    <span asp-validation-for="CityId" class="text-danger"></span>
+                </div>
+
+                <div class="form-field">
+                    <label asp-for="AddressLine">Address <span style="color: #e53e3e;">*</span></label>
+                    <input asp-for="AddressLine" type="text" placeholder="Enter full address" />
+                    <span asp-validation-for="AddressLine" class="text-danger"></span>
+                </div>
+
+                <div class="form-field">
+                    <label asp-for="Pincode">Pincode <span style="color: #e53e3e;">*</span></label>
+                    <input asp-for="Pincode" type="text" placeholder="Enter pincode" maxlength="20" />
+                    <span asp-validation-for="Pincode" class="text-danger"></span>
+                </div>
+
+                <div class="form-field" style="margin-top: 20px; padding: 15px; background: #f7fafc; border-radius: 6px;">
+                    <label style="display: flex; align-items: center; cursor: pointer; user-select: none;">
+                        <input asp-for="CollectAdvancePayment" type="checkbox" style="width: auto; margin-right: 10px; transform: scale(1.3);" />
+                        <span style="font-weight: 600; color: #2d3748;">Collect Advance Payment Now</span>
+                    </label>
+                    <small style="display: block; margin-top: 5px; margin-left: 30px; color: #718096;">
+                        Check this to open payment modal after booking creation
+                    </small>
                 </div>
 
                 <div class="quote-summary-card">
@@ -453,6 +546,63 @@
                             $('#guestEmail').val(response.guest.email);
                             $('#guestLoyalty').val(response.guest.loyaltyId || '');
                             
+                            // Auto-fill address details with autocomplete
+                            if (response.guest.countryId) {
+                                // Find and set country
+                                const country = countriesData.find(c => c.id == response.guest.countryId);
+                                if (country) {
+                                    $('#countryAutocomplete').val(country.name);
+                                    $('#countryDropdown').val(country.id);
+                                    selectedCountryId = country.id;
+                                    $('#stateAutocomplete').prop('disabled', false).attr('placeholder', 'Start typing state name...');
+                                    
+                                    // Load and set state
+                                    $.ajax({
+                                        url: '@Url.Action("GetStates", "Booking")',
+                                        type: 'GET',
+                                        data: { countryId: country.id },
+                                        success: function(stateResponse) {
+                                            if (stateResponse.success && stateResponse.states) {
+                                                statesData = stateResponse.states;
+                                                
+                                                if (response.guest.stateId) {
+                                                    const state = statesData.find(s => s.id == response.guest.stateId);
+                                                    if (state) {
+                                                        $('#stateAutocomplete').val(state.name);
+                                                        $('#stateDropdown').val(state.id);
+                                                        selectedStateId = state.id;
+                                                        $('#cityAutocomplete').prop('disabled', false).attr('placeholder', 'Start typing city name...');
+                                                        
+                                                        // Load and set city
+                                                        $.ajax({
+                                                            url: '@Url.Action("GetCities", "Booking")',
+                                                            type: 'GET',
+                                                            data: { stateId: state.id },
+                                                            success: function(cityResponse) {
+                                                                if (cityResponse.success && cityResponse.cities) {
+                                                                    citiesData = cityResponse.cities;
+                                                                    
+                                                                    if (response.guest.cityId) {
+                                                                        const city = citiesData.find(c => c.id == response.guest.cityId);
+                                                                        if (city) {
+                                                                            $('#cityAutocomplete').val(city.name);
+                                                                            $('#cityDropdown').val(city.id);
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        });
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                            
+                            $('#AddressLine').val(response.guest.address || '');
+                            $('#Pincode').val(response.guest.pincode || '');
+                            
                             // Show returning guest badge
                             $('#guestFoundBadge').fadeIn();
                             
@@ -500,6 +650,156 @@
                 $('#guestLoyalty').val('');
                 $('#guestFoundBadge').hide();
                 $('#lastBookingInfo').hide();
+            }
+
+            // Initialize autocomplete data
+            let countriesData = @Html.Raw(Json.Serialize(ViewBag.Countries ?? Enumerable.Empty<object>()));
+            let statesData = [];
+            let citiesData = [];
+            let selectedCountryId = null;
+            let selectedStateId = null;
+
+            // Autocomplete for Country
+            setupAutocomplete('countryAutocomplete', 'countryResults', 'countryDropdown', countriesData, function(item) {
+                selectedCountryId = item.id;
+                $('#countryDropdown').val(item.id).trigger('change');
+                $('#stateAutocomplete').prop('disabled', false).attr('placeholder', 'Start typing state name...');
+                $('#cityAutocomplete').val('').prop('disabled', true).attr('placeholder', 'Select state first...');
+                $('#stateDropdown').val('');
+                $('#cityDropdown').val('');
+                statesData = [];
+                citiesData = [];
+                
+                // Load states for selected country
+                $.ajax({
+                    url: '@Url.Action("GetStates", "Booking")',
+                    type: 'GET',
+                    data: { countryId: item.id },
+                    success: function(response) {
+                        if (response.success && response.states) {
+                            statesData = response.states;
+                        }
+                    }
+                });
+            });
+
+            // Autocomplete for State
+            setupAutocomplete('stateAutocomplete', 'stateResults', 'stateDropdown', statesData, function(item) {
+                selectedStateId = item.id;
+                $('#stateDropdown').val(item.id).trigger('change');
+                $('#cityAutocomplete').prop('disabled', false).attr('placeholder', 'Start typing city name...');
+                $('#cityDropdown').val('');
+                citiesData = [];
+                
+                // Load cities for selected state
+                $.ajax({
+                    url: '@Url.Action("GetCities", "Booking")',
+                    type: 'GET',
+                    data: { stateId: item.id },
+                    success: function(response) {
+                        if (response.success && response.cities) {
+                            citiesData = response.cities;
+                        }
+                    }
+                });
+            });
+
+            // Autocomplete for City
+            setupAutocomplete('cityAutocomplete', 'cityResults', 'cityDropdown', citiesData, function(item) {
+                $('#cityDropdown').val(item.id).trigger('change');
+            });
+
+            // Generic autocomplete setup function
+            function setupAutocomplete(inputId, resultsId, hiddenId, dataSource, onSelectCallback) {
+                const $input = $('#' + inputId);
+                const $results = $('#' + resultsId);
+                const $hidden = $('#' + hiddenId);
+                let currentFocus = -1;
+
+                $input.on('input', function() {
+                    const query = $(this).val().toLowerCase().trim();
+                    $results.empty().removeClass('active');
+                    currentFocus = -1;
+
+                    if (query.length === 0) {
+                        $hidden.val('');
+                        return;
+                    }
+
+                    // Get the correct data source
+                    let data = dataSource;
+                    if (inputId === 'stateAutocomplete') data = statesData;
+                    if (inputId === 'cityAutocomplete') data = citiesData;
+
+                    const filtered = data.filter(item => 
+                        item.name.toLowerCase().includes(query)
+                    );
+
+                    if (filtered.length > 0) {
+                        filtered.forEach((item, index) => {
+                            const $div = $('<div class="autocomplete-item"></div>')
+                                .text(item.name)
+                                .data('item', item)
+                                .data('index', index)
+                                .on('click', function() {
+                                    selectItem($(this));
+                                });
+                            $results.append($div);
+                        });
+                        $results.addClass('active');
+                    } else if (query.length > 0) {
+                        $results.html('<div class="autocomplete-no-results">No results found</div>').addClass('active');
+                    }
+                });
+
+                $input.on('keydown', function(e) {
+                    const $items = $results.find('.autocomplete-item');
+                    if (e.keyCode === 40) { // Down arrow
+                        e.preventDefault();
+                        currentFocus++;
+                        addActive($items);
+                    } else if (e.keyCode === 38) { // Up arrow
+                        e.preventDefault();
+                        currentFocus--;
+                        addActive($items);
+                    } else if (e.keyCode === 13) { // Enter
+                        e.preventDefault();
+                        if (currentFocus > -1 && $items.length > 0) {
+                            $items.eq(currentFocus).click();
+                        }
+                    } else if (e.keyCode === 27) { // Escape
+                        $results.removeClass('active');
+                    }
+                });
+
+                function addActive($items) {
+                    if (!$items.length) return;
+                    removeActive($items);
+                    if (currentFocus >= $items.length) currentFocus = 0;
+                    if (currentFocus < 0) currentFocus = $items.length - 1;
+                    $items.eq(currentFocus).addClass('selected');
+                }
+
+                function removeActive($items) {
+                    $items.removeClass('selected');
+                }
+
+                function selectItem($item) {
+                    const item = $item.data('item');
+                    $input.val(item.name);
+                    $hidden.val(item.id);
+                    $results.removeClass('active');
+                    if (onSelectCallback) {
+                        onSelectCallback(item);
+                    }
+                }
+
+                // Close results when clicking outside
+                $(document).on('click', function(e) {
+                    if (!$(e.target).closest('#' + inputId + ', #' + resultsId).length) {
+                        $results.removeClass('active');
+                    }
+                });
             }
         });
     </script>

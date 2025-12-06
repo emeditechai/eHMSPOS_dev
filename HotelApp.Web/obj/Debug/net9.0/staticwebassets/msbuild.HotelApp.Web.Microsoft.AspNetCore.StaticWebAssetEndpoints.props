@@ -76,13 +76,13 @@
       <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\HotelApp.Web.iywcqht9ir.bundle.scp.css'))</AssetFile>
       <Selectors><![CDATA[[]]]></Selectors>
       <EndpointProperties><![CDATA[[{"Name":"integrity","Value":"sha256-JoC0R40CkA7DAIR7pm0EgzU4UfsoFMALw70Bm2HQg7Y="}]]]></EndpointProperties>
-      <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"no-cache"},{"Name":"Content-Length","Value":"1081"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u0022JoC0R40CkA7DAIR7pm0EgzU4UfsoFMALw70Bm2HQg7Y=\u0022"},{"Name":"Last-Modified","Value":"Thu, 20 Nov 2025 08:39:39 GMT"}]]]></ResponseHeaders>
+      <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"no-cache"},{"Name":"Content-Length","Value":"1081"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u0022JoC0R40CkA7DAIR7pm0EgzU4UfsoFMALw70Bm2HQg7Y=\u0022"},{"Name":"Last-Modified","Value":"Sat, 06 Dec 2025 10:31:12 GMT"}]]]></ResponseHeaders>
     </StaticWebAssetEndpoint>
     <StaticWebAssetEndpoint Include="_content/HotelApp.Web/HotelApp.Web.iywcqht9ir.bundle.scp.css">
       <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\HotelApp.Web.iywcqht9ir.bundle.scp.css'))</AssetFile>
       <Selectors><![CDATA[[]]]></Selectors>
       <EndpointProperties><![CDATA[[{"Name":"fingerprint","Value":"iywcqht9ir"},{"Name":"integrity","Value":"sha256-JoC0R40CkA7DAIR7pm0EgzU4UfsoFMALw70Bm2HQg7Y="},{"Name":"label","Value":"_content/HotelApp.Web/HotelApp.Web.bundle.scp.css"}]]]></EndpointProperties>
-      <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"max-age=31536000, immutable"},{"Name":"Content-Length","Value":"1081"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u0022JoC0R40CkA7DAIR7pm0EgzU4UfsoFMALw70Bm2HQg7Y=\u0022"},{"Name":"Last-Modified","Value":"Thu, 20 Nov 2025 08:39:39 GMT"}]]]></ResponseHeaders>
+      <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"max-age=31536000, immutable"},{"Name":"Content-Length","Value":"1081"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u0022JoC0R40CkA7DAIR7pm0EgzU4UfsoFMALw70Bm2HQg7Y=\u0022"},{"Name":"Last-Modified","Value":"Sat, 06 Dec 2025 10:31:12 GMT"}]]]></ResponseHeaders>
     </StaticWebAssetEndpoint>
     <StaticWebAssetEndpoint Include="_content/HotelApp.Web/js/site.js">
       <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\js\site.js'))</AssetFile>

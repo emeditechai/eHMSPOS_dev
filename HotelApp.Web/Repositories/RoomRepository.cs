@@ -1,3 +1,4 @@
+using System;
 using System.Data;
 using Dapper;
 using HotelApp.Web.Models;
@@ -281,7 +282,14 @@ namespace HotelApp.Web.Repositories
                 return (false, null, 0);
             }
 
-            return (true, booking.BookingNumber, booking.BalanceAmount);
+            var bookingNumber = booking.BookingNumber as string;
+            if (string.IsNullOrWhiteSpace(bookingNumber))
+            {
+                return (false, null, 0);
+            }
+
+            decimal balanceAmount = booking.BalanceAmount is decimal dec ? dec : Convert.ToDecimal(booking.BalanceAmount ?? 0m);
+            return (true, bookingNumber, balanceAmount);
         }
 
         public async Task<(bool hasBooking, string? bookingNumber, decimal balanceAmount, DateTime? checkOutDate)> GetAnyBookingForRoomAsync(int roomId)
@@ -304,7 +312,17 @@ namespace HotelApp.Web.Repositories
                 return (false, null, 0, null);
             }
 
-            return (true, booking.BookingNumber, booking.BalanceAmount, booking.CheckOutDate);
+            var bookingNumber = booking.BookingNumber as string;
+            if (string.IsNullOrWhiteSpace(bookingNumber))
+            {
+                return (false, null, 0, null);
+            }
+
+            decimal balanceAmount = booking.BalanceAmount is decimal dec ? dec : Convert.ToDecimal(booking.BalanceAmount ?? 0m);
+            DateTime? checkOutDate = booking.CheckOutDate is DateTime dt
+                ? dt
+                : booking.CheckOutDate == null ? null : Convert.ToDateTime(booking.CheckOutDate);
+            return (true, bookingNumber, balanceAmount, checkOutDate);
         }
     }
 }

@@ -39,11 +39,13 @@ namespace HotelApp.Web.Repositories
         {
             const string sql = @"
                 INSERT INTO Guests (FirstName, LastName, Email, Phone, Address, City, State, Country,
-                                   IdentityType, IdentityNumber, DateOfBirth, LoyaltyId, GuestType, 
-                                   ParentGuestId, BranchID, IsActive, CreatedDate, LastModifiedDate)
+                           Pincode, CountryId, StateId, CityId,
+                           IdentityType, IdentityNumber, DateOfBirth, LoyaltyId, GuestType, 
+                           ParentGuestId, BranchID, IsActive, CreatedDate, LastModifiedDate)
                 VALUES (@FirstName, @LastName, @Email, @Phone, @Address, @City, @State, @Country,
-                        @IdentityType, @IdentityNumber, @DateOfBirth, @LoyaltyId, @GuestType,
-                        @ParentGuestId, @BranchID, @IsActive, GETDATE(), GETDATE());
+                    @Pincode, @CountryId, @StateId, @CityId,
+                    @IdentityType, @IdentityNumber, @DateOfBirth, @LoyaltyId, @GuestType,
+                    @ParentGuestId, @BranchID, @IsActive, GETDATE(), GETDATE());
                 SELECT CAST(SCOPE_IDENTITY() as int);";
 
             return await _dbConnection.ExecuteScalarAsync<int>(sql, guest);
@@ -61,6 +63,10 @@ namespace HotelApp.Web.Repositories
                     City = @City,
                     State = @State,
                     Country = @Country,
+                    Pincode = @Pincode,
+                    CountryId = @CountryId,
+                    StateId = @StateId,
+                    CityId = @CityId,
                     IdentityType = @IdentityType,
                     IdentityNumber = @IdentityNumber,
                     DateOfBirth = @DateOfBirth,

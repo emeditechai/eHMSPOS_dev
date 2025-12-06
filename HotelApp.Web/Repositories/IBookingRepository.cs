@@ -15,7 +15,7 @@ namespace HotelApp.Web.Repositories
         Task<decimal> GetTodayAdvanceAmountAsync();
         Task<int> GetTodayCheckInCountAsync();
         Task<int> GetTodayCheckOutCountAsync();
-        Task<bool> UpdateRoomAssignmentAsync(string bookingNumber, int roomId);
+        Task<bool> UpdateRoomAssignmentAsync(string bookingNumber, int roomId, int? performedBy = null);
         Task<bool> UpdateBookingDatesAsync(string bookingNumber, DateTime checkInDate, DateTime checkOutDate, int nights, decimal baseAmount, decimal taxAmount, decimal cgstAmount, decimal sgstAmount, decimal totalAmount);
         Task<bool> UpdateRoomTypeAsync(string bookingNumber, int newRoomTypeId, decimal baseAmount, decimal taxAmount, decimal cgstAmount, decimal sgstAmount, decimal totalAmount);
         Task<bool> UpdateActualCheckOutDateAsync(string bookingNumber, DateTime actualCheckOutDate, int performedBy);

@@ -255,24 +255,34 @@
                                 <i class="fas fa-ellipsis-v"></i>
                             </button>
                             <div class="room-actions-dropdown" id="actions-@room.Id">
-                                <div class="room-action-item status-available" onclick="event.stopPropagation(); updateRoomStatus(@room.Id, 'Available')">
-                                    <i class="fas fa-check-circle"></i>
-                                    <span>Mark Available</span>
-                                </div>
-                                <div class="room-action-item status-cleaning" onclick="event.stopPropagation(); updateRoomStatus(@room.Id, 'Cleaning')">
-                                    <i class="fas fa-broom"></i>
-                                    <span>Need Cleaning</span>
-                                </div>
-                                <div class="room-action-item status-maintenance" onclick="event.stopPropagation(); updateRoomStatus(@room.Id, 'Maintenance')">
-                                    <i class="fas fa-tools"></i>
-                                    <span>Maintenance</span>
-                                </div>
-                                @if (room.Status == "Occupied" || room.Status == "Maintenance")
+                                @if (room.Status == "Occupied")
                                 {
                                     <div class="room-action-item status-checkout" onclick="event.stopPropagation(); checkoutRoomFromMenu(@room.Id)">
                                         <i class="fas fa-sign-out-alt"></i>
                                         <span>Checkout</span>
                                     </div>
+                                }
+                                else
+                                {
+                                    <div class="room-action-item status-available" onclick="event.stopPropagation(); updateRoomStatus(@room.Id, 'Available')">
+                                        <i class="fas fa-check-circle"></i>
+                                        <span>Mark Available</span>
+                                    </div>
+                                    <div class="room-action-item status-cleaning" onclick="event.stopPropagation(); updateRoomStatus(@room.Id, 'Cleaning')">
+                                        <i class="fas fa-broom"></i>
+                                        <span>Need Cleaning</span>
+                                    </div>
+                                    <div class="room-action-item status-maintenance" onclick="event.stopPropagation(); updateRoomStatus(@room.Id, 'Maintenance')">
+                                        <i class="fas fa-tools"></i>
+                                        <span>Maintenance</span>
+                                    </div>
+                                    @if (room.Status == "Maintenance")
+                                    {
+                                        <div class="room-action-item status-checkout" onclick="event.stopPropagation(); checkoutRoomFromMenu(@room.Id)">
+                                            <i class="fas fa-sign-out-alt"></i>
+                                            <span>Checkout</span>
+                                        </div>
+                                    }
                                 }
                             </div>
                         </div>

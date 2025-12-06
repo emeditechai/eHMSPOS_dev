@@ -7,10 +7,14 @@ namespace HotelApp.Web.Controllers
     public class GuestController : BaseController
     {
         private readonly IGuestRepository _guestRepository;
+        private readonly ILocationRepository _locationRepository;
 
-        public GuestController(IGuestRepository guestRepository)
+        public GuestController(
+            IGuestRepository guestRepository,
+            ILocationRepository locationRepository)
         {
             _guestRepository = guestRepository;
+            _locationRepository = locationRepository;
         }
 
         public async Task<IActionResult> Index()
@@ -48,7 +52,50 @@ namespace HotelApp.Web.Controllers
                 ViewBag.ChildGuests = childGuests;
             }
 
+            // Load location data for dropdowns
+            await PopulateLocationDataAsync(guest.CountryId, guest.StateId, guest.CityId);
+
             return View(guest);
+        }
+        
+        private async Task PopulateLocationDataAsync(int? countryId = null, int? stateId = null, int? cityId = null)
+        {
+            // Load all countries
+            ViewBag.Countries = await _locationRepository.GetCountriesAsync();
+            
+            // Load states if country is selected
+            if (countryId.HasValue)
+            {
+                ViewBag.States = await _locationRepository.GetStatesByCountryAsync(countryId.Value);
+            }
+            else
+            {
+                ViewBag.States = new List<State>();
+            }
+            
+            // Load cities if state is selected
+            if (stateId.HasValue)
+            {
+                ViewBag.Cities = await _locationRepository.GetCitiesByStateAsync(stateId.Value);
+            }
+            else
+            {
+                ViewBag.Cities = new List<City>();
+            }
+        }
+        
+        [HttpGet]
+        public async Task<IActionResult> GetStates(int countryId)
+        {
+            var states = await _locationRepository.GetStatesByCountryAsync(countryId);
+            return Json(states.Select(s => new { id = s.Id, name = s.Name }));
+        }
+        
+        [HttpGet]
+        public async Task<IActionResult> GetCities(int stateId)
+        {
+            var cities = await _locationRepository.GetCitiesByStateAsync(stateId);
+            return Json(cities.Select(c => new { id = c.Id, name = c.Name }));
         }
 
         [HttpPost]
@@ -62,7 +109,23 @@ namespace HotelApp.Web.Controllers
                     var childGuests = await _guestRepository.GetChildGuestsAsync(guest.Id);
                     ViewBag.ChildGuests = childGuests;
                 }
+                
+                // Reload location data on validation failure
+                await PopulateLocationDataAsync(guest.CountryId, guest.StateId, guest.CityId);
+                
                 return View(guest);
+            }
+
+            // Preserve BranchID from the existing guest record
+            var existingGuest = await _guestRepository.GetByIdAsync(guest.Id);
+            if (existingGuest != null)
+            {
+                guest.BranchID = existingGuest.BranchID;
+            }
+            else
+            {
+                // If guest not found, use current user's branch
+                guest.BranchID = CurrentBranchID;
             }
 
             var success = await _guestRepository.UpdateAsync(guest);
@@ -73,6 +136,10 @@ namespace HotelApp.Web.Controllers
             }
 
             TempData["ErrorMessage"] = "Failed to update guest details.";
+            
+            // Reload location data on update failure
+            await PopulateLocationDataAsync(guest.CountryId, guest.StateId, guest.CityId);
+            
             return View(guest);
         }
 
@@ -83,6 +150,37 @@ namespace HotelApp.Web.Controllers
             {
                 TempData["ErrorMessage"] = "Guest not found.";
                 return RedirectToAction(nameof(Index));
+            }
+
+            // Load location names from IDs if not already populated
+            if (guest.CountryId.HasValue && string.IsNullOrEmpty(guest.Country))
+            {
+                var countries = await _locationRepository.GetCountriesAsync();
+                var country = countries.FirstOrDefault(c => c.Id == guest.CountryId.Value);
+                if (country != null)
+                {
+                    guest.Country = country.Name;
+                }
+            }
+            
+            if (guest.StateId.HasValue && string.IsNullOrEmpty(guest.State))
+            {
+                var states = await _locationRepository.GetStatesByCountryAsync(guest.CountryId ?? 1);
+                var state = states.FirstOrDefault(s => s.Id == guest.StateId.Value);
+                if (state != null)
+                {
+                    guest.State = state.Name;
+                }
+            }
+            
+            if (guest.CityId.HasValue && string.IsNullOrEmpty(guest.City))
+            {
+                var cities = await _locationRepository.GetCitiesByStateAsync(guest.StateId ?? 1);
+                var city = cities.FirstOrDefault(c => c.Id == guest.CityId.Value);
+                if (city != null)
+                {
+                    guest.City = city.Name;
+                }
             }
 
             // Get child guests if this is a parent
