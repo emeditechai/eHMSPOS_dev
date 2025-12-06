@@ -242,6 +242,26 @@
                     </div>
                 </div>
             }
+            @if (!string.IsNullOrWhiteSpace(Model.Gender))
+            {
+                <div class="detail-row">
+                    <div class="detail-label">Gender:</div>
+                    <div class="detail-value">
+                        @if (Model.Gender == "Male")
+                        {
+                            <i class="fas fa-mars"></i> <text>Male</text>
+                        }
+                        else if (Model.Gender == "Female")
+                        {
+                            <i class="fas fa-venus"></i> <text>Female</text>
+                        }
+                        else
+                        {
+                            <i class="fas fa-genderless"></i> @Model.Gender
+                        }
+                    </div>
+                </div>
+            }
             @if (!string.IsNullOrWhiteSpace(Model.LoyaltyId))
             {
                 <div class="detail-row">

@@ -15,6 +15,7 @@ namespace HotelApp.Web.Models
         public int? StateId { get; set; }
         public int? CityId { get; set; }
         public string? Pincode { get; set; }
+        public string? Gender { get; set; }
         public string? IdentityType { get; set; }
         public string? IdentityNumber { get; set; }
         public DateTime? DateOfBirth { get; set; }

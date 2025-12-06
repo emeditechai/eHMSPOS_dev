@@ -144,9 +144,9 @@ namespace HotelApp.Web.Repositories
             // Insert/Update guests in Guests table and link to BookingGuests
             Guest? primaryGuest = null;
             const string insertGuestSql = @"
-                INSERT INTO BookingGuests (BookingId, FullName, Email, Phone, GuestType, IsPrimary, 
+                INSERT INTO BookingGuests (BookingId, FullName, Email, Phone, Gender, GuestType, IsPrimary, 
                                          Address, City, State, Country, Pincode, CountryId, StateId, CityId)
-                VALUES (@BookingId, @FullName, @Email, @Phone, @GuestType, @IsPrimary,
+                VALUES (@BookingId, @FullName, @Email, @Phone, @Gender, @GuestType, @IsPrimary,
                         @Address, @City, @State, @Country, @Pincode, @CountryId, @StateId, @CityId);";
 
             foreach (var bookingGuest in guests)
@@ -171,6 +171,7 @@ namespace HotelApp.Web.Repositories
                             FirstName = @FirstName, 
                             LastName = @LastName, 
                             Email = @Email, 
+                            Gender = @Gender,
                             GuestType = @GuestType, 
                             ParentGuestId = @ParentGuestId,
                             Address = @Address,
@@ -190,6 +191,7 @@ namespace HotelApp.Web.Repositories
                         FirstName = firstName,
                         LastName = lastName,
                         Email = bookingGuest.Email ?? "",
+                        Gender = bookingGuest.Gender,
                         GuestType = guestType,
                         ParentGuestId = parentGuestId,
                         Address = bookingGuest.Address,
@@ -215,12 +217,12 @@ namespace HotelApp.Web.Repositories
                     // Create new guest with all details including address
                     const string insertNewGuestSql = @"
                         INSERT INTO Guests (
-                            FirstName, LastName, Email, Phone, GuestType, ParentGuestId,
+                            FirstName, LastName, Email, Phone, Gender, GuestType, ParentGuestId,
                             Address, City, State, Country, Pincode, CountryId, StateId, CityId,
                             BranchID, IsActive, CreatedDate, LastModifiedDate
                         )
                         VALUES (
-                            @FirstName, @LastName, @Email, @Phone, @GuestType, @ParentGuestId,
+                            @FirstName, @LastName, @Email, @Phone, @Gender, @GuestType, @ParentGuestId,
                             @Address, @City, @State, @Country, @Pincode, @CountryId, @StateId, @CityId,
                             @BranchID, 1, GETDATE(), GETDATE()
                         );
@@ -232,6 +234,7 @@ namespace HotelApp.Web.Repositories
                         LastName = lastName,
                         Email = bookingGuest.Email ?? "",
                         Phone = bookingGuest.Phone ?? "",
+                        Gender = bookingGuest.Gender,
                         GuestType = guestType,
                         ParentGuestId = parentGuestId,
                         Address = bookingGuest.Address,
@@ -1152,11 +1155,11 @@ namespace HotelApp.Web.Repositories
                 // Insert into BookingGuests table
                 const string bookingGuestSql = @"
                     INSERT INTO BookingGuests (BookingId, FullName, Email, Phone, GuestType, IsPrimary, 
-                                             RelationshipToPrimary, Age, DateOfBirth, IdentityType, 
+                                             RelationshipToPrimary, Age, DateOfBirth, Gender, IdentityType, 
                                              IdentityNumber, DocumentPath, Address, City, State, Country,
                                              Pincode, CountryId, StateId, CityId, CreatedDate, CreatedBy)
                     VALUES (@BookingId, @FullName, @Email, @Phone, @GuestType, 0, 
-                            @RelationshipToPrimary, @Age, @DateOfBirth, @IdentityType, 
+                            @RelationshipToPrimary, @Age, @DateOfBirth, @Gender, @IdentityType, 
                             @IdentityNumber, @DocumentPath, @Address, @City, @State, @Country,
                             @Pincode, @CountryId, @StateId, @CityId, GETDATE(), @CreatedBy);
                     SELECT CAST(SCOPE_IDENTITY() AS INT)";
@@ -1184,6 +1187,7 @@ namespace HotelApp.Web.Repositories
                                 Email = @Email, 
                                 GuestType = @GuestType, 
                                 DateOfBirth = @DateOfBirth,
+                                Gender = @Gender,
                                 IdentityType = @IdentityType,
                                 IdentityNumber = @IdentityNumber,
                                 Address = @Address,
@@ -1206,6 +1210,7 @@ namespace HotelApp.Web.Repositories
                             Email = guest.Email ?? "",
                             GuestType = guest.GuestType ?? "Companion",
                             DateOfBirth = guest.DateOfBirth,
+                            Gender = guest.Gender,
                             IdentityType = guest.IdentityType,
                             IdentityNumber = guest.IdentityNumber,
                             Address = guest.Address,
@@ -1224,11 +1229,11 @@ namespace HotelApp.Web.Repositories
                         // Insert new guest into Guests table
                         const string insertGuestSql = @"
                             INSERT INTO Guests (FirstName, LastName, Email, Phone, GuestType, BranchID, 
-                                              DateOfBirth, IdentityType, IdentityNumber, Address, City, State, Country,
+                                              DateOfBirth, Gender, IdentityType, IdentityNumber, Address, City, State, Country,
                                               Pincode, CountryId, StateId, CityId,
                                               IsActive, CreatedDate, LastModifiedDate)
                             VALUES (@FirstName, @LastName, @Email, @Phone, @GuestType, @BranchID, 
-                                    @DateOfBirth, @IdentityType, @IdentityNumber, @Address, @City, @State, @Country,
+                                    @DateOfBirth, @Gender, @IdentityType, @IdentityNumber, @Address, @City, @State, @Country,
                                     @Pincode, @CountryId, @StateId, @CityId,
                                     1, GETDATE(), GETDATE())";
 
@@ -1241,6 +1246,7 @@ namespace HotelApp.Web.Repositories
                             GuestType = guest.GuestType ?? "Companion",
                             BranchID = branchId,
                             DateOfBirth = guest.DateOfBirth,
+                            Gender = guest.Gender,
                             IdentityType = guest.IdentityType,
                             IdentityNumber = guest.IdentityNumber,
                             Address = guest.Address,
@@ -1273,32 +1279,137 @@ namespace HotelApp.Web.Repositories
                 _dbConnection.Open();
             }
 
-            const string sql = @"
-                UPDATE BookingGuests 
-                SET FullName = @FullName,
-                    Email = @Email,
-                    Phone = @Phone,
-                    GuestType = @GuestType,
-                    RelationshipToPrimary = @RelationshipToPrimary,
-                    Age = @Age,
-                    DateOfBirth = @DateOfBirth,
-                    IdentityType = @IdentityType,
-                    IdentityNumber = @IdentityNumber,
-                    DocumentPath = @DocumentPath,
-                    Address = @Address,
-                    City = @City,
-                    State = @State,
-                    Country = @Country,
-                    Pincode = @Pincode,
-                    CountryId = @CountryId,
-                    StateId = @StateId,
-                    CityId = @CityId,
-                    ModifiedDate = GETDATE(),
-                    ModifiedBy = @ModifiedBy
-                WHERE Id = @Id AND IsActive = 1";
+            using var transaction = _dbConnection.BeginTransaction();
+            try
+            {
+                // Update BookingGuests table
+                const string sql = @"
+                    UPDATE BookingGuests 
+                    SET FullName = @FullName,
+                        Email = @Email,
+                        Phone = @Phone,
+                        GuestType = @GuestType,
+                        RelationshipToPrimary = @RelationshipToPrimary,
+                        Age = @Age,
+                        DateOfBirth = @DateOfBirth,
+                        Gender = @Gender,
+                        IdentityType = @IdentityType,
+                        IdentityNumber = @IdentityNumber,
+                        DocumentPath = @DocumentPath,
+                        Address = @Address,
+                        City = @City,
+                        State = @State,
+                        Country = @Country,
+                        Pincode = @Pincode,
+                        CountryId = @CountryId,
+                        StateId = @StateId,
+                        CityId = @CityId,
+                        ModifiedDate = GETDATE(),
+                        ModifiedBy = @ModifiedBy
+                    WHERE Id = @Id AND IsActive = 1";
 
-            var rowsAffected = await _dbConnection.ExecuteAsync(sql, guest);
-            return rowsAffected > 0;
+                var rowsAffected = await _dbConnection.ExecuteAsync(sql, guest, transaction);
+                
+                if (rowsAffected > 0 && !string.IsNullOrWhiteSpace(guest.Phone))
+                {
+                    // Get BranchID from the booking
+                    const string getBranchSql = "SELECT BranchID FROM Bookings WHERE Id = @BookingId";
+                    var branchId = await _dbConnection.QueryFirstOrDefaultAsync<int?>(getBranchSql, new { guest.BookingId }, transaction);
+                    
+                    // Split FullName into FirstName and LastName
+                    var nameParts = guest.FullName?.Split(' ', 2) ?? new string[] { "", "" };
+                    var firstName = nameParts.Length > 0 ? nameParts[0] : "";
+                    var lastName = nameParts.Length > 1 ? nameParts[1] : "";
+
+                    // Check if guest exists in Guests table
+                    const string checkGuestSql = "SELECT Id FROM Guests WHERE Phone = @Phone AND IsActive = 1";
+                    var existingGuestId = await _dbConnection.QueryFirstOrDefaultAsync<int?>(checkGuestSql, new { guest.Phone }, transaction);
+
+                    if (existingGuestId.HasValue)
+                    {
+                        // Update existing guest in Guests table
+                        const string updateGuestSql = @"
+                            UPDATE Guests 
+                            SET FirstName = @FirstName,
+                                LastName = @LastName,
+                                Email = @Email,
+                                Phone = @Phone,
+                                Address = @Address,
+                                City = @City,
+                                State = @State,
+                                Country = @Country,
+                                Pincode = @Pincode,
+                                CountryId = @CountryId,
+                                StateId = @StateId,
+                                CityId = @CityId,
+                                DateOfBirth = @DateOfBirth,
+                                Gender = @Gender,
+                                IdentityType = @IdentityType,
+                                IdentityNumber = @IdentityNumber,
+                                LastModifiedDate = GETDATE()
+                            WHERE Id = @GuestId AND IsActive = 1";
+
+                        await _dbConnection.ExecuteAsync(updateGuestSql, new
+                        {
+                            GuestId = existingGuestId.Value,
+                            FirstName = firstName,
+                            LastName = lastName,
+                            guest.Email,
+                            guest.Phone,
+                            guest.Address,
+                            guest.City,
+                            guest.State,
+                            guest.Country,
+                            guest.Pincode,
+                            guest.CountryId,
+                            guest.StateId,
+                            guest.CityId,
+                            guest.DateOfBirth,
+                            guest.Gender,
+                            guest.IdentityType,
+                            guest.IdentityNumber
+                        }, transaction);
+                    }
+                    else
+                    {
+                        // Insert new guest in Guests table if not exists
+                        const string insertGuestSql = @"
+                            INSERT INTO Guests (FirstName, LastName, Email, Phone, Address, City, State, Country, Pincode, 
+                                CountryId, StateId, CityId, DateOfBirth, Gender, IdentityType, IdentityNumber, BranchID, IsActive, CreatedDate, LastModifiedDate)
+                            VALUES (@FirstName, @LastName, @Email, @Phone, @Address, @City, @State, @Country, @Pincode,
+                                @CountryId, @StateId, @CityId, @DateOfBirth, @Gender, @IdentityType, @IdentityNumber, @BranchID, 1, GETDATE(), GETDATE())";
+
+                        await _dbConnection.ExecuteAsync(insertGuestSql, new
+                        {
+                            FirstName = firstName,
+                            LastName = lastName,
+                            guest.Email,
+                            guest.Phone,
+                            guest.Address,
+                            guest.City,
+                            guest.State,
+                            guest.Country,
+                            guest.Pincode,
+                            guest.CountryId,
+                            guest.StateId,
+                            guest.CityId,
+                            guest.DateOfBirth,
+                            guest.Gender,
+                            guest.IdentityType,
+                            guest.IdentityNumber,
+                            BranchID = branchId
+                        }, transaction);
+                    }
+                }
+
+                transaction.Commit();
+                return rowsAffected > 0;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
         }
 
         public async Task<bool> DeleteGuestAsync(int guestId, int deletedBy)

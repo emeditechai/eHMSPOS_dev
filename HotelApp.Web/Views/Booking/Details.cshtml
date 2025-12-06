@@ -290,6 +290,200 @@
         border-color: #dc2626;
         color: #991b1b;
     }
+
+    .btn-icon-info {
+        color: #2563eb;
+        border-color: #93c5fd;
+    }
+
+    .btn-icon-info:hover {
+        background: #dbeafe;
+        border-color: #2563eb;
+        color: #1e40af;
+    }
+
+    /* Modern Icon Buttons - Circular Style */
+    .modern-icon-btn {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        border: 3px solid rgba(255, 255, 255, 0.4);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15), inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .modern-icon-btn i {
+        font-size: 1.1rem;
+        position: relative;
+        z-index: 1;
+        transition: transform 0.3s ease;
+        filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.3));
+    }
+
+    .modern-icon-btn:hover {
+        transform: translateY(-3px) scale(1.08);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25), inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+        border-color: rgba(255, 255, 255, 0.6);
+    }
+
+    .modern-icon-btn:active {
+        transform: translateY(-1px) scale(1.02);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.25);
+    }
+
+    .modern-icon-view {
+        background: radial-gradient(circle at 30% 30%, #667eea, #4c63d2);
+        color: white;
+    }
+
+    .modern-icon-view:hover {
+        background: radial-gradient(circle at 30% 30%, #7c8ef5, #667eea);
+    }
+
+    .modern-icon-view:hover i {
+        transform: scale(1.15);
+    }
+
+    .modern-icon-edit {
+        background: radial-gradient(circle at 30% 30%, #84cc16, #65a30d);
+        color: white;
+    }
+
+    .modern-icon-edit:hover {
+        background: radial-gradient(circle at 30% 30%, #a3e635, #84cc16);
+    }
+
+    .modern-icon-edit:hover i {
+        transform: rotate(15deg) scale(1.15);
+    }
+
+    .modern-icon-delete {
+        background: radial-gradient(circle at 30% 30%, #ef4444, #dc2626);
+        color: white;
+    }
+
+    .modern-icon-delete:hover {
+        background: radial-gradient(circle at 30% 30%, #f87171, #ef4444);
+    }
+
+    .modern-icon-delete:hover i {
+        transform: scale(1.15) rotate(-8deg);
+    }
+
+    /* View Guest Modal Styles */
+    .guest-details-view {
+        padding: 1.5rem;
+        max-height: 65vh;
+        overflow-y: auto;
+        background: white;
+    }
+
+    .detail-section {
+        background: linear-gradient(to bottom, #ffffff, #f9fafb);
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.25rem;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .detail-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .section-title-view {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #667eea;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .section-title-view i {
+        color: #667eea;
+        font-size: 1.2rem;
+    }
+
+    .detail-grid-view {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.25rem;
+    }
+
+    .detail-item-view {
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        transition: all 0.2s ease;
+    }
+
+    .detail-item-view:hover {
+        border-color: #667eea;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+    }
+
+    .detail-item-view.full-width-view {
+        grid-column: 1 / -1;
+    }
+
+    .detail-label-view {
+        font-size: 0.8rem;
+        color: #6b7280;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .detail-label-view i {
+        color: #9ca3af;
+        font-size: 0.75rem;
+    }
+
+    .detail-value-view {
+        font-size: 1rem;
+        color: #111827;
+        font-weight: 500;
+        word-break: break-word;
+        line-height: 1.5;
+    }
+
+    /* Document Preview */
+    .document-preview-container {
+        text-align: center;
+    }
+
+    .document-preview {
+        background: #f3f4f6;
+        border: 2px dashed #d1d5db;
+        border-radius: 8px;
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 150px;
+    }
+
+    .document-preview img {
+        max-width: 100%;
+        max-height: 200px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
     
     .audit-timeline {
         position: relative;
@@ -613,17 +807,22 @@
                         {
                             <span class="guest-type-badge">@guest.GuestType</span>
                         }
-                        @if (!guest.IsPrimary)
-                        {
-                            <div style="margin-left: 0.5rem; display: flex; gap: 0.5rem;">
-                                <button type="button" class="btn-icon" onclick="showEditGuestModal(@guest.Id, '@Html.Raw(guest.FullName?.Replace("'", "\\'"))', '@guest.Email', '@guest.Phone', '@guest.GuestType', '@guest.RelationshipToPrimary', @(guest.Age?.ToString() ?? "null"), '@(guest.DateOfBirth?.ToString("yyyy-MM-dd") ?? "")', '@guest.IdentityType', '@guest.IdentityNumber')" title="Edit Guest">
-                                    <i class="fas fa-edit"></i>
+                        <div style="margin-left: 0.5rem; display: flex; gap: 0.5rem; align-items: center;">
+                            <button type="button" class="modern-icon-btn modern-icon-view" onclick="showViewGuestModal(@guest.Id, '@Html.Raw(guest.FullName?.Replace("'", "\\'"))', '@guest.Email', '@guest.Phone', '@guest.GuestType', '@guest.RelationshipToPrimary', @(guest.Age?.ToString() ?? "null"), '@(guest.DateOfBirth?.ToString("yyyy-MM-dd") ?? "")', '@guest.Gender', '@guest.IdentityType', '@guest.IdentityNumber', '@guest.Country', '@guest.State', '@guest.City', '@guest.Address', '@guest.Pincode')" title="View Guest Details">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" style="width: 20px; height: 20px;">
+                                    <path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM144 256a144 144 0 1 1 288 0 144 144 0 1 1 -288 0zm144-64c0 35.3-28.7 64-64 64c-7.1 0-13.9-1.2-20.3-3.3c-5.5-1.8-11.9 1.6-11.7 7.4c.3 6.9 1.3 13.8 3.2 20.7c13.7 51.2 66.4 81.6 117.6 67.9s81.6-66.4 67.9-117.6c-11.1-41.5-47.8-69.4-88.6-71.1c-5.8-.2-9.2 6.1-7.4 11.7c2.1 6.4 3.3 13.2 3.3 20.3z"/>
+                                </svg>
+                            </button>
+                            @if (!guest.IsPrimary)
+                            {
+                                <button type="button" class="modern-icon-btn modern-icon-edit" onclick="showEditGuestModal(@guest.Id, '@Html.Raw(guest.FullName?.Replace("'", "\\'"))', '@guest.Email', '@guest.Phone', '@guest.GuestType', '@guest.RelationshipToPrimary', @(guest.Age?.ToString() ?? "null"), '@(guest.DateOfBirth?.ToString("yyyy-MM-dd") ?? "")', '@guest.Gender', '@guest.IdentityType', '@guest.IdentityNumber', @(guest.CountryId?.ToString() ?? "null"), '@guest.Country', @(guest.StateId?.ToString() ?? "null"), '@guest.State', @(guest.CityId?.ToString() ?? "null"), '@guest.City', '@guest.Address', '@guest.Pincode')" title="Edit Guest">
+                                    <i class="fas fa-pen"></i>
                                 </button>
-                                <button type="button" class="btn-icon btn-icon-danger" onclick="deleteGuest(@guest.Id, '@Html.Raw(guest.FullName?.Replace("'", "\\'"))')" title="Remove Guest">
+                                <button type="button" class="modern-icon-btn modern-icon-delete" onclick="deleteGuest(@guest.Id, '@Html.Raw(guest.FullName?.Replace("'", "\\'"))')" title="Remove Guest">
                                     <i class="fas fa-trash-alt"></i>
                                 </button>
-                            </div>
-                        }
+                            }
+                        </div>
                     </div>
                     @if (!string.IsNullOrWhiteSpace(guest.IdentityType) || !string.IsNullOrWhiteSpace(guest.IdentityNumber))
                     {
@@ -1022,6 +1221,16 @@
                     <label for="dateOfBirth">Date of Birth</label>
                     <input type="date" id="dateOfBirth" name="dateOfBirth" class="form-control" />
                 </div>
+
+                <div class="form-group">
+                    <label for="addGuestGender">Gender</label>
+                    <select id="addGuestGender" name="gender" class="form-control">
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
             </div>
 
             <div class="form-row">
@@ -1043,6 +1252,61 @@
                     <input type="text" id="identityNumber" name="identityNumber" class="form-control" 
                            placeholder="Enter ID number" />
                 </div>
+            </div>
+
+            <div class="form-group">
+                <label for="addGuestCountry">Country</label>
+                <div style="position: relative;">
+                    <input type="text" 
+                           id="addGuestCountry" 
+                           class="form-control autocomplete-input" 
+                           placeholder="Type to search country..." 
+                           autocomplete="new-password" />
+                    <div id="addGuestCountryResults" class="autocomplete-results"></div>
+                </div>
+                <input type="hidden" id="addGuestCountryId" name="countryId" />
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="addGuestState">State</label>
+                    <div style="position: relative;">
+                        <input type="text" 
+                               id="addGuestState" 
+                               class="form-control autocomplete-input" 
+                               placeholder="Select country first..." 
+                               autocomplete="new-password" 
+                               disabled />
+                        <div id="addGuestStateResults" class="autocomplete-results"></div>
+                    </div>
+                    <input type="hidden" id="addGuestStateId" name="stateId" />
+                </div>
+
+                <div class="form-group">
+                    <label for="addGuestCity">City</label>
+                    <div style="position: relative;">
+                        <input type="text" 
+                               id="addGuestCity" 
+                               class="form-control autocomplete-input" 
+                               placeholder="Select state first..." 
+                               autocomplete="new-password" 
+                               disabled />
+                        <div id="addGuestCityResults" class="autocomplete-results"></div>
+                    </div>
+                    <input type="hidden" id="addGuestCityId" name="cityId" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="addGuestAddress">Address</label>
+                <textarea id="addGuestAddress" name="address" class="form-control" rows="2" 
+                          placeholder="Enter street address, building name, etc."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="addGuestPincode">Pincode</label>
+                <input type="text" id="addGuestPincode" name="pincode" class="form-control" 
+                       placeholder="Enter pincode" maxlength="20" />
             </div>
 
             <div class="form-group">
@@ -1131,6 +1395,16 @@
                     <label for="editDateOfBirth">Date of Birth</label>
                     <input type="date" id="editDateOfBirth" name="dateOfBirth" class="form-control" />
                 </div>
+
+                <div class="form-group">
+                    <label for="editGuestGender">Gender</label>
+                    <select id="editGuestGender" name="gender" class="form-control">
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
             </div>
 
             <div class="form-row">
@@ -1155,6 +1429,61 @@
             </div>
 
             <div class="form-group">
+                <label for="editGuestCountry">Country</label>
+                <div style="position: relative;">
+                    <input type="text" 
+                           id="editGuestCountry" 
+                           class="form-control autocomplete-input" 
+                           placeholder="Type to search country..." 
+                           autocomplete="new-password" />
+                    <div id="editGuestCountryResults" class="autocomplete-results"></div>
+                </div>
+                <input type="hidden" id="editGuestCountryId" name="countryId" />
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="editGuestState">State</label>
+                    <div style="position: relative;">
+                        <input type="text" 
+                               id="editGuestState" 
+                               class="form-control autocomplete-input" 
+                               placeholder="Select country first..." 
+                               autocomplete="new-password" 
+                               disabled />
+                        <div id="editGuestStateResults" class="autocomplete-results"></div>
+                    </div>
+                    <input type="hidden" id="editGuestStateId" name="stateId" />
+                </div>
+
+                <div class="form-group">
+                    <label for="editGuestCity">City</label>
+                    <div style="position: relative;">
+                        <input type="text" 
+                               id="editGuestCity" 
+                               class="form-control autocomplete-input" 
+                               placeholder="Select state first..." 
+                               autocomplete="new-password" 
+                               disabled />
+                        <div id="editGuestCityResults" class="autocomplete-results"></div>
+                    </div>
+                    <input type="hidden" id="editGuestCityId" name="cityId" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="editGuestAddress">Address</label>
+                <textarea id="editGuestAddress" name="address" class="form-control" rows="2" 
+                          placeholder="Enter street address, building name, etc."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="editGuestPincode">Pincode</label>
+                <input type="text" id="editGuestPincode" name="pincode" class="form-control" 
+                       placeholder="Enter pincode" maxlength="20" />
+            </div>
+
+            <div class="form-group">
                 <label for="editDocumentUpload">Upload Document (Optional)</label>
                 <input type="file" id="editDocumentUpload" name="document" class="form-control" 
                        accept="image/*,.pdf" />
@@ -1168,6 +1497,138 @@
                 </button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- View Guest Details Modal -->
+<div id="viewGuestModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <h3 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-user-circle" style="font-size: 1.5rem;"></i> Guest Details
+            </h3>
+            <button type="button" class="close-btn" onclick="closeViewGuestModal()" style="color: white; border-color: rgba(255,255,255,0.3);">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="guest-details-view">
+            <!-- Personal Information -->
+            <div class="detail-section">
+                <div class="section-title-view">
+                    <i class="fas fa-user"></i> Personal Information
+                </div>
+                <div class="detail-grid-view">
+                    <div class="detail-item-view">
+                        <div class="detail-label-view"><i class="fas fa-signature"></i> Full Name</div>
+                        <div class="detail-value-view" id="viewFullName">-</div>
+                    </div>
+                    <div class="detail-item-view">
+                        <div class="detail-label-view"><i class="fas fa-tag"></i> Guest Type</div>
+                        <div class="detail-value-view" id="viewGuestType">-</div>
+                    </div>
+                    <div class="detail-item-view">
+                        <div class="detail-label-view"><i class="fas fa-users"></i> Relationship</div>
+                        <div class="detail-value-view" id="viewRelationship">-</div>
+                    </div>
+                    <div class="detail-item-view">
+                        <div class="detail-label-view"><i class="fas fa-birthday-cake"></i> Age</div>
+                        <div class="detail-value-view" id="viewAge">-</div>
+                    </div>
+                    <div class="detail-item-view">
+                        <div class="detail-label-view"><i class="fas fa-calendar-day"></i> Date of Birth</div>
+                        <div class="detail-value-view" id="viewDOB">-</div>
+                    </div>
+                    <div class="detail-item-view">
+                        <div class="detail-label-view"><i class="fas fa-venus-mars"></i> Gender</div>
+                        <div class="detail-value-view" id="viewGender">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Information -->
+            <div class="detail-section">
+                <div class="section-title-view">
+                    <i class="fas fa-address-book"></i> Contact Information
+                </div>
+                <div class="detail-grid-view">
+                    <div class="detail-item-view">
+                        <div class="detail-label-view"><i class="fas fa-envelope"></i> Email</div>
+                        <div class="detail-value-view" id="viewEmail">-</div>
+                    </div>
+                    <div class="detail-item-view">
+                        <div class="detail-label-view"><i class="fas fa-phone"></i> Phone</div>
+                        <div class="detail-value-view" id="viewPhone">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Identity Information -->
+            <div class="detail-section">
+                <div class="section-title-view">
+                    <i class="fas fa-id-card"></i> Identity Information
+                </div>
+                <div class="detail-grid-view">
+                    <div class="detail-item-view">
+                        <div class="detail-label-view"><i class="fas fa-id-badge"></i> Identity Type</div>
+                        <div class="detail-value-view" id="viewIdentityType">-</div>
+                    </div>
+                    <div class="detail-item-view">
+                        <div class="detail-label-view"><i class="fas fa-hashtag"></i> Identity Number</div>
+                        <div class="detail-value-view" id="viewIdentityNumber">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Document Section -->
+            <div class="detail-section" id="viewDocumentSection" style="display: none;">
+                <div class="section-title-view">
+                    <i class="fas fa-file-alt"></i> Attached Document
+                </div>
+                <div class="document-preview-container">
+                    <div class="document-preview" id="viewDocumentPreview">
+                        <i class="fas fa-file-image" style="font-size: 3rem; color: #9ca3af;"></i>
+                        <p style="margin-top: 0.5rem; color: #6b7280;">Document Preview</p>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-primary" id="viewDocumentBtn" style="margin-top: 1rem;">
+                        <i class="fas fa-external-link-alt"></i> View Full Document
+                    </button>
+                </div>
+            </div>
+
+            <!-- Location Information -->
+            <div class="detail-section">
+                <div class="section-title-view">
+                    <i class="fas fa-map-marker-alt"></i> Location Information
+                </div>
+                <div class="detail-grid-view">
+                    <div class="detail-item-view full-width-view">
+                        <div class="detail-label-view"><i class="fas fa-home"></i> Address</div>
+                        <div class="detail-value-view" id="viewAddress">-</div>
+                    </div>
+                    <div class="detail-item-view">
+                        <div class="detail-label-view"><i class="fas fa-city"></i> City</div>
+                        <div class="detail-value-view" id="viewCity">-</div>
+                    </div>
+                    <div class="detail-item-view">
+                        <div class="detail-label-view"><i class="fas fa-map"></i> State</div>
+                        <div class="detail-value-view" id="viewState">-</div>
+                    </div>
+                    <div class="detail-item-view">
+                        <div class="detail-label-view"><i class="fas fa-globe"></i> Country</div>
+                        <div class="detail-value-view" id="viewCountry">-</div>
+                    </div>
+                    <div class="detail-item-view">
+                        <div class="detail-label-view"><i class="fas fa-mail-bulk"></i> Pincode</div>
+                        <div class="detail-value-view" id="viewPincode">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer" style="background: #f9fafb; padding: 1.25rem;">
+            <button type="button" class="btn btn-secondary" onclick="closeViewGuestModal()">
+                <i class="fas fa-times-circle"></i> Close
+            </button>
+        </div>
     </div>
 </div>
 
@@ -1381,6 +1842,63 @@
     /* Override SweetAlert2 z-index to appear above payment modal */
     .swal2-container {
         z-index: 99999 !important;
+    }
+
+    /* Autocomplete Styles */
+    .autocomplete-input {
+        width: 100%;
+    }
+
+    .autocomplete-input:disabled {
+        background-color: #f3f4f6;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .autocomplete-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 250px;
+        overflow-y: auto;
+        background: white;
+        border: 1px solid #d1d5db;
+        border-top: none;
+        border-radius: 0 0 6px 6px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 10000;
+        display: none;
+        margin-top: 0;
+    }
+
+    .autocomplete-results.show {
+        display: block;
+    }
+
+    .autocomplete-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background-color 0.2s;
+    }
+
+    .autocomplete-item:hover,
+    .autocomplete-item.active {
+        background-color: #edf2f7;
+        color: #667eea;
+        font-weight: 500;
+    }
+
+    .autocomplete-item:last-child {
+        border-bottom: none;
+    }
+
+    .autocomplete-no-results {
+        padding: 10px 15px;
+        color: #6b7280;
+        font-style: italic;
+        text-align: center;
     }
 </style>
 
@@ -1720,10 +2238,64 @@
         }
     };
 
+    // View Guest Modal Functions
+    window.showViewGuestModal = function(guestId, fullName, email, phone, guestType, relationship, age, dob, gender, identityType, identityNumber, country, state, city, address, pincode) {
+        const modal = document.getElementById('viewGuestModal');
+        if (modal) {
+            // Personal Information
+            document.getElementById('viewFullName').textContent = fullName || '-';
+            document.getElementById('viewGuestType').textContent = guestType || '-';
+            document.getElementById('viewRelationship').textContent = relationship || '-';
+            document.getElementById('viewAge').textContent = age ? age + ' years' : '-';
+            
+            // Format date of birth
+            if (dob) {
+                const dateObj = new Date(dob);
+                const formattedDate = dateObj.toLocaleDateString('en-IN', { 
+                    day: '2-digit', 
+                    month: 'short', 
+                    year: 'numeric' 
+                });
+                document.getElementById('viewDOB').textContent = formattedDate;
+            } else {
+                document.getElementById('viewDOB').textContent = '-';
+            }
+            
+            document.getElementById('viewGender').textContent = gender || '-';
+            
+            // Contact Information
+            document.getElementById('viewEmail').textContent = email || '-';
+            document.getElementById('viewPhone').textContent = phone || '-';
+            
+            // Identity Information
+            document.getElementById('viewIdentityType').textContent = identityType || '-';
+            document.getElementById('viewIdentityNumber').textContent = identityNumber || '-';
+            
+            // Location Information
+            document.getElementById('viewAddress').textContent = address || '-';
+            document.getElementById('viewCity').textContent = city || '-';
+            document.getElementById('viewState').textContent = state || '-';
+            document.getElementById('viewCountry').textContent = country || '-';
+            document.getElementById('viewPincode').textContent = pincode || '-';
+            
+            modal.style.display = 'flex';
+        }
+    };
+
+    window.closeViewGuestModal = function() {
+        const modal = document.getElementById('viewGuestModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    };
+
     // Edit Guest Modal Functions
-    window.showEditGuestModal = function(guestId, fullName, email, phone, guestType, relationship, age, dob, identityType, identityNumber) {
+    window.showEditGuestModal = function(guestId, fullName, email, phone, guestType, relationship, age, dob, gender, identityType, identityNumber, countryId, countryName, stateId, stateName, cityId, cityName, address, pincode) {
         const modal = document.getElementById('editGuestModal');
         if (modal) {
+            // Load countries for edit modal
+            loadEditGuestCountries();
+            
             document.getElementById('editGuestId').value = guestId;
             document.getElementById('editGuestFullName').value = fullName || '';
             document.getElementById('editGuestEmail').value = email || '';
@@ -1732,8 +2304,52 @@
             document.getElementById('editRelationshipToPrimary').value = relationship || '';
             document.getElementById('editAge').value = age || '';
             document.getElementById('editDateOfBirth').value = dob || '';
+            document.getElementById('editGuestGender').value = gender || '';
             document.getElementById('editIdentityType').value = identityType || '';
             document.getElementById('editIdentityNumber').value = identityNumber || '';
+            
+            // Populate location fields
+            document.getElementById('editGuestAddress').value = address || '';
+            document.getElementById('editGuestPincode').value = pincode || '';
+            
+            // If location data exists, populate the autocomplete fields
+            if (countryId && countryName) {
+                document.getElementById('editGuestCountry').value = countryName;
+                document.getElementById('editGuestCountryId').value = countryId;
+                
+                // Load and populate states
+                if (stateId && stateName) {
+                    $.get('@Url.Action("GetStates", "Booking")', { countryId: countryId }, function(response) {
+                        if (response.success && response.states) {
+                            editGuestStates = response.states;
+                            $('#editGuestState').prop('disabled', false).attr('placeholder', 'Type to search state...');
+                            $('#editGuestState').val(stateName);
+                            $('#editGuestStateId').val(stateId);
+                            
+                            // Load and populate cities
+                            if (cityId && cityName) {
+                                $.get('@Url.Action("GetCities", "Booking")', { stateId: stateId }, function(cityResponse) {
+                                    if (cityResponse.success && cityResponse.cities) {
+                                        editGuestCities = cityResponse.cities;
+                                        $('#editGuestCity').prop('disabled', false).attr('placeholder', 'Type to search city...');
+                                        $('#editGuestCity').val(cityName);
+                                        $('#editGuestCityId').val(cityId);
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
+            } else {
+                // Clear location fields
+                $('#editGuestCountry').val('');
+                $('#editGuestCountryId').val('');
+                $('#editGuestState').val('').prop('disabled', true).attr('placeholder', 'Select country first...');
+                $('#editGuestStateId').val('');
+                $('#editGuestCity').val('').prop('disabled', true).attr('placeholder', 'Select state first...');
+                $('#editGuestCityId').val('');
+            }
+            
             modal.style.display = 'flex';
         }
     };
@@ -1963,6 +2579,213 @@
                 window.closeEditGuestModal();
             }
         });
+    }
+
+    // ===== Location Autocomplete for Add Guest Modal =====
+    let addGuestCountries = [];
+    let addGuestStates = [];
+    let addGuestCities = [];
+
+    // Load countries when page loads
+    $.get('@Url.Action("GetCountries", "Booking")', function(response) {
+        if (response.success && response.countries) {
+            addGuestCountries = response.countries;
+        }
+    });
+
+    // Setup autocomplete for Add Guest Country
+    setupGuestAutocomplete('addGuestCountry', 'addGuestCountryResults', 'addGuestCountryId', 
+        () => addGuestCountries, 
+        function(item) {
+            $('#addGuestState').val('').prop('disabled', false).attr('placeholder', 'Type to search state...');
+            $('#addGuestStateId').val('');
+            $('#addGuestCity').val('').prop('disabled', true).attr('placeholder', 'Select state first...');
+            $('#addGuestCityId').val('');
+            addGuestStates = [];
+            addGuestCities = [];
+            
+            // Load states for selected country
+            $.get('@Url.Action("GetStates", "Booking")', { countryId: item.id }, function(response) {
+                if (response.success && response.states) {
+                    addGuestStates = response.states;
+                }
+            });
+        }
+    );
+
+    // Setup autocomplete for Add Guest State
+    setupGuestAutocomplete('addGuestState', 'addGuestStateResults', 'addGuestStateId', 
+        () => addGuestStates,
+        function(item) {
+            $('#addGuestCity').val('').prop('disabled', false).attr('placeholder', 'Type to search city...');
+            $('#addGuestCityId').val('');
+            addGuestCities = [];
+            
+            // Load cities for selected state
+            $.get('@Url.Action("GetCities", "Booking")', { stateId: item.id }, function(response) {
+                if (response.success && response.cities) {
+                    addGuestCities = response.cities;
+                }
+            });
+        }
+    );
+
+    // Setup autocomplete for Add Guest City
+    setupGuestAutocomplete('addGuestCity', 'addGuestCityResults', 'addGuestCityId', 
+        () => addGuestCities,
+        null
+    );
+
+    // ===== Location Autocomplete for Edit Guest Modal =====
+    let editGuestCountries = [];
+    let editGuestStates = [];
+    let editGuestCities = [];
+
+    // Load countries for edit modal (will be loaded when edit modal opens)
+    function loadEditGuestCountries() {
+        $.get('@Url.Action("GetCountries", "Booking")', function(response) {
+            if (response.success && response.countries) {
+                editGuestCountries = response.countries;
+            }
+        });
+    }
+
+    // Setup autocomplete for Edit Guest Country
+    setupGuestAutocomplete('editGuestCountry', 'editGuestCountryResults', 'editGuestCountryId', 
+        () => editGuestCountries, 
+        function(item) {
+            $('#editGuestState').val('').prop('disabled', false).attr('placeholder', 'Type to search state...');
+            $('#editGuestStateId').val('');
+            $('#editGuestCity').val('').prop('disabled', true).attr('placeholder', 'Select state first...');
+            $('#editGuestCityId').val('');
+            editGuestStates = [];
+            editGuestCities = [];
+            
+            // Load states for selected country
+            $.get('@Url.Action("GetStates", "Booking")', { countryId: item.id }, function(response) {
+                if (response.success && response.states) {
+                    editGuestStates = response.states;
+                }
+            });
+        }
+    );
+
+    // Setup autocomplete for Edit Guest State
+    setupGuestAutocomplete('editGuestState', 'editGuestStateResults', 'editGuestStateId', 
+        () => editGuestStates,
+        function(item) {
+            $('#editGuestCity').val('').prop('disabled', false).attr('placeholder', 'Type to search city...');
+            $('#editGuestCityId').val('');
+            editGuestCities = [];
+            
+            // Load cities for selected state
+            $.get('@Url.Action("GetCities", "Booking")', { stateId: item.id }, function(response) {
+                if (response.success && response.cities) {
+                    editGuestCities = response.cities;
+                }
+            });
+        }
+    );
+
+    // Setup autocomplete for Edit Guest City
+    setupGuestAutocomplete('editGuestCity', 'editGuestCityResults', 'editGuestCityId', 
+        () => editGuestCities,
+        null
+    );
+
+    // Generic autocomplete setup function for guest modals
+    function setupGuestAutocomplete(inputId, resultsId, hiddenId, dataSourceFn, onSelectCallback) {
+        const $input = $('#' + inputId);
+        const $results = $('#' + resultsId);
+        const $hidden = $('#' + hiddenId);
+        let currentFocus = -1;
+
+        $input.on('input', function() {
+            const query = $(this).val().toLowerCase().trim();
+            $results.empty().removeClass('show');
+            currentFocus = -1;
+
+            if (query.length === 0) {
+                $hidden.val('');
+                return;
+            }
+
+            const data = dataSourceFn();
+            if (!data || data.length === 0) {
+                return;
+            }
+
+            const filtered = data.filter(item => 
+                item && item.name && item.name.toLowerCase().includes(query)
+            );
+
+            if (filtered.length > 0) {
+                filtered.forEach((item, index) => {
+                    const $div = $('<div class="autocomplete-item"></div>')
+                        .text(item.name)
+                        .data('item', item)
+                        .data('index', index)
+                        .on('click', function() {
+                            selectGuestItem($(this), $input, $results, $hidden, onSelectCallback);
+                        });
+                    $results.append($div);
+                });
+                $results.addClass('show');
+            } else {
+                $results.html('<div class="autocomplete-no-results">No results found</div>').addClass('show');
+            }
+        });
+
+        $input.on('keydown', function(e) {
+            const $items = $results.find('.autocomplete-item');
+            if ($items.length === 0) return;
+
+            if (e.keyCode === 40) { // Down arrow
+                e.preventDefault();
+                currentFocus++;
+                addGuestActiveItem($items, currentFocus);
+            } else if (e.keyCode === 38) { // Up arrow
+                e.preventDefault();
+                currentFocus--;
+                addGuestActiveItem($items, currentFocus);
+            } else if (e.keyCode === 13) { // Enter
+                e.preventDefault();
+                if (currentFocus > -1 && $items.length > 0) {
+                    selectGuestItem($items.eq(currentFocus), $input, $results, $hidden, onSelectCallback);
+                }
+            } else if (e.keyCode === 27) { // Escape
+                $results.removeClass('show');
+            }
+        });
+
+        $input.on('blur', function() {
+            setTimeout(() => {
+                $results.removeClass('show');
+                currentFocus = -1;
+            }, 200);
+        });
+
+        function addGuestActiveItem($items, focusIndex) {
+            if (!$items.length) return;
+            $items.removeClass('active');
+            if (focusIndex >= $items.length) currentFocus = 0;
+            if (focusIndex < 0) currentFocus = $items.length - 1;
+            $items.eq(currentFocus).addClass('active');
+            $items.eq(currentFocus)[0].scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    function selectGuestItem($item, $input, $results, $hidden, onSelectCallback) {
+        const item = $item.data('item');
+        if (!item) return;
+        
+        $input.val(item.name);
+        $hidden.val(item.id);
+        $results.removeClass('show');
+        
+        if (onSelectCallback) {
+            onSelectCallback(item);
+        }
     }
 </script>
 }

@@ -213,6 +213,7 @@ namespace HotelApp.Web.Controllers
                     FullName = $"{model.PrimaryGuestFirstName} {model.PrimaryGuestLastName}".Trim(),
                     Email = model.PrimaryGuestEmail,
                     Phone = model.PrimaryGuestPhone,
+                    Gender = model.Gender?.Trim(),
                     GuestType = "Primary",
                     IsPrimary = true,
                     Address = model.AddressLine,
@@ -353,6 +354,29 @@ namespace HotelApp.Web.Controllers
                     return Json(new { success = false, message = "Booking not found." });
                 }
 
+                // Get location names from IDs if provided
+                string? countryName = null;
+                string? stateName = null;
+                string? cityName = null;
+
+                if (request.CountryId.HasValue)
+                {
+                    var country = await _locationRepository.GetCountryByIdAsync(request.CountryId.Value);
+                    countryName = country?.Name;
+                }
+
+                if (request.StateId.HasValue)
+                {
+                    var state = await _locationRepository.GetStateByIdAsync(request.StateId.Value);
+                    stateName = state?.Name;
+                }
+
+                if (request.CityId.HasValue)
+                {
+                    var city = await _locationRepository.GetCityByIdAsync(request.CityId.Value);
+                    cityName = city?.Name;
+                }
+
                 var guest = new BookingGuest
                 {
                     BookingId = booking.Id,
@@ -364,9 +388,18 @@ namespace HotelApp.Web.Controllers
                     RelationshipToPrimary = request.RelationshipToPrimary?.Trim(),
                     Age = request.Age,
                     DateOfBirth = request.DateOfBirth,
+                    Gender = request.Gender?.Trim(),
                     IdentityType = request.IdentityType?.Trim(),
                     IdentityNumber = request.IdentityNumber?.Trim(),
                     DocumentPath = request.DocumentPath?.Trim(),
+                    Address = request.Address?.Trim(),
+                    CountryId = request.CountryId,
+                    StateId = request.StateId,
+                    CityId = request.CityId,
+                    Country = countryName,
+                    State = stateName,
+                    City = cityName,
+                    Pincode = request.Pincode?.Trim(),
                     CreatedBy = GetCurrentUserId()
                 };
 
@@ -411,6 +444,29 @@ namespace HotelApp.Web.Controllers
                     return Json(new { success = false, message = "Guest name is required." });
                 }
 
+                // Get location names from IDs if provided
+                string? countryName = null;
+                string? stateName = null;
+                string? cityName = null;
+
+                if (request.CountryId.HasValue)
+                {
+                    var country = await _locationRepository.GetCountryByIdAsync(request.CountryId.Value);
+                    countryName = country?.Name;
+                }
+
+                if (request.StateId.HasValue)
+                {
+                    var state = await _locationRepository.GetStateByIdAsync(request.StateId.Value);
+                    stateName = state?.Name;
+                }
+
+                if (request.CityId.HasValue)
+                {
+                    var city = await _locationRepository.GetCityByIdAsync(request.CityId.Value);
+                    cityName = city?.Name;
+                }
+
                 var guest = new BookingGuest
                 {
                     Id = request.GuestId,
@@ -421,9 +477,18 @@ namespace HotelApp.Web.Controllers
                     RelationshipToPrimary = request.RelationshipToPrimary?.Trim(),
                     Age = request.Age,
                     DateOfBirth = request.DateOfBirth,
+                    Gender = request.Gender?.Trim(),
                     IdentityType = request.IdentityType?.Trim(),
                     IdentityNumber = request.IdentityNumber?.Trim(),
                     DocumentPath = request.DocumentPath?.Trim(),
+                    Address = request.Address?.Trim(),
+                    CountryId = request.CountryId,
+                    StateId = request.StateId,
+                    CityId = request.CityId,
+                    Country = countryName,
+                    State = stateName,
+                    City = cityName,
+                    Pincode = request.Pincode?.Trim(),
                     ModifiedBy = GetCurrentUserId()
                 };
 
@@ -480,6 +545,12 @@ namespace HotelApp.Web.Controllers
             public string? IdentityType { get; set; }
             public string? IdentityNumber { get; set; }
             public string? DocumentPath { get; set; }
+            public string? Address { get; set; }
+            public int? CountryId { get; set; }
+            public int? StateId { get; set; }
+            public int? CityId { get; set; }
+            public string? Pincode { get; set; }
+            public string? Gender { get; set; }
         }
 
         public class UpdateGuestRequest
@@ -495,6 +566,12 @@ namespace HotelApp.Web.Controllers
             public string? IdentityType { get; set; }
             public string? IdentityNumber { get; set; }
             public string? DocumentPath { get; set; }
+            public string? Address { get; set; }
+            public int? CountryId { get; set; }
+            public int? StateId { get; set; }
+            public int? CityId { get; set; }
+            public string? Pincode { get; set; }
+            public string? Gender { get; set; }
         }
 
         public class DeleteGuestRequest
@@ -949,6 +1026,17 @@ namespace HotelApp.Web.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> GetCountries()
+        {
+            var countries = await _locationRepository.GetCountriesAsync();
+            return Json(new
+            {
+                success = true,
+                countries = countries.Select(c => new { c.Id, c.Name })
+            });
+        }
+
+        [HttpGet]
         public async Task<IActionResult> GetStates(int countryId)
         {
             if (countryId <= 0)
@@ -1009,6 +1097,7 @@ namespace HotelApp.Web.Controllers
                     lastName = guest.LastName,
                     email = guest.Email,
                     phone = guest.Phone,
+                    gender = guest.Gender,
                     loyaltyId = guest.LoyaltyId,
                     address = guest.Address,
                     countryId = guest.CountryId,

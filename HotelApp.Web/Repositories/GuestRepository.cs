@@ -59,6 +59,7 @@ namespace HotelApp.Web.Repositories
                     LastName = @LastName,
                     Email = @Email,
                     Phone = @Phone,
+                    Gender = @Gender,
                     Address = @Address,
                     City = @City,
                     State = @State,

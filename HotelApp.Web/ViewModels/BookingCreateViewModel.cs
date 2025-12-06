@@ -43,14 +43,15 @@ namespace HotelApp.Web.ViewModels
         [EmailAddress]
         public string PrimaryGuestEmail { get; set; } = string.Empty;
 
-        [Required]
-        [Phone]
-        public string PrimaryGuestPhone { get; set; } = string.Empty;
+    [Required]
+    [Phone]
+    public string PrimaryGuestPhone { get; set; } = string.Empty;
 
-        [StringLength(100)]
-        public string? LoyaltyId { get; set; }
+    [StringLength(20)]
+    public string? Gender { get; set; }
 
-        [StringLength(1000)]
+    [StringLength(100)]
+    public string? LoyaltyId { get; set; }        [StringLength(1000)]
         public string? SpecialRequests { get; set; }
 
         [Range(0, 1000000)]

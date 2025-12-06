@@ -72,6 +72,7 @@ namespace HotelApp.Web.Models
         public int? CountryId { get; set; }
         public int? StateId { get; set; }
         public int? CityId { get; set; }
+        public string? Gender { get; set; }
         public DateTime CreatedDate { get; set; }
         public int? CreatedBy { get; set; }
         public bool IsActive { get; set; } = true;

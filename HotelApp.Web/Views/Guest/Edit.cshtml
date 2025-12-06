@@ -61,6 +61,17 @@
             </div>
 
             <div class="form-group">
+                <label asp-for="Gender">Gender</label>
+                <select asp-for="Gender" class="form-control">
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                </select>
+                <span asp-validation-for="Gender" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
                 <label asp-for="LoyaltyId">Loyalty ID</label>
                 <input asp-for="LoyaltyId" type="text" />
                 <span asp-validation-for="LoyaltyId" class="text-danger"></span>

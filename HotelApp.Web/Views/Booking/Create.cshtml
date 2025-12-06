@@ -307,6 +307,15 @@
                         <input asp-for="PrimaryGuestLastName" id="guestLastName" placeholder="Last name" />
                         <span asp-validation-for="PrimaryGuestLastName" class="text-danger"></span>
                     </div>
+                    <div class="form-field">
+                        <label>Gender</label>
+                        <select class="form-control" name="Gender" id="guestGender">
+                            <option value="">Select Gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="form-field">
@@ -544,6 +553,7 @@
                             $('#guestFirstName').val(response.guest.firstName);
                             $('#guestLastName').val(response.guest.lastName);
                             $('#guestEmail').val(response.guest.email);
+                            $('#guestGender').val(response.guest.gender || '');
                             $('#guestLoyalty').val(response.guest.loyaltyId || '');
                             
                             // Auto-fill address details with autocomplete
@@ -647,6 +657,7 @@
                 $('#guestFirstName').val('');
                 $('#guestLastName').val('');
                 $('#guestEmail').val('');
+                $('#guestGender').val('');
                 $('#guestLoyalty').val('');
                 $('#guestFoundBadge').hide();
                 $('#lastBookingInfo').hide();
