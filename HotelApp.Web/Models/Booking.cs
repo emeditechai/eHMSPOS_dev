@@ -17,6 +17,7 @@ namespace HotelApp.Web.Models
         public DateTime? ActualCheckOutDate { get; set; }
         public int Nights { get; set; }
         public int RoomTypeId { get; set; }
+        public int RequiredRooms { get; set; } = 1;
         public int? RoomId { get; set; }
         public int? RatePlanId { get; set; }
         public decimal BaseAmount { get; set; }
@@ -47,6 +48,7 @@ namespace HotelApp.Web.Models
         public List<BookingGuest> Guests { get; set; } = new();
         public List<BookingPayment> Payments { get; set; } = new();
         public List<BookingRoomNight> RoomNights { get; set; } = new();
+        public List<BookingRoom> AssignedRooms { get; set; } = new();
     }
 
     public class BookingGuest

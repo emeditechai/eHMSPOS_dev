@@ -4,128 +4,562 @@
     var availableRooms = ViewBag.AvailableRooms as IEnumerable<HotelApp.Web.Models.Room>;
 }
 
-<div class="page-header">
-    <h2><i class="fas fa-door-open"></i> Assign Room to Booking</h2>
-    <a asp-action="List" class="btn-cancel">
-        <i class="fas fa-arrow-left"></i> Back to List
-    </a>
-</div>
+<style>
+    .assign-room-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
 
-<div class="form-container">
-    <div class="booking-info-card" style="margin-bottom: 25px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-        <h3 style="margin-bottom: 15px; color: var(--primary);">Booking Details</h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-            <div>
-                <strong>Booking #:</strong> @Model.BookingNumber
+    .assign-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
+    }
+
+    .assign-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: white;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .assign-header .btn-back {
+        padding: 8px 18px;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+    }
+
+    .assign-header .btn-back:hover {
+        background: rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.5);
+        transform: translateX(-3px);
+    }
+
+    .booking-info-card {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8eaf6 100%);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        border: 2px solid rgba(102, 126, 234, 0.15);
+    }
+
+    .booking-info-card h3 {
+        margin: 0 0 15px 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .booking-details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+    }
+
+    .booking-detail-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .booking-detail-item strong {
+        font-size: 0.75rem;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+    }
+
+    .booking-detail-item span {
+        font-size: 0.95rem;
+        color: #2c3e50;
+        font-weight: 600;
+    }
+
+    .booking-detail-item.highlight {
+        background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+        padding: 10px;
+        border-radius: 8px;
+        border-left: 4px solid #ffc107;
+    }
+
+    .booking-detail-item.highlight span {
+        color: #856404;
+        font-size: 1.1rem;
+    }
+
+    .selection-counter {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8eaf6 100%);
+        border: 2px solid rgba(102, 126, 234, 0.3);
+        border-radius: 8px;
+        padding: 12px 20px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .selection-counter-label {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .selection-counter-value {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #667eea;
+    }
+
+    .selection-counter-value.complete {
+        color: #28a745;
+    }
+
+    .selection-counter-value.incomplete {
+        color: #dc3545;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: 15px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .room-selection-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 15px;
+        margin-bottom: 25px;
+    }
+
+    .room-card-selectable {
+        position: relative;
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 18px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: block;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+
+    .room-card-selectable:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 16px rgba(102, 126, 234, 0.15);
+        border-color: rgba(102, 126, 234, 0.3);
+    }
+
+    .room-card-selectable.selected {
+        border-color: #667eea;
+        background: linear-gradient(135deg, #f0f2ff 0%, #e8eaf6 100%);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.25);
+    }
+
+    .room-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .room-card-header h4 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+
+    .room-checkbox {
+        width: 22px;
+        height: 22px;
+        cursor: pointer;
+        accent-color: #667eea;
+    }
+
+    .room-card-body {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .room-info-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+    }
+
+    .room-info-label {
+        color: #666;
+        font-weight: 500;
+    }
+
+    .room-info-value {
+        color: #2c3e50;
+        font-weight: 600;
+    }
+
+    .badge-available {
+        display: inline-block;
+        padding: 4px 10px;
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        padding-top: 20px;
+        border-top: 2px solid #e2e8f0;
+    }
+
+    .btn-assign {
+        padding: 12px 28px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-assign:hover:not(:disabled) {
+        background: linear-gradient(135deg, #5568d3 0%, #6b3f8f 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-assign:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .btn-cancel-action {
+        padding: 12px 28px;
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        color: #667eea;
+        border: 2px solid rgba(102, 126, 234, 0.3);
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+        text-decoration: none;
+    }
+
+    .btn-cancel-action:hover {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-color: rgba(102, 126, 234, 0.5);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .alert-warning {
+        background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+        border: 2px solid #ffc107;
+        border-left: 5px solid #ffc107;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: #856404;
+        font-weight: 500;
+    }
+
+    .alert-warning i {
+        font-size: 1.5rem;
+    }
+</style>
+
+<div class="assign-room-container">
+    <div class="assign-header">
+        <h2><i class="fas fa-door-open"></i> Assign Room to Booking</h2>
+        <a asp-action="List" class="btn-back">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+    </div>
+
+    <div class="booking-info-card">
+        <h3>Booking Details</h3>
+        <div class="booking-details-grid">
+            <div class="booking-detail-item">
+                <strong>Booking #</strong>
+                <span>@Model.BookingNumber</span>
             </div>
-            <div>
-                <strong>Guest:</strong> @Model.PrimaryGuestFirstName @Model.PrimaryGuestLastName
+            <div class="booking-detail-item">
+                <strong>Guest Name</strong>
+                <span>@Model.PrimaryGuestFirstName @Model.PrimaryGuestLastName</span>
             </div>
-            <div>
-                <strong>Room Type:</strong> @Model.RoomType?.TypeName
+            <div class="booking-detail-item">
+                <strong>Room Type</strong>
+                <span>@Model.RoomType?.TypeName</span>
             </div>
-            <div>
-                <strong>Check-in:</strong> @Model.CheckInDate.ToString("dd MMM yyyy")
+            <div class="booking-detail-item">
+                <strong>Check-in Date</strong>
+                <span>@Model.CheckInDate.ToString("dd MMM yyyy")</span>
             </div>
-            <div>
-                <strong>Check-out:</strong> @Model.CheckOutDate.ToString("dd MMM yyyy")
+            <div class="booking-detail-item">
+                <strong>Check-out Date</strong>
+                <span>@Model.CheckOutDate.ToString("dd MMM yyyy")</span>
             </div>
-            <div>
-                <strong>Nights:</strong> @Model.Nights
+            <div class="booking-detail-item">
+                <strong>Total Nights</strong>
+                <span>@Model.Nights</span>
+            </div>
+            <div class="booking-detail-item highlight">
+                <strong>Required Rooms</strong>
+                <span>
+                    @Model.RequiredRooms
+                    @if (Model.RequiredRooms > 1)
+                    {
+                        <i class="fas fa-layer-group"></i>
+                    }
+                </span>
             </div>
         </div>
     </div>
 
-    <h3 style="margin-bottom: 20px;">Select Available Room</h3>
+    <h3 class="section-title">Select Available Room(s)</h3>
 
     @if (availableRooms != null && availableRooms.Any())
     {
-        <form asp-action="AssignRoom" method="post">
+        <form asp-action="AssignRoom" method="post" id="assignRoomForm">
             @Html.AntiForgeryToken()
             <input type="hidden" name="bookingNumber" value="@Model.BookingNumber" />
+            <input type="hidden" id="requiredRooms" value="@Model.RequiredRooms" />
 
-            <div class="room-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-bottom: 25px;">
+            <div class="selection-counter" id="selectionCounter">
+                <span class="selection-counter-label">
+                    <i class="fas fa-check-circle"></i> 
+                    Rooms Selected: 
+                </span>
+                <span class="selection-counter-value" id="selectedCount">
+                    0 / @Model.RequiredRooms
+                </span>
+            </div>
+
+            <div class="room-selection-grid">
                 @foreach (var room in availableRooms)
                 {
-                    <label class="room-card" for="room-@room.Id" style="border: 2px solid #e2e8f0; border-radius: 10px; padding: 20px; cursor: pointer; transition: all 0.2s; display: block;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <h4 style="margin: 0; color: var(--primary);">Room @room.RoomNumber</h4>
-                            <input type="radio" id="room-@room.Id" name="roomId" value="@room.Id" required style="width: 20px; height: 20px;" onchange="highlightSelectedRoom(this)">
+                    <label class="room-card-selectable" for="room-@room.Id" data-room-id="@room.Id">
+                        <div class="room-card-header">
+                            <h4>Room @room.RoomNumber</h4>
+                            <input type="checkbox" 
+                                   id="room-@room.Id" 
+                                   name="roomIds" 
+                                   value="@room.Id" 
+                                   class="room-checkbox"
+                                   onchange="handleRoomSelection()">
                         </div>
-                        <div style="font-size: 14px; color: #718096;">
-                            <div><strong>Floor:</strong> @(room.FloorName ?? $"Floor {room.Floor}")</div>
-                            <div><strong>Status:</strong> <span class="badge badge-available">@room.Status</span></div>
+                        <div class="room-card-body">
+                            <div class="room-info-row">
+                                <span class="room-info-label">Floor:</span>
+                                <span class="room-info-value">@(room.FloorName ?? $"Floor {room.Floor}")</span>
+                            </div>
+                            <div class="room-info-row">
+                                <span class="room-info-label">Status:</span>
+                                <span class="badge-available">@room.Status</span>
+                            </div>
                         </div>
                     </label>
                 }
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn-save" id="assignRoomBtn">
-                    <i class="fas fa-check"></i> Assign Selected Room
-                </button>
-                <a asp-action="List" class="btn-cancel">
+                <a asp-action="List" class="btn-cancel-action">
                     <i class="fas fa-times"></i> Cancel
                 </a>
+                <button type="submit" class="btn-assign" id="assignRoomBtn">
+                    <i class="fas fa-check"></i> Assign Selected Room
+                </button>
             </div>
         </form>
     }
     else
     {
-        <div class="alert alert-warning">
+        <div class="alert-warning">
             <i class="fas fa-exclamation-triangle"></i>
-            No available rooms found for this room type.
+            <span>No available rooms found for this room type.</span>
         </div>
-        <a asp-action="List" class="btn-cancel">
-            <i class="fas fa-arrow-left"></i> Back to List
-        </a>
+        <div class="form-actions">
+            <a asp-action="List" class="btn-cancel-action">
+                <i class="fas fa-arrow-left"></i> Back to List
+            </a>
+        </div>
     }
 </div>
 
 <script>
-    function highlightSelectedRoom(radio) {
-        // Remove selected styling from all cards
-        document.querySelectorAll('.room-card').forEach(card => {
-            card.style.borderColor = '#e2e8f0';
-            card.style.backgroundColor = 'white';
-        });
-
-        // Add selected styling to the parent label of the checked radio
-        if (radio.checked) {
-            const parentLabel = radio.closest('.room-card');
-            if (parentLabel) {
-                parentLabel.style.borderColor = '#667eea';
-                parentLabel.style.backgroundColor = '#f0f9ff';
-                parentLabel.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.2)';
+    const requiredRooms = parseInt(document.getElementById('requiredRooms')?.value || 1);
+    
+    function handleRoomSelection() {
+        const checkboxes = document.querySelectorAll('input[name="roomIds"]:checked');
+        const selectedCount = checkboxes.length;
+        
+        // Update counter
+        const counterValue = document.getElementById('selectedCount');
+        if (counterValue) {
+            counterValue.textContent = `${selectedCount} / ${requiredRooms}`;
+            
+            // Update counter color
+            counterValue.classList.remove('complete', 'incomplete');
+            if (selectedCount === requiredRooms) {
+                counterValue.classList.add('complete');
+            } else if (selectedCount > 0) {
+                counterValue.classList.add('incomplete');
             }
         }
+        
+        // Update card styling
+        document.querySelectorAll('.room-card-selectable').forEach(card => {
+            const checkbox = card.querySelector('input[type="checkbox"]');
+            if (checkbox && checkbox.checked) {
+                card.classList.add('selected');
+            } else {
+                card.classList.remove('selected');
+            }
+        });
+        
+        // Disable other checkboxes if limit reached
+        const allCheckboxes = document.querySelectorAll('input[name="roomIds"]');
+        allCheckboxes.forEach(cb => {
+            if (!cb.checked && selectedCount >= requiredRooms) {
+                cb.disabled = true;
+                cb.closest('.room-card-selectable').style.opacity = '0.5';
+                cb.closest('.room-card-selectable').style.cursor = 'not-allowed';
+            } else if (!cb.checked) {
+                cb.disabled = false;
+                cb.closest('.room-card-selectable').style.opacity = '1';
+                cb.closest('.room-card-selectable').style.cursor = 'pointer';
+            }
+        });
     }
 
-    // Initialize on page load if there's a pre-selected room
+    // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
-        const checkedRadio = document.querySelector('input[name="roomId"]:checked');
-        if (checkedRadio) {
-            highlightSelectedRoom(checkedRadio);
-        }
+        handleRoomSelection();
 
-        // Add form validation
-        const form = document.querySelector('form');
+        // Add form validation and submission handling
+        const form = document.getElementById('assignRoomForm');
         const assignBtn = document.getElementById('assignRoomBtn');
         
         if (form && assignBtn) {
             form.addEventListener('submit', function(e) {
-                const selectedRoom = document.querySelector('input[name="roomId"]:checked');
+                const selectedRooms = document.querySelectorAll('input[name="roomIds"]:checked');
                 
-                if (!selectedRoom) {
+                if (selectedRooms.length === 0) {
                     e.preventDefault();
-                    alert('Please select a room before submitting.');
+                    
+                    // Show friendly alert
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert-warning';
+                    alertDiv.innerHTML = '<i class="fas fa-info-circle"></i><span>Please select at least one room before submitting.</span>';
+                    alertDiv.style.marginTop = '15px';
+                    
+                    // Remove existing alert if any
+                    const existingAlert = form.querySelector('.alert-warning');
+                    if (existingAlert) {
+                        existingAlert.remove();
+                    }
+                    
+                    form.insertBefore(alertDiv, form.querySelector('.form-actions'));
+                    
+                    // Scroll to alert
+                    alertDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    return false;
+                }
+                
+                if (selectedRooms.length !== requiredRooms) {
+                    e.preventDefault();
+                    
+                    // Show validation alert
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert-warning';
+                    alertDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i><span>Please select exactly ${requiredRooms} room(s) as per the booking requirement. You have selected ${selectedRooms.length}.</span>`;
+                    alertDiv.style.marginTop = '15px';
+                    
+                    // Remove existing alert if any
+                    const existingAlert = form.querySelector('.alert-warning');
+                    if (existingAlert) {
+                        existingAlert.remove();
+                    }
+                    
+                    form.insertBefore(alertDiv, form.querySelector('.form-actions'));
+                    
+                    // Scroll to alert
+                    alertDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
                     return false;
                 }
                 
                 // Disable button to prevent double submission
                 assignBtn.disabled = true;
-                assignBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Assigning...';
+                assignBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Assigning Rooms...';
+                
+                // Add loading overlay
+                const overlay = document.createElement('div');
+                overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); z-index: 9999; display: flex; align-items: center; justify-content: center;';
+                overlay.innerHTML = '<div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2);"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #667eea;"></i><p style="margin: 15px 0 0 0; font-weight: 600; color: #2c3e50;">Assigning rooms...</p></div>';
+                document.body.appendChild(overlay);
             });
         }
+        
+        // Add hover effect for better UX
+        document.querySelectorAll('.room-card-selectable').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                const checkbox = this.querySelector('input[type="checkbox"]');
+                if (!checkbox.disabled && !this.classList.contains('selected')) {
+                    this.style.borderColor = 'rgba(102, 126, 234, 0.5)';
+                }
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                if (!this.classList.contains('selected')) {
+                    this.style.borderColor = '#e2e8f0';
+                }
+            });
+        });
     });
 </script>

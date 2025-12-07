@@ -28,6 +28,11 @@ public class RoomsController : BaseController
         var statusCounts = await _roomRepository.GetRoomStatusCountsAsync(CurrentBranchID);
         var yesterdayStatusCounts = await _roomRepository.GetYesterdayRoomStatusCountsAsync(CurrentBranchID);
 
+        // Get room availability for today by default
+        var startDate = DateTime.Today;
+        var endDate = DateTime.Today;
+        var availability = await _roomRepository.GetRoomAvailabilityByDateRangeAsync(CurrentBranchID, startDate, endDate);
+
         var viewModel = new RoomDashboardViewModel
         {
             AvailableCount = statusCounts["Available"],
@@ -54,7 +59,20 @@ public class RoomsController : BaseController
                 BookingNumber = r.BookingNumber,
                 PrimaryGuestName = r.PrimaryGuestName
             }).ToList(),
-            Floors = floors.ToList()
+            Floors = floors.ToList(),
+            RoomTypeAvailabilities = availability.Select(kvp => new RoomTypeAvailability
+            {
+                RoomTypeId = kvp.Key,
+                RoomTypeName = kvp.Value.roomTypeName,
+                TotalRooms = kvp.Value.totalRooms,
+                AvailableRooms = kvp.Value.availableRooms,
+                OccupiedRooms = kvp.Value.totalRooms - kvp.Value.availableRooms,
+                BaseRate = kvp.Value.baseRate,
+                MaxOccupancy = kvp.Value.maxOccupancy,
+                AvailableRoomNumbers = kvp.Value.availableRoomNumbers
+            }).ToList(),
+            StartDate = startDate,
+            EndDate = endDate
         };
 
         ViewData["Title"] = "Room Dashboard";
@@ -259,6 +277,41 @@ public class RoomsController : BaseController
         {
             Console.WriteLine($"Exception in ForceCheckoutRoom: {ex.Message}\n{ex.StackTrace}");
             return Json(new { success = false, message = $"Error during force checkout: {ex.Message}" });
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAvailabilityByDateRange(DateTime? startDate, DateTime? endDate)
+    {
+        try
+        {
+            var start = startDate ?? DateTime.Today;
+            var end = endDate ?? DateTime.Today;
+
+            if (end < start)
+            {
+                return Json(new { success = false, message = "End date must be after start date" });
+            }
+
+            var availability = await _roomRepository.GetRoomAvailabilityByDateRangeAsync(CurrentBranchID, start, end);
+
+            var result = availability.Select(kvp => new
+            {
+                roomTypeId = kvp.Key,
+                roomTypeName = kvp.Value.roomTypeName,
+                totalRooms = kvp.Value.totalRooms,
+                availableRooms = kvp.Value.availableRooms,
+                occupiedRooms = kvp.Value.totalRooms - kvp.Value.availableRooms,
+                baseRate = kvp.Value.baseRate,
+                maxOccupancy = kvp.Value.maxOccupancy,
+                availableRoomNumbers = kvp.Value.availableRoomNumbers
+            }).ToList();
+
+            return Json(new { success = true, data = result, startDate = start, endDate = end });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = $"Error fetching availability: {ex.Message}" });
         }
     }
 

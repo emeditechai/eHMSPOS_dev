@@ -50,12 +50,16 @@ namespace HotelApp.Web.Repositories
                 INNER JOIN RoomTypes rt ON r.RoomTypeId = rt.Id
                 LEFT JOIN Floors f ON r.Floor = f.Id
                 LEFT JOIN (
-                    SELECT bk.RoomId, bk.CheckInDate, bk.CheckOutDate, bk.BookingNumber, bk.BalanceAmount,
+                    SELECT br.RoomId, bk.CheckInDate, bk.CheckOutDate, bk.BookingNumber, bk.BalanceAmount,
                            CONCAT(bk.PrimaryGuestFirstName, ' ', bk.PrimaryGuestLastName) AS PrimaryGuestName,
-                           ROW_NUMBER() OVER (PARTITION BY bk.RoomId ORDER BY bk.CheckInDate DESC) as rn
-                    FROM Bookings bk
-                    WHERE bk.Status IN ('Confirmed', 'CheckedIn')
-                        AND CAST(GETDATE() AS DATE) BETWEEN CAST(bk.CheckInDate AS DATE) AND CAST(bk.CheckOutDate AS DATE)
+                           ROW_NUMBER() OVER (PARTITION BY br.RoomId ORDER BY bk.CheckInDate DESC) as rn
+                    FROM BookingRooms br
+                    INNER JOIN Bookings bk ON br.BookingId = bk.Id
+                    WHERE br.IsActive = 1
+                        AND bk.Status IN ('Confirmed', 'CheckedIn')
+                        AND CAST(bk.CheckInDate AS DATE) <= CAST(GETDATE() AS DATE)
+                        AND CAST(bk.CheckOutDate AS DATE) > CAST(GETDATE() AS DATE)
+                        AND bk.ActualCheckOutDate IS NULL
                 ) b ON r.Id = b.RoomId AND b.rn = 1
                 WHERE r.IsActive = 1 AND r.BranchID = @BranchId
                 ORDER BY r.RoomNumber";
@@ -89,7 +93,16 @@ namespace HotelApp.Web.Repositories
         {
             var sql = @"
                 SELECT r.*, f.FloorName AS FloorName,
-                       rt.Id AS RoomTypeId, rt.TypeName, rt.Description, rt.BaseRate, rt.MaxOccupancy, rt.Amenities
+                       rt.Id AS RoomTypeId, rt.TypeName, rt.Description, rt.MaxOccupancy, rt.Amenities,
+                       ISNULL((
+                           SELECT TOP 1 rm.BaseRate 
+                           FROM RateMaster rm 
+                           WHERE rm.RoomTypeId = rt.Id 
+                           AND rm.IsActive = 1 
+                           AND rm.BranchID = r.BranchID
+                           AND CAST(GETDATE() AS DATE) BETWEEN CAST(rm.StartDate AS DATE) AND CAST(rm.EndDate AS DATE)
+                           ORDER BY rm.CreatedDate DESC
+                       ), rt.BaseRate) AS BaseRate
                 FROM Rooms r
                 INNER JOIN RoomTypes rt ON r.RoomTypeId = rt.Id
                 LEFT JOIN Floors f ON r.Floor = f.Id
@@ -332,6 +345,118 @@ namespace HotelApp.Web.Repositories
                 ? dt
                 : booking.CheckOutDate == null ? null : Convert.ToDateTime(booking.CheckOutDate);
             return (true, bookingNumber, balanceAmount, checkOutDate);
+        }
+
+        public async Task<Dictionary<int, (string roomTypeName, int totalRooms, int availableRooms, decimal baseRate, int maxOccupancy, List<string> availableRoomNumbers)>> GetRoomAvailabilityByDateRangeAsync(int branchId, DateTime startDate, DateTime endDate)
+        {
+            var sql = @"
+                -- Count required rooms by room type in the date range (includes bookings with or without room assignments)
+                WITH BookingsByRoomType AS (
+                    SELECT 
+                        b.RoomTypeId,
+                        SUM(b.RequiredRooms) AS TotalRequiredRooms
+                    FROM Bookings b
+                    WHERE b.BranchID = @BranchId
+                        AND b.Status IN ('Confirmed', 'CheckedIn')
+                        -- Room is occupied if check-in is before or on the end date
+                        -- AND actual checkout hasn't happened yet OR planned checkout is after start date
+                        AND CAST(b.CheckInDate AS DATE) <= CAST(@EndDate AS DATE)
+                        AND (
+                            -- If ActualCheckOutDate is set, use it; otherwise use CheckOutDate
+                            CASE 
+                                WHEN b.ActualCheckOutDate IS NOT NULL 
+                                THEN CAST(b.ActualCheckOutDate AS DATE)
+                                ELSE CAST(b.CheckOutDate AS DATE)
+                            END > CAST(@StartDate AS DATE)
+                        )
+                    GROUP BY b.RoomTypeId
+                ),
+                -- Get all active rooms by room type that are available (not already assigned to bookings in this range)
+                AvailableRoomsForRange AS (
+                    SELECT 
+                        r.RoomTypeId,
+                        r.RoomNumber
+                    FROM Rooms r
+                    WHERE r.BranchID = @BranchId
+                        AND r.IsActive = 1
+                        AND r.Status IN ('Available', 'Occupied')
+                        AND NOT EXISTS (
+                            -- Exclude rooms that have bookings assigned via BookingRooms table in the date range
+                            -- Room is occupied if actual checkout hasn't happened yet OR planned checkout is after start date
+                            SELECT 1 
+                            FROM BookingRooms br
+                            INNER JOIN Bookings b2 ON br.BookingId = b2.Id
+                            WHERE br.RoomId = r.Id
+                                AND br.IsActive = 1
+                                AND b2.Status IN ('Confirmed', 'CheckedIn')
+                                AND CAST(b2.CheckInDate AS DATE) <= CAST(@EndDate AS DATE)
+                                AND (
+                                    -- If ActualCheckOutDate is set, use it; otherwise use CheckOutDate
+                                    CASE 
+                                        WHEN b2.ActualCheckOutDate IS NOT NULL 
+                                        THEN CAST(b2.ActualCheckOutDate AS DATE)
+                                        ELSE CAST(b2.CheckOutDate AS DATE)
+                                    END > CAST(@StartDate AS DATE)
+                                )
+                        )
+                )
+                SELECT 
+                    rt.Id AS RoomTypeId,
+                    rt.TypeName AS RoomTypeName,
+                    rt.BaseRate,
+                    rt.MaxOccupancy,
+                    rt.Max_RoomAvailability AS MaxRoomAvailability,
+                    -- Get the total required rooms in the date range for this room type
+                    ISNULL(brt.TotalRequiredRooms, 0) AS TotalRequiredRooms,
+                    -- Get comma-separated list of available room numbers (rooms without assignments)
+                    STRING_AGG(ar.RoomNumber, ', ') AS AvailableRoomNumbers
+                FROM RoomTypes rt
+                LEFT JOIN BookingsByRoomType brt ON rt.Id = brt.RoomTypeId
+                LEFT JOIN AvailableRoomsForRange ar ON rt.Id = ar.RoomTypeId
+                WHERE rt.BranchID = @BranchId
+                    AND rt.IsActive = 1
+                GROUP BY rt.Id, rt.TypeName, rt.BaseRate, rt.MaxOccupancy, rt.Max_RoomAvailability, brt.TotalRequiredRooms
+                ORDER BY rt.TypeName";
+
+            var results = await _dbConnection.QueryAsync(sql, new { BranchId = branchId, StartDate = startDate, EndDate = endDate });
+            
+            var availability = new Dictionary<int, (string, int, int, decimal, int, List<string>)>();
+            
+            foreach (var row in results)
+            {
+                int roomTypeId = row.RoomTypeId;
+                string roomTypeName = row.RoomTypeName ?? "";
+                decimal baseRate = row.BaseRate ?? 0m;
+                int maxOccupancy = row.MaxOccupancy ?? 0;
+                
+                // Get Max_RoomAvailability from RoomTypes table (configured max capacity for this room type)
+                int? maxRoomAvailability = row.MaxRoomAvailability;
+                
+                // Get the total required rooms in the date range (sum of RequiredRooms from all bookings)
+                int totalRequiredRooms = row.TotalRequiredRooms ?? 0;
+                
+                // Use Max_RoomAvailability as the total capacity for this room type
+                // This represents the maximum number of rooms of this type that can be booked
+                int totalCapacity = maxRoomAvailability ?? 0;
+                
+                // Calculate available rooms: Total Capacity - Total Required Rooms in Range
+                int availableRooms = Math.Max(0, totalCapacity - totalRequiredRooms);
+                
+                // Parse available room numbers (these are rooms that don't have bookings in the range)
+                string availableRoomNumbersStr = row.AvailableRoomNumbers as string ?? "";
+                var roomNumbers = string.IsNullOrWhiteSpace(availableRoomNumbersStr) 
+                    ? new List<string>() 
+                    : availableRoomNumbersStr.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(s => s.Trim())
+                        .Where(s => !string.IsNullOrEmpty(s))
+                        .Take(availableRooms)  // Only take up to available count
+                        .ToList();
+                
+                // Return: totalCapacity as total rooms, calculated available rooms
+                availability[roomTypeId] = (roomTypeName, totalCapacity, availableRooms, baseRate, maxOccupancy, roomNumbers);
+            }
+            
+            return availability;
         }
     }
 }

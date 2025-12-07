@@ -179,6 +179,7 @@ namespace HotelApp.Web.Controllers
                 CheckOutDate = model.CheckOutDate,
                 Nights = quote.Nights,
                 RoomTypeId = model.RoomTypeId,
+                RequiredRooms = model.RequiredRooms,
                 RoomId = null,
                 RatePlanId = quote.RatePlanId,
                 BaseAmount = quote.TotalRoomRate,
@@ -726,7 +727,7 @@ namespace HotelApp.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AssignRoom(string bookingNumber, int roomId)
+        public async Task<IActionResult> AssignRoom(string bookingNumber, int[] roomIds)
         {
             if (string.IsNullOrWhiteSpace(bookingNumber))
             {
@@ -741,38 +742,63 @@ namespace HotelApp.Web.Controllers
                 return RedirectToAction(nameof(List));
             }
 
-            // Get the room to verify it exists and is available
-            var room = await _roomRepository.GetByIdAsync(roomId);
-            if (room == null)
+            // Validate room selection count matches RequiredRooms
+            if (roomIds == null || roomIds.Length == 0)
             {
-                TempData["ErrorMessage"] = "Selected room not found";
+                TempData["ErrorMessage"] = "Please select at least one room";
                 return RedirectToAction(nameof(AssignRoom), new { bookingNumber });
             }
 
-            if (room.RoomTypeId != booking.RoomTypeId)
+            if (roomIds.Length != booking.RequiredRooms)
             {
-                TempData["ErrorMessage"] = "Selected room does not match the booking's room type";
+                TempData["ErrorMessage"] = $"Please select exactly {booking.RequiredRooms} room(s) as per the booking requirement";
+                return RedirectToAction(nameof(AssignRoom), new { bookingNumber });
+            }
+
+            // Validate all selected rooms
+            var allRooms = await _roomRepository.GetAllByBranchAsync(CurrentBranchID);
+            var selectedRooms = allRooms.Where(r => roomIds.Contains(r.Id)).ToList();
+
+            if (selectedRooms.Count != roomIds.Length)
+            {
+                TempData["ErrorMessage"] = "One or more selected rooms not found";
+                return RedirectToAction(nameof(AssignRoom), new { bookingNumber });
+            }
+
+            // Check if all rooms match the booking's room type
+            if (selectedRooms.Any(r => r.RoomTypeId != booking.RoomTypeId))
+            {
+                TempData["ErrorMessage"] = "All selected rooms must match the booking's room type";
+                return RedirectToAction(nameof(AssignRoom), new { bookingNumber });
+            }
+
+            // Check if all rooms are available
+            if (selectedRooms.Any(r => r.Status != "Available"))
+            {
+                TempData["ErrorMessage"] = "One or more selected rooms are not available";
                 return RedirectToAction(nameof(AssignRoom), new { bookingNumber });
             }
 
             try
             {
-                var success = await _bookingRepository.UpdateRoomAssignmentAsync(bookingNumber, roomId, GetCurrentUserId());
+                // Assign all selected rooms to the booking
+                var success = await _bookingRepository.AssignMultipleRoomsAsync(bookingNumber, roomIds, GetCurrentUserId());
                 
                 if (success)
                 {
-                    TempData["SuccessMessage"] = $"Room {room.RoomNumber} assigned successfully to booking {bookingNumber}";
+                    var roomNumbers = string.Join(", ", selectedRooms.Select(r => r.RoomNumber));
+                    TempData["SuccessMessage"] = $"Room(s) {roomNumbers} assigned successfully to booking {bookingNumber}";
                     return RedirectToAction(nameof(Details), new { bookingNumber });
                 }
                 else
                 {
-                    TempData["ErrorMessage"] = "Failed to assign room to booking";
+                    TempData["ErrorMessage"] = "Failed to assign rooms to booking";
                     return RedirectToAction(nameof(AssignRoom), new { bookingNumber });
                 }
             }
             catch (Exception ex)
             {
-                TempData["ErrorMessage"] = $"Error assigning room: {ex.Message}";
+                TempData["ErrorMessage"] = $"Error assigning rooms: {ex.Message}";
                 return RedirectToAction(nameof(AssignRoom), new { bookingNumber });
             }
         }

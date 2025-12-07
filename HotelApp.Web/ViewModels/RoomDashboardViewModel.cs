@@ -14,6 +14,21 @@ namespace HotelApp.Web.ViewModels
         public int CleaningChange { get; set; }
         public List<RoomDashboardItem> Rooms { get; set; } = new List<RoomDashboardItem>();
         public List<Floor> Floors { get; set; } = new List<Floor>();
+        public List<RoomTypeAvailability> RoomTypeAvailabilities { get; set; } = new List<RoomTypeAvailability>();
+        public DateTime StartDate { get; set; } = DateTime.Today;
+        public DateTime EndDate { get; set; } = DateTime.Today.AddDays(7);
+    }
+
+    public class RoomTypeAvailability
+    {
+        public int RoomTypeId { get; set; }
+        public string RoomTypeName { get; set; } = string.Empty;
+        public int TotalRooms { get; set; }
+        public int AvailableRooms { get; set; }
+        public int OccupiedRooms { get; set; }
+        public decimal BaseRate { get; set; }
+        public int MaxOccupancy { get; set; }
+        public List<string> AvailableRoomNumbers { get; set; } = new List<string>();
     }
 
     public class RoomDashboardItem

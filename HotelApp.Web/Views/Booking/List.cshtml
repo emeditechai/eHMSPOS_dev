@@ -130,6 +130,12 @@
                             {
                                 <div class="subtext text-muted">Not Assigned</div>
                             }
+                            @if (booking.RequiredRooms > 1)
+                            {
+                                <div class="subtext" style="color: #6366f1; font-weight: 600; margin-top: 4px;">
+                                    <i class="fas fa-layer-group" style="font-size: 10px;"></i> @booking.RequiredRooms Rooms
+                                </div>
+                            }
                         </td>
                         <td>
                             ₹@booking.TotalAmount.ToString("N0")

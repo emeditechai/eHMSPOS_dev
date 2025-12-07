@@ -132,15 +132,19 @@
             align-items: center;
             gap: 4px;
             border-left: 2px solid #17a2b8;
+            word-break: break-all;
+            flex-wrap: wrap;
         }
         
         .room-booking-info i {
             font-size: 10px;
+            flex-shrink: 0;
         }
         
         .room-booking-info span {
             font-weight: 600;
-            white-space: nowrap;
+            word-break: break-all;
+            overflow-wrap: anywhere;
         }
         
         .room-guest-info {
@@ -206,6 +210,249 @@
         
         .calendar-day.saturday {
             color: #007bff;
+        }
+        
+        /* Availability Section Styles */
+        .availability-section {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 32px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+        
+        .availability-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .availability-header h2 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .date-range-selector {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .date-input-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .date-input-group label {
+            font-size: 14px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        .date-input-group input[type="date"] {
+            padding: 10px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+            background: white;
+        }
+        
+        .date-input-group input[type="date"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn-apply-dates {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .btn-apply-dates:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .availability-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+        
+        .availability-card {
+            background: linear-gradient(135deg, #f8f9ff 0%, #e8eaf6 100%);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.15);
+            transition: all 0.3s ease;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .availability-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .availability-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 12px 28px rgba(102, 126, 234, 0.25);
+            border-color: rgba(102, 126, 234, 0.4);
+            background: linear-gradient(135deg, #f0f2ff 0%, #dfe2f4 100%);
+        }
+        
+        .availability-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .availability-card-header h3 {
+            margin: 0;
+            font-size: 20px;
+            color: #2c3e50;
+            font-weight: 700;
+        }
+        
+        .rate-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .availability-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 12px;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .stat-item.available {
+            background: linear-gradient(135deg, #a8e6cf 0%, #6dd5a9 100%);
+            border-left: 4px solid #28a745;
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
+        }
+        
+        .stat-item.occupied {
+            background: linear-gradient(135deg, #ffd1dc 0%, #ffb3c1 100%);
+            border-left: 4px solid #dc3545;
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            color: #2c3e50;
+            font-weight: 700;
+        }
+        
+        .availability-progress {
+            margin-bottom: 16px;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b 0%, #ffd93d 50%, #6bcf7f 100%);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+            box-shadow: 0 2px 4px rgba(255, 107, 107, 0.3);
+        }
+        
+        .progress-label {
+            font-size: 12px;
+            color: #666;
+            text-align: right;
+        }
+        
+        .available-rooms-list {
+            background: linear-gradient(135deg, #f0fff4 0%, #e6f9ed 100%);
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            border-left: 3px solid #28a745;
+            box-shadow: 0 2px 4px rgba(40, 167, 69, 0.1);
+        }
+        
+        .list-label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 4px;
+        }
+        
+        .room-numbers {
+            font-size: 13px;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+        
+        .availability-footer {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #555;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .availability-footer i {
+            color: #667eea;
         }
     </style>
 }
@@ -300,6 +547,73 @@
                     <text>No change</text>
                 }
             </div>
+        </div>
+    </div>
+
+    <!-- Room Type Availability Section -->
+    <div class="availability-section">
+        <div class="availability-header">
+            <h2>Room Availability by Type</h2>
+            <div class="date-range-selector">
+                <div class="date-input-group">
+                    <label>From:</label>
+                    <input type="date" id="startDate" value="@Model.StartDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="date-input-group">
+                    <label>To:</label>
+                    <input type="date" id="endDate" value="@Model.EndDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <button class="btn-apply-dates" onclick="updateAvailability()">
+                    <i class="fas fa-search"></i>
+                    Check Availability
+                </button>
+            </div>
+        </div>
+        
+        <div class="availability-cards" id="availabilityCards">
+            @foreach (var roomType in Model.RoomTypeAvailabilities)
+            {
+                <div class="availability-card">
+                    <div class="availability-card-header">
+                        <h3>@roomType.RoomTypeName</h3>
+                        <span class="rate-badge">₹@roomType.BaseRate.ToString("N0") / night</span>
+                    </div>
+                    <div class="availability-stats">
+                        <div class="stat-item">
+                            <div class="stat-label">Total Rooms</div>
+                            <div class="stat-value">@roomType.TotalRooms</div>
+                        </div>
+                        <div class="stat-item available">
+                            <div class="stat-label">Available</div>
+                            <div class="stat-value">@roomType.AvailableRooms</div>
+                        </div>
+                        <div class="stat-item occupied">
+                            <div class="stat-label">Occupied</div>
+                            <div class="stat-value">@roomType.OccupiedRooms</div>
+                        </div>
+                    </div>
+                    <div class="availability-progress">
+                        @{
+                            var occupancyPercentage = roomType.TotalRooms > 0 ? (roomType.OccupiedRooms * 100.0 / roomType.TotalRooms) : 0;
+                        }
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: @(occupancyPercentage)%"></div>
+                        </div>
+                        <div class="progress-label">@(occupancyPercentage.ToString("F0"))% Occupied</div>
+                    </div>
+                    @if (roomType.AvailableRoomNumbers != null && roomType.AvailableRoomNumbers.Any())
+                    {
+                        <div class="available-rooms-list">
+                            <span class="list-label">Available Rooms:</span>
+                            <span class="room-numbers">@string.Join(", ", roomType.AvailableRoomNumbers)</span>
+                        </div>
+                    }
+                    <div class="availability-footer">
+                        <i class="fas fa-users"></i>
+                        Max Occupancy: @roomType.MaxOccupancy persons
+                    </div>
+                </div>
+            }
         </div>
     </div>
 
@@ -565,7 +879,125 @@
         // Initialize calendar on page load
         document.addEventListener('DOMContentLoaded', function() {
             renderCalendar();
+            
+            // Set min date for date inputs to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('startDate').min = today;
+            document.getElementById('endDate').min = today;
         });
+        
+        // Update availability based on date range selection
+        function updateAvailability() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            if (!startDate || !endDate) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Missing Dates',
+                    text: 'Please select both start and end dates'
+                });
+                return;
+            }
+            
+            if (new Date(endDate) < new Date(startDate)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Invalid Date Range',
+                    text: 'End date must be after start date'
+                });
+                return;
+            }
+            
+            // Show loading state
+            const availabilityCards = document.getElementById('availabilityCards');
+            availabilityCards.innerHTML = '<div style="text-align: center; padding: 40px; width: 100%;"><i class="fas fa-spinner fa-spin fa-3x" style="color: #667eea;"></i><p style="margin-top: 16px; color: #666;">Loading availability data...</p></div>';
+            
+            // Fetch availability data
+            fetch(`@Url.Action("GetAvailabilityByDateRange", "Rooms")?startDate=${startDate}&endDate=${endDate}`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        displayAvailabilityCards(result.data);
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: result.message || 'Failed to load availability data'
+                        });
+                        availabilityCards.innerHTML = '<div style="text-align: center; padding: 40px; width: 100%; color: #dc3545;"><i class="fas fa-exclamation-circle fa-3x"></i><p style="margin-top: 16px;">Failed to load availability data</p></div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching availability:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Failed to connect to server'
+                    });
+                    availabilityCards.innerHTML = '<div style="text-align: center; padding: 40px; width: 100%; color: #dc3545;"><i class="fas fa-exclamation-circle fa-3x"></i><p style="margin-top: 16px;">Failed to connect to server</p></div>';
+                });
+        }
+        
+        // Display availability cards dynamically
+        function displayAvailabilityCards(data) {
+            const availabilityCards = document.getElementById('availabilityCards');
+            
+            if (!data || data.length === 0) {
+                availabilityCards.innerHTML = '<div style="text-align: center; padding: 40px; width: 100%; color: #666;"><i class="fas fa-info-circle fa-3x"></i><p style="margin-top: 16px;">No room types available</p></div>';
+                return;
+            }
+            
+            let cardsHtml = '';
+            data.forEach(roomType => {
+                const occupancyPercentage = roomType.totalRooms > 0 
+                    ? (roomType.occupiedRooms * 100.0 / roomType.totalRooms).toFixed(0) 
+                    : 0;
+                
+                const availableRoomsHtml = roomType.availableRoomNumbers && roomType.availableRoomNumbers.length > 0
+                    ? `<div class="available-rooms-list">
+                        <span class="list-label">Available Rooms:</span>
+                        <span class="room-numbers">${roomType.availableRoomNumbers.join(', ')}</span>
+                       </div>`
+                    : '';
+                
+                cardsHtml += `
+                    <div class="availability-card">
+                        <div class="availability-card-header">
+                            <h3>${roomType.roomTypeName}</h3>
+                            <span class="rate-badge">₹${roomType.baseRate.toLocaleString()} / night</span>
+                        </div>
+                        <div class="availability-stats">
+                            <div class="stat-item">
+                                <div class="stat-label">Total Rooms</div>
+                                <div class="stat-value">${roomType.totalRooms}</div>
+                            </div>
+                            <div class="stat-item available">
+                                <div class="stat-label">Available</div>
+                                <div class="stat-value">${roomType.availableRooms}</div>
+                            </div>
+                            <div class="stat-item occupied">
+                                <div class="stat-label">Occupied</div>
+                                <div class="stat-value">${roomType.occupiedRooms}</div>
+                            </div>
+                        </div>
+                        <div class="availability-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${occupancyPercentage}%"></div>
+                            </div>
+                            <div class="progress-label">${occupancyPercentage}% Occupied</div>
+                        </div>
+                        ${availableRoomsHtml}
+                        <div class="availability-footer">
+                            <i class="fas fa-users"></i>
+                            Max Occupancy: ${roomType.maxOccupancy} persons
+                        </div>
+                    </div>
+                `;
+            });
+            
+            availabilityCards.innerHTML = cardsHtml;
+        }
 
         function selectRoom(roomId) {
             selectedRoomId = roomId;

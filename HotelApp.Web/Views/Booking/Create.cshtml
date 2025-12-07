@@ -356,16 +356,23 @@
                     </div>
                 </div>
 
-                <div class="form-field">
-                    <label asp-for="RoomTypeId">Room Type <span style="color: #e53e3e;">*</span></label>
-                    <select asp-for="RoomTypeId">
-                        <option value="">-- Select Room Type --</option>
-                        @foreach (var room in roomTypes)
-                        {
-                            <option value="@room.Id">@room.TypeName</option>
-                        }
-                    </select>
-                    <span asp-validation-for="RoomTypeId" class="text-danger"></span>
+                <div class="form-row-inline">
+                    <div class="form-field">
+                        <label asp-for="RoomTypeId">Room Type <span style="color: #e53e3e;">*</span></label>
+                        <select asp-for="RoomTypeId">
+                            <option value="">-- Select Room Type --</option>
+                            @foreach (var room in roomTypes)
+                            {
+                                <option value="@room.Id">@room.TypeName</option>
+                            }
+                        </select>
+                        <span asp-validation-for="RoomTypeId" class="text-danger"></span>
+                    </div>
+                    <div class="form-field">
+                        <label asp-for="RequiredRooms">Required Rooms <span style="color: #e53e3e;">*</span></label>
+                        <input asp-for="RequiredRooms" type="number" min="1" max="50" />
+                        <span asp-validation-for="RequiredRooms" class="text-danger"></span>
+                    </div>
                 </div>
 
                 <div class="form-row-inline">

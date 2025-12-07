@@ -125,14 +125,14 @@ namespace HotelApp.Web.Repositories
             const string insertBookingSql = @"
                 INSERT INTO Bookings (
                     BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
-                    CheckInDate, CheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
+                    CheckInDate, CheckOutDate, Nights, RoomTypeId, RequiredRooms, RoomId, RatePlanId,
                     BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
                     BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
                     PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, BranchID, CreatedBy,
                     LastModifiedBy)
                 VALUES (
                     @BookingNumber, @Status, @PaymentStatus, @Channel, @Source, @CustomerType,
-                    @CheckInDate, @CheckOutDate, @Nights, @RoomTypeId, @RoomId, @RatePlanId,
+                    @CheckInDate, @CheckOutDate, @Nights, @RoomTypeId, @RequiredRooms, @RoomId, @RatePlanId,
                     @BaseAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @DiscountAmount, @TotalAmount, @DepositAmount,
                     @BalanceAmount, @Adults, @Children, @PrimaryGuestFirstName, @PrimaryGuestLastName,
                     @PrimaryGuestEmail, @PrimaryGuestPhone, @LoyaltyId, @SpecialRequests, @BranchID, @CreatedBy,
@@ -396,7 +396,7 @@ namespace HotelApp.Web.Repositories
                     CheckInDate, CheckOutDate, ActualCheckInDate, ActualCheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
                     BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
                     BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
-                    PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, BranchID,
+                    PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, RequiredRooms, BranchID,
                     CreatedDate, CreatedBy, LastModifiedDate, LastModifiedBy
                 FROM Bookings
                 WHERE BookingNumber = @BookingNumber";
@@ -432,6 +432,22 @@ namespace HotelApp.Web.Repositories
             const string nightSql = "SELECT * FROM BookingRoomNights WHERE BookingId IN @Ids";
             var nights = await _dbConnection.QueryAsync<BookingRoomNight>(nightSql, new { Ids = bookingIds });
 
+            const string bookingRoomsSql = @"
+                SELECT br.*, r.RoomNumber 
+                FROM BookingRooms br
+                INNER JOIN Rooms r ON br.RoomId = r.Id
+                WHERE br.BookingId IN @Ids AND br.IsActive = 1";
+            var bookingRooms = await _dbConnection.QueryAsync<BookingRoom, string, BookingRoom>(
+                bookingRoomsSql,
+                (bookingRoom, roomNumber) =>
+                {
+                    bookingRoom.Room = new Room { Id = bookingRoom.RoomId, RoomNumber = roomNumber };
+                    return bookingRoom;
+                },
+                new { Ids = bookingIds },
+                splitOn: "RoomNumber"
+            );
+
             var roomTypes = roomTypeIds.Any()
                 ? await _dbConnection.QueryAsync<RoomType>("SELECT * FROM RoomTypes WHERE Id IN @Ids", new { Ids = roomTypeIds })
                 : Enumerable.Empty<RoomType>();
@@ -453,6 +469,7 @@ namespace HotelApp.Web.Repositories
                 booking.Guests = guests.Where(g => g.BookingId == booking.Id).ToList();
                 booking.Payments = payments.Where(p => p.BookingId == booking.Id).ToList();
                 booking.RoomNights = nights.Where(n => n.BookingId == booking.Id).OrderBy(n => n.StayDate).ToList();
+                booking.AssignedRooms = bookingRooms.Where(br => br.BookingId == booking.Id).ToList();
 
                 if (roomTypeLookup.TryGetValue(booking.RoomTypeId, out var roomType))
                 {
@@ -857,6 +874,164 @@ namespace HotelApp.Web.Repositories
                         actualCheckInTimestamp.Value.ToString("o"),
                         performedBy,
                         transaction);
+                }
+
+                transaction.Commit();
+                return true;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+
+        public async Task<bool> AssignMultipleRoomsAsync(string bookingNumber, int[] roomIds, int? performedBy = null)
+        {
+            if (_dbConnection.State != ConnectionState.Open)
+            {
+                _dbConnection.Open();
+            }
+
+            using var transaction = _dbConnection.BeginTransaction();
+
+            try
+            {
+                // Get booking details
+                const string getBookingSql = @"
+                    SELECT Id, CheckInDate, CheckOutDate, ActualCheckInDate, RoomTypeId
+                    FROM Bookings 
+                    WHERE BookingNumber = @BookingNumber";
+
+                var booking = await _dbConnection.QueryFirstOrDefaultAsync<dynamic>(
+                    getBookingSql,
+                    new { BookingNumber = bookingNumber },
+                    transaction
+                );
+
+                if (booking == null)
+                {
+                    transaction.Rollback();
+                    return false;
+                }
+
+                var bookingId = (int)booking.Id;
+                var actualCheckInDate = booking.ActualCheckInDate == null ? (DateTime?)null : (DateTime)booking.ActualCheckInDate;
+                var shouldCaptureActualCheckIn = !actualCheckInDate.HasValue;
+                var actualCheckInTimestamp = shouldCaptureActualCheckIn ? DateTime.Now : actualCheckInDate;
+
+                // Deactivate any existing room assignments
+                const string deactivateExistingSql = @"
+                    UPDATE BookingRooms 
+                    SET IsActive = 0, UnassignedDate = GETUTCDATE()
+                    WHERE BookingId = @BookingId AND IsActive = 1";
+                
+                await _dbConnection.ExecuteAsync(
+                    deactivateExistingSql,
+                    new { BookingId = bookingId },
+                    transaction
+                );
+
+                // Get room numbers for audit log
+                var roomNumbers = new List<string>();
+
+                // Insert new room assignments and update room status
+                foreach (var roomId in roomIds)
+                {
+                    // Get room number and verify room type
+                    const string roomInfoSql = "SELECT RoomNumber, RoomTypeId, Status FROM Rooms WHERE Id = @RoomId";
+                    var roomInfo = await _dbConnection.QueryFirstOrDefaultAsync<dynamic>(
+                        roomInfoSql,
+                        new { RoomId = roomId },
+                        transaction
+                    );
+
+                    if (roomInfo == null || (int)roomInfo.RoomTypeId != (int)booking.RoomTypeId)
+                    {
+                        transaction.Rollback();
+                        return false;
+                    }
+
+                    roomNumbers.Add((string)roomInfo.RoomNumber);
+
+                    // Insert into BookingRooms
+                    const string insertBookingRoomSql = @"
+                        INSERT INTO BookingRooms (BookingId, RoomId, AssignedDate, IsActive, CreatedDate, CreatedBy)
+                        VALUES (@BookingId, @RoomId, @AssignedDate, 1, GETUTCDATE(), @CreatedBy)";
+
+                    await _dbConnection.ExecuteAsync(
+                        insertBookingRoomSql,
+                        new
+                        {
+                            BookingId = bookingId,
+                            RoomId = roomId,
+                            AssignedDate = actualCheckInTimestamp ?? DateTime.Now,
+                            CreatedBy = performedBy?.ToString()
+                        },
+                        transaction
+                    );
+
+                    // Update room status to Occupied
+                    const string updateRoomSql = @"
+                        UPDATE Rooms 
+                        SET Status = 'Occupied', LastModifiedDate = GETUTCDATE()
+                        WHERE Id = @RoomId";
+
+                    await _dbConnection.ExecuteAsync(
+                        updateRoomSql,
+                        new { RoomId = roomId },
+                        transaction
+                    );
+                }
+
+                // Update booking with primary room (first room) and actual check-in date if needed
+                var updateBookingSql = @"
+                    UPDATE Bookings 
+                    SET RoomId = @RoomId, LastModifiedDate = GETUTCDATE()";
+
+                if (shouldCaptureActualCheckIn)
+                {
+                    updateBookingSql += ", ActualCheckInDate = @ActualCheckInDate";
+                }
+
+                updateBookingSql += " WHERE BookingNumber = @BookingNumber";
+
+                await _dbConnection.ExecuteAsync(
+                    updateBookingSql,
+                    new
+                    {
+                        RoomId = roomIds[0], // Primary room
+                        ActualCheckInDate = actualCheckInTimestamp,
+                        BookingNumber = bookingNumber
+                    },
+                    transaction
+                );
+
+                // Add audit log
+                var roomNumbersList = string.Join(", ", roomNumbers);
+                await AddAuditLogAsync(
+                    bookingId,
+                    bookingNumber,
+                    "RoomAssigned",
+                    $"Assigned room(s): {roomNumbersList}",
+                    null,
+                    roomNumbersList,
+                    performedBy,
+                    transaction
+                );
+
+                if (shouldCaptureActualCheckIn)
+                {
+                    await AddAuditLogAsync(
+                        bookingId,
+                        bookingNumber,
+                        "CheckedIn",
+                        $"Actual check-in recorded at {actualCheckInTimestamp:dd MMM yyyy hh:mm tt}",
+                        null,
+                        actualCheckInTimestamp.Value.ToString("o"),
+                        performedBy,
+                        transaction
+                    );
                 }
 
                 transaction.Commit();

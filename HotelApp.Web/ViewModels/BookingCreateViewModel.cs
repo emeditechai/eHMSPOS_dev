@@ -23,6 +23,11 @@ namespace HotelApp.Web.ViewModels
         public int RoomTypeId { get; set; }
 
         [Required]
+        [Range(1, 50, ErrorMessage = "Required Rooms must be between 1 and 50")]
+        [Display(Name = "Required Rooms")]
+        public int RequiredRooms { get; set; } = 1;
+
+        [Required]
         public string CustomerType { get; set; } = string.Empty;
 
         [Required]
