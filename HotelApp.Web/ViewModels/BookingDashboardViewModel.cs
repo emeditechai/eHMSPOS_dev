@@ -10,6 +10,7 @@ namespace HotelApp.Web.ViewModels
         public int TodayCheckOutCount { get; set; }
         public DateTime? FromDate { get; set; }
         public DateTime? ToDate { get; set; }
+        public string? StatusFilter { get; set; }
         public IEnumerable<Booking> Bookings { get; set; } = new List<Booking>();
     }
 }

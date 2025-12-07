@@ -525,6 +525,54 @@
             let typingTimer;
             const doneTypingInterval = 800; // 800ms after user stops typing
 
+            // Function to fetch and display room type rate
+            function updateRoomTypeRate() {
+                const roomTypeId = $('#RoomTypeId').val();
+                const customerType = $('#CustomerType').val();
+                const source = $('#Source').val();
+                
+                if (!roomTypeId || !customerType || !source) {
+                    $('#roomTypeRate').html('<span style="color: #9ca3af; font-size: 13px;">Select all options to see rate</span>');
+                    return;
+                }
+                
+                $('#roomTypeRate').html('<i class="fas fa-spinner fa-spin" style="color: #667eea;"></i> Loading rate...');
+                
+                $.ajax({
+                    url: '@Url.Action("GetRoomTypeRate", "Booking")',
+                    type: 'GET',
+                    data: { 
+                        roomTypeId: roomTypeId,
+                        customerType: customerType,
+                        source: source
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            if (response.hasRate) {
+                                $('#roomTypeRate').html('<span style="color: #10b981; font-weight: 600; font-size: 15px;"><i class="fas fa-check-circle"></i> ' + response.formattedRate + '</span>');
+                            } else {
+                                $('#roomTypeRate').html('<span style="color: #ef4444; font-weight: 600; font-size: 13px;"><i class="fas fa-exclamation-triangle"></i> ' + response.message + '</span>');
+                            }
+                        } else {
+                            $('#roomTypeRate').html('<span style="color: #ef4444; font-size: 13px;">Error loading rate</span>');
+                        }
+                    },
+                    error: function() {
+                        $('#roomTypeRate').html('<span style="color: #ef4444; font-size: 13px;">Error loading rate</span>');
+                    }
+                });
+            }
+            
+            // Bind change events to update rate
+            $('#RoomTypeId, #CustomerType, #Source').on('change', function() {
+                updateRoomTypeRate();
+            });
+            
+            // Load initial rate if values are pre-selected
+            if ($('#RoomTypeId').val() && $('#CustomerType').val() && $('#Source').val()) {
+                updateRoomTypeRate();
+            }
+
             $('#guestPhone').on('input', function() {
                 clearTimeout(typingTimer);
                 const phone = $(this).val().trim();

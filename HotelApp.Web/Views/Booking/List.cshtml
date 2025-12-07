@@ -77,6 +77,19 @@
             <label for="toDate">To Check-In Date:</label>
             <input type="date" id="toDate" name="toDate" class="form-control" value="@Model.ToDate?.ToString("yyyy-MM-dd")" />
         </div>
+        <div class="filter-group">
+            <label for="statusFilter">Status Filter:</label>
+            <select id="statusFilter" name="statusFilter" class="form-control" style="padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; transition: all 0.3s; background: white;">
+                <option value="">All Bookings</option>
+                <option value="assigned" selected="@(Model.StatusFilter == "assigned")">Assigned Room</option>
+                <option value="notassigned" selected="@(Model.StatusFilter == "notassigned")">Not Assigned Room</option>
+                <option value="checkedin" selected="@(Model.StatusFilter == "checkedin")">Checked In</option>
+                <option value="checkedout" selected="@(Model.StatusFilter == "checkedout")">Checked Out</option>
+                <option value="cancelled" selected="@(Model.StatusFilter == "cancelled")">Cancelled</option>
+                <option value="due" selected="@(Model.StatusFilter == "due")">Due Payment</option>
+                <option value="fullypaid" selected="@(Model.StatusFilter == "fullypaid")">Fully Paid</option>
+            </select>
+        </div>
         <div class="filter-actions">
             <button type="submit" class="btn-filter-apply">
                 <i class="fas fa-filter"></i> Apply Filter
@@ -202,6 +215,13 @@
                                     @* Only show edit actions if booking is NOT checked out *@
                                     @if (!booking.ActualCheckOutDate.HasValue)
                                     {
+                                        @if (booking.ActualCheckInDate.HasValue)
+                                        {
+                                            <a href="#" onclick="checkoutGuest('@booking.BookingNumber', '@booking.Room?.Id')" class="dropdown-item" style="color: #059669;">
+                                                <i class="fas fa-sign-out-alt"></i> Check Out Guest
+                                            </a>
+                                            <hr class="dropdown-divider" />
+                                        }
                                         @if (booking.Room == null)
                                         {
                                             <a href="#" onclick="assignRoom('@booking.BookingNumber')" class="dropdown-item">
@@ -432,9 +452,9 @@ else
         position: fixed;
         background: white;
         border: none;
-        border-radius: 10px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
-        min-width: 180px;
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+        min-width: 160px;
         z-index: 10000;
         overflow: hidden;
         backdrop-filter: blur(10px);
@@ -459,11 +479,11 @@ else
     .dropdown-item {
         display: flex;
         align-items: center;
-        padding: 10px 14px;
+        padding: 8px 12px;
         color: #374151;
         text-decoration: none;
         transition: all 0.2s ease;
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 500;
         border: none;
         width: 100%;
@@ -476,13 +496,13 @@ else
     .dropdown-item:hover {
         background: linear-gradient(90deg, #f0f9ff 0%, #e0f2fe 100%);
         color: #0369a1;
-        padding-left: 18px;
+        padding-left: 16px;
     }
 
     .dropdown-item i {
-        margin-right: 10px;
-        width: 16px;
-        font-size: 13px;
+        margin-right: 8px;
+        width: 14px;
+        font-size: 12px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -498,7 +518,7 @@ else
     }
 
     .dropdown-divider {
-        margin: 4px 8px;
+        margin: 2px 6px;
         border: none;
         border-top: 1px solid #f1f5f9;
     }
@@ -615,6 +635,157 @@ else
         }
     }
 
+    function checkoutGuest(bookingNumber, roomId) {
+        if (!roomId || roomId === '') {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Room Assigned',
+                text: 'This booking does not have a room assigned yet.'
+            });
+            return;
+        }
+
+        Swal.fire({
+            title: 'Checkout Confirmation',
+            html: `<p>Are you sure you want to check out guest for booking:</p><p><strong>${bookingNumber}</strong></p>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#059669',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, checkout!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Show loading
+                Swal.fire({
+                    title: 'Processing...',
+                    text: 'Checking payment status and processing checkout',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                // Call checkout endpoint
+                fetch('@Url.Action("CheckoutRoom", "Rooms")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ roomId: parseInt(roomId) })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Checkout Successful',
+                            text: data.message,
+                            timer: 2000
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else if (data.requiresPayment) {
+                        // Payment not cleared - show alert and redirect to payment
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Payment Not Cleared',
+                            html: `
+                                <p><strong>Booking:</strong> ${data.bookingNumber}</p>
+                                <p><strong>Balance Amount:</strong> ₹${data.balanceAmount.toLocaleString()}</p>
+                                <p>Please clear the payment before checkout.</p>
+                            `,
+                            confirmButtonColor: '#059669',
+                            confirmButtonText: 'Go to Payment'
+                        }).then(() => {
+                            // Redirect to booking details page where payment can be made
+                            window.location.href = '@Url.Action("Details", "Booking")?bookingNumber=' + data.bookingNumber;
+                        });
+                    } else {
+                        // Check if booking not found - offer force checkout
+                        if (data.message && data.message.includes('No active booking found')) {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Booking Expired',
+                                html: `
+                                    <p>The checkout date for this booking has passed.</p>
+                                    <p>Would you like to <strong>Force Checkout</strong>?</p>
+                                `,
+                                showCancelButton: true,
+                                confirmButtonColor: '#dc3545',
+                                cancelButtonColor: '#6c757d',
+                                confirmButtonText: 'Force Checkout'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    forceCheckoutRoom(roomId);
+                                }
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Checkout Failed',
+                                text: data.message
+                            });
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking out guest:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Failed to check out guest: ' + error.message
+                    });
+                });
+            }
+        });
+    }
+
+    function forceCheckoutRoom(roomId) {
+        Swal.fire({
+            title: 'Processing Force Checkout...',
+            text: 'Please wait',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        fetch('@Url.Action("ForceCheckoutRoom", "Rooms")', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ roomId: parseInt(roomId) })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Force Checkout Successful',
+                    text: data.message,
+                    timer: 2000
+                }).then(() => {
+                    location.reload();
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Force Checkout Failed',
+                    text: data.message
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error force checking out room:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to force checkout: ' + error.message
+            });
+        });
+    }
+
     // Client-side search function
     function searchTable() {
         const input = document.getElementById('searchInput');
@@ -651,11 +822,13 @@ else
     function exportToExcel() {
         const fromDate = '@(Model.FromDate?.ToString("yyyy-MM-dd") ?? "")';
         const toDate = '@(Model.ToDate?.ToString("yyyy-MM-dd") ?? "")';
+        const statusFilter = '@(Model.StatusFilter ?? "")';
         let url = '@Url.Action("ExportToExcel", "Booking")';
         
         const params = new URLSearchParams();
         if (fromDate) params.append('fromDate', fromDate);
         if (toDate) params.append('toDate', toDate);
+        if (statusFilter) params.append('statusFilter', statusFilter);
         
         if (params.toString()) {
             url += '?' + params.toString();
@@ -668,11 +841,13 @@ else
     function exportToPDF() {
         const fromDate = '@(Model.FromDate?.ToString("yyyy-MM-dd") ?? "")';
         const toDate = '@(Model.ToDate?.ToString("yyyy-MM-dd") ?? "")';
+        const statusFilter = '@(Model.StatusFilter ?? "")';
         let url = '@Url.Action("ExportToPDF", "Booking")';
         
         const params = new URLSearchParams();
         if (fromDate) params.append('fromDate', fromDate);
         if (toDate) params.append('toDate', toDate);
+        if (statusFilter) params.append('statusFilter', statusFilter);
         
         if (params.toString()) {
             url += '?' + params.toString();

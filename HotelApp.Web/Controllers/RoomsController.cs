@@ -182,21 +182,40 @@ public class RoomsController : BaseController
             await _bookingRepository.UpdateActualCheckOutDateAsync(bookingNumber, actualCheckOutDate, currentUserId);
             Console.WriteLine($"Actual checkout date updated: {actualCheckOutDate}");
             
-            var success = await _roomRepository.UpdateRoomStatusAsync(request.RoomId, "Cleaning", currentUserId);
-
-            if (success)
+            // Get all rooms assigned to this booking and update their status
+            var assignedRoomIds = await _bookingRepository.GetAssignedRoomIdsAsync(bookingNumber);
+            Console.WriteLine($"Found {assignedRoomIds.Count()} rooms assigned to booking {bookingNumber}");
+            
+            bool allSuccess = true;
+            foreach (var roomId in assignedRoomIds)
             {
-                Console.WriteLine("Room status updated successfully");
+                var success = await _roomRepository.UpdateRoomStatusAsync(roomId, "Cleaning", currentUserId);
+                if (!success)
+                {
+                    Console.WriteLine($"Failed to update room {roomId} status");
+                    allSuccess = false;
+                }
+                else
+                {
+                    Console.WriteLine($"Room {roomId} status updated to Cleaning");
+                }
+            }
+
+            if (allSuccess)
+            {
+                Console.WriteLine($"All {assignedRoomIds.Count()} room(s) checked out successfully");
                 return Json(new 
                 { 
                     success = true, 
-                    message = "Room checked out successfully. Status changed to Cleaning.",
+                    message = assignedRoomIds.Count() > 1 
+                        ? $"All {assignedRoomIds.Count()} rooms checked out successfully. Status changed to Cleaning."
+                        : "Room checked out successfully. Status changed to Cleaning.",
                     bookingNumber = bookingNumber
                 });
             }
 
-            Console.WriteLine("Failed to update room status");
-            return Json(new { success = false, message = "Failed to update room status" });
+            Console.WriteLine("Failed to update some room statuses");
+            return Json(new { success = false, message = "Failed to update some room statuses" });
         }
         catch (Exception ex)
         {
@@ -257,15 +276,34 @@ public class RoomsController : BaseController
             await _bookingRepository.UpdateActualCheckOutDateAsync(bookingNumber, actualCheckOutDate, currentUserId);
             Console.WriteLine($"Actual checkout date updated (Force): {actualCheckOutDate}");
             
-            var success = await _roomRepository.UpdateRoomStatusAsync(request.RoomId, "Cleaning", currentUserId);
-
-            if (success)
+            // Get all rooms assigned to this booking and update their status
+            var assignedRoomIds = await _bookingRepository.GetAssignedRoomIdsAsync(bookingNumber);
+            Console.WriteLine($"Found {assignedRoomIds.Count()} rooms assigned to booking {bookingNumber} (Force Checkout)");
+            
+            bool allSuccess = true;
+            foreach (var roomId in assignedRoomIds)
             {
-                Console.WriteLine("Room status updated successfully (Force Checkout)");
+                var success = await _roomRepository.UpdateRoomStatusAsync(roomId, "Cleaning", currentUserId);
+                if (!success)
+                {
+                    Console.WriteLine($"Failed to update room {roomId} status (Force)");
+                    allSuccess = false;
+                }
+                else
+                {
+                    Console.WriteLine($"Room {roomId} status updated to Cleaning (Force)");
+                }
+            }
+
+            if (allSuccess)
+            {
+                Console.WriteLine($"All {assignedRoomIds.Count()} room(s) force checked out successfully");
                 return Json(new 
                 { 
                     success = true, 
-                    message = "Room force checked out successfully. Status changed to Cleaning.",
+                    message = assignedRoomIds.Count() > 1 
+                        ? $"All {assignedRoomIds.Count()} rooms force checked out successfully. Status changed to Cleaning."
+                        : "Room force checked out successfully. Status changed to Cleaning.",
                     bookingNumber = bookingNumber
                 });
             }

@@ -46,8 +46,33 @@ namespace HotelApp.Web.Controllers
             _locationRepository = locationRepository;
         }
 
-        public async Task<IActionResult> List(DateTime? fromDate, DateTime? toDate)
+        public async Task<IActionResult> List(DateTime? fromDate, DateTime? toDate, string? statusFilter)
         {
+            // Default to last 3 days if no dates provided
+            if (!fromDate.HasValue && !toDate.HasValue)
+            {
+                fromDate = DateTime.Today.AddDays(-3);
+                toDate = DateTime.Today;
+            }
+
+            var bookings = await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, fromDate, toDate);
+
+            // Apply status filter
+            if (!string.IsNullOrEmpty(statusFilter))
+            {
+                bookings = statusFilter.ToLower() switch
+                {
+                    "assigned" => bookings.Where(b => b.Room != null || (b.AssignedRooms != null && b.AssignedRooms.Any())),
+                    "notassigned" => bookings.Where(b => b.Room == null && (b.AssignedRooms == null || !b.AssignedRooms.Any())),
+                    "checkedin" => bookings.Where(b => b.ActualCheckInDate.HasValue && !b.ActualCheckOutDate.HasValue),
+                    "checkedout" => bookings.Where(b => b.ActualCheckOutDate.HasValue),
+                    "cancelled" => bookings.Where(b => b.Status?.ToLower() == "cancelled"),
+                    "due" => bookings.Where(b => b.BalanceAmount > 0),
+                    "fullypaid" => bookings.Where(b => b.BalanceAmount <= 0 || b.PaymentStatus?.ToLower() == "paid"),
+                    _ => bookings
+                };
+            }
+
             var viewModel = new BookingDashboardViewModel
             {
                 TodayBookingCount = await _bookingRepository.GetTodayBookingCountAsync(),
@@ -56,18 +81,38 @@ namespace HotelApp.Web.Controllers
                 TodayCheckOutCount = await _bookingRepository.GetTodayCheckOutCountAsync(),
                 FromDate = fromDate,
                 ToDate = toDate,
-                Bookings = (fromDate.HasValue || toDate.HasValue) 
-                    ? await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, fromDate, toDate)
-                    : await _bookingRepository.GetRecentByBranchAsync(CurrentBranchID)
+                StatusFilter = statusFilter,
+                Bookings = bookings
             };
             return View(viewModel);
         }
 
-        public async Task<IActionResult> ExportToExcel(DateTime? fromDate, DateTime? toDate)
+        public async Task<IActionResult> ExportToExcel(DateTime? fromDate, DateTime? toDate, string? statusFilter)
         {
-            var bookings = (fromDate.HasValue || toDate.HasValue)
-                ? await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, fromDate, toDate)
-                : await _bookingRepository.GetRecentByBranchAsync(CurrentBranchID);
+            // Default to last 3 days if no dates provided
+            if (!fromDate.HasValue && !toDate.HasValue)
+            {
+                fromDate = DateTime.Today.AddDays(-3);
+                toDate = DateTime.Today;
+            }
+
+            var bookings = await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, fromDate, toDate);
+
+            // Apply status filter
+            if (!string.IsNullOrEmpty(statusFilter))
+            {
+                bookings = statusFilter.ToLower() switch
+                {
+                    "assigned" => bookings.Where(b => b.Room != null || (b.AssignedRooms != null && b.AssignedRooms.Any())),
+                    "notassigned" => bookings.Where(b => b.Room == null && (b.AssignedRooms == null || !b.AssignedRooms.Any())),
+                    "checkedin" => bookings.Where(b => b.ActualCheckInDate.HasValue && !b.ActualCheckOutDate.HasValue),
+                    "checkedout" => bookings.Where(b => b.ActualCheckOutDate.HasValue),
+                    "cancelled" => bookings.Where(b => b.Status?.ToLower() == "cancelled"),
+                    "due" => bookings.Where(b => b.BalanceAmount > 0),
+                    "fullypaid" => bookings.Where(b => b.BalanceAmount <= 0 || b.PaymentStatus?.ToLower() == "paid"),
+                    _ => bookings
+                };
+            }
 
             var csv = new System.Text.StringBuilder();
             csv.AppendLine("Booking Number,Guest Name,Phone,Check-In Date,Check-Out Date,Nights,Room Type,Room Number,Total Amount,Deposit,Balance,Status,Payment Status,Source,Channel,Created Date");
@@ -95,11 +140,32 @@ namespace HotelApp.Web.Controllers
             return File(bytes, "text/csv", fileName);
         }
 
-        public async Task<IActionResult> ExportToPDF(DateTime? fromDate, DateTime? toDate)
+        public async Task<IActionResult> ExportToPDF(DateTime? fromDate, DateTime? toDate, string? statusFilter)
         {
-            var bookings = (fromDate.HasValue || toDate.HasValue)
-                ? await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, fromDate, toDate)
-                : await _bookingRepository.GetRecentByBranchAsync(CurrentBranchID);
+            // Default to last 3 days if no dates provided
+            if (!fromDate.HasValue && !toDate.HasValue)
+            {
+                fromDate = DateTime.Today.AddDays(-3);
+                toDate = DateTime.Today;
+            }
+
+            var bookings = await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, fromDate, toDate);
+
+            // Apply status filter
+            if (!string.IsNullOrEmpty(statusFilter))
+            {
+                bookings = statusFilter.ToLower() switch
+                {
+                    "assigned" => bookings.Where(b => b.Room != null || (b.AssignedRooms != null && b.AssignedRooms.Any())),
+                    "notassigned" => bookings.Where(b => b.Room == null && (b.AssignedRooms == null || !b.AssignedRooms.Any())),
+                    "checkedin" => bookings.Where(b => b.ActualCheckInDate.HasValue && !b.ActualCheckOutDate.HasValue),
+                    "checkedout" => bookings.Where(b => b.ActualCheckOutDate.HasValue),
+                    "cancelled" => bookings.Where(b => b.Status?.ToLower() == "cancelled"),
+                    "due" => bookings.Where(b => b.BalanceAmount > 0),
+                    "fullypaid" => bookings.Where(b => b.BalanceAmount <= 0 || b.PaymentStatus?.ToLower() == "paid"),
+                    _ => bookings
+                };
+            }
 
             var html = new System.Text.StringBuilder();
             html.AppendLine("<!DOCTYPE html><html><head>");
@@ -202,6 +268,60 @@ namespace HotelApp.Web.Controllers
             return View(booking);
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetRoomTypeRate(int roomTypeId, string customerType, string source)
+        {
+            try
+            {
+                var roomType = await _roomRepository.GetRoomTypeByIdAsync(roomTypeId);
+                if (roomType == null)
+                {
+                    return Json(new { success = false, message = "Room type not found" });
+                }
+
+                // Try to get the rate from RateMaster
+                var quoteRequest = new BookingQuoteRequest
+                {
+                    RoomTypeId = roomTypeId,
+                    CheckInDate = DateTime.Today,
+                    CheckOutDate = DateTime.Today.AddDays(1),
+                    CustomerType = customerType,
+                    Source = source,
+                    Adults = 2,
+                    Children = 0,
+                    BranchID = CurrentBranchID
+                };
+
+                var quote = await _bookingRepository.GetQuoteAsync(quoteRequest);
+                
+                if (quote != null)
+                {
+                    return Json(new { 
+                        success = true, 
+                        rate = quote.BaseRatePerNight,
+                        formattedRate = $"₹{quote.BaseRatePerNight:N0}/night",
+                        taxPercentage = quote.TaxPercentage,
+                        hasRate = true
+                    });
+                }
+                else
+                {
+                    // No rate found
+                    return Json(new { 
+                        success = true, 
+                        rate = 0,
+                        formattedRate = "Rate not configured",
+                        hasRate = false,
+                        message = $"No rate configured for {customerType} - {source}"
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
         public async Task<IActionResult> Create()
         {
             var model = new BookingCreateViewModel
@@ -249,7 +369,11 @@ namespace HotelApp.Web.Controllers
             var quote = await _bookingRepository.GetQuoteAsync(quoteRequest);
             if (quote == null)
             {
-                ModelState.AddModelError(string.Empty, "No active rate plan was found for the selected criteria.");
+                var roomType = await _roomRepository.GetRoomTypeByIdAsync(model.RoomTypeId);
+                var roomTypeName = roomType?.TypeName ?? "selected room type";
+                ModelState.AddModelError(string.Empty, 
+                    $"No active rate configured for {roomTypeName} with Customer Type: {model.CustomerType}, Source: {model.Source}. " +
+                    $"Please configure the rate in Rate Master or select a different combination.");
                 return View(model);
             }
 

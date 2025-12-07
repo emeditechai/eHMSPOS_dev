@@ -198,6 +198,16 @@ namespace HotelApp.Web.Repositories
             return await _dbConnection.QueryAsync<RoomType>(sql, new { BranchId = branchId });
         }
 
+        public async Task<RoomType?> GetRoomTypeByIdAsync(int id)
+        {
+            var sql = @"
+                SELECT Id, TypeName, Description, BaseRate, MaxOccupancy, Amenities, BranchID
+                FROM RoomTypes
+                WHERE Id = @Id AND IsActive = 1";
+
+            return await _dbConnection.QueryFirstOrDefaultAsync<RoomType>(sql, new { Id = id });
+        }
+
         public async Task<bool> RoomNumberExistsAsync(string roomNumber, int branchId, int? excludeId = null)
         {
             // Check for room number existence regardless of IsActive status to match database constraint
@@ -403,9 +413,36 @@ namespace HotelApp.Web.Repositories
                 SELECT 
                     rt.Id AS RoomTypeId,
                     rt.TypeName AS RoomTypeName,
-                    rt.BaseRate,
                     rt.MaxOccupancy,
                     rt.Max_RoomAvailability AS MaxRoomAvailability,
+                    -- Get base rate from RateMaster for current date range, fallback to RoomType.BaseRate
+                    ISNULL(
+                        (SELECT TOP 1 rm.BaseRate 
+                         FROM RateMaster rm 
+                         WHERE rm.RoomTypeId = rt.Id 
+                         AND rm.IsActive = 1 
+                         AND rm.BranchID = @BranchId
+                         AND CAST(@StartDate AS DATE) BETWEEN CAST(rm.StartDate AS DATE) AND CAST(rm.EndDate AS DATE)
+                         ORDER BY 
+                            CASE WHEN rm.CustomerType = 'B2C' THEN 1 ELSE 2 END,
+                            rm.CreatedDate DESC
+                        ), 
+                        rt.BaseRate
+                    ) AS BaseRate,
+                    -- Get discount if any
+                    ISNULL(
+                        (SELECT TOP 1 rm.ApplyDiscount 
+                         FROM RateMaster rm 
+                         WHERE rm.RoomTypeId = rt.Id 
+                         AND rm.IsActive = 1 
+                         AND rm.BranchID = @BranchId
+                         AND CAST(@StartDate AS DATE) BETWEEN CAST(rm.StartDate AS DATE) AND CAST(rm.EndDate AS DATE)
+                         ORDER BY 
+                            CASE WHEN rm.CustomerType = 'B2C' THEN 1 ELSE 2 END,
+                            rm.CreatedDate DESC
+                        ), 
+                        NULL
+                    ) AS ApplyDiscount,
                     -- Get the total required rooms in the date range for this room type
                     ISNULL(brt.TotalRequiredRooms, 0) AS TotalRequiredRooms,
                     -- Get comma-separated list of available room numbers (rooms without assignments)
@@ -415,7 +452,7 @@ namespace HotelApp.Web.Repositories
                 LEFT JOIN AvailableRoomsForRange ar ON rt.Id = ar.RoomTypeId
                 WHERE rt.BranchID = @BranchId
                     AND rt.IsActive = 1
-                GROUP BY rt.Id, rt.TypeName, rt.BaseRate, rt.MaxOccupancy, rt.Max_RoomAvailability, brt.TotalRequiredRooms
+                GROUP BY rt.Id, rt.TypeName, rt.MaxOccupancy, rt.Max_RoomAvailability, brt.TotalRequiredRooms
                 ORDER BY rt.TypeName";
 
             var results = await _dbConnection.QueryAsync(sql, new { BranchId = branchId, StartDate = startDate, EndDate = endDate });

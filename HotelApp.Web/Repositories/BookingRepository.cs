@@ -31,17 +31,32 @@ namespace HotelApp.Web.Repositories
                 return null;
             }
 
+            // Try to find exact match first, then fallback to any active rate for the room type
             const string rateSql = @"
                 SELECT TOP 1 *
                 FROM RateMaster
                 WHERE RoomTypeId = @RoomTypeId
-                  AND CustomerType = @CustomerType
-                  AND Source = @Source
                   AND BranchID = @BranchID
                   AND @CheckInDate >= StartDate
                   AND @CheckOutDate <= EndDate
                   AND IsActive = 1
-                ORDER BY StartDate DESC";
+                  AND (
+                      -- Priority 1: Exact match on CustomerType and Source
+                      (CustomerType = @CustomerType AND Source = @Source)
+                      OR
+                      -- Priority 2: Match CustomerType only
+                      (CustomerType = @CustomerType AND Source != @Source)
+                      OR
+                      -- Priority 3: Any rate for this room type
+                      (CustomerType != @CustomerType)
+                  )
+                ORDER BY 
+                    CASE 
+                        WHEN CustomerType = @CustomerType AND Source = @Source THEN 1
+                        WHEN CustomerType = @CustomerType THEN 2
+                        ELSE 3
+                    END,
+                    StartDate DESC";
 
             var ratePlan = await _dbConnection.QueryFirstOrDefaultAsync<RateMaster>(rateSql, request);
 
@@ -693,6 +708,20 @@ namespace HotelApp.Web.Repositories
 
             transaction.Commit();
             return true;
+        }
+
+        public async Task<IEnumerable<int>> GetAssignedRoomIdsAsync(string bookingNumber)
+        {
+            const string sql = @"
+                SELECT br.RoomId
+                FROM BookingRooms br
+                INNER JOIN Bookings b ON br.BookingId = b.Id
+                WHERE b.BookingNumber = @BookingNumber
+                    AND br.IsActive = 1
+                ORDER BY br.RoomId";
+
+            var roomIds = await _dbConnection.QueryAsync<int>(sql, new { BookingNumber = bookingNumber });
+            return roomIds ?? Enumerable.Empty<int>();
         }
 
         public async Task<bool> UpdateRoomAssignmentAsync(string bookingNumber, int roomId, int? performedBy = null)

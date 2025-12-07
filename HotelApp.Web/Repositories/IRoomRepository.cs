@@ -12,6 +12,7 @@ namespace HotelApp.Web.Repositories
         Task<bool> UpdateAsync(Room room);
         Task<IEnumerable<RoomType>> GetRoomTypesAsync();
         Task<IEnumerable<RoomType>> GetRoomTypesByBranchAsync(int branchId);
+        Task<RoomType?> GetRoomTypeByIdAsync(int id);
         Task<bool> RoomNumberExistsAsync(string roomNumber, int branchId, int? excludeId = null);
         Task<bool> IsRoomAvailableAsync(int roomId, DateTime checkInDate, DateTime checkOutDate, string? excludeBookingNumber = null);
         Task<Dictionary<string, int>> GetRoomStatusCountsAsync(int branchId);
