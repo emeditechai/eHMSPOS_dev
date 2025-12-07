@@ -63,6 +63,116 @@ namespace HotelApp.Web.Controllers
             return View(viewModel);
         }
 
+        public async Task<IActionResult> ExportToExcel(DateTime? fromDate, DateTime? toDate)
+        {
+            var bookings = (fromDate.HasValue || toDate.HasValue)
+                ? await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, fromDate, toDate)
+                : await _bookingRepository.GetRecentByBranchAsync(CurrentBranchID);
+
+            var csv = new System.Text.StringBuilder();
+            csv.AppendLine("Booking Number,Guest Name,Phone,Check-In Date,Check-Out Date,Nights,Room Type,Room Number,Total Amount,Deposit,Balance,Status,Payment Status,Source,Channel,Created Date");
+
+            foreach (var booking in bookings)
+            {
+                var guestName = $"{booking.PrimaryGuestFirstName} {booking.PrimaryGuestLastName}";
+                var roomNumber = booking.Room?.RoomNumber ?? "Not Assigned";
+                if (booking.RequiredRooms > 1)
+                {
+                    roomNumber += $" (+{booking.RequiredRooms - 1} more)";
+                }
+                var balance = booking.TotalAmount - booking.DepositAmount;
+
+                csv.AppendLine($"\"{booking.BookingNumber}\",\"{guestName}\",\"{booking.PrimaryGuestPhone}\"," +
+                    $"\"{booking.CheckInDate:dd-MMM-yyyy}\",\"{booking.CheckOutDate:dd-MMM-yyyy}\"," +
+                    $"\"{booking.Nights}\",\"{booking.RoomType?.TypeName}\",\"{roomNumber}\"," +
+                    $"\"{booking.TotalAmount}\",\"{booking.DepositAmount}\",\"{balance}\"," +
+                    $"\"{booking.Status}\",\"{booking.PaymentStatus}\",\"{booking.Source}\",\"{booking.Channel}\"," +
+                    $"\"{booking.CreatedDate:dd-MMM-yyyy HH:mm}\"");
+            }
+
+            var bytes = System.Text.Encoding.UTF8.GetBytes(csv.ToString());
+            var fileName = $"Bookings_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+            return File(bytes, "text/csv", fileName);
+        }
+
+        public async Task<IActionResult> ExportToPDF(DateTime? fromDate, DateTime? toDate)
+        {
+            var bookings = (fromDate.HasValue || toDate.HasValue)
+                ? await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, fromDate, toDate)
+                : await _bookingRepository.GetRecentByBranchAsync(CurrentBranchID);
+
+            var html = new System.Text.StringBuilder();
+            html.AppendLine("<!DOCTYPE html><html><head>");
+            html.AppendLine("<style>");
+            html.AppendLine("body { font-family: Arial, sans-serif; margin: 20px; }");
+            html.AppendLine("h1 { color: #333; text-align: center; margin-bottom: 30px; }");
+            html.AppendLine(".header { text-align: center; margin-bottom: 20px; }");
+            html.AppendLine(".date-range { text-align: center; color: #666; margin-bottom: 20px; font-size: 14px; }");
+            html.AppendLine("table { width: 100%; border-collapse: collapse; font-size: 11px; }");
+            html.AppendLine("th { background-color: #667eea; color: white; padding: 10px; text-align: left; font-weight: bold; }");
+            html.AppendLine("td { padding: 8px; border-bottom: 1px solid #ddd; }");
+            html.AppendLine("tr:nth-child(even) { background-color: #f9f9f9; }");
+            html.AppendLine(".text-right { text-align: right; }");
+            html.AppendLine(".status-confirmed { color: #10b981; font-weight: bold; }");
+            html.AppendLine(".status-checkedin { color: #0d6efd; font-weight: bold; }");
+            html.AppendLine(".status-cancelled { color: #ef4444; font-weight: bold; }");
+            html.AppendLine(".footer { margin-top: 30px; text-align: center; color: #666; font-size: 10px; }");
+            html.AppendLine("</style>");
+            html.AppendLine("</head><body>");
+            html.AppendLine("<div class='header'>");
+            html.AppendLine("<h1>Bookings Report</h1>");
+            if (fromDate.HasValue || toDate.HasValue)
+            {
+                var dateRange = fromDate.HasValue && toDate.HasValue
+                    ? $"{fromDate.Value:dd MMM yyyy} to {toDate.Value:dd MMM yyyy}"
+                    : fromDate.HasValue
+                        ? $"From {fromDate.Value:dd MMM yyyy}"
+                        : $"Until {toDate.Value:dd MMM yyyy}";
+                html.AppendLine($"<div class='date-range'>Date Range: {dateRange}</div>");
+            }
+            html.AppendLine($"<div class='date-range'>Generated: {DateTime.Now:dd MMM yyyy HH:mm}</div>");
+            html.AppendLine("</div>");
+            html.AppendLine("<table>");
+            html.AppendLine("<thead><tr>");
+            html.AppendLine("<th>Booking #</th><th>Guest</th><th>Phone</th><th>Check-In</th><th>Check-Out</th>");
+            html.AppendLine("<th>Room Type</th><th>Room</th><th class='text-right'>Amount</th><th>Status</th>");
+            html.AppendLine("</tr></thead>");
+            html.AppendLine("<tbody>");
+
+            foreach (var booking in bookings)
+            {
+                var guestName = $"{booking.PrimaryGuestFirstName} {booking.PrimaryGuestLastName}";
+                var roomNumber = booking.Room?.RoomNumber ?? "Not Assigned";
+                if (booking.RequiredRooms > 1)
+                {
+                    roomNumber += $" (+{booking.RequiredRooms - 1})";
+                }
+                var statusClass = booking.Status?.ToLower() == "confirmed" ? "status-confirmed"
+                    : booking.Status?.ToLower() == "checkedin" ? "status-checkedin"
+                    : booking.Status?.ToLower() == "cancelled" ? "status-cancelled" : "";
+
+                html.AppendLine("<tr>");
+                html.AppendLine($"<td>{booking.BookingNumber}</td>");
+                html.AppendLine($"<td>{guestName}</td>");
+                html.AppendLine($"<td>{booking.PrimaryGuestPhone}</td>");
+                html.AppendLine($"<td>{booking.CheckInDate:dd-MMM-yyyy}</td>");
+                html.AppendLine($"<td>{booking.CheckOutDate:dd-MMM-yyyy}</td>");
+                html.AppendLine($"<td>{booking.RoomType?.TypeName}</td>");
+                html.AppendLine($"<td>{roomNumber}</td>");
+                html.AppendLine($"<td class='text-right'>₹{booking.TotalAmount:N0}</td>");
+                html.AppendLine($"<td class='{statusClass}'>{booking.Status}</td>");
+                html.AppendLine("</tr>");
+            }
+
+            html.AppendLine("</tbody></table>");
+            html.AppendLine($"<div class='footer'>Total Bookings: {bookings.Count()} | LuxStay Hotel Management System</div>");
+            html.AppendLine("</body></html>");
+
+            var bytes = System.Text.Encoding.UTF8.GetBytes(html.ToString());
+            var fileName = $"Bookings_{DateTime.Now:yyyyMMdd_HHmmss}.html";
+            return File(bytes, "text/html", fileName);
+        }
+
         public async Task<IActionResult> Details(string bookingNumber)
         {
             if (string.IsNullOrWhiteSpace(bookingNumber))

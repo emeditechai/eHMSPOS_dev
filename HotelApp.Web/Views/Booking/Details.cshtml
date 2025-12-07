@@ -254,6 +254,45 @@
         font-size: 0.9rem;
         color: #6b7280;
     }
+
+    /* Watermark Styles */
+    .watermark-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 9999;
+        overflow: hidden;
+    }
+    .watermark {
+        position: absolute;
+        font-size: 120px;
+        font-weight: 900;
+        opacity: 0.08;
+        transform: rotate(-45deg);
+        white-space: nowrap;
+        user-select: none;
+    }
+    .watermark.checked-out {
+        color: #10b981;
+        top: 30%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-45deg);
+    }
+    .watermark.paid {
+        color: #3b82f6;
+        top: 60%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-45deg);
+    }
+    @@media print {
+        .watermark {
+            opacity: 0.15;
+        }
+    }
+
     .guest-type-badge {
         background: #667eea;
         color: white;
@@ -598,6 +637,21 @@
         color: white;
     }
 </style>
+
+@* Watermarks for Checked Out and Fully Paid bookings *@
+@if (Model.ActualCheckOutDate.HasValue || Model.PaymentStatus == "Paid")
+{
+    <div class="watermark-container">
+        @if (Model.ActualCheckOutDate.HasValue)
+        {
+            <div class="watermark checked-out">CHECKED OUT</div>
+        }
+        @if (Model.PaymentStatus == "Paid")
+        {
+            <div class="watermark paid">PAID</div>
+        }
+    </div>
+}
 
 <div class="booking-header">
     <div class="booking-header-content">

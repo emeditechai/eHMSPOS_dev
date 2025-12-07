@@ -90,8 +90,28 @@
 
 @if (Model.Bookings.Any())
 {
+    <!-- Search and Export Section -->
+    <div class="search-export-container" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <div class="search-box" style="flex: 1; max-width: 500px;">
+            <div style="position: relative;">
+                <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
+                <input type="text" id="searchInput" placeholder="Search by Booking Number, Guest Name, or Room Type..." 
+                       style="width: 100%; padding: 10px 12px 10px 40px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; transition: all 0.3s;"
+                       onkeyup="searchTable()" />
+            </div>
+        </div>
+        <div class="export-buttons" style="display: flex; gap: 10px;">
+            <button onclick="exportToExcel()" class="btn-export" style="display: flex; align-items: center; gap: 8px; padding: 10px 20px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.3s;">
+                <i class="fas fa-file-excel"></i> Excel
+            </button>
+            <button onclick="exportToPDF()" class="btn-export" style="display: flex; align-items: center; gap: 8px; padding: 10px 20px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.3s;">
+                <i class="fas fa-file-pdf"></i> PDF
+            </button>
+        </div>
+    </div>
+
     <div class="table-container" style="overflow: visible;">
-        <table class="data-table">
+        <table class="data-table" id="bookingTable">
             <thead>
                 <tr>
                     <th>Booking #</th>
@@ -179,28 +199,32 @@
                                     <a asp-action="Details" asp-route-bookingNumber="@booking.BookingNumber" class="dropdown-item">
                                         <i class="fas fa-eye"></i> View Details
                                     </a>
-                                    @if (booking.Room == null)
+                                    @* Only show edit actions if booking is NOT checked out *@
+                                    @if (!booking.ActualCheckOutDate.HasValue)
                                     {
-                                        <a href="#" onclick="assignRoom('@booking.BookingNumber')" class="dropdown-item">
-                                            <i class="fas fa-door-open"></i> Assign Room
+                                        @if (booking.Room == null)
+                                        {
+                                            <a href="#" onclick="assignRoom('@booking.BookingNumber')" class="dropdown-item">
+                                                <i class="fas fa-door-open"></i> Assign Room
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <a href="#" onclick="changeRoom('@booking.BookingNumber')" class="dropdown-item">
+                                                <i class="fas fa-exchange-alt"></i> Change Room
+                                            </a>
+                                        }
+                                        <a href="#" onclick="editRoomType('@booking.BookingNumber')" class="dropdown-item">
+                                            <i class="fas fa-bed"></i> Edit Room Type
+                                        </a>
+                                        <a href="#" onclick="editDates('@booking.BookingNumber')" class="dropdown-item">
+                                            <i class="fas fa-calendar-alt"></i> Edit Dates
+                                        </a>
+                                        <hr class="dropdown-divider" />
+                                        <a href="#" onclick="cancelBooking('@booking.BookingNumber')" class="dropdown-item text-danger">
+                                            <i class="fas fa-times-circle"></i> Cancel Booking
                                         </a>
                                     }
-                                    else
-                                    {
-                                        <a href="#" onclick="changeRoom('@booking.BookingNumber')" class="dropdown-item">
-                                            <i class="fas fa-exchange-alt"></i> Change Room
-                                        </a>
-                                    }
-                                    <a href="#" onclick="editRoomType('@booking.BookingNumber')" class="dropdown-item">
-                                        <i class="fas fa-bed"></i> Edit Room Type
-                                    </a>
-                                    <a href="#" onclick="editDates('@booking.BookingNumber')" class="dropdown-item">
-                                        <i class="fas fa-calendar-alt"></i> Edit Dates
-                                    </a>
-                                    <hr class="dropdown-divider" />
-                                    <a href="#" onclick="cancelBooking('@booking.BookingNumber')" class="dropdown-item text-danger">
-                                        <i class="fas fa-times-circle"></i> Cancel Booking
-                                    </a>
                                 </div>
                             </div>
                         </td>
@@ -589,5 +613,98 @@ else
                 alert('An error occurred while cancelling the booking');
             });
         }
+    }
+
+    // Client-side search function
+    function searchTable() {
+        const input = document.getElementById('searchInput');
+        const filter = input.value.toLowerCase();
+        const table = document.getElementById('bookingTable');
+        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+        let visibleCount = 0;
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const bookingNumber = row.cells[0].textContent.toLowerCase();
+            const guestName = row.cells[1].textContent.toLowerCase();
+            const roomType = row.cells[3].textContent.toLowerCase();
+            
+            if (bookingNumber.includes(filter) || guestName.includes(filter) || roomType.includes(filter)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        }
+
+        // Update search input style based on results
+        if (filter && visibleCount === 0) {
+            input.style.borderColor = '#ef4444';
+        } else if (filter && visibleCount > 0) {
+            input.style.borderColor = '#10b981';
+        } else {
+            input.style.borderColor = '#e0e0e0';
+        }
+    }
+
+    // Export to Excel
+    function exportToExcel() {
+        const fromDate = '@(Model.FromDate?.ToString("yyyy-MM-dd") ?? "")';
+        const toDate = '@(Model.ToDate?.ToString("yyyy-MM-dd") ?? "")';
+        let url = '@Url.Action("ExportToExcel", "Booking")';
+        
+        const params = new URLSearchParams();
+        if (fromDate) params.append('fromDate', fromDate);
+        if (toDate) params.append('toDate', toDate);
+        
+        if (params.toString()) {
+            url += '?' + params.toString();
+        }
+        
+        window.location.href = url;
+    }
+
+    // Export to PDF
+    function exportToPDF() {
+        const fromDate = '@(Model.FromDate?.ToString("yyyy-MM-dd") ?? "")';
+        const toDate = '@(Model.ToDate?.ToString("yyyy-MM-dd") ?? "")';
+        let url = '@Url.Action("ExportToPDF", "Booking")';
+        
+        const params = new URLSearchParams();
+        if (fromDate) params.append('fromDate', fromDate);
+        if (toDate) params.append('toDate', toDate);
+        
+        if (params.toString()) {
+            url += '?' + params.toString();
+        }
+        
+        window.open(url, '_blank');
+    }
+
+    // Hover effect for export buttons
+    document.querySelectorAll('.btn-export').forEach(btn => {
+        btn.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+        });
+        btn.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'none';
+        });
+    });
+
+    // Focus effect for search input
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('focus', function() {
+            this.style.borderColor = '#667eea';
+            this.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+        });
+        searchInput.addEventListener('blur', function() {
+            if (!this.value) {
+                this.style.borderColor = '#e0e0e0';
+                this.style.boxShadow = 'none';
+            }
+        });
     }
 </script>
