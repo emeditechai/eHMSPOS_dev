@@ -20,6 +20,6 @@ namespace HotelApp.Web.Repositories
         Task<bool> UpdateRoomStatusAsync(int roomId, string status, int modifiedBy);
         Task<(bool hasActiveBooking, string? bookingNumber, decimal balanceAmount)> GetActiveBookingForRoomAsync(int roomId);
         Task<(bool hasBooking, string? bookingNumber, decimal balanceAmount, DateTime? checkOutDate)> GetAnyBookingForRoomAsync(int roomId);
-        Task<Dictionary<int, (string roomTypeName, int totalRooms, int availableRooms, decimal baseRate, int maxOccupancy, List<string> availableRoomNumbers)>> GetRoomAvailabilityByDateRangeAsync(int branchId, DateTime startDate, DateTime endDate);
+        Task<Dictionary<int, (string roomTypeName, int totalRooms, int availableRooms, decimal baseRate, int maxOccupancy, List<string> availableRoomNumbers, string? discount)>> GetRoomAvailabilityByDateRangeAsync(int branchId, DateTime startDate, DateTime endDate);
     }
 }

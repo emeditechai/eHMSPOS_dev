@@ -52,6 +52,10 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQm9va2luZy9MaXN0LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
+[/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/Booking/RoomAvailabilityCalendar.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQm9va2luZy9Sb29tQXZhaWxhYmlsaXR5Q2FsZW5kYXIuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
 [/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/BranchMaster/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQnJhbmNoTWFzdGVyL0NyZWF0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 

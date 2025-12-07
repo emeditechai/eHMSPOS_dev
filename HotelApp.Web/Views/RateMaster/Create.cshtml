@@ -4,120 +4,288 @@
     var roomTypes = ViewBag.RoomTypes as IEnumerable<HotelApp.Web.Models.RoomType>;
 }
 
+<style>
+    .rate-create-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        padding: 30px 50px;
+        max-width: 95%;
+        width: 100%;
+        margin: 0 auto;
+    }
+
+    .rate-create-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .rate-create-header h3 {
+        margin: 0;
+        color: var(--primary);
+        font-size: 24px;
+        font-weight: 600;
+    }
+
+    .rate-form-section {
+        margin-bottom: 30px;
+    }
+
+    .section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .section-title i {
+        color: var(--primary);
+    }
+
+    .rate-form-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px 25px;
+        margin-bottom: 25px;
+    }
+
+    .rate-form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .rate-form-group label {
+        font-weight: 500;
+        margin-bottom: 8px;
+        color: #333;
+        font-size: 14px;
+    }
+
+    .rate-form-group input,
+    .rate-form-group select {
+        padding: 12px 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .rate-form-group input:focus,
+    .rate-form-group select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(26, 42, 108, 0.1);
+    }
+
+    .rate-form-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: flex-end;
+        padding-top: 25px;
+        border-top: 2px solid #f0f0f0;
+    }
+
+    .rate-form-actions .btn-save,
+    .rate-form-actions .btn-cancel {
+        padding: 12px 30px;
+        font-size: 15px;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+
+    /* Landscape optimized layout */
+    body {
+        min-width: 100%;
+    }
+
+    .page-header {
+        max-width: 95%;
+        margin: 0 auto 20px;
+    }
+
+    @@media (max-width: 1400px) {
+        .rate-form-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .rate-form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media screen and (min-width: 1200px) {
+        .rate-create-container {
+            max-width: 98%;
+        }
+        
+        .rate-form-grid {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+
+    @@media print {
+        body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        @@page {
+            size: landscape;
+            margin: 0.5cm;
+        }
+        .rate-create-container {
+            max-width: 100%;
+            padding: 20px;
+        }
+    }
+</style>
+
 <div class="page-header">
     <h2><i class="fas fa-tags"></i> Rate Master</h2>
 </div>
 
-<div class="form-container">
-    <h3 style="margin-bottom: 25px; color: var(--primary);">Add New Rate</h3>
+<div class="rate-create-container">
+    <div class="rate-create-header">
+        <h3><i class="fas fa-plus-circle"></i> Add New Rate</h3>
+    </div>
     
     <form asp-action="Create" method="post">
         @Html.AntiForgeryToken()
         
         <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label asp-for="RoomTypeId">Room Type <span class="text-danger">*</span></label>
-                <select asp-for="RoomTypeId" required>
-                    <option value="">-- Select Room Type --</option>
-                    @foreach (var roomType in roomTypes ?? Enumerable.Empty<HotelApp.Web.Models.RoomType>())
-                    {
-                        <option value="@roomType.Id">@roomType.TypeName</option>
-                    }
-                </select>
-                <span asp-validation-for="RoomTypeId" class="text-danger"></span>
+        <!-- Basic Rate Information Section -->
+        <div class="rate-form-section">
+            <div class="section-title">
+                <i class="fas fa-info-circle"></i>
+                Basic Rate Information
             </div>
+            <div class="rate-form-grid">
+                <div class="rate-form-group">
+                    <label asp-for="RoomTypeId">Room Type <span class="text-danger">*</span></label>
+                    <select asp-for="RoomTypeId" required>
+                        <option value="">-- Select Room Type --</option>
+                        @foreach (var roomType in roomTypes ?? Enumerable.Empty<HotelApp.Web.Models.RoomType>())
+                        {
+                            <option value="@roomType.Id">@roomType.TypeName</option>
+                        }
+                    </select>
+                    <span asp-validation-for="RoomTypeId" class="text-danger"></span>
+                </div>
 
-            <div class="form-group">
-                <label asp-for="CustomerType">Customer Type <span class="text-danger">*</span></label>
-                <select asp-for="CustomerType" required>
-                    <option value="">-- Select Customer Type --</option>
-                    <option value="B2C">B2C</option>
-                    <option value="B2B">B2B</option>
-                </select>
-                <span asp-validation-for="CustomerType" class="text-danger"></span>
-            </div>
+                <div class="rate-form-group">
+                    <label asp-for="CustomerType">Customer Type <span class="text-danger">*</span></label>
+                    <select asp-for="CustomerType" required>
+                        <option value="">-- Select Customer Type --</option>
+                        <option value="B2C">B2C</option>
+                        <option value="B2B">B2B</option>
+                    </select>
+                    <span asp-validation-for="CustomerType" class="text-danger"></span>
+                </div>
 
-            <div class="form-group">
-                <label asp-for="Source">Source <span class="text-danger">*</span></label>
-                <select asp-for="Source" required>
-                    <option value="">-- Select Source --</option>
-                    <option value="WalkIn">WalkIn</option>
-                    <option value="Phone">Phone</option>
-                    <option value="Websites">Websites</option>
-                    <option value="OTA">OTA</option>
-                    <option value="Reference">Reference</option>
-                </select>
-                <span asp-validation-for="Source" class="text-danger"></span>
-            </div>
+                <div class="rate-form-group">
+                    <label asp-for="Source">Source <span class="text-danger">*</span></label>
+                    <select asp-for="Source" required>
+                        <option value="">-- Select Source --</option>
+                        <option value="WalkIn">WalkIn</option>
+                        <option value="Phone">Phone</option>
+                        <option value="Websites">Websites</option>
+                        <option value="OTA">OTA</option>
+                        <option value="Reference">Reference</option>
+                    </select>
+                    <span asp-validation-for="Source" class="text-danger"></span>
+                </div>
 
-            <div class="form-group">
-                <label asp-for="BaseRate">Base Rate (₹) <span class="text-danger">*</span></label>
-                <input asp-for="BaseRate" type="number" step="0.01" placeholder="0" required />
-                <span asp-validation-for="BaseRate" class="text-danger"></span>
-            </div>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label asp-for="ExtraPaxRate">Extra Pax Rate (₹) <span class="text-danger">*</span></label>
-                <input asp-for="ExtraPaxRate" type="number" step="0.01" placeholder="0" required />
-                <span asp-validation-for="ExtraPaxRate" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="TaxPercentage">Tax % <span class="text-danger">*</span></label>
-                <input asp-for="TaxPercentage" type="number" step="0.01" placeholder="0" required />
-                <span asp-validation-for="TaxPercentage" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="StartDate">Start Date <span class="text-danger">*</span></label>
-                <input asp-for="StartDate" type="date" required />
-                <span asp-validation-for="StartDate" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="EndDate">End Date <span class="text-danger">*</span></label>
-                <input asp-for="EndDate" type="date" required />
-                <span asp-validation-for="EndDate" class="text-danger"></span>
+                <div class="rate-form-group">
+                    <label asp-for="BaseRate">Base Rate (₹) <span class="text-danger">*</span></label>
+                    <input asp-for="BaseRate" type="number" step="0.01" placeholder="0" required />
+                    <span asp-validation-for="BaseRate" class="text-danger"></span>
+                </div>
             </div>
         </div>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label asp-for="IsWeekdayRate">Weekday Rate? <span class="text-danger">*</span></label>
-                <select asp-for="IsWeekdayRate" required>
-                    <option value="true">Yes</option>
-                    <option value="false">No</option>
-                </select>
-                <span asp-validation-for="IsWeekdayRate" class="text-danger"></span>
+        <!-- Pricing & Tax Section -->
+        <div class="rate-form-section">
+            <div class="section-title">
+                <i class="fas fa-money-bill-wave"></i>
+                Pricing & Tax Details
             </div>
+            <div class="rate-form-grid">
+                <div class="rate-form-group">
+                    <label asp-for="ExtraPaxRate">Extra Pax Rate (₹) <span class="text-danger">*</span></label>
+                    <input asp-for="ExtraPaxRate" type="number" step="0.01" placeholder="0" required />
+                    <span asp-validation-for="ExtraPaxRate" class="text-danger"></span>
+                </div>
 
-            <div class="form-group">
-                <label asp-for="ApplyDiscount">Apply Discount</label>
-                <input asp-for="ApplyDiscount" type="text" placeholder="e.g., 10%" />
-                <span asp-validation-for="ApplyDiscount" class="text-danger"></span>
-            </div>
+                <div class="rate-form-group">
+                    <label asp-for="TaxPercentage">Tax % <span class="text-danger">*</span></label>
+                    <input asp-for="TaxPercentage" type="number" step="0.01" placeholder="0" required />
+                    <span asp-validation-for="TaxPercentage" class="text-danger"></span>
+                </div>
 
-            <div class="form-group">
-                <label asp-for="IsDynamicRate">Dynamic Rate? <span class="text-danger">*</span></label>
-                <select asp-for="IsDynamicRate" required>
-                    <option value="false">No</option>
-                    <option value="true">Yes</option>
-                </select>
-                <span asp-validation-for="IsDynamicRate" class="text-danger"></span>
+                <div class="rate-form-group">
+                    <label asp-for="StartDate">Start Date <span class="text-danger">*</span></label>
+                    <input asp-for="StartDate" type="date" required />
+                    <span asp-validation-for="StartDate" class="text-danger"></span>
+                </div>
+
+                <div class="rate-form-group">
+                    <label asp-for="EndDate">End Date <span class="text-danger">*</span></label>
+                    <input asp-for="EndDate" type="date" required />
+                    <span asp-validation-for="EndDate" class="text-danger"></span>
+                </div>
             </div>
         </div>
 
-        <div class="form-actions">
-            <button type="submit" class="btn-save">
-                <i class="fas fa-save"></i> Save Rate
-            </button>
+        <!-- Additional Settings Section -->
+        <div class="rate-form-section">
+            <div class="section-title">
+                <i class="fas fa-cog"></i>
+                Additional Settings
+            </div>
+            <div class="rate-form-grid">
+                <div class="rate-form-group">
+                    <label asp-for="IsWeekdayRate">Weekday Rate? <span class="text-danger">*</span></label>
+                    <select asp-for="IsWeekdayRate" required>
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                    </select>
+                    <span asp-validation-for="IsWeekdayRate" class="text-danger"></span>
+                </div>
+
+                <div class="rate-form-group">
+                    <label asp-for="ApplyDiscount">Apply Discount</label>
+                    <input asp-for="ApplyDiscount" type="text" placeholder="e.g., 10%" />
+                    <span asp-validation-for="ApplyDiscount" class="text-danger"></span>
+                </div>
+
+                <div class="rate-form-group">
+                    <label asp-for="IsDynamicRate">Dynamic Rate? <span class="text-danger">*</span></label>
+                    <select asp-for="IsDynamicRate" required>
+                        <option value="false">No</option>
+                        <option value="true">Yes</option>
+                    </select>
+                    <span asp-validation-for="IsDynamicRate" class="text-danger"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="rate-form-actions">
             <a asp-action="List" class="btn-cancel">
                 <i class="fas fa-times"></i> Cancel
             </a>
+            <button type="submit" class="btn-save">
+                <i class="fas fa-save"></i> Save Rate
+            </button>
         </div>
     </form>
 </div>

@@ -357,7 +357,7 @@ namespace HotelApp.Web.Repositories
             return (true, bookingNumber, balanceAmount, checkOutDate);
         }
 
-        public async Task<Dictionary<int, (string roomTypeName, int totalRooms, int availableRooms, decimal baseRate, int maxOccupancy, List<string> availableRoomNumbers)>> GetRoomAvailabilityByDateRangeAsync(int branchId, DateTime startDate, DateTime endDate)
+        public async Task<Dictionary<int, (string roomTypeName, int totalRooms, int availableRooms, decimal baseRate, int maxOccupancy, List<string> availableRoomNumbers, string? discount)>> GetRoomAvailabilityByDateRangeAsync(int branchId, DateTime startDate, DateTime endDate)
         {
             var sql = @"
                 -- Count required rooms by room type in the date range (includes bookings with or without room assignments)
@@ -452,18 +452,19 @@ namespace HotelApp.Web.Repositories
                 LEFT JOIN AvailableRoomsForRange ar ON rt.Id = ar.RoomTypeId
                 WHERE rt.BranchID = @BranchId
                     AND rt.IsActive = 1
-                GROUP BY rt.Id, rt.TypeName, rt.MaxOccupancy, rt.Max_RoomAvailability, brt.TotalRequiredRooms
+                GROUP BY rt.Id, rt.TypeName, rt.BaseRate, rt.MaxOccupancy, rt.Max_RoomAvailability, brt.TotalRequiredRooms
                 ORDER BY rt.TypeName";
 
             var results = await _dbConnection.QueryAsync(sql, new { BranchId = branchId, StartDate = startDate, EndDate = endDate });
             
-            var availability = new Dictionary<int, (string, int, int, decimal, int, List<string>)>();
+            var availability = new Dictionary<int, (string, int, int, decimal, int, List<string>, string?)>();
             
             foreach (var row in results)
             {
                 int roomTypeId = row.RoomTypeId;
                 string roomTypeName = row.RoomTypeName ?? "";
                 decimal baseRate = row.BaseRate ?? 0m;
+                string? discount = row.ApplyDiscount;
                 int maxOccupancy = row.MaxOccupancy ?? 0;
                 
                 // Get Max_RoomAvailability from RoomTypes table (configured max capacity for this room type)
@@ -489,8 +490,8 @@ namespace HotelApp.Web.Repositories
                         .Take(availableRooms)  // Only take up to available count
                         .ToList();
                 
-                // Return: totalCapacity as total rooms, calculated available rooms
-                availability[roomTypeId] = (roomTypeName, totalCapacity, availableRooms, baseRate, maxOccupancy, roomNumbers);
+                // Return: totalCapacity as total rooms, calculated available rooms, discount
+                availability[roomTypeId] = (roomTypeName, totalCapacity, availableRooms, baseRate, maxOccupancy, roomNumbers, discount);
             }
             
             return availability;

@@ -68,6 +68,7 @@ public class RoomsController : BaseController
                 AvailableRooms = kvp.Value.availableRooms,
                 OccupiedRooms = kvp.Value.totalRooms - kvp.Value.availableRooms,
                 BaseRate = kvp.Value.baseRate,
+                ApplyDiscount = kvp.Value.discount,
                 MaxOccupancy = kvp.Value.maxOccupancy,
                 AvailableRoomNumbers = kvp.Value.availableRoomNumbers
             }).ToList(),
@@ -341,6 +342,7 @@ public class RoomsController : BaseController
                 availableRooms = kvp.Value.availableRooms,
                 occupiedRooms = kvp.Value.totalRooms - kvp.Value.availableRooms,
                 baseRate = kvp.Value.baseRate,
+                applyDiscount = kvp.Value.discount,
                 maxOccupancy = kvp.Value.maxOccupancy,
                 availableRoomNumbers = kvp.Value.availableRoomNumbers
             }).ToList();

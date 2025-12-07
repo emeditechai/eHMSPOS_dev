@@ -1,16 +1,16 @@
 ﻿<Project>
   <ItemGroup>
-    <StaticWebAssetEndpoint Include="_content/HotelApp.Web/css/dashboard.3gpc0w1sri.css">
-      <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\css\dashboard.css'))</AssetFile>
-      <Selectors><![CDATA[[]]]></Selectors>
-      <EndpointProperties><![CDATA[[{"Name":"fingerprint","Value":"3gpc0w1sri"},{"Name":"integrity","Value":"sha256-05tOG/Ui1OV7IfuYgP2EhhkfkuBGRX5Kk\u002BYL30l2vis="},{"Name":"label","Value":"_content/HotelApp.Web/css/dashboard.css"}]]]></EndpointProperties>
-      <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"max-age=31536000, immutable"},{"Name":"Content-Length","Value":"8974"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u002205tOG/Ui1OV7IfuYgP2EhhkfkuBGRX5Kk\u002BYL30l2vis=\u0022"},{"Name":"Last-Modified","Value":"Thu, 20 Nov 2025 03:17:44 GMT"}]]]></ResponseHeaders>
-    </StaticWebAssetEndpoint>
     <StaticWebAssetEndpoint Include="_content/HotelApp.Web/css/dashboard.css">
       <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\css\dashboard.css'))</AssetFile>
       <Selectors><![CDATA[[]]]></Selectors>
-      <EndpointProperties><![CDATA[[{"Name":"integrity","Value":"sha256-05tOG/Ui1OV7IfuYgP2EhhkfkuBGRX5Kk\u002BYL30l2vis="}]]]></EndpointProperties>
-      <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"no-cache"},{"Name":"Content-Length","Value":"8974"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u002205tOG/Ui1OV7IfuYgP2EhhkfkuBGRX5Kk\u002BYL30l2vis=\u0022"},{"Name":"Last-Modified","Value":"Thu, 20 Nov 2025 03:17:44 GMT"}]]]></ResponseHeaders>
+      <EndpointProperties><![CDATA[[{"Name":"integrity","Value":"sha256-jQciLEckKvRWg5T8Xm9StQzsQ7Lp\u002BvqViJN0XlqJ4Yg="}]]]></EndpointProperties>
+      <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"no-cache"},{"Name":"Content-Length","Value":"9090"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u0022jQciLEckKvRWg5T8Xm9StQzsQ7Lp\u002BvqViJN0XlqJ4Yg=\u0022"},{"Name":"Last-Modified","Value":"Sun, 07 Dec 2025 16:31:59 GMT"}]]]></ResponseHeaders>
+    </StaticWebAssetEndpoint>
+    <StaticWebAssetEndpoint Include="_content/HotelApp.Web/css/dashboard.xryq115t6n.css">
+      <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\css\dashboard.css'))</AssetFile>
+      <Selectors><![CDATA[[]]]></Selectors>
+      <EndpointProperties><![CDATA[[{"Name":"fingerprint","Value":"xryq115t6n"},{"Name":"integrity","Value":"sha256-jQciLEckKvRWg5T8Xm9StQzsQ7Lp\u002BvqViJN0XlqJ4Yg="},{"Name":"label","Value":"_content/HotelApp.Web/css/dashboard.css"}]]]></EndpointProperties>
+      <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"max-age=31536000, immutable"},{"Name":"Content-Length","Value":"9090"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u0022jQciLEckKvRWg5T8Xm9StQzsQ7Lp\u002BvqViJN0XlqJ4Yg=\u0022"},{"Name":"Last-Modified","Value":"Sun, 07 Dec 2025 16:31:59 GMT"}]]]></ResponseHeaders>
     </StaticWebAssetEndpoint>
     <StaticWebAssetEndpoint Include="_content/HotelApp.Web/css/login.css">
       <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\css\login.css'))</AssetFile>

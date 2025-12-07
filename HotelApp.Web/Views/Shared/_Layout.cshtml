@@ -67,10 +67,24 @@
                             </a>
                         </div>
                     </div>
-                    <a asp-controller="Booking" asp-action="List" class="menu-item @(controller == "Booking" ? "active" : string.Empty)">
+                    @{ bool bookingsNavActive = controller == "Booking"; }
+                    <div class="menu-item has-dropdown @(bookingsNavActive ? "active" : string.Empty)">
                         <i class="fas fa-calendar-check"></i>
                         <span>Bookings</span>
-                    </a>
+                        <i class="fas fa-chevron-down dropdown-icon"></i>
+                        <div class="dropdown-menu">
+                            <a asp-controller="Booking" asp-action="List" class="@(controller == "Booking" && action == "List" ? "active" : string.Empty)">
+                                <i class="fas fa-list"></i>
+                                <span>Bookings</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+                            <a asp-controller="Booking" asp-action="RoomAvailabilityCalendar" class="@(controller == "Booking" && action == "RoomAvailabilityCalendar" ? "active" : string.Empty)">
+                                <i class="fas fa-calendar-alt"></i>
+                                <span>Room Availability</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+                        </div>
+                    </div>
                     <a asp-controller="Guest" asp-action="Index" class="menu-item @(controller == "Guest" ? "active" : string.Empty)">
                         <i class="fas fa-users"></i>
                         <span>Guests</span>
@@ -149,6 +163,77 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/3.2.12/jquery.validate.unobtrusive.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <script>
+        // Enhanced dropdown navigation functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const dropdownMenuItems = document.querySelectorAll('.menu-item.has-dropdown');
+            let isTouchDevice = false;
+            
+            // Detect if this is a touch device
+            window.addEventListener('touchstart', function onFirstTouch() {
+                isTouchDevice = true;
+                window.removeEventListener('touchstart', onFirstTouch);
+            }, {passive: true});
+            
+            dropdownMenuItems.forEach(function(item) {
+                // For touch devices or when hover doesn't work well
+                item.addEventListener('click', function(e) {
+                    const clickedDropdownMenu = e.target.closest('.dropdown-menu');
+                    const clickedLink = e.target.closest('a');
+                    
+                    // If clicking a link inside dropdown, allow navigation
+                    if (clickedDropdownMenu && clickedLink) {
+                        return; // Let the link work normally
+                    }
+                    
+                    // If clicking the parent menu item itself
+                    if (!clickedDropdownMenu) {
+                        const isCurrentlyOpen = item.classList.contains('open');
+                        
+                        // Close all dropdowns
+                        dropdownMenuItems.forEach(function(otherItem) {
+                            otherItem.classList.remove('open');
+                        });
+                        
+                        // Toggle this one
+                        if (!isCurrentlyOpen) {
+                            item.classList.add('open');
+                        }
+                        
+                        // Only prevent default if we're toggling, not if hovering
+                        if (isTouchDevice || window.innerWidth < 768) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }
+                    }
+                });
+            });
+            
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.menu-item.has-dropdown')) {
+                    dropdownMenuItems.forEach(function(item) {
+                        item.classList.remove('open');
+                    });
+                }
+            });
+            
+            // On desktop, ensure hover works properly
+            if (window.innerWidth >= 768) {
+                dropdownMenuItems.forEach(function(item) {
+                    item.addEventListener('mouseenter', function() {
+                        if (!isTouchDevice) {
+                            dropdownMenuItems.forEach(function(otherItem) {
+                                otherItem.classList.remove('open');
+                            });
+                        }
+                    });
+                });
+            }
+        });
+    </script>
+    
     @RenderSection("Scripts", required: false)
 </body>
 </html>

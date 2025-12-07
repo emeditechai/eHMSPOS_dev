@@ -1,0 +1,946 @@
+@{
+    ViewData["Title"] = "Room Availability Calendar";
+}
+
+@section Styles {
+    <style>
+        body {
+            background: #f5f7fa;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        
+        .calendar-container {
+            padding: 16px;
+            max-width: 100%;
+            margin: 0;
+            position: relative;
+        }
+        
+        .calendar-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px 16px 0 0;
+            padding: 28px 32px;
+            color: white;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .calendar-header h1 {
+            margin: 0 0 20px 0;
+            font-size: 32px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .calendar-header h1 i {
+            font-size: 28px;
+        }
+        
+        .calendar-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .control-group label {
+            font-size: 14px;
+            font-weight: 500;
+            opacity: 0.95;
+        }
+        
+        .control-group input[type="date"],
+        .control-group input[type="number"] {
+            padding: 10px 14px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.95);
+            color: #2c3e50;
+            transition: all 0.3s;
+            min-width: 150px;
+        }
+        
+        .control-group input:focus {
+            outline: none;
+            border-color: white;
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-load-calendar {
+            padding: 11px 24px;
+            background: white;
+            color: #667eea;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn-load-calendar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            background: #f8f9fa;
+        }
+        
+        .calendar-legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+        
+        .legend-color {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+        }
+        
+        .legend-color.high { background: linear-gradient(135deg, #10b981, #059669); }
+        .legend-color.medium { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .legend-color.low { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .legend-color.full { background: linear-gradient(135deg, #6b7280, #4b5563); }
+        
+        .calendar-wrapper {
+            background: white;
+            border-radius: 0 0 16px 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+            position: relative;
+            overflow: auto;
+            max-height: 600px;
+        }
+        
+        .calendar-flex-container {
+            display: flex;
+            width: 100%;
+            position: relative;
+        }
+        
+        .calendar-fixed-column {
+            flex-shrink: 0;
+            width: 220px;
+            background: linear-gradient(to bottom, #ffffff, #f9fafb);
+            border-right: 3px solid #e5e7eb;
+            z-index: 10;
+            box-shadow: 4px 0 12px rgba(0, 0, 0, 0.08);
+        }
+        
+        .calendar-fixed-header {
+            padding: 20px 20px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 15px;
+            color: #1e293b;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+            height: 68px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .calendar-fixed-header::before {
+            content: '🏨';
+            font-size: 18px;
+        }
+        
+        .calendar-fixed-body {
+            background: white;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        
+        .fixed-room-row {
+            padding: 18px 20px;
+            border-bottom: 1px solid #e5e7eb;
+            background: white;
+            height: 122px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .fixed-room-row::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .fixed-room-row:hover {
+            background: linear-gradient(to right, #f0f4ff, #ffffff);
+            transform: translateX(2px);
+        }
+        
+        .fixed-room-row:hover::before {
+            opacity: 1;
+        }
+        
+        .calendar-scroll {
+            flex-grow: 1;
+            overflow-x: auto;
+            overflow-y: visible;
+            position: relative;
+        }
+        
+        .calendar-table {
+            table-layout: auto;
+            width: max-content;
+            min-width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            position: relative;
+        }
+        
+        .calendar-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: #f8f9fa;
+        }
+        
+        .calendar-table th {
+            padding: 16px 12px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 13px;
+            color: #475569;
+            border-bottom: 2px solid #e2e8f0;
+            background: #f8f9fa;
+            white-space: nowrap;
+            height: 68px;
+            box-sizing: border-box;
+        }
+        
+        .calendar-table th.room-type-header {
+            text-align: left;
+            position: -webkit-sticky;
+            position: sticky;
+            left: 0 !important;
+            z-index: 21;
+            min-width: 180px;
+            max-width: 180px;
+            width: 180px;
+            background: linear-gradient(135deg, #f1f5f9, #e2e8f0) !important;
+            font-size: 14px;
+            color: #1e293b;
+            box-shadow: 4px 0 12px rgba(0, 0, 0, 0.15);
+            will-change: transform;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+        }
+        
+        .calendar-table th.date-header {
+            min-width: 120px;
+            padding: 20px 16px;
+        }
+        
+        .date-header-day {
+            display: block;
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 2px;
+        }
+        
+        .date-header-date {
+            display: block;
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 500;
+        }
+        
+        .date-header.weekend {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+        }
+        
+        .date-header.weekend .date-header-day {
+            color: #92400e;
+        }
+        
+        .date-header.today {
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            border-bottom: 3px solid #3b82f6;
+        }
+        
+        .date-header.today .date-header-day {
+            color: #1e40af;
+        }
+        
+        .calendar-table tbody tr {
+            transition: background-color 0.2s;
+        }
+        
+        .calendar-table tbody tr:hover {
+            background: #f8fafc;
+        }
+        
+        .calendar-table tbody tr {
+            height: 122px;
+        }
+        
+        .calendar-table td {
+            padding: 0;
+            border-bottom: 1px solid #e2e8f0;
+            border-right: 1px solid #f1f5f9;
+            position: relative;
+            height: 122px;
+            box-sizing: border-box;
+        }
+        
+        .room-type-cell {
+            position: -webkit-sticky;
+            position: sticky;
+            left: 0 !important;
+            z-index: 10;
+            background: white !important;
+            padding: 16px;
+            font-weight: 600;
+            color: #1e293b;
+            border-right: 2px solid #e2e8f0;
+            min-width: 180px;
+            max-width: 180px;
+            width: 180px;
+            box-shadow: 4px 0 12px rgba(0, 0, 0, 0.15);
+            white-space: nowrap;
+            overflow: visible;
+            will-change: transform;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+        }
+        
+        .calendar-table tbody tr:hover .room-type-cell {
+            background: #f8fafc !important;
+        }
+        
+        .room-type-name {
+            font-size: 16px;
+            margin-bottom: 6px;
+            white-space: normal;
+            word-wrap: break-word;
+            overflow: visible;
+            font-weight: 600;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .room-type-name::before {
+            content: '🛏️';
+            font-size: 18px;
+        }
+        
+        .room-type-info {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 500;
+            white-space: normal;
+            word-wrap: break-word;
+            overflow: visible;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .room-type-info::before {
+            content: '💰';
+            font-size: 14px;
+        }
+        
+        .availability-cell {
+            padding: 12px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            min-height: 90px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .availability-cell::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.3), rgba(255,255,255,0));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .availability-cell:hover {
+            transform: translateY(-4px) scale(1.03);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+            z-index: 5;
+        }
+        
+        .availability-cell:hover::before {
+            opacity: 1;
+        }
+        
+        .cell-price {
+            font-size: 11px;
+            font-weight: 700;
+            color: #059669;
+            padding: 4px 10px;
+            background: rgba(16, 185, 129, 0.12);
+            border-radius: 12px;
+            margin-top: 4px;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        
+        .available-count {
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1;
+        }
+        
+        .available-label {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.9;
+        }
+        
+        .booked-count {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.08);
+            margin-top: 2px;
+        }
+        
+        .availability-high .booked-count {
+            background: rgba(5, 150, 105, 0.15);
+            color: #065f46;
+        }
+        
+        .availability-medium .booked-count {
+            background: rgba(217, 119, 6, 0.15);
+            color: #92400e;
+        }
+        
+        .availability-low .booked-count {
+            background: rgba(220, 38, 38, 0.15);
+            color: #7f1d1d;
+        }
+        
+        .availability-none .booked-count {
+            background: rgba(75, 85, 99, 0.15);
+            color: #374151;
+        }
+        
+        /* Color coding based on availability */
+        .availability-high {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            color: #065f46;
+        }
+        
+        .availability-high .available-count {
+            color: #047857;
+        }
+        
+        .availability-high .available-label {
+            color: #059669;
+        }
+        
+        .availability-medium {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #92400e;
+        }
+        
+        .availability-medium .available-count {
+            color: #b45309;
+        }
+        
+        .availability-medium .available-label {
+            color: #d97706;
+        }
+        
+        .availability-low {
+            background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+            color: #7f1d1d;
+        }
+        
+        .availability-low .available-count {
+            color: #991b1b;
+        }
+        
+        .availability-low .available-label {
+            color: #dc2626;
+        }
+        
+        .availability-none {
+            background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+            color: #374151;
+        }
+        
+        .availability-none .available-count {
+            color: #4b5563;
+        }
+        
+        .availability-none .available-label {
+            color: #6b7280;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        
+        .loading-overlay.active {
+            display: flex;
+        }
+        
+        .loading-content {
+            text-align: center;
+        }
+        
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        
+        @@keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            color: #475569;
+            font-weight: 600;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #64748b;
+        }
+        
+        .empty-state i {
+            font-size: 64px;
+            color: #cbd5e1;
+            margin-bottom: 20px;
+        }
+        
+        .empty-state h3 {
+            font-size: 20px;
+            margin-bottom: 8px;
+            color: #475569;
+        }
+        
+        .empty-state p {
+            font-size: 14px;
+        }
+        
+        .empty-state-fixed {
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+        }
+        
+        .empty-state-fixed i {
+            font-size: 32px;
+            color: #cbd5e1;
+            margin-bottom: 10px;
+        }
+        
+        .empty-state-fixed p {
+            font-size: 12px;
+        }
+    </style>
+}
+
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-content">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading availability data...</div>
+    </div>
+</div>
+
+<div class="calendar-container">
+    <div class="calendar-header">
+        <h1>
+            <i class="fas fa-calendar-alt"></i>
+            Room Availability Calendar
+        </h1>
+        <div class="calendar-controls">
+            <div class="control-group">
+                <label><i class="fas fa-calendar"></i> Start Date:</label>
+                <input type="date" id="startDate" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="control-group">
+                <label><i class="fas fa-calendar"></i> End Date:</label>
+                <input type="date" id="endDate" value="@DateTime.Today.AddDays(6).ToString("yyyy-MM-dd")" />
+            </div>
+            <button class="btn-load-calendar" onclick="loadCalendar()">
+                <i class="fas fa-sync-alt"></i>
+                Load Calendar
+            </button>
+        </div>
+        <div class="calendar-legend">
+            <div class="legend-item">
+                <div class="legend-color high"></div>
+                <span>High Availability (70%+)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color medium"></div>
+                <span>Medium (30-69%)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color low"></div>
+                <span>Low (1-29%)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color full"></div>
+                <span>Fully Booked</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="calendar-wrapper">
+        <div class="calendar-flex-container">
+            <div class="calendar-fixed-column">
+                <div class="calendar-fixed-header">Room Type</div>
+                <div id="fixedColumnBody" class="calendar-fixed-body">
+                    <div class="empty-state-fixed">
+                        <i class="fas fa-calendar-check"></i>
+                        <p>Loading...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="calendar-scroll">
+                <table class="calendar-table" id="calendarTable">
+                    <thead>
+                        <tr id="calendarHeaderRow">
+                        </tr>
+                    </thead>
+                    <tbody id="calendarBody">
+                        <tr>
+                            <td colspan="100">
+                                <div class="empty-state">
+                                    <i class="fas fa-calendar-check"></i>
+                                    <h3>Select Date Range</h3>
+                                    <p>Choose your start and end dates, then click "Load Calendar" to view availability.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let calendarData = {};
+        
+        document.addEventListener('DOMContentLoaded', function () {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('startDate').min = today;
+            document.getElementById('endDate').min = today;
+            // Auto-load calendar on page load
+            loadCalendar();
+        });
+
+        function loadCalendar() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            if (!startDate || !endDate) {
+                Swal.fire({ icon: 'warning', title: 'Missing Dates', text: 'Please select both start and end dates' });
+                return;
+            }
+            
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            
+            if (end < start) {
+                Swal.fire({ icon: 'error', title: 'Invalid Date Range', text: 'End date must be after start date' });
+                return;
+            }
+            
+            const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+            if (daysDiff > 31) {
+                Swal.fire({ icon: 'warning', title: 'Date Range Too Long', text: 'Please select a date range of 31 days or less for optimal viewing' });
+                return;
+            }
+            
+            showLoading(true);
+            
+            // Fetch availability data for each date in range
+            fetchCalendarData(startDate, endDate);
+        }
+        
+        function fetchCalendarData(startDate, endDate) {
+            const promises = [];
+            const dates = [];
+            
+            let currentDate = new Date(startDate);
+            const endDateObj = new Date(endDate);
+            
+            while (currentDate <= endDateObj) {
+                const dateStr = currentDate.toISOString().split('T')[0];
+                dates.push(dateStr);
+                promises.push(
+                    fetch(`@Url.Action("GetAvailabilityByDateRange", "Rooms")?startDate=${dateStr}&endDate=${dateStr}`)
+                        .then(response => response.json())
+                );
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            
+            Promise.all(promises)
+                .then(results => {
+                    calendarData = {};
+                    results.forEach((result, index) => {
+                        if (result.success && result.data) {
+                            calendarData[dates[index]] = result.data;
+                        }
+                    });
+                    renderCalendar(dates);
+                    showLoading(false);
+                })
+                .catch(error => {
+                    console.error('Error fetching calendar data:', error);
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to load availability data' });
+                    showLoading(false);
+                });
+        }
+        
+        function renderCalendar(dates) {
+            if (dates.length === 0 || Object.keys(calendarData).length === 0) {
+                document.getElementById('calendarBody').innerHTML = `
+                    <tr><td colspan="100"><div class="empty-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <h3>No Data Available</h3>
+                        <p>No availability data found for the selected date range.</p>
+                    </div></td></tr>
+                `;
+                document.getElementById('fixedColumnBody').innerHTML = `
+                    <div class="empty-state-fixed">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>No Data</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Build header row with dates
+            const headerRow = document.getElementById('calendarHeaderRow');
+            let headerHtml = '';
+            
+            dates.forEach(dateStr => {
+                const date = new Date(dateStr + 'T00:00:00');
+                const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                const dayNum = date.getDate();
+                const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+                const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                const isToday = dateStr === new Date().toISOString().split('T')[0];
+                
+                const classNames = ['date-header'];
+                if (isWeekend) classNames.push('weekend');
+                if (isToday) classNames.push('today');
+                
+                headerHtml += `
+                    <th class="${classNames.join(' ')}">
+                        <span class="date-header-day">${dayName}</span>
+                        <span class="date-header-date">${dayNum} ${monthName}</span>
+                    </th>
+                `;
+            });
+            
+            headerRow.innerHTML = headerHtml;
+            
+            // Get all unique room types
+            const roomTypes = new Map();
+            Object.values(calendarData).forEach(dayData => {
+                dayData.forEach(room => {
+                    if (!roomTypes.has(room.roomTypeId)) {
+                        roomTypes.set(room.roomTypeId, {
+                            id: room.roomTypeId,
+                            name: room.roomTypeName,
+                            totalRooms: room.totalRooms,
+                            baseRate: room.baseRate
+                        });
+                    }
+                });
+            });
+            
+            // Build fixed column with room types
+            const fixedColumnBody = document.getElementById('fixedColumnBody');
+            let fixedHtml = '';
+            
+            roomTypes.forEach(roomType => {
+                fixedHtml += `
+                    <div class="fixed-room-row">
+                        <div class="room-type-name">${roomType.name}</div>
+                        <div class="room-type-info">Total: ${roomType.totalRooms} rooms • ₹${roomType.baseRate.toLocaleString()}/night</div>
+                    </div>
+                `;
+            });
+            
+            fixedColumnBody.innerHTML = fixedHtml;
+            
+            // Build body rows - one row per room type
+            const tbody = document.getElementById('calendarBody');
+            let bodyHtml = '';
+            
+            roomTypes.forEach(roomType => {
+                bodyHtml += '<tr>';
+                
+                dates.forEach(dateStr => {
+                    const dayData = calendarData[dateStr] || [];
+                    const roomData = dayData.find(r => r.roomTypeId === roomType.id);
+                    
+                    if (roomData) {
+                        const available = roomData.availableRooms;
+                        const total = roomData.totalRooms;
+                        const percentage = total > 0 ? (available * 100 / total) : 0;
+                        
+                        let availabilityClass = 'availability-none';
+                        if (available === 0) {
+                            availabilityClass = 'availability-none';
+                        } else if (percentage >= 70) {
+                            availabilityClass = 'availability-high';
+                        } else if (percentage >= 30) {
+                            availabilityClass = 'availability-medium';
+                        } else {
+                            availabilityClass = 'availability-low';
+                        }
+                        
+                        const booked = total - available;
+                        const pricePerNight = roomType.baseRate;
+                        bodyHtml += `
+                            <td>
+                                <div class="availability-cell ${availabilityClass}" 
+                                     onclick="cellClicked('${roomType.name}', '${dateStr}', ${available}, ${total}, ${booked})"
+                                     title="${roomType.name} - ${dateStr}\n${available} available | ${booked} booked | ${total} total\n₹${pricePerNight.toLocaleString()}/night">
+                                    <div class="available-count">${available}</div>
+                                    <div class="available-label">${available === 0 ? '🔒 Full' : '✅ Available'}</div>
+                                    <div class="booked-count">📋 ${booked} Booked</div>
+                                    <div class="cell-price">₹${pricePerNight.toLocaleString()}</div>
+                                </div>
+                            </td>
+                        `;
+                    } else {
+                        bodyHtml += `
+                            <td>
+                                <div class="availability-cell availability-none">
+                                    <div class="available-count">-</div>
+                                    <div class="available-label">N/A</div>
+                                </div>
+                            </td>
+                        `;
+                    }
+                });
+                
+                bodyHtml += '</tr>';
+            });
+            
+            tbody.innerHTML = bodyHtml;
+        }
+        
+        function cellClicked(roomTypeName, date, available, total, booked) {
+            const dateObj = new Date(date + 'T00:00:00');
+            const formattedDate = dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            
+            Swal.fire({
+                title: roomTypeName,
+                html: `
+                    <div style="text-align: left; padding: 10px;">
+                        <p style="margin: 10px 0;"><strong>Date:</strong> ${formattedDate}</p>
+                        <p style="margin: 10px 0;"><strong>Total Rooms:</strong> ${total}</p>
+                        <p style="margin: 10px 0;"><strong>Available:</strong> ${available}</p>
+                        <p style="margin: 10px 0;"><strong>Booked:</strong> ${booked}</p>
+                        <p style="margin: 10px 0;"><strong>Occupancy:</strong> ${((total - available) * 100 / total).toFixed(0)}%</p>
+                    </div>
+                `,
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonText: '<i class="fas fa-plus"></i> Create Booking',
+                cancelButtonText: 'Close',
+                confirmButtonColor: '#667eea'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = `@Url.Action("Create", "Booking")?checkIn=${date}`;
+                }
+            });
+        }
+        
+        function showLoading(show) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (show) {
+                overlay.classList.add('active');
+            } else {
+                overlay.classList.remove('active');
+            }
+        }
+        
+        // Synchronize scroll between wrapper and fixed column
+        document.addEventListener('DOMContentLoaded', function() {
+            const wrapper = document.querySelector('.calendar-wrapper');
+            const fixedBody = document.getElementById('fixedColumnBody');
+            
+            if (wrapper && fixedBody) {
+                wrapper.addEventListener('scroll', function() {
+                    fixedBody.style.transform = `translateY(-${wrapper.scrollTop}px)`;
+                });
+            }
+        });
+    </script>
+}

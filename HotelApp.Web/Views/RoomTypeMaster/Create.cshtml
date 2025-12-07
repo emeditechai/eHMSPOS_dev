@@ -3,70 +3,217 @@
     ViewData["Title"] = "Create Room Type";
 }
 
+<style>
+    .master-create-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        padding: 30px 50px;
+        max-width: 95%;
+        width: 100%;
+        margin: 0 auto;
+    }
+
+    .master-create-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .master-create-header h3 {
+        margin: 0;
+        color: var(--primary);
+        font-size: 24px;
+        font-weight: 600;
+    }
+
+    .master-form-section {
+        margin-bottom: 25px;
+    }
+
+    .section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .section-title i {
+        color: var(--primary);
+    }
+
+    .master-form-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px 25px;
+    }
+
+    .master-form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .master-form-group label {
+        font-weight: 500;
+        margin-bottom: 8px;
+        color: #333;
+        font-size: 14px;
+    }
+
+    .master-form-group input,
+    .master-form-group select,
+    .master-form-group textarea {
+        padding: 12px 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .master-form-group input:focus,
+    .master-form-group select:focus,
+    .master-form-group textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(26, 42, 108, 0.1);
+    }
+
+    .master-form-group textarea {
+        min-height: 80px;
+        resize: vertical;
+    }
+
+    .master-form-group-full {
+        grid-column: 1 / -1;
+    }
+
+    .master-form-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: flex-end;
+        padding-top: 25px;
+        border-top: 2px solid #f0f0f0;
+    }
+
+    .master-form-actions .btn-save,
+    .master-form-actions .btn-cancel {
+        padding: 12px 30px;
+        font-size: 15px;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+
+    .page-header {
+        max-width: 95%;
+        margin: 0 auto 20px;
+    }
+
+    @@media (max-width: 1400px) {
+        .master-form-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .master-form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media screen and (min-width: 1200px) {
+        .master-create-container {
+            max-width: 98%;
+        }
+    }
+
+    @@media print {
+        body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        @@page {
+            size: landscape;
+            margin: 0.5cm;
+        }
+        .master-create-container {
+            max-width: 100%;
+            padding: 20px;
+        }
+    }
+</style>
+
 <div class="page-header">
     <h2><i class="fas fa-cube"></i> Room Type Master</h2>
 </div>
 
-<div class="form-container">
-    <h3 style="margin-bottom: 25px; color: var(--primary);">Add New Room Type</h3>
+<div class="master-create-container">
+    <div class="master-create-header">
+        <h3><i class="fas fa-plus-circle"></i> Add New Room Type</h3>
+    </div>
     
     <form asp-action="Create" method="post">
         @Html.AntiForgeryToken()
         <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label asp-for="TypeName">Type Name <span class="text-danger">*</span></label>
-                <input asp-for="TypeName" type="text" placeholder="e.g., Deluxe" required />
-                <span asp-validation-for="TypeName" class="text-danger"></span>
+        <div class="master-form-section">
+            <div class="section-title">
+                <i class="fas fa-info-circle"></i>
+                Room Type Information
             </div>
+            <div class="master-form-grid">
+                <div class="master-form-group">
+                    <label asp-for="TypeName">Type Name <span class="text-danger">*</span></label>
+                    <input asp-for="TypeName" type="text" placeholder="e.g., Deluxe" required />
+                    <span asp-validation-for="TypeName" class="text-danger"></span>
+                </div>
 
-            <div class="form-group">
-                <label asp-for="MaxOccupancy">Max Occupancy <span class="text-danger">*</span></label>
-                <input asp-for="MaxOccupancy" type="number" min="1" placeholder="e.g., 2" required />
-                <span asp-validation-for="MaxOccupancy" class="text-danger"></span>
-            </div>
+                <div class="master-form-group">
+                    <label asp-for="MaxOccupancy">Max Occupancy <span class="text-danger">*</span></label>
+                    <input asp-for="MaxOccupancy" type="number" min="1" placeholder="e.g., 2" required />
+                    <span asp-validation-for="MaxOccupancy" class="text-danger"></span>
+                </div>
 
-            <div class="form-group">
-                <label asp-for="Max_RoomAvailability">Max Room Availability</label>
-                <input asp-for="Max_RoomAvailability" type="number" min="0" placeholder="e.g., 10" />
-                <span asp-validation-for="Max_RoomAvailability" class="text-danger"></span>
+                <div class="master-form-group">
+                    <label asp-for="Max_RoomAvailability">Max Room Availability</label>
+                    <input asp-for="Max_RoomAvailability" type="number" min="0" placeholder="e.g., 10" />
+                    <span asp-validation-for="Max_RoomAvailability" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="IsActive">Status</label>
+                    <select asp-for="IsActive">
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
+                    </select>
+                </div>
+
+                <div class="master-form-group master-form-group-full">
+                    <label asp-for="Description">Description</label>
+                    <textarea asp-for="Description" placeholder="e.g., Spacious room with king-size bed"></textarea>
+                    <span asp-validation-for="Description" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group master-form-group-full">
+                    <label asp-for="Amenities">Amenities</label>
+                    <textarea asp-for="Amenities" placeholder="e.g., AC, WiFi, TV, Mini Bar"></textarea>
+                    <span asp-validation-for="Amenities" class="text-danger"></span>
+                </div>
             </div>
         </div>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label asp-for="IsActive">Status</label>
-                <select asp-for="IsActive">
-                    <option value="true">Active</option>
-                    <option value="false">Inactive</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group form-group-full">
-                <label asp-for="Description">Description</label>
-                <textarea asp-for="Description" placeholder="e.g., Spacious room with king-size bed"></textarea>
-                <span asp-validation-for="Description" class="text-danger"></span>
-            </div>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group form-group-full">
-                <label asp-for="Amenities">Amenities</label>
-                <textarea asp-for="Amenities" placeholder="e.g., AC, WiFi, TV, Mini Bar"></textarea>
-                <span asp-validation-for="Amenities" class="text-danger"></span>
-            </div>
-        </div>
-
-        <div class="form-actions">
-            <button type="submit" class="btn-save">
-                <i class="fas fa-save"></i> Save Room Type
-            </button>
+        <div class="master-form-actions">
             <a asp-action="List" class="btn-cancel">
                 <i class="fas fa-times"></i> Cancel
             </a>
+            <button type="submit" class="btn-save">
+                <i class="fas fa-save"></i> Save Room Type
+            </button>
         </div>
     </form>
 </div>

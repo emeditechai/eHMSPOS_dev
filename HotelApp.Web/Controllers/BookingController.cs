@@ -269,6 +269,13 @@ namespace HotelApp.Web.Controllers
         }
 
         [HttpGet]
+        public IActionResult RoomAvailabilityCalendar()
+        {
+            ViewData["Title"] = "Room Availability";
+            return View();
+        }
+
+        [HttpGet]
         public async Task<IActionResult> GetRoomTypeRate(int roomTypeId, string customerType, string source)
         {
             try

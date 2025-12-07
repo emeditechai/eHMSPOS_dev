@@ -27,6 +27,7 @@ namespace HotelApp.Web.ViewModels
         public int AvailableRooms { get; set; }
         public int OccupiedRooms { get; set; }
         public decimal BaseRate { get; set; }
+        public string? ApplyDiscount { get; set; }
         public int MaxOccupancy { get; set; }
         public List<string> AvailableRoomNumbers { get; set; } = new List<string>();
     }

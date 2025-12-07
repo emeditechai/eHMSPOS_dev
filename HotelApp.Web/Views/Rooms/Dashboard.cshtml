@@ -351,6 +351,16 @@
             font-weight: 600;
         }
         
+        .discount-badge {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
         .availability-stats {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -552,9 +562,12 @@
 
     <!-- Room Type Availability Section -->
     <div class="availability-section">
-        <div class="availability-header">
-            <h2>Room Availability by Type</h2>
-            <div class="date-range-selector">
+        <div class="availability-header" onclick="toggleAvailabilitySection()" style="cursor: pointer;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <h2>Room Availability by Type</h2>
+                <i class="fas fa-chevron-down" id="availabilityToggleIcon" style="transition: transform 0.3s ease;"></i>
+            </div>
+            <div class="date-range-selector" onclick="event.stopPropagation();">
                 <div class="date-input-group">
                     <label>From:</label>
                     <input type="date" id="startDate" value="@Model.StartDate.ToString("yyyy-MM-dd")" />
@@ -570,13 +583,19 @@
             </div>
         </div>
         
-        <div class="availability-cards" id="availabilityCards">
+        <div class="availability-cards" id="availabilityCards" style="transition: max-height 0.3s ease, opacity 0.3s ease; overflow: hidden;">
             @foreach (var roomType in Model.RoomTypeAvailabilities)
             {
                 <div class="availability-card">
                     <div class="availability-card-header">
                         <h3>@roomType.RoomTypeName</h3>
-                        <span class="rate-badge">₹@roomType.BaseRate.ToString("N0") / night</span>
+                        <div>
+                            <span class="rate-badge">₹@roomType.BaseRate.ToString("N0") / night</span>
+                            @if (!string.IsNullOrEmpty(roomType.ApplyDiscount) && decimal.TryParse(roomType.ApplyDiscount, out var discount) && discount > 0)
+                            {
+                                <span class="discount-badge">@discount% OFF</span>
+                            }
+                        </div>
                     </div>
                     <div class="availability-stats">
                         <div class="stat-item">
@@ -961,11 +980,18 @@
                        </div>`
                     : '';
                 
+                const discountBadge = roomType.applyDiscount && parseFloat(roomType.applyDiscount) > 0
+                    ? `<span class="discount-badge">${roomType.applyDiscount}% OFF</span>`
+                    : '';
+                
                 cardsHtml += `
                     <div class="availability-card">
                         <div class="availability-card-header">
                             <h3>${roomType.roomTypeName}</h3>
-                            <span class="rate-badge">₹${roomType.baseRate.toLocaleString()} / night</span>
+                            <div>
+                                <span class="rate-badge">₹${roomType.baseRate.toLocaleString()} / night</span>
+                                ${discountBadge}
+                            </div>
                         </div>
                         <div class="availability-stats">
                             <div class="stat-item">
@@ -1377,6 +1403,35 @@
                 document.querySelectorAll('.room-actions-dropdown').forEach(dropdown => {
                     dropdown.classList.remove('show');
                 });
+            }
+        });
+
+        // Collapsible Room Availability by Type Section
+        function toggleAvailabilitySection() {
+            const availabilityCards = document.getElementById('availabilityCards');
+            const toggleIcon = document.getElementById('availabilityToggleIcon');
+            
+            if (availabilityCards.style.maxHeight && availabilityCards.style.maxHeight !== '0px') {
+                // Collapse
+                availabilityCards.style.maxHeight = '0px';
+                availabilityCards.style.opacity = '0';
+                availabilityCards.style.marginTop = '0';
+                toggleIcon.style.transform = 'rotate(-90deg)';
+            } else {
+                // Expand
+                availabilityCards.style.maxHeight = availabilityCards.scrollHeight + 'px';
+                availabilityCards.style.opacity = '1';
+                availabilityCards.style.marginTop = '20px';
+                toggleIcon.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        // Initialize the section as expanded on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const availabilityCards = document.getElementById('availabilityCards');
+            if (availabilityCards) {
+                availabilityCards.style.maxHeight = availabilityCards.scrollHeight + 'px';
+                availabilityCards.style.opacity = '1';
             }
         });
     </script>

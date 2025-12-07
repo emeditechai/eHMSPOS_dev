@@ -9,13 +9,223 @@
     string FormatDate(DateTime date) => date == default ? "Not recorded" : date.ToString("dd MMM yyyy HH:mm");
 }
 
+<style>
+    .master-edit-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        padding: 30px 50px;
+        max-width: 95%;
+        width: 100%;
+        margin: 0 auto;
+    }
+
+    .master-edit-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .master-edit-header h3 {
+        margin: 0;
+        color: var(--primary);
+        font-size: 24px;
+        font-weight: 600;
+    }
+
+    .audit-info {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+    }
+
+    .audit-item {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .audit-label {
+        font-weight: 600;
+        color: #666;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+
+    .audit-value {
+        color: #333;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .master-form-section {
+        margin-bottom: 25px;
+    }
+
+    .section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .section-title i {
+        color: var(--primary);
+    }
+
+    .master-form-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px 25px;
+    }
+
+    .master-form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .master-form-group label {
+        font-weight: 500;
+        margin-bottom: 8px;
+        color: #333;
+        font-size: 14px;
+    }
+
+    .master-form-group input,
+    .master-form-group select,
+    .master-form-group textarea {
+        padding: 12px 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .master-form-group input:focus,
+    .master-form-group select:focus,
+    .master-form-group textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(26, 42, 108, 0.1);
+    }
+
+    .master-form-group input:read-only,
+    .master-form-group select:disabled {
+        background-color: #f5f5f5;
+        cursor: not-allowed;
+    }
+
+    .master-form-group textarea {
+        min-height: 80px;
+        resize: vertical;
+    }
+
+    .master-form-group-full {
+        grid-column: 1 / -1;
+    }
+
+    .master-form-group small {
+        margin-top: 5px;
+        font-size: 12px;
+        color: #666;
+    }
+
+    .form-check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-top: 30px;
+    }
+
+    .form-check input {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+
+    .form-check label {
+        margin: 0;
+        cursor: pointer;
+    }
+
+    .master-form-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: flex-end;
+        padding-top: 25px;
+        border-top: 2px solid #f0f0f0;
+    }
+
+    .master-form-actions .btn-save,
+    .master-form-actions .btn-cancel {
+        padding: 12px 30px;
+        font-size: 15px;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+
+    .page-header {
+        max-width: 95%;
+        margin: 0 auto 20px;
+    }
+
+    @@media (max-width: 1400px) {
+        .master-form-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .audit-info {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .master-form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media screen and (min-width: 1200px) {
+        .master-edit-container {
+            max-width: 98%;
+        }
+    }
+
+    @@media print {
+        body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        @@page {
+            size: landscape;
+            margin: 0.5cm;
+        }
+        .master-edit-container {
+            max-width: 100%;
+            padding: 20px;
+        }
+    }
+</style>
+
 <div class="main-content">
     <div class="page-header">
         <h2><i class="fas fa-door-open"></i> @headingText</h2>
     </div>
 
-    <div class="form-container @(isReadOnly ? "form-readonly" : string.Empty)">
-        <h3 style="margin-bottom:25px;color:var(--primary);">@(isReadOnly ? $"Room {Model.RoomNumber} Overview" : $"Edit Room - {Model.RoomNumber}")</h3>
+    <div class="master-edit-container @(isReadOnly ? "form-readonly" : string.Empty)">
+        <div class="master-edit-header">
+            <h3><i class="fas fa-door-open"></i> @(isReadOnly ? $"Room {Model.RoomNumber} Overview" : $"Edit Room - {Model.RoomNumber}")</h3>
+        </div>
+        
         <form asp-action="Edit" method="post">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="Id" />
@@ -36,76 +246,81 @@
                 </div>
             }
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label asp-for="RoomNumber">Room Number <span class="text-danger">*</span></label>
-                    <input asp-for="RoomNumber" type="text" required readonly="@(isReadOnly ? "readonly" : null)" />
-                    <span asp-validation-for="RoomNumber" class="text-danger"></span>
+            <div class="master-form-section">
+                <div class="section-title">
+                    <i class="fas fa-info-circle"></i>
+                    Room Information
                 </div>
-                <div class="form-group">
-                    <label asp-for="RoomTypeId">Room Rate <span class="text-danger">*</span></label>
-                    <select asp-for="RoomTypeId" required disabled="@(isReadOnly ? "disabled" : null)">
-                        <option value="">-- Select Room Rate --</option>
-                        @{
-                            var activeRates = ViewBag.ActiveRates as Dictionary<int, HotelApp.Web.Models.RateMaster>;
-                        }
-                        @if (roomTypes != null)
-                        {
-                            foreach (var roomType in roomTypes)
-                            {
-                                var rate = activeRates?.ContainsKey(roomType.Id) == true ? activeRates[roomType.Id] : null;
-                                var rateInfo = rate != null ? $"₹{rate.BaseRate:N0}" : "No Rate";
-                                <option value="@roomType.Id">@roomType.TypeName (Max: @roomType.MaxOccupancy, Rate: @rateInfo)</option>
+                <div class="master-form-grid">
+                    <div class="master-form-group">
+                        <label asp-for="RoomNumber">Room Number <span class="text-danger">*</span></label>
+                        <input asp-for="RoomNumber" type="text" required readonly="@(isReadOnly ? "readonly" : null)" />
+                        <span asp-validation-for="RoomNumber" class="text-danger"></span>
+                    </div>
+                    
+                    <div class="master-form-group">
+                        <label asp-for="RoomTypeId">Room Rate <span class="text-danger">*</span></label>
+                        <select asp-for="RoomTypeId" required disabled="@(isReadOnly ? "disabled" : null)">
+                            <option value="">-- Select Room Rate --</option>
+                            @{
+                                var activeRates = ViewBag.ActiveRates as Dictionary<int, HotelApp.Web.Models.RateMaster>;
                             }
-                        }
-                    </select>
-                    <span asp-validation-for="RoomTypeId" class="text-danger"></span>
-                    <small class="form-text text-muted">Rates are managed in Rate Master. Showing current active rates.</small>
-                </div>
-                <div class="form-group">
-                    <label asp-for="Floor">Floor <span class="text-danger">*</span></label>
-                    <select asp-for="Floor" required disabled="@(isReadOnly ? "disabled" : null)">
-                        <option value="">-- Select Floor --</option>
-                        @foreach (var floor in floors)
-                        {
-                            <option value="@floor.Id">@floor.FloorName</option>
-                        }
-                    </select>
-                    <span asp-validation-for="Floor" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label asp-for="Status">Status <span class="text-danger">*</span></label>
-                    <select asp-for="Status" required disabled="@(isReadOnly ? "disabled" : null)">
-                        <option value="">-- Select Status --</option>
-                        @foreach (var status in statuses)
-                        {
-                            <option value="@status">@status</option>
-                        }
-                    </select>
-                    <span asp-validation-for="Status" class="text-danger"></span>
-                </div>
-            </div>
+                            @if (roomTypes != null)
+                            {
+                                foreach (var roomType in roomTypes)
+                                {
+                                    var rate = activeRates?.ContainsKey(roomType.Id) == true ? activeRates[roomType.Id] : null;
+                                    var rateInfo = rate != null ? $"₹{rate.BaseRate:N0}" : "No Rate";
+                                    <option value="@roomType.Id">@roomType.TypeName (Max: @roomType.MaxOccupancy, Rate: @rateInfo)</option>
+                                }
+                            }
+                        </select>
+                        <span asp-validation-for="RoomTypeId" class="text-danger"></span>
+                        <small class="form-text text-muted">Rates are managed in Rate Master. Showing current active rates.</small>
+                    </div>
+                    
+                    <div class="master-form-group">
+                        <label asp-for="Floor">Floor <span class="text-danger">*</span></label>
+                        <select asp-for="Floor" required disabled="@(isReadOnly ? "disabled" : null)">
+                            <option value="">-- Select Floor --</option>
+                            @foreach (var floor in floors)
+                            {
+                                <option value="@floor.Id">@floor.FloorName</option>
+                            }
+                        </select>
+                        <span asp-validation-for="Floor" class="text-danger"></span>
+                    </div>
+                    
+                    <div class="master-form-group">
+                        <label asp-for="Status">Status <span class="text-danger">*</span></label>
+                        <select asp-for="Status" required disabled="@(isReadOnly ? "disabled" : null)">
+                            <option value="">-- Select Status --</option>
+                            @foreach (var status in statuses)
+                            {
+                                <option value="@status">@status</option>
+                            }
+                        </select>
+                        <span asp-validation-for="Status" class="text-danger"></span>
+                    </div>
 
-            <div class="form-row">
-                <div class="form-group form-group-full">
-                    <label asp-for="Notes">Notes</label>
-                    <textarea asp-for="Notes" readonly="@(isReadOnly ? "readonly" : null)"></textarea>
-                    <span asp-validation-for="Notes" class="text-danger"></span>
-                </div>
-            </div>
+                    <div class="master-form-group master-form-group-full">
+                        <label asp-for="Notes">Notes</label>
+                        <textarea asp-for="Notes" readonly="@(isReadOnly ? "readonly" : null)"></textarea>
+                        <span asp-validation-for="Notes" class="text-danger"></span>
+                    </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <div class="form-check">
-                        <input asp-for="IsActive" type="checkbox" disabled="@(isReadOnly ? "disabled" : null)" />
-                        <label asp-for="IsActive">Is Active</label>
+                    <div class="master-form-group">
+                        <div class="form-check">
+                            <input asp-for="IsActive" type="checkbox" disabled="@(isReadOnly ? "disabled" : null)" />
+                            <label asp-for="IsActive">Is Active</label>
+                        </div>
                     </div>
                 </div>
             </div>
 
             @if (isReadOnly)
             {
-                <div class="form-actions">
+                <div class="master-form-actions">
                     <a asp-action="List" class="btn-cancel">
                         <i class="fas fa-arrow-left"></i> Back to List
                     </a>
@@ -113,13 +328,13 @@
             }
             else
             {
-                <div class="form-actions">
-                    <button type="submit" class="btn-save">
-                        <i class="fas fa-save"></i> Update Room
-                    </button>
+                <div class="master-form-actions">
                     <a asp-action="List" class="btn-cancel">
                         <i class="fas fa-times"></i> Cancel
                     </a>
+                    <button type="submit" class="btn-save">
+                        <i class="fas fa-save"></i> Update Room
+                    </button>
                 </div>
             }
         </form>
