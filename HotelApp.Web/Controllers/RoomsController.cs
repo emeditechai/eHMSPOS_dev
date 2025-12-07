@@ -48,8 +48,11 @@ public class RoomsController : BaseController
                 FloorName = r.FloorName,
                 BaseRate = r.RoomType?.BaseRate ?? 0,
                 MaxOccupancy = r.RoomType?.MaxOccupancy ?? 0,
+                CheckInDate = r.CheckInDate,
                 CheckOutDate = r.CheckOutDate,
-                BalanceAmount = r.BalanceAmount
+                BalanceAmount = r.BalanceAmount,
+                BookingNumber = r.BookingNumber,
+                PrimaryGuestName = r.PrimaryGuestName
             }).ToList(),
             Floors = floors.ToList()
         };

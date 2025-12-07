@@ -43,37 +43,46 @@ namespace HotelApp.Web.Repositories
             var sql = @"
                 SELECT r.Id, r.RoomNumber, r.RoomTypeId, r.Floor, r.Status, r.Notes, 
                        r.BranchID, r.IsActive, r.CreatedDate, r.LastModifiedDate,
-                       f.FloorName AS FloorName,
-                       rt.Id AS RoomTypeId, rt.TypeName, rt.Description, rt.BaseRate, rt.MaxOccupancy, rt.Amenities,
-                       b.CheckOutDate, b.BookingNumber, b.BalanceAmount
+                       f.FloorName,
+                       rt.Id AS RoomType_Id, rt.TypeName, rt.Description, rt.BaseRate, rt.MaxOccupancy, rt.Amenities,
+                       b.CheckInDate, b.CheckOutDate, b.BookingNumber, b.BalanceAmount, b.PrimaryGuestName
                 FROM Rooms r
                 INNER JOIN RoomTypes rt ON r.RoomTypeId = rt.Id
                 LEFT JOIN Floors f ON r.Floor = f.Id
                 LEFT JOIN (
-                    SELECT RoomId, CheckOutDate, BookingNumber, BalanceAmount,
-                           ROW_NUMBER() OVER (PARTITION BY RoomId ORDER BY CheckInDate DESC) as rn
-                    FROM Bookings
-                    WHERE Status IN ('Confirmed', 'CheckedIn')
-                        AND CAST(GETDATE() AS DATE) BETWEEN CAST(CheckInDate AS DATE) AND CAST(CheckOutDate AS DATE)
+                    SELECT bk.RoomId, bk.CheckInDate, bk.CheckOutDate, bk.BookingNumber, bk.BalanceAmount,
+                           CONCAT(bk.PrimaryGuestFirstName, ' ', bk.PrimaryGuestLastName) AS PrimaryGuestName,
+                           ROW_NUMBER() OVER (PARTITION BY bk.RoomId ORDER BY bk.CheckInDate DESC) as rn
+                    FROM Bookings bk
+                    WHERE bk.Status IN ('Confirmed', 'CheckedIn')
+                        AND CAST(GETDATE() AS DATE) BETWEEN CAST(bk.CheckInDate AS DATE) AND CAST(bk.CheckOutDate AS DATE)
                 ) b ON r.Id = b.RoomId AND b.rn = 1
                 WHERE r.IsActive = 1 AND r.BranchID = @BranchId
                 ORDER BY r.RoomNumber";
 
-            var rooms = await _dbConnection.QueryAsync<Room, RoomType, DateTime?, string, decimal?, Room>(
+            var roomLookup = new Dictionary<int, Room>();
+            
+            await _dbConnection.QueryAsync<Room, RoomType, DateTime?, DateTime?, string, decimal?, string, Room>(
                 sql,
-                (room, roomType, checkOutDate, bookingNumber, balanceAmount) =>
+                (room, roomType, checkInDate, checkOutDate, bookingNumber, balanceAmount, primaryGuestName) =>
                 {
-                    room.RoomType = roomType;
-                    room.CheckOutDate = checkOutDate;
-                    room.BookingNumber = bookingNumber;
-                    room.BalanceAmount = balanceAmount;
+                    if (!roomLookup.TryGetValue(room.Id, out var existingRoom))
+                    {
+                        room.RoomType = roomType;
+                        room.CheckInDate = checkInDate;
+                        room.CheckOutDate = checkOutDate;
+                        room.BookingNumber = bookingNumber;
+                        room.BalanceAmount = balanceAmount;
+                        room.PrimaryGuestName = primaryGuestName;
+                        roomLookup.Add(room.Id, room);
+                    }
                     return room;
                 },
                 new { BranchId = branchId },
-                splitOn: "RoomTypeId,CheckOutDate,BookingNumber,BalanceAmount"
+                splitOn: "RoomType_Id,CheckInDate,CheckOutDate,BookingNumber,BalanceAmount,PrimaryGuestName"
             );
 
-            return rooms;
+            return roomLookup.Values;
         }
 
         public async Task<Room?> GetByIdAsync(int id)

@@ -30,5 +30,7 @@ namespace HotelApp.Web.ViewModels
         public DateTime? CheckInDate { get; set; }
         public DateTime? CheckOutDate { get; set; }
         public decimal? BalanceAmount { get; set; }
+        public string? BookingNumber { get; set; }
+        public string? PrimaryGuestName { get; set; }
     }
 }
