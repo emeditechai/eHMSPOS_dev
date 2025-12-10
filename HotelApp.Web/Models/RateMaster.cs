@@ -21,6 +21,7 @@ namespace HotelApp.Web.Models
         public DateTime CreatedDate { get; set; }
         public int? CreatedBy { get; set; }
         public DateTime LastModifiedDate { get; set; }
+        public int? LastModifiedBy { get; set; }
         
         // Navigation property
         public RoomType? RoomType { get; set; }

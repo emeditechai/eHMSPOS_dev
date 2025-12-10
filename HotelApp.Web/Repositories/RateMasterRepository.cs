@@ -144,5 +144,107 @@ namespace HotelApp.Web.Repositories
             var sql = "SELECT DISTINCT Source FROM RateMaster WHERE IsActive = 1 AND Source IS NOT NULL ORDER BY Source";
             return await _dbConnection.QueryAsync<string>(sql);
         }
+
+        // Weekend Rates Implementation
+        public async Task<int> CreateWeekendRateAsync(WeekendRate weekendRate)
+        {
+            var sql = @"
+                INSERT INTO WeekendRates (RateMasterId, DayOfWeek, BaseRate, ExtraPaxRate, IsActive, CreatedDate, CreatedBy, LastModifiedDate)
+                VALUES (@RateMasterId, @DayOfWeek, @BaseRate, @ExtraPaxRate, @IsActive, GETDATE(), @CreatedBy, GETDATE());
+                SELECT CAST(SCOPE_IDENTITY() as int)";
+
+            var id = await _dbConnection.ExecuteScalarAsync<int>(sql, weekendRate);
+            return id;
+        }
+
+        public async Task<IEnumerable<WeekendRate>> GetWeekendRatesByRateMasterIdAsync(int rateMasterId)
+        {
+            var sql = @"
+                SELECT Id, RateMasterId, DayOfWeek, BaseRate, ExtraPaxRate, IsActive, CreatedDate, CreatedBy, LastModifiedDate, LastModifiedBy
+                FROM WeekendRates
+                WHERE RateMasterId = @RateMasterId AND IsActive = 1
+                ORDER BY CASE DayOfWeek
+                    WHEN 'Monday' THEN 1
+                    WHEN 'Tuesday' THEN 2
+                    WHEN 'Wednesday' THEN 3
+                    WHEN 'Thursday' THEN 4
+                    WHEN 'Friday' THEN 5
+                    WHEN 'Saturday' THEN 6
+                    WHEN 'Sunday' THEN 7
+                END";
+
+            return await _dbConnection.QueryAsync<WeekendRate>(sql, new { RateMasterId = rateMasterId });
+        }
+
+        public async Task<bool> UpdateWeekendRateAsync(WeekendRate weekendRate)
+        {
+            var sql = @"
+                UPDATE WeekendRates
+                SET DayOfWeek = @DayOfWeek,
+                    BaseRate = @BaseRate,
+                    ExtraPaxRate = @ExtraPaxRate,
+                    IsActive = @IsActive,
+                    LastModifiedDate = GETDATE(),
+                    LastModifiedBy = @LastModifiedBy
+                WHERE Id = @Id";
+
+            var affectedRows = await _dbConnection.ExecuteAsync(sql, weekendRate);
+            return affectedRows > 0;
+        }
+
+        public async Task<bool> DeleteWeekendRateAsync(int id)
+        {
+            var sql = "UPDATE WeekendRates SET IsActive = 0, LastModifiedDate = GETDATE() WHERE Id = @Id";
+            var affectedRows = await _dbConnection.ExecuteAsync(sql, new { Id = id });
+            return affectedRows > 0;
+        }
+
+        // Special Day Rates Implementation
+        public async Task<int> CreateSpecialDayRateAsync(SpecialDayRate specialDayRate)
+        {
+            var sql = @"
+                INSERT INTO SpecialDayRates (RateMasterId, FromDate, ToDate, EventName, BaseRate, ExtraPaxRate, IsActive, CreatedDate, CreatedBy, LastModifiedDate)
+                VALUES (@RateMasterId, @FromDate, @ToDate, @EventName, @BaseRate, @ExtraPaxRate, @IsActive, GETDATE(), @CreatedBy, GETDATE());
+                SELECT CAST(SCOPE_IDENTITY() as int)";
+
+            var id = await _dbConnection.ExecuteScalarAsync<int>(sql, specialDayRate);
+            return id;
+        }
+
+        public async Task<IEnumerable<SpecialDayRate>> GetSpecialDayRatesByRateMasterIdAsync(int rateMasterId)
+        {
+            var sql = @"
+                SELECT Id, RateMasterId, FromDate, ToDate, EventName, BaseRate, ExtraPaxRate, IsActive, CreatedDate, CreatedBy, LastModifiedDate, LastModifiedBy
+                FROM SpecialDayRates
+                WHERE RateMasterId = @RateMasterId AND IsActive = 1
+                ORDER BY FromDate";
+
+            return await _dbConnection.QueryAsync<SpecialDayRate>(sql, new { RateMasterId = rateMasterId });
+        }
+
+        public async Task<bool> UpdateSpecialDayRateAsync(SpecialDayRate specialDayRate)
+        {
+            var sql = @"
+                UPDATE SpecialDayRates
+                SET FromDate = @FromDate,
+                    ToDate = @ToDate,
+                    EventName = @EventName,
+                    BaseRate = @BaseRate,
+                    ExtraPaxRate = @ExtraPaxRate,
+                    IsActive = @IsActive,
+                    LastModifiedDate = GETDATE(),
+                    LastModifiedBy = @LastModifiedBy
+                WHERE Id = @Id";
+
+            var affectedRows = await _dbConnection.ExecuteAsync(sql, specialDayRate);
+            return affectedRows > 0;
+        }
+
+        public async Task<bool> DeleteSpecialDayRateAsync(int id)
+        {
+            var sql = "UPDATE SpecialDayRates SET IsActive = 0, LastModifiedDate = GETDATE() WHERE Id = @Id";
+            var affectedRows = await _dbConnection.ExecuteAsync(sql, new { Id = id });
+            return affectedRows > 0;
+        }
     }
 }

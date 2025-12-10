@@ -296,14 +296,14 @@
         
         .availability-cards {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 16px;
         }
         
         .availability-card {
             background: linear-gradient(135deg, #f8f9ff 0%, #e8eaf6 100%);
-            border-radius: 16px;
-            padding: 24px;
+            border-radius: 12px;
+            padding: 18px;
             box-shadow: 0 4px 16px rgba(102, 126, 234, 0.15);
             transition: all 0.3s ease;
             border: 2px solid rgba(102, 126, 234, 0.2);
@@ -332,12 +332,12 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
         
         .availability-card-header h3 {
             margin: 0;
-            font-size: 20px;
+            font-size: 16px;
             color: #2c3e50;
             font-weight: 700;
         }
@@ -345,108 +345,108 @@
         .rate-badge {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 11px;
             font-weight: 600;
         }
         
         .discount-badge {
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
             color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 11px;
             font-weight: 600;
-            margin-left: 8px;
+            margin-left: 6px;
         }
         
         .availability-stats {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-bottom: 16px;
+            gap: 8px;
+            margin-bottom: 12px;
         }
         
         .stat-item {
             text-align: center;
-            padding: 12px;
+            padding: 8px 6px;
             background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            border-radius: 8px;
+            border-radius: 6px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.08);
             border: 1px solid rgba(0,0,0,0.05);
         }
         
         .stat-item.available {
             background: linear-gradient(135deg, #a8e6cf 0%, #6dd5a9 100%);
-            border-left: 4px solid #28a745;
+            border-left: 3px solid #28a745;
             box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
         }
         
         .stat-item.occupied {
             background: linear-gradient(135deg, #ffd1dc 0%, #ffb3c1 100%);
-            border-left: 4px solid #dc3545;
+            border-left: 3px solid #dc3545;
             box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
         }
         
         .stat-label {
-            font-size: 12px;
+            font-size: 10px;
             color: #666;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             font-weight: 500;
         }
         
         .stat-value {
-            font-size: 24px;
+            font-size: 20px;
             color: #2c3e50;
             font-weight: 700;
         }
         
         .availability-progress {
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
         
         .progress-bar {
-            height: 8px;
+            height: 6px;
             background: #e0e0e0;
-            border-radius: 10px;
+            border-radius: 8px;
             overflow: hidden;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
         
         .progress-fill {
             height: 100%;
             background: linear-gradient(90deg, #ff6b6b 0%, #ffd93d 50%, #6bcf7f 100%);
-            border-radius: 10px;
+            border-radius: 8px;
             transition: width 0.5s ease;
             box-shadow: 0 2px 4px rgba(255, 107, 107, 0.3);
         }
         
         .progress-label {
-            font-size: 12px;
+            font-size: 10px;
             color: #666;
             text-align: right;
         }
         
         .available-rooms-list {
             background: linear-gradient(135deg, #f0fff4 0%, #e6f9ed 100%);
-            padding: 10px;
+            padding: 8px;
             border-radius: 6px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             border-left: 3px solid #28a745;
             box-shadow: 0 2px 4px rgba(40, 167, 69, 0.1);
         }
         
         .list-label {
-            font-size: 12px;
+            font-size: 10px;
             color: #666;
             font-weight: 600;
             display: block;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
         
         .room-numbers {
-            font-size: 13px;
+            font-size: 12px;
             color: #2c3e50;
             font-weight: 500;
         }
@@ -454,15 +454,40 @@
         .availability-footer {
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 13px;
+            gap: 4px;
+            font-size: 11px;
             color: #555;
-            padding-top: 12px;
+            padding-top: 10px;
             border-top: 1px solid rgba(0,0,0,0.1);
         }
         
         .availability-footer i {
             color: #667eea;
+        }
+        
+        /* Responsive breakpoints for availability cards */
+        @@media (min-width: 1600px) {
+            .availability-cards {
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            }
+        }
+        
+        @@media (max-width: 1200px) {
+            .availability-cards {
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            }
+        }
+        
+        @@media (max-width: 768px) {
+            .availability-cards {
+                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            }
+        }
+        
+        @@media (max-width: 480px) {
+            .availability-cards {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 }
