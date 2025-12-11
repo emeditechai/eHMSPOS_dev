@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using HotelApp.Web.Repositories;
 using HotelApp.Web.ViewModels;
+using HotelApp.Web.Models;
 
 namespace HotelApp.Web.Controllers;
 
@@ -11,12 +12,18 @@ public class RoomsController : BaseController
     private readonly IRoomRepository _roomRepository;
     private readonly IFloorRepository _floorRepository;
     private readonly IBookingRepository _bookingRepository;
+    private readonly IRateMasterRepository _rateMasterRepository;
 
-    public RoomsController(IRoomRepository roomRepository, IFloorRepository floorRepository, IBookingRepository bookingRepository)
+    public RoomsController(
+        IRoomRepository roomRepository, 
+        IFloorRepository floorRepository, 
+        IBookingRepository bookingRepository,
+        IRateMasterRepository rateMasterRepository)
     {
         _roomRepository = roomRepository;
         _floorRepository = floorRepository;
         _bookingRepository = bookingRepository;
+        _rateMasterRepository = rateMasterRepository;
     }
 
     public async Task<IActionResult> Dashboard()
@@ -334,17 +341,32 @@ public class RoomsController : BaseController
 
             var availability = await _roomRepository.GetRoomAvailabilityByDateRangeAsync(CurrentBranchID, start, end);
 
-            var result = availability.Select(kvp => new
+            // Get all rate masters for this branch with weekend and special day rates
+            var allRates = await _rateMasterRepository.GetByBranchAsync(CurrentBranchID);
+            
+            var result = availability.Select(kvp => 
             {
-                roomTypeId = kvp.Key,
-                roomTypeName = kvp.Value.roomTypeName,
-                totalRooms = kvp.Value.totalRooms,
-                availableRooms = kvp.Value.availableRooms,
-                occupiedRooms = kvp.Value.totalRooms - kvp.Value.availableRooms,
-                baseRate = kvp.Value.baseRate,
-                applyDiscount = kvp.Value.discount,
-                maxOccupancy = kvp.Value.maxOccupancy,
-                availableRoomNumbers = kvp.Value.availableRoomNumbers
+                var roomTypeId = kvp.Key;
+                var roomData = kvp.Value;
+                
+                // Get the effective rate for this date and room type
+                var rateInfo = GetEffectiveRateForDate(allRates, roomTypeId, start);
+                
+                return new
+                {
+                    roomTypeId = roomTypeId,
+                    roomTypeName = roomData.roomTypeName,
+                    totalRooms = roomData.totalRooms,
+                    availableRooms = roomData.availableRooms,
+                    occupiedRooms = roomData.totalRooms - roomData.availableRooms,
+                    baseRate = rateInfo.baseRate,
+                    extraPaxRate = rateInfo.extraPaxRate,
+                    rateType = rateInfo.rateType,
+                    eventName = rateInfo.eventName,
+                    applyDiscount = roomData.discount,
+                    maxOccupancy = roomData.maxOccupancy,
+                    availableRoomNumbers = roomData.availableRoomNumbers
+                };
             }).ToList();
 
             return Json(new { success = true, data = result, startDate = start, endDate = end });
@@ -353,6 +375,68 @@ public class RoomsController : BaseController
         {
             return Json(new { success = false, message = $"Error fetching availability: {ex.Message}" });
         }
+    }
+
+    private (decimal baseRate, decimal extraPaxRate, string rateType, string? eventName) GetEffectiveRateForDate(
+        IEnumerable<RateMaster> allRates, int roomTypeId, DateTime date)
+    {
+        // Get rates for this room type
+        var roomTypeRates = allRates.Where(r => r.RoomTypeId == roomTypeId && r.IsActive).ToList();
+        
+        if (!roomTypeRates.Any())
+        {
+            return (0, 0, "No Rate", null);
+        }
+
+        // Priority 1: Check for Special Day Rates
+        foreach (var rate in roomTypeRates)
+        {
+            var specialDayRatesTask = _rateMasterRepository.GetSpecialDayRatesByRateMasterIdAsync(rate.Id);
+            specialDayRatesTask.Wait();
+            var specialDayRates = specialDayRatesTask.Result;
+            
+            var specialRate = specialDayRates.FirstOrDefault(s => 
+                s.IsActive && 
+                date.Date >= s.FromDate.Date && 
+                date.Date <= s.ToDate.Date);
+            
+            if (specialRate != null)
+            {
+                return (specialRate.BaseRate, specialRate.ExtraPaxRate, "Special Day", specialRate.EventName);
+            }
+        }
+
+        // Priority 2: Check for Weekend Rates
+        var dayOfWeek = date.ToString("dddd"); // Monday, Tuesday, etc.
+        foreach (var rate in roomTypeRates)
+        {
+            var weekendRatesTask = _rateMasterRepository.GetWeekendRatesByRateMasterIdAsync(rate.Id);
+            weekendRatesTask.Wait();
+            var weekendRates = weekendRatesTask.Result;
+            
+            var weekendRate = weekendRates.FirstOrDefault(w => 
+                w.IsActive && 
+                w.DayOfWeek.Equals(dayOfWeek, StringComparison.OrdinalIgnoreCase));
+            
+            if (weekendRate != null)
+            {
+                return (weekendRate.BaseRate, weekendRate.ExtraPaxRate, "Weekend", null);
+            }
+        }
+
+        // Priority 3: Default Rate
+        var defaultRate = roomTypeRates.FirstOrDefault(r => 
+            r.StartDate.Date <= date.Date && 
+            r.EndDate.Date >= date.Date);
+        
+        if (defaultRate != null)
+        {
+            return (defaultRate.BaseRate, defaultRate.ExtraPaxRate, "Standard", null);
+        }
+
+        // Fallback to first rate if no date match
+        var fallbackRate = roomTypeRates.First();
+        return (fallbackRate.BaseRate, fallbackRate.ExtraPaxRate, "Standard", null);
     }
 
     private int GetCurrentUserId()
