@@ -67,21 +67,38 @@ namespace HotelApp.Web.Repositories
                 return null;
             }
 
-            // Primary rate source is RateMaster. RoomType.BaseRate is only a fallback (should be 0 or configured in Rate Master)
-            var nightlyBase = ratePlan?.BaseRate ?? roomType.BaseRate;
-            var nightlyExtra = ratePlan?.ExtraPaxRate ?? 0;
+            // Calculate night-by-night rates with weekend and special day logic
             var taxPercentage = ratePlan?.TaxPercentage ?? 0;
-            
-            // If CGST/SGST are 0 or NULL, split the tax percentage equally
             var cgstPercentage = (ratePlan?.CGSTPercentage > 0 ? ratePlan.CGSTPercentage : taxPercentage / 2);
             var sgstPercentage = (ratePlan?.SGSTPercentage > 0 ? ratePlan.SGSTPercentage : taxPercentage / 2);
             
             var totalGuests = request.Adults + request.Children;
             var extraGuests = Math.Max(0, totalGuests - roomType.MaxOccupancy);
 
-            var baseAmount = nightlyBase * nights;
-            var extraAmount = nightlyExtra * extraGuests * nights;
-            var totalRoomRate = baseAmount + extraAmount;
+            decimal totalRoomRate = 0;
+            decimal avgNightlyBase = 0;
+            decimal avgNightlyExtra = 0;
+
+            // Calculate rate for each night
+            for (var date = request.CheckInDate.Date; date < request.CheckOutDate.Date; date = date.AddDays(1))
+            {
+                var (nightlyBase, nightlyExtra) = await GetEffectiveRateForDateAsync(
+                    ratePlan?.Id ?? 0, 
+                    date, 
+                    ratePlan?.BaseRate ?? roomType.BaseRate, 
+                    ratePlan?.ExtraPaxRate ?? 0);
+
+                avgNightlyBase += nightlyBase;
+                avgNightlyExtra += nightlyExtra;
+
+                var nightRoomRate = nightlyBase + (nightlyExtra * extraGuests);
+                totalRoomRate += nightRoomRate;
+            }
+
+            // Calculate averages for display
+            avgNightlyBase = nights > 0 ? avgNightlyBase / nights : 0;
+            avgNightlyExtra = nights > 0 ? avgNightlyExtra / nights : 0;
+
             var totalTax = Math.Round(totalRoomRate * (taxPercentage / 100m), 2, MidpointRounding.AwayFromZero);
             var totalCGST = Math.Round(totalRoomRate * (cgstPercentage / 100m), 2, MidpointRounding.AwayFromZero);
             var totalSGST = Math.Round(totalRoomRate * (sgstPercentage / 100m), 2, MidpointRounding.AwayFromZero);
@@ -90,8 +107,8 @@ namespace HotelApp.Web.Repositories
             {
                 Nights = nights,
                 RatePlanId = ratePlan?.Id,
-                BaseRatePerNight = nightlyBase,
-                ExtraPaxRatePerNight = nightlyExtra,
+                BaseRatePerNight = avgNightlyBase,
+                ExtraPaxRatePerNight = avgNightlyExtra,
                 TaxPercentage = taxPercentage,
                 CGSTPercentage = cgstPercentage,
                 SGSTPercentage = sgstPercentage,
@@ -101,6 +118,90 @@ namespace HotelApp.Web.Repositories
                 TotalSGSTAmount = totalSGST,
                 GrandTotal = totalRoomRate + totalTax
             };
+        }
+
+        private async Task<(decimal baseRate, decimal extraPaxRate)> GetEffectiveRateForDateAsync(
+            int rateMasterId, 
+            DateTime date, 
+            decimal defaultBaseRate, 
+            decimal defaultExtraPaxRate)
+        {
+            if (rateMasterId == 0)
+            {
+                return (defaultBaseRate, defaultExtraPaxRate);
+            }
+
+            // Priority 1: Check for Special Day Rates
+            const string specialDaySql = @"
+                SELECT TOP 1 BaseRate, ExtraPaxRate
+                FROM SpecialDayRates
+                WHERE RateMasterId = @RateMasterId
+                  AND IsActive = 1
+                  AND @Date >= CAST(FromDate AS DATE)
+                  AND @Date <= CAST(ToDate AS DATE)
+                ORDER BY FromDate DESC";
+
+            var specialRate = await _dbConnection.QueryFirstOrDefaultAsync<(decimal BaseRate, decimal ExtraPaxRate)?>(
+                specialDaySql, 
+                new { RateMasterId = rateMasterId, Date = date.Date });
+
+            if (specialRate.HasValue)
+            {
+                return (specialRate.Value.BaseRate, specialRate.Value.ExtraPaxRate);
+            }
+
+            // Priority 2: Check for Weekend Rates
+            var dayOfWeek = date.ToString("dddd"); // Monday, Tuesday, etc.
+            const string weekendSql = @"
+                SELECT TOP 1 BaseRate, ExtraPaxRate
+                FROM WeekendRates
+                WHERE RateMasterId = @RateMasterId
+                  AND IsActive = 1
+                  AND DayOfWeek = @DayOfWeek";
+
+            var weekendRate = await _dbConnection.QueryFirstOrDefaultAsync<(decimal BaseRate, decimal ExtraPaxRate)?>(
+                weekendSql, 
+                new { RateMasterId = rateMasterId, DayOfWeek = dayOfWeek });
+
+            if (weekendRate.HasValue)
+            {
+                return (weekendRate.Value.BaseRate, weekendRate.Value.ExtraPaxRate);
+            }
+
+            // Priority 3: Default Rate
+            return (defaultBaseRate, defaultExtraPaxRate);
+        }
+
+        private async Task<List<(DateTime date, decimal rateAmount, decimal taxAmount, decimal cgstAmount, decimal sgstAmount)>> BuildRoomNightBreakdownAsync(
+            int rateMasterId,
+            DateTime checkInDate,
+            DateTime checkOutDate,
+            decimal defaultBaseRate,
+            decimal defaultExtraPaxRate,
+            int extraGuests,
+            decimal taxPercentage,
+            decimal cgstPercentage,
+            decimal sgstPercentage)
+        {
+            var breakdown = new List<(DateTime, decimal, decimal, decimal, decimal)>();
+
+            for (var date = checkInDate.Date; date < checkOutDate.Date; date = date.AddDays(1))
+            {
+                var (nightlyBase, nightlyExtra) = await GetEffectiveRateForDateAsync(
+                    rateMasterId,
+                    date,
+                    defaultBaseRate,
+                    defaultExtraPaxRate);
+
+                var nightRoomRate = nightlyBase + (nightlyExtra * extraGuests);
+                var nightTax = Math.Round(nightRoomRate * (taxPercentage / 100m), 2, MidpointRounding.AwayFromZero);
+                var nightCGST = Math.Round(nightRoomRate * (cgstPercentage / 100m), 2, MidpointRounding.AwayFromZero);
+                var nightSGST = Math.Round(nightRoomRate * (sgstPercentage / 100m), 2, MidpointRounding.AwayFromZero);
+
+                breakdown.Add((date, nightRoomRate, nightTax, nightCGST, nightSGST));
+            }
+
+            return breakdown;
         }
 
         public async Task<Room?> FindAvailableRoomAsync(int roomTypeId, DateTime checkIn, DateTime checkOut)
@@ -737,7 +838,8 @@ namespace HotelApp.Web.Repositories
             {
                 // Get current room assignment before updating
                 const string getCurrentRoomSql = @"
-                    SELECT RoomId, Id, CheckInDate, CheckOutDate, TotalAmount, TaxAmount, CGSTAmount, SGSTAmount, Nights, ActualCheckInDate
+                    SELECT RoomId, Id, CheckInDate, CheckOutDate, TotalAmount, TaxAmount, CGSTAmount, SGSTAmount, Nights, ActualCheckInDate,
+                           RatePlanId, RoomTypeId, Adults, Children
                     FROM Bookings 
                     WHERE BookingNumber = @BookingNumber";
 
@@ -836,26 +938,59 @@ namespace HotelApp.Web.Repositories
                     transaction
                 );
 
-                // Create BookingRoomNights records
+                // Create BookingRoomNights records with proper rate calculation
                 var bookingId = (int)booking.Id;
                 var checkInDate = (DateTime)booking.CheckInDate;
                 var checkOutDate = (DateTime)booking.CheckOutDate;
                 var nights = (int)booking.Nights;
-                var totalAmount = (decimal)booking.TotalAmount;
-                var totalTax = (decimal)booking.TaxAmount;
-                var totalCGST = (decimal)booking.CGSTAmount;
-                var totalSGST = (decimal)booking.SGSTAmount;
+                var ratePlanId = booking.RatePlanId as int? ?? 0;
+                var roomTypeId = (int)booking.RoomTypeId;
+                var adults = (int)booking.Adults;
+                var children = (int)booking.Children;
 
-                var nightlyRoomAmount = Math.Round((totalAmount - totalTax) / nights, 2, MidpointRounding.AwayFromZero);
-                var nightlyTax = Math.Round(totalTax / nights, 2, MidpointRounding.AwayFromZero);
-                var nightlyCGST = Math.Round(totalCGST / nights, 2, MidpointRounding.AwayFromZero);
-                var nightlySGST = Math.Round(totalSGST / nights, 2, MidpointRounding.AwayFromZero);
+                // Get rate plan details and room type info
+                var ratePlan = ratePlanId > 0 
+                    ? await _dbConnection.QueryFirstOrDefaultAsync<RateMaster>(
+                        "SELECT * FROM RateMaster WHERE Id = @Id", 
+                        new { Id = ratePlanId }, 
+                        transaction)
+                    : null;
+
+                var roomType = await _dbConnection.QueryFirstOrDefaultAsync<RoomType>(
+                    "SELECT * FROM RoomTypes WHERE Id = @Id", 
+                    new { Id = roomTypeId }, 
+                    transaction);
+
+                if (roomType == null)
+                {
+                    transaction.Rollback();
+                    return false;
+                }
+
+                var defaultBaseRate = ratePlan?.BaseRate ?? roomType.BaseRate;
+                var defaultExtraPaxRate = ratePlan?.ExtraPaxRate ?? 0;
+                var taxPercentage = ratePlan?.TaxPercentage ?? 0;
+                var cgstPercentage = (ratePlan?.CGSTPercentage > 0 ? ratePlan.CGSTPercentage : taxPercentage / 2);
+                var sgstPercentage = (ratePlan?.SGSTPercentage > 0 ? ratePlan.SGSTPercentage : taxPercentage / 2);
+                var extraGuests = Math.Max(0, adults + children - roomType.MaxOccupancy);
+
+                // Build room night breakdown with weekend/special day rates
+                var roomNightBreakdown = await BuildRoomNightBreakdownAsync(
+                    ratePlanId,
+                    checkInDate,
+                    checkOutDate,
+                    defaultBaseRate,
+                    defaultExtraPaxRate,
+                    extraGuests,
+                    taxPercentage,
+                    cgstPercentage,
+                    sgstPercentage);
 
                 const string insertRoomNightSql = @"
                     INSERT INTO BookingRoomNights (BookingId, RoomId, StayDate, RateAmount, TaxAmount, CGSTAmount, SGSTAmount, Status)
                     VALUES (@BookingId, @RoomId, @StayDate, @RateAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @Status)";
 
-                for (var date = checkInDate.Date; date < checkOutDate.Date; date = date.AddDays(1))
+                foreach (var (date, rateAmount, taxAmount, cgstAmount, sgstAmount) in roomNightBreakdown)
                 {
                     await _dbConnection.ExecuteAsync(
                         insertRoomNightSql,
@@ -864,10 +999,10 @@ namespace HotelApp.Web.Repositories
                             BookingId = bookingId,
                             RoomId = roomId,
                             StayDate = date,
-                            RateAmount = nightlyRoomAmount,
-                            TaxAmount = nightlyTax,
-                            CGSTAmount = nightlyCGST,
-                            SGSTAmount = nightlySGST,
+                            RateAmount = rateAmount,
+                            TaxAmount = taxAmount,
+                            CGSTAmount = cgstAmount,
+                            SGSTAmount = sgstAmount,
                             Status = "Reserved"
                         },
                         transaction
@@ -928,7 +1063,8 @@ namespace HotelApp.Web.Repositories
             {
                 // Get booking details
                 const string getBookingSql = @"
-                    SELECT Id, CheckInDate, CheckOutDate, ActualCheckInDate, RoomTypeId
+                    SELECT Id, CheckInDate, CheckOutDate, ActualCheckInDate, RoomTypeId,
+                           RatePlanId, Adults, Children, Nights
                     FROM Bookings 
                     WHERE BookingNumber = @BookingNumber";
 
@@ -1035,6 +1171,76 @@ namespace HotelApp.Web.Repositories
                     },
                     transaction
                 );
+
+                // Get rate plan and room type details for room night calculation
+                var ratePlanId = booking.RatePlanId as int? ?? 0;
+                var checkInDate = (DateTime)booking.CheckInDate;
+                var checkOutDate = (DateTime)booking.CheckOutDate;
+                var adults = (int)booking.Adults;
+                var children = (int)booking.Children;
+                var roomTypeId = (int)booking.RoomTypeId;
+
+                var ratePlan = ratePlanId > 0 
+                    ? await _dbConnection.QueryFirstOrDefaultAsync<RateMaster>(
+                        "SELECT * FROM RateMaster WHERE Id = @Id", 
+                        new { Id = ratePlanId }, 
+                        transaction)
+                    : null;
+
+                var roomType = await _dbConnection.QueryFirstOrDefaultAsync<RoomType>(
+                    "SELECT * FROM RoomTypes WHERE Id = @Id", 
+                    new { Id = roomTypeId }, 
+                    transaction);
+
+                if (roomType != null)
+                {
+                    var defaultBaseRate = ratePlan?.BaseRate ?? roomType.BaseRate;
+                    var defaultExtraPaxRate = ratePlan?.ExtraPaxRate ?? 0;
+                    var taxPercentage = ratePlan?.TaxPercentage ?? 0;
+                    var cgstPercentage = (ratePlan?.CGSTPercentage > 0 ? ratePlan.CGSTPercentage : taxPercentage / 2);
+                    var sgstPercentage = (ratePlan?.SGSTPercentage > 0 ? ratePlan.SGSTPercentage : taxPercentage / 2);
+                    var extraGuests = Math.Max(0, adults + children - roomType.MaxOccupancy);
+
+                    // Build room night breakdown with weekend/special day rates
+                    var roomNightBreakdown = await BuildRoomNightBreakdownAsync(
+                        ratePlanId,
+                        checkInDate,
+                        checkOutDate,
+                        defaultBaseRate,
+                        defaultExtraPaxRate,
+                        extraGuests,
+                        taxPercentage,
+                        cgstPercentage,
+                        sgstPercentage);
+
+                    // Create room nights for each assigned room
+                    const string insertRoomNightSql = @"
+                        INSERT INTO BookingRoomNights (BookingId, RoomId, StayDate, RateAmount, TaxAmount, CGSTAmount, SGSTAmount, Status)
+                        VALUES (@BookingId, @RoomId, @StayDate, @RateAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @Status)";
+
+                    foreach (var roomId in roomIds)
+                    {
+                        foreach (var (date, rateAmount, taxAmount, cgstAmount, sgstAmount) in roomNightBreakdown)
+                        {
+                            await _dbConnection.ExecuteAsync(
+                                insertRoomNightSql,
+                                new
+                                {
+                                    BookingId = bookingId,
+                                    RoomId = roomId,
+                                    StayDate = date,
+                                    RateAmount = rateAmount,
+                                    TaxAmount = taxAmount,
+                                    CGSTAmount = cgstAmount,
+                                    SGSTAmount = sgstAmount,
+                                    Status = "Reserved"
+                                },
+                                transaction
+                            );
+                        }
+                    }
+                }
+
 
                 // Add audit log
                 var roomNumbersList = string.Join(", ", roomNumbers);
