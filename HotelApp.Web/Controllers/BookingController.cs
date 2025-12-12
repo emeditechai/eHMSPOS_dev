@@ -269,6 +269,36 @@ namespace HotelApp.Web.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> Receipt(string bookingNumber)
+        {
+            if (string.IsNullOrWhiteSpace(bookingNumber))
+            {
+                return RedirectToAction(nameof(List));
+            }
+
+            var booking = await _bookingRepository.GetByBookingNumberAsync(bookingNumber);
+            if (booking == null)
+            {
+                TempData["ErrorMessage"] = "Booking not found.";
+                return RedirectToAction(nameof(List));
+            }
+
+            // Get hotel settings
+            var hotelSettings = await _hotelSettingsRepository.GetByBranchAsync(CurrentBranchID);
+            ViewBag.HotelSettings = hotelSettings;
+
+            // Get payments for this booking
+            var payments = await _bookingRepository.GetPaymentsAsync(booking.Id);
+            ViewBag.Payments = payments;
+
+            // Get assigned room numbers
+            var assignedRooms = await _bookingRepository.GetAssignedRoomNumbersAsync(booking.Id);
+            ViewBag.AssignedRooms = assignedRooms;
+
+            return View(booking);
+        }
+
+        [HttpGet]
         public IActionResult RoomAvailabilityCalendar()
         {
             ViewData["Title"] = "Room Availability";
@@ -276,7 +306,7 @@ namespace HotelApp.Web.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetRoomTypeRate(int roomTypeId, string customerType, string source)
+        public async Task<IActionResult> GetRoomTypeRate(int roomTypeId, string customerType, string source, DateTime? checkInDate = null, DateTime? checkOutDate = null)
         {
             try
             {
@@ -286,17 +316,22 @@ namespace HotelApp.Web.Controllers
                     return Json(new { success = false, message = "Room type not found" });
                 }
 
+                // Use provided dates or default to today
+                var effectiveCheckIn = checkInDate ?? DateTime.Today;
+                var effectiveCheckOut = checkOutDate ?? DateTime.Today.AddDays(1);
+
                 // Try to get the rate from RateMaster
                 var quoteRequest = new BookingQuoteRequest
                 {
                     RoomTypeId = roomTypeId,
-                    CheckInDate = DateTime.Today,
-                    CheckOutDate = DateTime.Today.AddDays(1),
+                    CheckInDate = effectiveCheckIn,
+                    CheckOutDate = effectiveCheckOut,
                     CustomerType = customerType,
                     Source = source,
                     Adults = 2,
                     Children = 0,
-                    BranchID = CurrentBranchID
+                    BranchID = CurrentBranchID,
+                    RequiredRooms = 1 // Show per-room rate
                 };
 
                 var quote = await _bookingRepository.GetQuoteAsync(quoteRequest);
@@ -306,7 +341,7 @@ namespace HotelApp.Web.Controllers
                     return Json(new { 
                         success = true, 
                         rate = quote.BaseRatePerNight,
-                        formattedRate = $"₹{quote.BaseRatePerNight:N0}/night",
+                        formattedRate = $"₹{quote.BaseRatePerNight:N0}",
                         taxPercentage = quote.TaxPercentage,
                         hasRate = true
                     });
@@ -370,7 +405,8 @@ namespace HotelApp.Web.Controllers
                 Source = model.Source,
                 Adults = model.Adults,
                 Children = model.Children,
-                BranchID = CurrentBranchID
+                BranchID = CurrentBranchID,
+                RequiredRooms = model.RequiredRooms
             };
 
             var quote = await _bookingRepository.GetQuoteAsync(quoteRequest);
@@ -1101,7 +1137,8 @@ namespace HotelApp.Web.Controllers
                     Source = string.IsNullOrWhiteSpace(booking.Source) ? "WalkIn" : booking.Source,
                     Adults = booking.Adults,
                     Children = booking.Children,
-                    BranchID = booking.BranchID
+                    BranchID = booking.BranchID,
+                    RequiredRooms = booking.RequiredRooms
                 };
 
                 var quote = await _bookingRepository.GetQuoteAsync(quoteRequest);
@@ -1224,7 +1261,8 @@ namespace HotelApp.Web.Controllers
                     Children = booking.Children,
                     CustomerType = booking.CustomerType,
                     Source = booking.Source,
-                    BranchID = CurrentBranchID
+                    BranchID = CurrentBranchID,
+                    RequiredRooms = booking.RequiredRooms
                 };
 
                 var quote = await _bookingRepository.GetQuoteAsync(quoteRequest);

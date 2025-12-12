@@ -367,6 +367,9 @@
                             }
                         </select>
                         <span asp-validation-for="RoomTypeId" class="text-danger"></span>
+                        <div id="roomTypeRate" style="margin-top: 8px; min-height: 24px;">
+                            <span style="color: #9ca3af; font-size: 13px;">Select room type, customer type, and source to see rate</span>
+                        </div>
                     </div>
                     <div class="form-field">
                         <label asp-for="RequiredRooms">Required Rooms <span style="color: #e53e3e;">*</span></label>
@@ -530,9 +533,16 @@
                 const roomTypeId = $('#RoomTypeId').val();
                 const customerType = $('#CustomerType').val();
                 const source = $('#Source').val();
+                const checkInDate = $('#CheckInDate').val();
+                const checkOutDate = $('#CheckOutDate').val();
                 
                 if (!roomTypeId || !customerType || !source) {
-                    $('#roomTypeRate').html('<span style="color: #9ca3af; font-size: 13px;">Select all options to see rate</span>');
+                    $('#roomTypeRate').html('<span style="color: #9ca3af; font-size: 13px;">Select room type, customer type, and source to see rate</span>');
+                    return;
+                }
+                
+                if (!checkInDate || !checkOutDate) {
+                    $('#roomTypeRate').html('<span style="color: #f59e0b; font-size: 13px;"><i class="fas fa-calendar-alt"></i> Select check-in and check-out dates</span>');
                     return;
                 }
                 
@@ -544,14 +554,16 @@
                     data: { 
                         roomTypeId: roomTypeId,
                         customerType: customerType,
-                        source: source
+                        source: source,
+                        checkInDate: checkInDate,
+                        checkOutDate: checkOutDate
                     },
                     success: function(response) {
                         if (response.success) {
                             if (response.hasRate) {
-                                $('#roomTypeRate').html('<span style="color: #10b981; font-weight: 600; font-size: 15px;"><i class="fas fa-check-circle"></i> ' + response.formattedRate + '</span>');
+                                $('#roomTypeRate').html('<span style="display: inline-block; background: #d1fae5; color: #065f46; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 13px;"><i class="fas fa-tag"></i> Rate: ' + response.formattedRate + '/night</span>');
                             } else {
-                                $('#roomTypeRate').html('<span style="color: #ef4444; font-weight: 600; font-size: 13px;"><i class="fas fa-exclamation-triangle"></i> ' + response.message + '</span>');
+                                $('#roomTypeRate').html('<span style="display: inline-block; background: #fee2e2; color: #991b1b; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 13px;"><i class="fas fa-exclamation-triangle"></i> ' + response.message + '</span>');
                             }
                         } else {
                             $('#roomTypeRate').html('<span style="color: #ef4444; font-size: 13px;">Error loading rate</span>');
@@ -564,12 +576,12 @@
             }
             
             // Bind change events to update rate
-            $('#RoomTypeId, #CustomerType, #Source').on('change', function() {
+            $('#RoomTypeId, #CustomerType, #Source, #CheckInDate, #CheckOutDate').on('change', function() {
                 updateRoomTypeRate();
             });
             
             // Load initial rate if values are pre-selected
-            if ($('#RoomTypeId').val() && $('#CustomerType').val() && $('#Source').val()) {
+            if ($('#RoomTypeId').val() && $('#CustomerType').val() && $('#Source').val() && $('#CheckInDate').val() && $('#CheckOutDate').val()) {
                 updateRoomTypeRate();
             }
 

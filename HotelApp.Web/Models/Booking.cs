@@ -86,6 +86,7 @@ namespace HotelApp.Web.Models
     {
         public int Id { get; set; }
         public int BookingId { get; set; }
+        public string? ReceiptNumber { get; set; }
         public decimal Amount { get; set; }
         public string PaymentMethod { get; set; } = string.Empty;
         public string? PaymentReference { get; set; }

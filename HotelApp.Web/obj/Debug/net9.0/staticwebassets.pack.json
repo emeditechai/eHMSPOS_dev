@@ -289,6 +289,10 @@
       "PackagePath": "staticwebassets/uploads/logos/logo_20251203224529.jpeg"
     },
     {
+      "Id": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/uploads/logos/logo_20251212132550.png",
+      "PackagePath": "staticwebassets/uploads/logos/logo_20251212132550.png"
+    },
+    {
       "Id": "obj/Debug/net9.0/staticwebassets/msbuild.HotelApp.Web.Microsoft.AspNetCore.StaticWebAssetEndpoints.props",
       "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssetEndpoints.props"
     },

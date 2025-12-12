@@ -10,6 +10,7 @@ namespace HotelApp.Web.Models
         public int Adults { get; set; }
         public int Children { get; set; }
         public int BranchID { get; set; }
+        public int RequiredRooms { get; set; } = 1; // Default to 1 room
     }
 
     public class BookingQuoteResult

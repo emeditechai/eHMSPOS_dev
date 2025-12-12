@@ -99,9 +99,13 @@ namespace HotelApp.Web.Repositories
             avgNightlyBase = nights > 0 ? avgNightlyBase / nights : 0;
             avgNightlyExtra = nights > 0 ? avgNightlyExtra / nights : 0;
 
-            var totalTax = Math.Round(totalRoomRate * (taxPercentage / 100m), 2, MidpointRounding.AwayFromZero);
-            var totalCGST = Math.Round(totalRoomRate * (cgstPercentage / 100m), 2, MidpointRounding.AwayFromZero);
-            var totalSGST = Math.Round(totalRoomRate * (sgstPercentage / 100m), 2, MidpointRounding.AwayFromZero);
+            // Multiply by number of required rooms
+            var requiredRooms = request.RequiredRooms > 0 ? request.RequiredRooms : 1;
+            var totalRoomRateForAllRooms = totalRoomRate * requiredRooms;
+
+            var totalTax = Math.Round(totalRoomRateForAllRooms * (taxPercentage / 100m), 2, MidpointRounding.AwayFromZero);
+            var totalCGST = Math.Round(totalRoomRateForAllRooms * (cgstPercentage / 100m), 2, MidpointRounding.AwayFromZero);
+            var totalSGST = Math.Round(totalRoomRateForAllRooms * (sgstPercentage / 100m), 2, MidpointRounding.AwayFromZero);
 
             return new BookingQuoteResult
             {
@@ -112,11 +116,11 @@ namespace HotelApp.Web.Repositories
                 TaxPercentage = taxPercentage,
                 CGSTPercentage = cgstPercentage,
                 SGSTPercentage = sgstPercentage,
-                TotalRoomRate = totalRoomRate,
+                TotalRoomRate = totalRoomRateForAllRooms,
                 TotalTaxAmount = totalTax,
                 TotalCGSTAmount = totalCGST,
                 TotalSGSTAmount = totalSGST,
-                GrandTotal = totalRoomRate + totalTax
+                GrandTotal = totalRoomRateForAllRooms + totalTax
             };
         }
 
@@ -124,7 +128,8 @@ namespace HotelApp.Web.Repositories
             int rateMasterId, 
             DateTime date, 
             decimal defaultBaseRate, 
-            decimal defaultExtraPaxRate)
+            decimal defaultExtraPaxRate,
+            IDbTransaction? transaction = null)
         {
             if (rateMasterId == 0)
             {
@@ -141,9 +146,10 @@ namespace HotelApp.Web.Repositories
                   AND @Date <= CAST(ToDate AS DATE)
                 ORDER BY FromDate DESC";
 
-            var specialRate = await _dbConnection.QueryFirstOrDefaultAsync<(decimal BaseRate, decimal ExtraPaxRate)?>(
+            var specialRate = await _dbConnection.QueryFirstOrDefaultAsync<(decimal BaseRate, decimal ExtraPaxRate)?>(  
                 specialDaySql, 
-                new { RateMasterId = rateMasterId, Date = date.Date });
+                new { RateMasterId = rateMasterId, Date = date.Date },
+                transaction);
 
             if (specialRate.HasValue)
             {
@@ -159,11 +165,10 @@ namespace HotelApp.Web.Repositories
                   AND IsActive = 1
                   AND DayOfWeek = @DayOfWeek";
 
-            var weekendRate = await _dbConnection.QueryFirstOrDefaultAsync<(decimal BaseRate, decimal ExtraPaxRate)?>(
+            var weekendRate = await _dbConnection.QueryFirstOrDefaultAsync<(decimal BaseRate, decimal ExtraPaxRate)?>(  
                 weekendSql, 
-                new { RateMasterId = rateMasterId, DayOfWeek = dayOfWeek });
-
-            if (weekendRate.HasValue)
+                new { RateMasterId = rateMasterId, DayOfWeek = dayOfWeek },
+                transaction);            if (weekendRate.HasValue)
             {
                 return (weekendRate.Value.BaseRate, weekendRate.Value.ExtraPaxRate);
             }
@@ -181,7 +186,8 @@ namespace HotelApp.Web.Repositories
             int extraGuests,
             decimal taxPercentage,
             decimal cgstPercentage,
-            decimal sgstPercentage)
+            decimal sgstPercentage,
+            IDbTransaction? transaction = null)
         {
             var breakdown = new List<(DateTime, decimal, decimal, decimal, decimal)>();
 
@@ -191,7 +197,8 @@ namespace HotelApp.Web.Repositories
                     rateMasterId,
                     date,
                     defaultBaseRate,
-                    defaultExtraPaxRate);
+                    defaultExtraPaxRate,
+                    transaction);
 
                 var nightRoomRate = nightlyBase + (nightlyExtra * extraGuests);
                 var nightTax = Math.Round(nightRoomRate * (taxPercentage / 100m), 2, MidpointRounding.AwayFromZero);
@@ -1211,7 +1218,8 @@ namespace HotelApp.Web.Repositories
                         extraGuests,
                         taxPercentage,
                         cgstPercentage,
-                        sgstPercentage);
+                        sgstPercentage,
+                        transaction);
 
                     // Create room nights for each assigned room
                     const string insertRoomNightSql = @"
@@ -1483,6 +1491,19 @@ namespace HotelApp.Web.Repositories
             return await _dbConnection.QueryAsync<BookingPayment>(sql, new { BookingId = bookingId });
         }
 
+        public async Task<IEnumerable<string>> GetAssignedRoomNumbersAsync(int bookingId)
+        {
+            const string sql = @"
+                SELECT r.RoomNumber 
+                FROM BookingRooms br
+                INNER JOIN Rooms r ON br.RoomId = r.Id
+                WHERE br.BookingId = @BookingId 
+                  AND br.IsActive = 1
+                ORDER BY r.RoomNumber";
+
+            return await _dbConnection.QueryAsync<string>(sql, new { BookingId = bookingId });
+        }
+
         public async Task<bool> AddPaymentAsync(BookingPayment payment, int performedBy)
         {
             if (_dbConnection.State != ConnectionState.Open)
@@ -1494,10 +1515,17 @@ namespace HotelApp.Web.Repositories
 
             try
             {
+                // Ensure QUOTED_IDENTIFIER is ON for the indexed column
+                await _dbConnection.ExecuteAsync("SET QUOTED_IDENTIFIER ON", transaction: transaction);
+
+                // Generate receipt number
+                var receiptNumber = await GenerateReceiptNumberAsync(transaction);
+                payment.ReceiptNumber = receiptNumber;
+
                 // Insert payment
                 const string insertPaymentSql = @"
-                    INSERT INTO BookingPayments (BookingId, Amount, PaymentMethod, PaymentReference, Status, PaidOn, Notes, CardType, CardLastFourDigits, BankId, ChequeDate)
-                    VALUES (@BookingId, @Amount, @PaymentMethod, @PaymentReference, @Status, @PaidOn, @Notes, @CardType, @CardLastFourDigits, @BankId, @ChequeDate)";
+                    INSERT INTO BookingPayments (BookingId, ReceiptNumber, Amount, PaymentMethod, PaymentReference, Status, PaidOn, Notes, CardType, CardLastFourDigits, BankId, ChequeDate)
+                    VALUES (@BookingId, @ReceiptNumber, @Amount, @PaymentMethod, @PaymentReference, @Status, @PaidOn, @Notes, @CardType, @CardLastFourDigits, @BankId, @ChequeDate)";
 
                 await _dbConnection.ExecuteAsync(insertPaymentSql, payment, transaction);
 
@@ -1883,6 +1911,28 @@ namespace HotelApp.Web.Repositories
             }
             
             return nights;
+        }
+
+        /// <summary>
+        /// Generates a unique receipt number for a payment
+        /// Format: RCP-YYYYMMDD-####
+        /// </summary>
+        private async Task<string> GenerateReceiptNumberAsync(IDbTransaction transaction)
+        {
+            var today = DateTime.Now.ToString("yyyyMMdd");
+            
+            // Get the count of receipts generated today
+            const string countSql = @"
+                SELECT COUNT(*) 
+                FROM BookingPayments 
+                WHERE ReceiptNumber LIKE @Pattern";
+            
+            var pattern = $"RCP-{today}-%";
+            var count = await _dbConnection.ExecuteScalarAsync<int>(countSql, new { Pattern = pattern }, transaction);
+            
+            // Generate receipt number with sequential number
+            var sequenceNumber = (count + 1).ToString("D4");
+            return $"RCP-{today}-{sequenceNumber}";
         }
     }
 }

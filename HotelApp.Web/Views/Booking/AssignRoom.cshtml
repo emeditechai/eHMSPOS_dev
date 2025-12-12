@@ -433,6 +433,30 @@
 <script>
     const requiredRooms = parseInt(document.getElementById('requiredRooms')?.value || 1);
     
+    // Update button state based on selection (global function)
+    function updateButtonState() {
+        const assignBtn = document.getElementById('assignRoomBtn');
+        const selectedRooms = document.querySelectorAll('input[name="roomIds"]:checked');
+        if (assignBtn) {
+            if (selectedRooms.length === 0) {
+                assignBtn.disabled = true;
+                assignBtn.style.opacity = '0.5';
+                assignBtn.style.cursor = 'not-allowed';
+                assignBtn.innerHTML = '<i class="fas fa-ban"></i> Select Room(s) First';
+            } else if (selectedRooms.length !== requiredRooms) {
+                assignBtn.disabled = true;
+                assignBtn.style.opacity = '0.6';
+                assignBtn.style.cursor = 'not-allowed';
+                assignBtn.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Select ${requiredRooms - selectedRooms.length} More Room(s)`;
+            } else {
+                assignBtn.disabled = false;
+                assignBtn.style.opacity = '1';
+                assignBtn.style.cursor = 'pointer';
+                assignBtn.innerHTML = '<i class="fas fa-check"></i> Assign Selected Room(s)';
+            }
+        }
+    }
+    
     function handleRoomSelection() {
         const checkboxes = document.querySelectorAll('input[name="roomIds"]:checked');
         const selectedCount = checkboxes.length;
@@ -474,6 +498,9 @@
                 cb.closest('.room-card-selectable').style.cursor = 'pointer';
             }
         });
+        
+        // Update button state
+        updateButtonState();
     }
 
     // Initialize on page load

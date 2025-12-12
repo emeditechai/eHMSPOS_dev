@@ -665,6 +665,9 @@
         </span>
     </div>
     <div class="action-buttons">
+        <a asp-action="Receipt" asp-route-bookingNumber="@Model.BookingNumber" class="btn-modern btn-primary" target="_blank" style="margin-right: 0.5rem;">
+            <i class="fas fa-receipt"></i> Print Receipt
+        </a>
         <a asp-action="List" class="btn-modern btn-secondary">
             <i class="fas fa-arrow-left"></i> Back to Bookings
         </a>
@@ -1987,7 +1990,9 @@
 @section Scripts {
 <script>
     function showPaymentModal() {
+        const balanceAmount = @Model.BalanceAmount;
         document.getElementById('paymentModal').style.display = 'flex';
+        document.getElementById('amount').value = balanceAmount.toFixed(2);
         document.getElementById('amount').focus();
     }
 

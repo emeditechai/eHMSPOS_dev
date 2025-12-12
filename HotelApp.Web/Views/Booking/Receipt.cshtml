@@ -1,0 +1,850 @@
+@model HotelApp.Web.Models.Booking
+@{
+    ViewData["Title"] = $"Receipt - {Model.BookingNumber}";
+    Layout = null;
+    var hotelSettings = ViewBag.HotelSettings as HotelApp.Web.Models.HotelSettings;
+    var payments = ViewBag.Payments as IEnumerable<HotelApp.Web.Models.BookingPayment>;
+    var totalPaid = payments?.Sum(p => p.Amount) ?? 0;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"]</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            color: #333;
+        }
+
+        .receipt-container {
+            max-width: 210mm; /* A4 width */
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            min-height: 297mm; /* A4 height */
+        }
+
+        .receipt-content {
+            padding: 15mm 20mm; /* A4 standard margins */
+        }
+
+        .receipt-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 25px;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 30px;
+        }
+
+        .hotel-logo-section {
+            flex-shrink: 0;
+            margin-right: 20px;
+        }
+
+        .hotel-logo {
+            max-width: 120px;
+            max-height: 120px;
+            object-fit: contain;
+        }
+
+        .hotel-info-section {
+            flex: 1;
+            text-align: center;
+        }
+
+        .hotel-name {
+            font-size: 32px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 5px;
+            letter-spacing: -0.5px;
+        }
+
+        .receipt-title {
+            font-size: 15px;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 8px;
+            margin-bottom: 15px;
+            font-weight: 600;
+            border-top: 2px solid #e0e0e0;
+            border-bottom: 2px solid #e0e0e0;
+            padding: 8px 0;
+        }
+
+        .hotel-details {
+            font-size: 12px;
+            color: #555;
+            line-height: 1.8;
+            margin-top: 10px;
+        }
+
+        .hotel-details p {
+            margin: 3px 0;
+        }
+
+        .hotel-details .detail-label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .reservation-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .info-section {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .info-label {
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .booking-number {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2c3e50;
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .date-section {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+            margin: 20px 0;
+        }
+
+        .date-block {
+            text-align: center;
+        }
+
+        .date-day {
+            font-size: 28px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .date-month {
+            font-size: 13px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .date-time {
+            font-size: 11px;
+            color: #888;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        .actual-dates-section {
+            background: #f8f9fa;
+            border-left: 3px solid #667eea;
+            padding: 12px 16px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .actual-date-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 0;
+            font-size: 13px;
+        }
+
+        .actual-date-label {
+            font-weight: 600;
+            color: #555;
+            min-width: 130px;
+        }
+
+        .actual-date-value {
+            color: #333;
+            font-weight: 500;
+        }
+
+        .actual-time {
+            color: #667eea;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .date-label {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .nights-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .rooms-badge {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-badges {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .badge-direct {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .badge-room {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .assigned-rooms-section {
+            display: inline-block;
+            margin: 8px 0;
+        }
+
+        .assigned-rooms-label {
+            font-size: 11px;
+            font-weight: 500;
+            color: #666;
+            display: inline;
+            margin-right: 6px;
+        }
+
+        .assigned-rooms-list {
+            display: inline;
+        }
+
+        .room-number-badge {
+            background: #4caf50;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .room-number-badge:before {
+            content: "🚪";
+            font-size: 14px;
+        }
+
+        .totals-section {
+            background: #fafafa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 30px 0;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 14px;
+        }
+
+        .total-row.highlight {
+            font-size: 16px;
+            font-weight: 700;
+            padding-top: 12px;
+            border-top: 2px solid #e0e0e0;
+            margin-top: 10px;
+        }
+
+        .total-label {
+            color: #666;
+        }
+
+        .total-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .plan-details {
+            margin: 30px 0;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .detail-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .detail-table th {
+            background: #f8f9fa;
+            padding: 10px;
+            text-align: left;
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .detail-table td {
+            padding: 12px 10px;
+            font-size: 14px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .detail-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .payment-summary {
+            margin: 20px 0;
+        }
+
+        .inclusions-list {
+            list-style: none;
+            padding: 0;
+            margin: 15px 0;
+        }
+
+        .inclusions-list li {
+            padding: 8px 0;
+            padding-left: 20px;
+            position: relative;
+            font-size: 13px;
+            color: #555;
+        }
+
+        .inclusions-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4caf50;
+            font-weight: bold;
+        }
+
+        .print-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 50px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .print-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .contact-info {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+
+        .watermark {
+            position: fixed;
+            top: 30%;
+            right: 5%;
+            transform: rotate(-15deg);
+            width: 180px;
+            height: 180px;
+            border: 6px solid rgba(220, 53, 69, 0.35);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .watermark::before {
+            content: 'PAID';
+            font-size: 48px;
+            font-weight: 900;
+            color: rgba(220, 53, 69, 0.35);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .watermark::after {
+            content: '';
+            position: absolute;
+            width: 165px;
+            height: 165px;
+            border: 2px dashed rgba(220, 53, 69, 0.3);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .receipt-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        @@media print {
+            @@page {
+                size: A4;
+                margin: 10mm;
+            }
+            
+            * {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .watermark {
+                position: absolute;
+                top: 25%;
+                right: 10%;
+                width: 160px;
+                height: 160px;
+            }
+            
+            body {
+                background: white;
+                padding: 0;
+                margin: 0;
+                width: 210mm;
+            }
+            
+            .receipt-container {
+                box-shadow: none;
+                max-width: 100%;
+                width: 210mm;
+                min-height: 297mm;
+                margin: 0;
+                page-break-after: avoid;
+            }
+            
+            .receipt-content {
+                padding: 10mm 15mm;
+            }
+            .print-button {
+                display: none;
+            }
+            .hotel-logo {
+                max-width: 100px;
+                max-height: 100px;
+            }
+            @@page {
+                margin: 0.5cm;
+            }
+        }
+    </style>
+</head>
+<body>
+    @{
+        var isCheckedOut = Model.ActualCheckOutDate != null || Model.Status == "CheckedOut";
+        var isFullyPaid = Model.BalanceAmount <= 0;
+        var showWatermark = isCheckedOut && isFullyPaid;
+        var isFinalBill = showWatermark; // Can add more conditions here if needed
+    }
+    
+    @if (showWatermark)
+    {
+        <div class="watermark"></div>
+    }
+    
+    <div class="receipt-container">
+        <div class="receipt-content">
+            <!-- Header -->
+            <div class="receipt-header">
+                @if (hotelSettings != null && !string.IsNullOrEmpty(hotelSettings.LogoPath))
+                {
+                    <div class="hotel-logo-section">
+                        <img src="@hotelSettings.LogoPath" alt="Hotel Logo" class="hotel-logo" />
+                    </div>
+                }
+                <div class="hotel-info-section">
+                    <h1 class="hotel-name">@(hotelSettings?.HotelName ?? "Hotel Management System")</h1>
+                    <div class="receipt-title">@(isFinalBill ? "FINAL BILL" : "RESERVATION")</div>
+                    @if (hotelSettings != null)
+                    {
+                        <div class="hotel-details">
+                        @if (!string.IsNullOrEmpty(hotelSettings.Address))
+                        {
+                            <p>@hotelSettings.Address</p>
+                        }
+                        <p>
+                            @if (!string.IsNullOrEmpty(hotelSettings.ContactNumber1))
+                            {
+                                <span><span class="detail-label">Phone:</span> @hotelSettings.ContactNumber1</span>
+                            }
+                            @if (!string.IsNullOrEmpty(hotelSettings.ContactNumber2))
+                            {
+                                <span> / @hotelSettings.ContactNumber2</span>
+                            }
+                        </p>
+                        @if (!string.IsNullOrEmpty(hotelSettings.EmailAddress))
+                        {
+                            <p><span class="detail-label">Email:</span> @hotelSettings.EmailAddress</p>
+                        }
+                        @if (!string.IsNullOrEmpty(hotelSettings.Website))
+                        {
+                            <p><span class="detail-label">Website:</span> @hotelSettings.Website</p>
+                        }
+                        @if (!string.IsNullOrEmpty(hotelSettings.GSTCode))
+                        {
+                            <p><span class="detail-label">GST No:</span> @hotelSettings.GSTCode</p>
+                        }
+                    </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Reservation Info -->
+            <div class="reservation-info">
+                <div class="info-section">
+                    <div class="info-label">@(isFinalBill ? "BILL #" : "Reservation #")</div>
+                    <div class="booking-number">@Model.BookingNumber</div>
+                </div>
+                <div class="info-section">
+                    <div class="info-label">REF. ID</div>
+                    <div class="info-value">@(Model.Id)</div>
+                </div>
+            </div>
+
+            <div class="reservation-info">
+                <div class="info-section">
+                    <div class="info-label">Guest Name</div>
+                    <div class="info-value">@Model.PrimaryGuestFirstName @Model.PrimaryGuestLastName</div>
+                    <div class="info-label" style="margin-top: 8px;">Contact</div>
+                    <div class="info-value">@Model.PrimaryGuestPhone</div>
+                </div>
+                <div class="info-section">
+                    <div class="info-label">Total Bill</div>
+                    <div class="info-value" style="font-size: 20px; color: #667eea;">₹ @Model.TotalAmount.ToString("N2")</div>
+                    <div class="info-label" style="margin-top: 8px;">Outstanding</div>
+                    <div class="info-value" style="color: #f5576c;">₹ @Model.BalanceAmount.ToString("N2")</div>
+                </div>
+            </div>
+
+            <!-- Check-in/Check-out Dates -->
+            <div class="date-section">
+                <div class="date-block">
+                    <div class="date-label">Check-in</div>
+                    <div class="date-day">@Model.CheckInDate.ToString("dd")</div>
+                    <div class="date-month">@Model.CheckInDate.ToString("MMM yyyy").ToUpper()</div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
+                    <span class="nights-badge">@Model.Nights Night@(Model.Nights > 1 ? "s" : "")</span>
+                    <span class="rooms-badge">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3zm12-6h-8v7H3V7H1v10h22v-6c0-2.21-1.79-4-4-4z"/>
+                        </svg>
+                        @Model.RequiredRooms Room@(Model.RequiredRooms > 1 ? "s" : "")
+                    </span>
+                </div>
+                <div class="date-block">
+                    <div class="date-label">Check-out</div>
+                    <div class="date-day">@Model.CheckOutDate.ToString("dd")</div>
+                    <div class="date-month">@Model.CheckOutDate.ToString("MMM yyyy").ToUpper()</div>
+                </div>
+            </div>
+
+            <!-- Actual Check-in/Check-out Times (if available) -->
+            @if (Model.ActualCheckInDate.HasValue || Model.ActualCheckOutDate.HasValue)
+            {
+                <div class="actual-dates-section">
+                    @if (Model.ActualCheckInDate.HasValue)
+                    {
+                        <div class="actual-date-item">
+                            <span class="actual-date-label">Actual Check-in:</span>
+                            <span class="actual-date-value">
+                                @Model.ActualCheckInDate.Value.ToString("dd MMM yyyy")
+                                <span class="actual-time">@Model.ActualCheckInDate.Value.ToString("hh:mm tt")</span>
+                            </span>
+                        </div>
+                    }
+                    @if (Model.ActualCheckOutDate.HasValue)
+                    {
+                        <div class="actual-date-item">
+                            <span class="actual-date-label">Actual Check-out:</span>
+                            <span class="actual-date-value">
+                                @Model.ActualCheckOutDate.Value.ToString("dd MMM yyyy")
+                                <span class="actual-time">@Model.ActualCheckOutDate.Value.ToString("hh:mm tt")</span>
+                            </span>
+                        </div>
+                    }
+                </div>
+            }
+
+            <!-- Status Badges -->
+            <div class="status-badges">
+                <span class="badge badge-direct">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                    @Model.Source?.ToUpper()
+                </span>
+                <span class="badge badge-room">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3 21v-2h18v2H3zm0-4v-6h2v6H3zm4 0v-6h2v6H7zm4 0v-6h2v6h-2zm4 0v-6h2v6h-2zm4 0v-6h2v6h-2zM3 9V7h18v2H3z"/>
+                    </svg>
+                    @(Model.RoomType?.TypeName ?? "Room")
+                </span>
+            </div>
+
+            <!-- Assigned Room(s) -->
+            @{
+                var assignedRooms = ViewBag.AssignedRooms as IEnumerable<string>;
+            }
+            @if (assignedRooms != null && assignedRooms.Any())
+            {
+                <div class="assigned-rooms-section">
+                    <span class="assigned-rooms-label">Assigned Room@(assignedRooms.Count() > 1 ? "s" : ""):</span>
+                    <span class="assigned-rooms-list">
+                        @foreach (var roomNumber in assignedRooms)
+                        {
+                            <span class="room-number-badge">@roomNumber</span>
+                        }
+                    </span>
+                </div>
+            }
+
+            <!-- Plan Details -->
+            <div class="plan-details">
+                <h2 class="section-title">Plan Details</h2>
+                <table class="detail-table">
+                    <thead>
+                        <tr>
+                            <th>Room Category</th>
+                            <th class="text-center">Nights</th>
+                            <th class="text-center">Adults</th>
+                            <th class="text-center">Children</th>
+                            <th>Meal Plan</th>
+                            <th class="text-right">Rate/Night</th>
+                            <th class="text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>@(Model.RoomType?.TypeName ?? "N/A")</td>
+                            <td class="text-center">@Model.Nights</td>
+                            <td class="text-center">@Model.Adults</td>
+                            <td class="text-center">@Model.Children</td>
+                            <td>@(Model.CustomerType == "B2B" ? "EP" : "CP")</td>
+                            <td class="text-right">@((Model.BaseAmount / Model.Nights).ToString("N2"))</td>
+                            <td class="text-right">@Model.BaseAmount.ToString("N2")</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Totals -->
+                <div class="totals-section">
+                    <div class="total-row">
+                        <span class="total-label">Room&nbsp;Total</span>
+                        <span class="total-value">₹ @Model.BaseAmount.ToString("N2")</span>
+                    </div>
+                    <div class="total-row">
+                        <span class="total-label">CGST @@ @((Model.TaxAmount / Model.BaseAmount * 100 / 2).ToString("0.##"))%</span>
+                        <span class="total-value">₹ @Model.CGSTAmount.ToString("N2")</span>
+                    </div>
+                    <div class="total-row">
+                        <span class="total-label">SGST @@ @((Model.TaxAmount / Model.BaseAmount * 100 / 2).ToString("0.##"))%</span>
+                        <span class="total-value">₹ @Model.SGSTAmount.ToString("N2")</span>
+                    </div>
+                    @if (Model.DiscountAmount > 0)
+                    {
+                        <div class="total-row">
+                            <span class="total-label">Discounts</span>
+                            <span class="total-value" style="color: #4caf50;">- ₹ @Model.DiscountAmount.ToString("N2")</span>
+                        </div>
+                    }
+                    <div class="total-row">
+                        <span class="total-label">Taxes</span>
+                        <span class="total-value">₹ @Model.TaxAmount.ToString("N2")</span>
+                    </div>
+                    <div class="total-row highlight">
+                        <span class="total-label">Total Amount</span>
+                        <span class="total-value">₹ @Model.TotalAmount.ToString("N2")</span>
+                    </div>
+                    <div class="total-row">
+                        <span class="total-label">Payments</span>
+                        <span class="total-value" style="color: #4caf50;">₹ @totalPaid.ToString("N2")</span>
+                    </div>
+                    <div class="total-row highlight" style="color: #f5576c;">
+                        <span class="total-label">Balance Payable</span>
+                        <span class="total-value">₹ @Model.BalanceAmount.ToString("N2")</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Summary -->
+            @if (payments != null && payments.Any())
+            {
+                <div class="payment-summary">
+                    <h2 class="section-title">Payment Summary</h2>
+                    <table class="detail-table">
+                        <thead>
+                            <tr>
+                                <th>Receipt No.</th>
+                                <th>Date & Time</th>
+                                <th>Method</th>
+                                <th>Reference</th>
+                                <th class="text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var payment in payments)
+                            {
+                                <tr>
+                                    <td><strong>@(payment.ReceiptNumber ?? "N/A")</strong></td>
+                                    <td>@payment.PaidOn.ToString("dd MMM yyyy hh:mm tt")</td>
+                                    <td>@payment.PaymentMethod</td>
+                                    <td>@(payment.PaymentReference ?? "-")</td>
+                                    <td class="text-right">₹ @payment.Amount.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr style="font-weight: 600; background: #f8f9fa;">
+                                <td colspan="4" class="text-right" style="padding: 12px;">Total Paid:</td>
+                                <td class="text-right" style="padding: 12px; color: #4caf50;">₹ @totalPaid.ToString("N2")</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            }
+
+            <!-- Special Instructions -->
+            @if (!string.IsNullOrEmpty(Model.SpecialRequests))
+            {
+                <div class="plan-details">
+                    <h2 class="section-title">Special Instructions</h2>
+                    <p style="font-size: 13px; color: #555; line-height: 1.6;">@Model.SpecialRequests</p>
+                </div>
+            }
+
+            <!-- Inclusions -->
+            <div class="plan-details">
+                <h2 class="section-title">Inclusions</h2>
+                <ul class="inclusions-list">
+                    <li>Welcome Drinks</li>
+                    <li>Breakfast: Complimentary (Excluding Meal Plan: "EP")</li>
+                    <li>Free Wi-Fi</li>
+                    <li>Swimming Pool</li>
+                    <li>Car Parking</li>
+                    <li>Beach Access</li>
+                    <li>Multi Gym</li>
+                </ul>
+            </div>
+
+            <!-- Contact Info -->
+            <div class="contact-info">
+                @if (hotelSettings != null)
+                {
+                    <div>@hotelSettings.Address</div>
+                    <div>Phone: @hotelSettings.ContactNumber1 | Email: @hotelSettings.EmailAddress</div>
+                    @if (!string.IsNullOrEmpty(hotelSettings.Website))
+                    {
+                        <div>Website: @hotelSettings.Website</div>
+                    }
+                }
+                <div style="margin-top: 10px; font-weight: 600;">Thank you for choosing us!</div>
+            </div>
+        </div>
+    </div>
+
+    <button class="print-button" onclick="window.print()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+            <rect x="6" y="14" width="12" height="8"/>
+        </svg>
+        Print Receipt
+    </button>
+</body>
+</html>
