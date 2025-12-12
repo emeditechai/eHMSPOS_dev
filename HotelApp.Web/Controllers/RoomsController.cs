@@ -349,20 +349,34 @@ public class RoomsController : BaseController
                 var roomTypeId = kvp.Key;
                 var roomData = kvp.Value;
                 
-                // Get the effective rate for this date and room type (WITHOUT discount applied yet)
-                var rateInfo = GetEffectiveRateForDate(allRates, roomTypeId, start);
+                // B2C: Get the effective rate for this date and room type (WITHOUT discount applied yet)
+                var rateInfo = GetEffectiveRateForDate(allRates, roomTypeId, start, "B2C");
+
+                // B2B: Optional rate (same rate-type logic). Only include if a B2B entry exists.
+                var b2bRateInfo = GetEffectiveRateForDate(allRates, roomTypeId, start, "B2B");
+                var hasB2BRate = b2bRateInfo.baseRate > 0;
                 
                 // Calculate discount
                 decimal originalRate = rateInfo.baseRate;
                 decimal discountPercent = 0;
                 decimal discountedRate = originalRate;
                 decimal discountAmount = 0;
+
+                decimal b2bOriginalRate = b2bRateInfo.baseRate;
+                decimal b2bDiscountedRate = b2bOriginalRate;
+                decimal b2bDiscountAmount = 0;
                 
                 if (!string.IsNullOrEmpty(roomData.discount) && decimal.TryParse(roomData.discount, out var discount))
                 {
                     discountPercent = discount;
                     discountedRate = Math.Round(originalRate * (1 - discountPercent / 100m), 2, MidpointRounding.AwayFromZero);
                     discountAmount = originalRate - discountedRate;
+
+                    if (hasB2BRate)
+                    {
+                        b2bDiscountedRate = Math.Round(b2bOriginalRate * (1 - discountPercent / 100m), 2, MidpointRounding.AwayFromZero);
+                        b2bDiscountAmount = b2bOriginalRate - b2bDiscountedRate;
+                    }
                 }
                 
                 return new
@@ -379,6 +393,13 @@ public class RoomsController : BaseController
                     extraPaxRate = rateInfo.extraPaxRate,
                     rateType = rateInfo.rateType,
                     eventName = rateInfo.eventName,
+                    b2bOriginalRate = hasB2BRate ? b2bOriginalRate : (decimal?)null,
+                    b2bRate = hasB2BRate ? b2bDiscountedRate : (decimal?)null,
+                    b2bDiscountPercent = hasB2BRate ? discountPercent : (decimal?)null,
+                    b2bDiscountAmount = hasB2BRate ? b2bDiscountAmount : (decimal?)null,
+                    b2bExtraPaxRate = hasB2BRate ? b2bRateInfo.extraPaxRate : (decimal?)null,
+                    b2bRateType = hasB2BRate ? b2bRateInfo.rateType : null,
+                    b2bEventName = hasB2BRate ? b2bRateInfo.eventName : null,
                     applyDiscount = roomData.discount,
                     maxOccupancy = roomData.maxOccupancy,
                     availableRoomNumbers = roomData.availableRoomNumbers
@@ -394,10 +415,12 @@ public class RoomsController : BaseController
     }
 
     private (decimal baseRate, decimal extraPaxRate, string rateType, string? eventName) GetEffectiveRateForDate(
-        IEnumerable<RateMaster> allRates, int roomTypeId, DateTime date)
+        IEnumerable<RateMaster> allRates, int roomTypeId, DateTime date, string customerType)
     {
         // Get rates for this room type
-        var roomTypeRates = allRates.Where(r => r.RoomTypeId == roomTypeId && r.IsActive).ToList();
+        var roomTypeRates = allRates
+            .Where(r => r.RoomTypeId == roomTypeId && r.IsActive && r.CustomerType == customerType)
+            .ToList();
         
         if (!roomTypeRates.Any())
         {

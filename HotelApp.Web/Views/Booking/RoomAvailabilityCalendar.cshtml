@@ -434,12 +434,12 @@
         .cell-price {
             font-size: 10px;
             font-weight: 700;
-            color: #059669;
+            color: #1d4ed8;
             padding: 3px 8px;
-            background: rgba(16, 185, 129, 0.12);
+            background: rgba(59, 130, 246, 0.14);
             border-radius: 10px;
             margin-top: 3px;
-            border: 1px solid rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.25);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -478,7 +478,7 @@
         
         .rate-amount {
             font-size: 10px;
-            font-weight: 700;
+            font-weight: 800;
             color: inherit;
         }
         
@@ -923,6 +923,12 @@
                         const discountAmount = roomData.discountAmount || 0;
                         const rateType = roomData.rateType || 'Standard';
                         const eventName = roomData.eventName || '';
+
+                        const b2bRate = roomData.b2bRate;
+                        const b2bOriginalRate = roomData.b2bOriginalRate;
+                        const b2bDiscountPercent = roomData.b2bDiscountPercent || 0;
+                        const b2bDiscountAmount = roomData.b2bDiscountAmount || 0;
+                        const hasB2B = b2bRate !== null && b2bRate !== undefined && Number(b2bRate) > 0;
                         
                         // Rate type indicator
                         let rateIcon = '💰'; // Standard rate
@@ -942,15 +948,15 @@
                         bodyHtml += `
                             <td>
                                 <div class="availability-cell ${availabilityClass}" 
-                                     onclick="cellClicked('${roomType.name}', '${dateStr}', ${available}, ${total}, ${booked}, ${originalRate}, ${discountedRate}, ${discountPercent}, ${discountAmount}, '${rateType}', '${eventName}')"
-                                     title="${roomType.name} - ${dateStr}\n${available} available | ${booked} booked | ${total} total\n${discountPercent > 0 ? 'Original: ₹' + originalRate.toLocaleString() + '\nDiscount: ' + discountPercent + '%\n' : ''}Rate: ₹${discountedRate.toLocaleString()}/night (${rateType})${eventName ? '\n' + eventName : ''}">
+                                      onclick="cellClicked('${roomType.name}', '${dateStr}', ${available}, ${total}, ${booked}, ${originalRate}, ${discountedRate}, ${discountPercent}, ${discountAmount}, '${rateType}', '${eventName}', ${hasB2B ? Number(b2bRate) : 0}, ${hasB2B ? Number(b2bOriginalRate || b2bRate) : 0}, ${hasB2B ? Number(b2bDiscountPercent) : 0}, ${hasB2B ? Number(b2bDiscountAmount) : 0})"
+                                      title="${roomType.name} - ${dateStr}\n${available} available | ${booked} booked | ${total} total\n${discountPercent > 0 ? 'B2C Original: ₹' + originalRate.toLocaleString() + '\nB2C Discount: ' + discountPercent + '%\n' : ''}B2C Rate: ₹${discountedRate.toLocaleString()}/night (${rateType})${eventName ? '\n' + eventName : ''}${hasB2B ? '\n' + (b2bDiscountPercent > 0 ? ('B2B Original: ₹' + Number(b2bOriginalRate || b2bRate).toLocaleString() + '\nB2B Discount: ' + b2bDiscountPercent + '%\n') : '') + 'B2B Rate: ₹' + Number(b2bRate).toLocaleString() + '/night' : ''}">
                                     <div class="available-count">${available}</div>
                                     <div class="available-label">${available === 0 ? '🔒 Full' : '✅ Available'}</div>
                                     <div class="booked-count">📋 ${booked} Booked</div>
                                     <div class="cell-price">
                                         <span class="rate-badge ${rateBadgeClass}">${rateIcon} ${rateBadge}</span>
-                                        ${discountPercent > 0 ? `<span class="rate-amount" style="text-decoration: line-through; opacity: 0.6; font-size: 8px;">₹${originalRate.toLocaleString()}</span>` : ''}
-                                        <span class="rate-amount" style="${discountPercent > 0 ? 'color: #10b981; font-weight: 800;' : ''}">₹${discountedRate.toLocaleString()}</span>
+                                        ${discountPercent > 0 ? `<span class="rate-amount" style="text-decoration: line-through; opacity: 0.75; font-size: 8px; color: #334155;">₹${originalRate.toLocaleString()}</span>` : ''}
+                                        <span class="rate-amount" style="${discountPercent > 0 ? 'color: #1d4ed8; font-weight: 900;' : ''}">₹${discountedRate.toLocaleString()}</span>
                                     </div>
                                 </div>
                             </td>
@@ -973,7 +979,7 @@
             tbody.innerHTML = bodyHtml;
         }
         
-        function cellClicked(roomTypeName, date, available, total, booked, originalRate, discountedRate, discountPercent, discountAmount, rateType, eventName) {
+        function cellClicked(roomTypeName, date, available, total, booked, originalRate, discountedRate, discountPercent, discountAmount, rateType, eventName, b2bRate, b2bOriginalRate, b2bDiscountPercent, b2bDiscountAmount) {
             const dateObj = new Date(date + 'T00:00:00');
             const formattedDate = dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             
@@ -993,10 +999,29 @@
                 pricingHtml = `
                     <p style="margin: 10px 0;"><strong>💵 Original Rate:</strong> <span style="text-decoration: line-through; color: #9ca3af;">₹${originalRate.toLocaleString()}/night</span></p>
                     <p style="margin: 10px 0;"><strong>🎁 Discount:</strong> <span style="color: #ef4444; font-weight: 600;">${discountPercent}% OFF (Save ₹${discountAmount.toLocaleString()})</span></p>
-                    <p style="margin: 10px 0;"><strong>✨ Discounted Rate:</strong> <span style="color: #10b981; font-size: 18px; font-weight: 700;">₹${discountedRate.toLocaleString()}/night</span></p>
+                    <p style="margin: 10px 0;"><strong>✨ Discounted Rate:</strong> <span style="color: #1d4ed8; font-size: 18px; font-weight: 800;">₹${discountedRate.toLocaleString()}/night</span></p>
                 `;
             } else {
                 pricingHtml = `<p style="margin: 10px 0;"><strong>💵 Price:</strong> ₹${discountedRate.toLocaleString()}/night</p>`;
+            }
+
+            const hasB2B = b2bRate !== null && b2bRate !== undefined && Number(b2bRate) > 0;
+            let b2bHtml = '';
+            if (hasB2B) {
+                if (Number(b2bDiscountPercent) > 0) {
+                    b2bHtml = `
+                        <hr style="margin: 15px 0; border: none; border-top: 1px solid #e5e7eb;">
+                        <p style="margin: 10px 0;"><strong>🏢 B2B Pricing</strong></p>
+                        <p style="margin: 10px 0;"><strong>💵 B2B Original Rate:</strong> <span style="text-decoration: line-through; color: #9ca3af;">₹${Number(b2bOriginalRate || b2bRate).toLocaleString()}/night</span></p>
+                        <p style="margin: 10px 0;"><strong>🎁 B2B Discount:</strong> <span style="color: #ef4444; font-weight: 600;">${Number(b2bDiscountPercent)}% OFF (Save ₹${Number(b2bDiscountAmount || 0).toLocaleString()})</span></p>
+                        <p style="margin: 10px 0;"><strong>✨ B2B Discounted Rate:</strong> <span style="color: #1d4ed8; font-size: 18px; font-weight: 800;">₹${Number(b2bRate).toLocaleString()}/night</span></p>
+                    `;
+                } else {
+                    b2bHtml = `
+                        <hr style="margin: 15px 0; border: none; border-top: 1px solid #e5e7eb;">
+                        <p style="margin: 10px 0;"><strong>🏢 B2B Rate:</strong> ₹${Number(b2bRate).toLocaleString()}/night</p>
+                    `;
+                }
             }
             
             Swal.fire({
@@ -1011,6 +1036,7 @@
                         <hr style="margin: 15px 0; border: none; border-top: 1px solid #e5e7eb;">
                         <p style="margin: 10px 0;"><strong>${rateTypeIcon} Rate Type:</strong> ${rateTypeLabel}</p>
                         ${pricingHtml}
+                        ${b2bHtml}
                     </div>
                 `,
                 icon: 'info',

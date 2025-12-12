@@ -81,6 +81,7 @@
             <label for="statusFilter">Status Filter:</label>
             <select id="statusFilter" name="statusFilter" class="form-control" style="padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; transition: all 0.3s; background: white;">
                 <option value="">All Bookings</option>
+                <option value="upcoming" selected="@(Model.StatusFilter == "upcoming")">Upcoming Booking</option>
                 <option value="assigned" selected="@(Model.StatusFilter == "assigned")">Assigned Room</option>
                 <option value="notassigned" selected="@(Model.StatusFilter == "notassigned")">Not Assigned Room</option>
                 <option value="checkedin" selected="@(Model.StatusFilter == "checkedin")">Checked In</option>

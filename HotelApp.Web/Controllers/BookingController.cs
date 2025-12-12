@@ -48,20 +48,30 @@ namespace HotelApp.Web.Controllers
 
         public async Task<IActionResult> List(DateTime? fromDate, DateTime? toDate, string? statusFilter)
         {
-            // Default to last 3 days if no dates provided
-            if (!fromDate.HasValue && !toDate.HasValue)
+            var isUpcomingFilter = string.Equals(statusFilter, "upcoming", StringComparison.OrdinalIgnoreCase);
+
+            // Default to last 3 days if no dates provided (but NOT for Upcoming filter)
+            if (!isUpcomingFilter && !fromDate.HasValue && !toDate.HasValue)
             {
                 fromDate = DateTime.Today.AddDays(-3);
                 toDate = DateTime.Today;
             }
 
-            var bookings = await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, fromDate, toDate);
+            // For Upcoming filter, ignore date range completely.
+            // Fetch a broad set and apply an explicit upcoming predicate.
+            var bookings = isUpcomingFilter
+                ? await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, null, null)
+                : await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, fromDate, toDate);
 
             // Apply status filter
             if (!string.IsNullOrEmpty(statusFilter))
             {
                 bookings = statusFilter.ToLower() switch
                 {
+                    "upcoming" => bookings.Where(b =>
+                        (b.Status == null || b.Status.ToLower() != "cancelled")
+                        && !b.ActualCheckInDate.HasValue
+                        && b.CheckInDate > DateTime.Now),
                     "assigned" => bookings.Where(b => b.Room != null || (b.AssignedRooms != null && b.AssignedRooms.Any())),
                     "notassigned" => bookings.Where(b => b.Room == null && (b.AssignedRooms == null || !b.AssignedRooms.Any())),
                     "checkedin" => bookings.Where(b => b.ActualCheckInDate.HasValue && !b.ActualCheckOutDate.HasValue),
@@ -214,20 +224,28 @@ namespace HotelApp.Web.Controllers
 
         public async Task<IActionResult> ExportToExcel(DateTime? fromDate, DateTime? toDate, string? statusFilter)
         {
-            // Default to last 3 days if no dates provided
-            if (!fromDate.HasValue && !toDate.HasValue)
+            var isUpcomingFilter = string.Equals(statusFilter, "upcoming", StringComparison.OrdinalIgnoreCase);
+
+            // Default to last 3 days if no dates provided (but NOT for Upcoming filter)
+            if (!isUpcomingFilter && !fromDate.HasValue && !toDate.HasValue)
             {
                 fromDate = DateTime.Today.AddDays(-3);
                 toDate = DateTime.Today;
             }
 
-            var bookings = await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, fromDate, toDate);
+            var bookings = isUpcomingFilter
+                ? await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, null, null)
+                : await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, fromDate, toDate);
 
             // Apply status filter
             if (!string.IsNullOrEmpty(statusFilter))
             {
                 bookings = statusFilter.ToLower() switch
                 {
+                    "upcoming" => bookings.Where(b =>
+                        (b.Status == null || b.Status.ToLower() != "cancelled")
+                        && !b.ActualCheckInDate.HasValue
+                        && b.CheckInDate > DateTime.Now),
                     "assigned" => bookings.Where(b => b.Room != null || (b.AssignedRooms != null && b.AssignedRooms.Any())),
                     "notassigned" => bookings.Where(b => b.Room == null && (b.AssignedRooms == null || !b.AssignedRooms.Any())),
                     "checkedin" => bookings.Where(b => b.ActualCheckInDate.HasValue && !b.ActualCheckOutDate.HasValue),
@@ -267,20 +285,28 @@ namespace HotelApp.Web.Controllers
 
         public async Task<IActionResult> ExportToPDF(DateTime? fromDate, DateTime? toDate, string? statusFilter)
         {
-            // Default to last 3 days if no dates provided
-            if (!fromDate.HasValue && !toDate.HasValue)
+            var isUpcomingFilter = string.Equals(statusFilter, "upcoming", StringComparison.OrdinalIgnoreCase);
+
+            // Default to last 3 days if no dates provided (but NOT for Upcoming filter)
+            if (!isUpcomingFilter && !fromDate.HasValue && !toDate.HasValue)
             {
                 fromDate = DateTime.Today.AddDays(-3);
                 toDate = DateTime.Today;
             }
 
-            var bookings = await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, fromDate, toDate);
+            var bookings = isUpcomingFilter
+                ? await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, null, null)
+                : await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, fromDate, toDate);
 
             // Apply status filter
             if (!string.IsNullOrEmpty(statusFilter))
             {
                 bookings = statusFilter.ToLower() switch
                 {
+                    "upcoming" => bookings.Where(b =>
+                        (b.Status == null || b.Status.ToLower() != "cancelled")
+                        && !b.ActualCheckInDate.HasValue
+                        && b.CheckInDate > DateTime.Now),
                     "assigned" => bookings.Where(b => b.Room != null || (b.AssignedRooms != null && b.AssignedRooms.Any())),
                     "notassigned" => bookings.Where(b => b.Room == null && (b.AssignedRooms == null || !b.AssignedRooms.Any())),
                     "checkedin" => bookings.Where(b => b.ActualCheckInDate.HasValue && !b.ActualCheckOutDate.HasValue),
