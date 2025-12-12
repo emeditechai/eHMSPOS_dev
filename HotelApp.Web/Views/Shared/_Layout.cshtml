@@ -83,6 +83,13 @@
                                 <span>Room Availability</span>
                                 <i class="fas fa-arrow-right dropdown-arrow"></i>
                             </a>
+
+                            <a asp-controller="Booking" asp-action="PaymentDashboard" class="@(controller == "Booking" && action == "PaymentDashboard" ? "active" : string.Empty)">
+                                <i class="fas fa-chart-line"></i>
+                                <span>Payment Dashboard</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+
                         </div>
                     </div>
                     <a asp-controller="Guest" asp-action="Index" class="menu-item @(controller == "Guest" ? "active" : string.Empty)">

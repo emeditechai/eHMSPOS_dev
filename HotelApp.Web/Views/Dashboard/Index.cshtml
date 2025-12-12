@@ -1,6 +1,11 @@
+@using HotelApp.Web.Models
 @{
     ViewData["Title"] = "Dashboard";
     var displayName = User.Claims.FirstOrDefault(c => c.Type == "displayName")?.Value ?? User.Identity?.Name ?? "User";
+    var statistics = ViewBag.Statistics as DashboardStatistics;
+    var revenueData = ViewBag.RevenueData as IEnumerable<RevenueData>;
+    var roomTypeDistribution = ViewBag.RoomTypeDistribution as IEnumerable<RoomTypeDistribution>;
+    var recentBookings = ViewBag.RecentBookings as IEnumerable<RecentBooking>;
 }
 
 <div class="main-content">
@@ -26,9 +31,10 @@
                     <i class="fas fa-users"></i>
                 </div>
             </div>
-            <div class="card-value">1,248</div>
-            <div class="card-change positive">
-                <i class="fas fa-arrow-up"></i> 12% from last month
+            <div class="card-value">@(statistics?.TotalGuests.ToString("N0") ?? "0")</div>
+            <div class="card-change @(statistics?.GuestsChangePercent >= 0 ? "positive" : "negative")">
+                <i class="fas fa-arrow-@(statistics?.GuestsChangePercent >= 0 ? "up" : "down")"></i> 
+                @Math.Abs(statistics?.GuestsChangePercent ?? 0)% from last month
             </div>
         </div>
 
@@ -39,9 +45,10 @@
                     <i class="fas fa-bed"></i>
                 </div>
             </div>
-            <div class="card-value">78%</div>
-            <div class="card-change positive">
-                <i class="fas fa-arrow-up"></i> 5% from last week
+            <div class="card-value">@(statistics?.OccupancyRate.ToString("N0") ?? "0")%</div>
+            <div class="card-change @(statistics?.OccupancyChangePercent >= 0 ? "positive" : "negative")">
+                <i class="fas fa-arrow-@(statistics?.OccupancyChangePercent >= 0 ? "up" : "down")"></i> 
+                @Math.Abs(statistics?.OccupancyChangePercent ?? 0)% from last week
             </div>
         </div>
 
@@ -52,9 +59,10 @@
                     <i class="fas fa-rupee-sign"></i>
                 </div>
             </div>
-            <div class="card-value">₹42,580</div>
-            <div class="card-change positive">
-                <i class="fas fa-arrow-up"></i> 8% from last month
+            <div class="card-value">₹@(statistics?.Revenue.ToString("N0") ?? "0")</div>
+            <div class="card-change @(statistics?.RevenueChangePercent >= 0 ? "positive" : "negative")">
+                <i class="fas fa-arrow-@(statistics?.RevenueChangePercent >= 0 ? "up" : "down")"></i> 
+                @Math.Abs(statistics?.RevenueChangePercent ?? 0)% from last month
             </div>
         </div>
 
@@ -65,9 +73,10 @@
                     <i class="fas fa-door-open"></i>
                 </div>
             </div>
-            <div class="card-value">24</div>
-            <div class="card-change negative">
-                <i class="fas fa-arrow-down"></i> 3 from yesterday
+            <div class="card-value">@(statistics?.CheckInsToday ?? 0)</div>
+            <div class="card-change @(statistics?.CheckInsChange >= 0 ? "positive" : "negative")">
+                <i class="fas fa-arrow-@(statistics?.CheckInsChange >= 0 ? "up" : "down")"></i> 
+                @Math.Abs(statistics?.CheckInsChange ?? 0) from yesterday
             </div>
         </div>
     </div>
@@ -77,10 +86,10 @@
             <div class="chart-header">
                 <div class="chart-title">Revenue Overview</div>
                 <div>
-                    <select class="chart-filter">
-                        <option>Last 7 Days</option>
-                        <option>Last 30 Days</option>
-                        <option>Last 3 Months</option>
+                    <select class="chart-filter" id="revenuePeriodFilter" onchange="updateRevenueChart(this.value)">
+                        <option value="7">Last 7 Days</option>
+                        <option value="30">Last 30 Days</option>
+                        <option value="90">Last 3 Months</option>
                     </select>
                 </div>
             </div>
@@ -102,61 +111,51 @@
     <div class="recent-bookings">
         <div class="section-header">
             <div class="section-title">Recent Bookings</div>
-            <a href="#" class="view-all">View All</a>
+            <a href="@Url.Action("Index", "Booking")" class="view-all">View All</a>
         </div>
 
         <table class="bookings-table">
             <thead>
                 <tr>
+                    <th>Booking #</th>
                     <th>Guest Name</th>
                     <th>Room Type</th>
                     <th>Check-in</th>
                     <th>Check-out</th>
+                    <th>Rooms</th>
+                    <th>Amount</th>
                     <th>Status</th>
                     <th>Action</th>
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td>Michael Brown</td>
-                    <td>Deluxe Suite</td>
-                    <td>Jun 12, 2023</td>
-                    <td>Jun 15, 2023</td>
-                    <td><span class="status confirmed">Confirmed</span></td>
-                    <td><button class="action-btn">Details</button></td>
-                </tr>
-                <tr>
-                    <td>Jennifer Wilson</td>
-                    <td>Executive Room</td>
-                    <td>Jun 14, 2023</td>
-                    <td>Jun 16, 2023</td>
-                    <td><span class="status pending">Pending</span></td>
-                    <td><button class="action-btn">Confirm</button></td>
-                </tr>
-                <tr>
-                    <td>Robert Davis</td>
-                    <td>Presidential Suite</td>
-                    <td>Jun 10, 2023</td>
-                    <td>Jun 17, 2023</td>
-                    <td><span class="status confirmed">Confirmed</span></td>
-                    <td><button class="action-btn">Details</button></td>
-                </tr>
-                <tr>
-                    <td>Emily Johnson</td>
-                    <td>Standard Room</td>
-                    <td>Jun 15, 2023</td>
-                    <td>Jun 18, 2023</td>
-                    <td><span class="status cancelled">Cancelled</span></td>
-                    <td><button class="action-btn">Details</button></td>
-                </tr>
-                <tr>
-                    <td>Thomas Miller</td>
-                    <td>Family Suite</td>
-                    <td>Jun 18, 2023</td>
-                    <td>Jun 22, 2023</td>
-                    <td><span class="status confirmed">Confirmed</span></td>
-                    <td><button class="action-btn">Details</button></td>
-                </tr>
+                @if (recentBookings != null && recentBookings.Any())
+                {
+                    foreach (var booking in recentBookings)
+                    {
+                        <tr>
+                            <td>@booking.BookingNumber</td>
+                            <td>@booking.GuestName</td>
+                            <td>@booking.RoomType</td>
+                            <td>@booking.CheckInDate.ToString("MMM dd, yyyy")</td>
+                            <td>@booking.CheckOutDate.ToString("MMM dd, yyyy")</td>
+                            <td>@booking.RequiredRooms</td>
+                            <td>₹@booking.TotalAmount.ToString("N2")</td>
+                            <td>
+                                <span class="status @booking.Status.ToLower()">@booking.Status</span>
+                            </td>
+                            <td>
+                                <a href="@Url.Action("Details", "Booking", new { bookingNumber = booking.BookingNumber })" class="action-btn">Details</a>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 20px;">No recent bookings found.</td>
+                    </tr>
+                }
             </tbody>
         </table>
     </div>
@@ -165,54 +164,125 @@
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+        let revenueChart;
+        let roomTypeChart;
+        
+        const revenueData = @Html.Raw(Json.Serialize(revenueData));
+        const roomTypeData = @Html.Raw(Json.Serialize(roomTypeDistribution));
+
         document.addEventListener('DOMContentLoaded', function () {
+            initializeRevenueChart(revenueData);
+            initializeRoomTypeChart(roomTypeData);
+        });
+
+        function initializeRevenueChart(data) {
             const revenueCtx = document.getElementById('revenueChart')?.getContext('2d');
-            if (revenueCtx) {
-                new Chart(revenueCtx, {
-                    type: 'line',
-                    data: {
-                        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                        datasets: [{
-                            label: 'Revenue (₹)',
-                            data: [3200, 4500, 3800, 5100, 6200, 7800, 6900],
-                            borderColor: '#1a2a6c',
-                            backgroundColor: 'rgba(26, 42, 108, 0.1)',
-                            borderWidth: 2,
-                            tension: 0.4,
-                            fill: true
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            y: { beginAtZero: true, grid: { drawBorder: false } },
-                            x: { grid: { display: false } }
-                        }
-                    }
-                });
+            if (!revenueCtx) return;
+
+            const labels = data.map(d => {
+                const date = new Date(d.date);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            });
+            const values = data.map(d => d.revenue);
+
+            if (revenueChart) {
+                revenueChart.destroy();
             }
 
-            const roomTypeCtx = document.getElementById('roomTypeChart')?.getContext('2d');
-            if (roomTypeCtx) {
-                new Chart(roomTypeCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Standard', 'Deluxe', 'Executive', 'Suite'],
-                        datasets: [{
-                            data: [35, 25, 20, 20],
-                            backgroundColor: ['#1a2a6c', '#b21f1f', '#fdbb2d', '#28a745'],
-                            borderWidth: 0
-                        }]
+            revenueChart = new Chart(revenueCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Revenue (₹)',
+                        data: values,
+                        borderColor: '#1a2a6c',
+                        backgroundColor: 'rgba(26, 42, 108, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return '₹' + context.parsed.y.toLocaleString();
+                                }
+                            }
+                        }
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { position: 'bottom' } }
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            grid: { drawBorder: false },
+                            ticks: {
+                                callback: function(value) {
+                                    return '₹' + value.toLocaleString();
+                                }
+                            }
+                        },
+                        x: { grid: { display: false } }
                     }
-                });
+                }
+            });
+        }
+
+        function initializeRoomTypeChart(data) {
+            const roomTypeCtx = document.getElementById('roomTypeChart')?.getContext('2d');
+            if (!roomTypeCtx) return;
+
+            const labels = data.map(d => d.typeName);
+            const values = data.map(d => d.bookingCount);
+            const colors = ['#1a2a6c', '#b21f1f', '#fdbb2d', '#28a745', '#17a2b8', '#6c757d'];
+
+            if (roomTypeChart) {
+                roomTypeChart.destroy();
             }
-        });
+
+            roomTypeChart = new Chart(roomTypeCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors.slice(0, labels.length),
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return label + ': ' + value + ' (' + percentage + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function updateRevenueChart(days) {
+            try {
+                const response = await fetch(`@Url.Action("GetRevenueData", "Dashboard")?days=${days}`);
+                const data = await response.json();
+                initializeRevenueChart(data);
+            } catch (error) {
+                console.error('Error updating revenue chart:', error);
+            }
+        }
     </script>
 }

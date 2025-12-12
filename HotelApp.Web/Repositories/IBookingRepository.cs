@@ -4,8 +4,11 @@ namespace HotelApp.Web.Repositories
 {
     public interface IBookingRepository
     {
+        string ConnectionString { get; }
         Task<BookingQuoteResult?> GetQuoteAsync(BookingQuoteRequest request);
         Task<Room?> FindAvailableRoomAsync(int roomTypeId, DateTime checkIn, DateTime checkOut);
+        Task<bool> CheckRoomCapacityAvailabilityAsync(int roomTypeId, int branchId, DateTime checkIn, DateTime checkOut, int requiredRooms);
+        Task<(decimal taxPercentage, decimal cgstPercentage, decimal sgstPercentage)> GetRateMasterTaxPercentagesAsync(int ratePlanId);
         Task<BookingCreationResult> CreateBookingAsync(Booking booking, IEnumerable<BookingGuest> guests, IEnumerable<BookingPayment> payments, IEnumerable<BookingRoomNight> roomNights);
         Task<IEnumerable<Booking>> GetRecentAsync(int take = 25);
         Task<IEnumerable<Booking>> GetRecentByBranchAsync(int branchId, int take = 25);

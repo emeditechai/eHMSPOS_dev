@@ -1,0 +1,207 @@
+@{
+    ViewData["Title"] = "Payment Dashboard";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        .pd-v2 .section-title { font-weight: 700; font-size: 16px; margin-bottom: 10px; }
+        .pd-v2 .filter-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06); padding: 16px; }
+        .pd-v2 .form-label { font-size: 12px; font-weight: 600; color: #555; }
+        .pd-v2 .dashboard-card { border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,.08); padding: 14px 18px; min-height: 95px; display:flex; align-items:center; gap:16px; overflow:hidden; }
+        .pd-v2 .card-icon { display:flex; align-items:center; justify-content:center; width:48px; height:48px; border-radius:50%; background:rgba(255,255,255,0.2); color:#fff; font-size:24px; }
+        .pd-v2 .card-content { display:flex; flex-direction:column; gap:6px; }
+        .pd-v2 .card-title { font-size: 10px; text-transform: uppercase; letter-spacing: .3px; color:#f8f9fa; margin:0; }
+        .pd-v2 .card-value { font-size: 22px; font-weight: 700; color:#fff; margin:0; line-height:1; }
+        .pd-v2 .card-total-payments { background: linear-gradient(135deg,#667eea 0%,#764ba2 100%); }
+        .pd-v2 .card-total-gst { background: linear-gradient(135deg,#f093fb 0%,#f5576c 100%); }
+        .pd-v2 .card-avg-payment { background: linear-gradient(135deg,#fa709a 0%,#fee140 100%); }
+        .pd-v2 .payment-method-card { background:#fff; border:1px solid #e9ecef; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,.06); padding:14px 18px; min-height:95px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+        .pd-v2 .method-icon { width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#eef2ff 0%,#dbeafe 100%); color:#3b82f6; font-size:22px; }
+        .pd-v2 .method-details { display:flex; flex-direction:column; gap:6px; }
+        .pd-v2 .method-name { font-size:10px; font-weight:600; color:#666; text-transform:uppercase; letter-spacing:.3px; margin:0; }
+        .pd-v2 .method-amount { font-size:20px; font-weight:700; color:#2c3e50; margin:0; }
+        .pd-v2 .method-stats { display:flex; flex-direction:column; align-items:flex-end; gap:4px; font-size:10px; color:#6c757d; }
+        .pd-v2 .table-card { background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,.06); padding:16px; }
+    </style>
+}
+
+<div class="container-fluid pd-v2">
+    <div class="row mb-3">
+        <div class="col">
+            <h4 class="mb-1"><i class="bi bi-wallet2"></i> Payment Dashboard</h4>
+            <div class="text-muted" style="font-size:12px;">Compact view with clear visibility</div>
+        </div>
+    </div>
+
+    <div class="filter-card mb-3">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="fromDate" class="form-label">From Date</label>
+                <input type="date" id="fromDate" class="form-control" value="@ViewBag.FromDate">
+            </div>
+            <div class="col-md-3">
+                <label for="toDate" class="form-label">To Date</label>
+                <input type="date" id="toDate" class="form-control" value="@ViewBag.ToDate">
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary w-100" onclick="loadDashboardData()"><i class="bi bi-search"></i> Apply Filter</button>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-outline-secondary w-100" onclick="resetFilters()"><i class="bi bi-arrow-clockwise"></i> Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="row g-2" id="pdv2-summary">
+        <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6 col-12">
+            <div class="dashboard-card card-total-payments position-relative">
+                <div class="card-title">Total Payments</div>
+                <h2 class="card-value" id="pdv2-totalPayments">₹0.00</h2>
+                <i class="bi bi-cash-stack card-icon"></i>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6 col-12">
+            <div class="dashboard-card card-total-gst position-relative">
+                <div class="card-title">Total GST</div>
+                <h2 class="card-value" id="pdv2-totalGst">₹0.00</h2>
+                <i class="bi bi-receipt card-icon"></i>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6 col-12">
+            <div class="dashboard-card card-total-tips position-relative">
+                <div class="card-title">Total Tips</div>
+                <h2 class="card-value" id="pdv2-totalTips">₹0.00</h2>
+                <i class="bi bi-star card-icon"></i>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6 col-12">
+            <div class="dashboard-card card-avg-payment position-relative">
+                <div class="card-title">Average Payment</div>
+                <h2 class="card-value" id="pdv2-avgPayment">₹0.00</h2>
+                <i class="bi bi-graph-up card-icon"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Methods -->
+    <div class="row mt-3">
+        <div class="col-12"><div class="section-title"><i class="bi bi-credit-card"></i> Payment Methods</div></div>
+        <div class="row g-2" id="pdv2-methods"></div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-card mt-3">
+        <div class="section-title"><i class="bi bi-table"></i> Payment History</div>
+        <div class="table-responsive">
+            <table class="table table-hover table-sm" id="pdv2-paymentsTable">
+                <thead>
+                    @{
+                        ViewData["Title"] = "Payment Dashboard";
+                    }
+
+                    <div class="container py-4">
+                        <div class="alert alert-warning mb-0">
+                            Payment Dashboard has been removed.
+                        </div>
+                    </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        let pdTable;
+
+        function formatNumber(num){ return parseFloat(num || 0).toFixed(2).replace(/\d(?=(\d{3})+\.)/g,'$&,'); }
+
+        function loadDashboardData(){
+            const fromDate = $('#fromDate').val();
+            const toDate = $('#toDate').val();
+            $.ajax({
+                url: '/Booking/GetPaymentDashboardData',
+                method: 'GET',
+                data: { fromDate, toDate },
+                success: function(resp){
+                    updateSummary(resp.summary);
+                    updateMethods(resp.paymentMethods);
+                    updateTable(resp.payments);
+                },
+                error: function(){ alert('Failed to load dashboard data'); }
+            });
+        }
+
+        function updateSummary(summary){
+            if(summary && summary.length){
+                const d = summary[0];
+                $('#pdv2-totalPayments').text('₹'+formatNumber(d.totalPayments));
+                $('#pdv2-totalGst').text('₹'+formatNumber(d.totalGST));
+                $('#pdv2-totalTips').text('₹'+formatNumber(d.totalTips));
+                $('#pdv2-avgPayment').text('₹'+formatNumber(d.averagePayment));
+            }
+        }
+
+        function updateMethods(methods){
+            const c = $('#pdv2-methods'); c.empty();
+            if(methods && methods.length){
+                methods.forEach(m => {
+                    c.append(`
+                        <div class="col-xl-3 col-lg-4 col-md-4 col-sm-6 col-12">
+                            <div class="payment-method-card">
+                                <div class="method-name">${m.paymentMethod}</div>
+                                <div class="method-amount">₹${formatNumber(m.totalAmount)}</div>
+                                <div class="method-stats">
+                                    <span><i class="bi bi-receipt"></i> ${m.transactionCount}</span>
+                                    <span><i class="bi bi-bar-chart"></i> ₹${formatNumber(m.averageAmount)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `);
+                });
+            } else {
+                c.html('<div class="col-12 text-muted" style="font-size:12px">No payment methods found</div>');
+            }
+        }
+
+        function updateTable(rows){
+            const tb = $('#pdv2-paymentsBody'); tb.empty();
+            if(pdTable){ pdTable.destroy(); }
+            if(rows && rows.length){
+                rows.forEach(p => {
+                    tb.append(`
+                        <tr>
+                            <td>${p.receiptNumber}</td>
+                            <td>${p.bookingNumber}</td>
+                            <td>${p.guestName}</td>
+                            <td>${p.paymentMethod}</td>
+                            <td>₹${formatNumber(p.amount)}</td>
+                            <td>${p.status}</td>
+                            <td>${p.paidOn}</td>
+                            <td>${p.paymentReference}</td>
+                            <td>${p.roomType}</td>
+                        </tr>
+                    `);
+                });
+            } else {
+                tb.html('<tr><td colspan="9" class="text-muted">No payments found</td></tr>');
+            }
+            pdTable = $('#pdv2-paymentsTable').DataTable({ pageLength: 10, lengthChange: true });
+        }
+
+        function resetFilters(){
+            const now = new Date();
+            const first = new Date(now.getFullYear(), now.getMonth(), 1);
+            const last = new Date(now.getFullYear(), now.getMonth()+1, 0);
+            $('#fromDate').val(first.toISOString().split('T')[0]);
+            $('#toDate').val(last.toISOString().split('T')[0]);
+            loadDashboardData();
+        }
+
+        $(function(){ loadDashboardData(); });
+    </script>
+}

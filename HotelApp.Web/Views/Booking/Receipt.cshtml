@@ -717,7 +717,17 @@
                             <td class="text-center">@Model.Adults</td>
                             <td class="text-center">@Model.Children</td>
                             <td>@(Model.CustomerType == "B2B" ? "EP" : "CP")</td>
-                            <td class="text-right">@((Model.BaseAmount / Model.Nights).ToString("N2"))</td>
+                            <td class="text-right">
+                                @{
+                                    var ratePerNight = Model.Nights > 0 ? (Model.BaseAmount / Model.Nights) : 0;
+                                }
+                                @ratePerNight.ToString("N2")
+                                @if (Model.DiscountAmount > 0)
+                                {
+                                    var discountedRatePerNight = Model.Nights > 0 ? ((Model.BaseAmount - Model.DiscountAmount) / Model.Nights) : 0;
+                                    <br/><small style="color: #e74c3c; font-weight: 600;">After Discount: @discountedRatePerNight.ToString("N2")</small>
+                                }
+                            </td>
                             <td class="text-right">@Model.BaseAmount.ToString("N2")</td>
                         </tr>
                     </tbody>
@@ -726,27 +736,41 @@
                 <!-- Totals -->
                 <div class="totals-section">
                     <div class="total-row">
-                        <span class="total-label">Room&nbsp;Total</span>
+                        <span class="total-label">Room&nbsp;Total&nbsp;(Before&nbsp;Discount)</span>
                         <span class="total-value">₹ @Model.BaseAmount.ToString("N2")</span>
-                    </div>
-                    <div class="total-row">
-                        <span class="total-label">CGST @@ @((Model.TaxAmount / Model.BaseAmount * 100 / 2).ToString("0.##"))%</span>
-                        <span class="total-value">₹ @Model.CGSTAmount.ToString("N2")</span>
-                    </div>
-                    <div class="total-row">
-                        <span class="total-label">SGST @@ @((Model.TaxAmount / Model.BaseAmount * 100 / 2).ToString("0.##"))%</span>
-                        <span class="total-value">₹ @Model.SGSTAmount.ToString("N2")</span>
                     </div>
                     @if (Model.DiscountAmount > 0)
                     {
+                        var discountedAmount = Model.BaseAmount - Model.DiscountAmount;
                         <div class="total-row">
-                            <span class="total-label">Discounts</span>
-                            <span class="total-value" style="color: #4caf50;">- ₹ @Model.DiscountAmount.ToString("N2")</span>
+                            <span class="total-label">Discount&nbsp;Applied</span>
+                            <span class="total-value" style="color: #e74c3c;">- ₹ @Model.DiscountAmount.ToString("N2")</span>
+                        </div>
+                        <div class="total-row" style="font-weight: 600;">
+                            <span class="total-label">Subtotal&nbsp;(After&nbsp;Discount)</span>
+                            <span class="total-value">₹ @discountedAmount.ToString("N2")</span>
                         </div>
                     }
+                    else
+                    {
+                        var discountedAmount = Model.BaseAmount;
+                        <div class="total-row" style="font-weight: 600;">
+                            <span class="total-label">Subtotal</span>
+                            <span class="total-value">₹ @discountedAmount.ToString("N2")</span>
+                        </div>
+                    }
+                    @{
+                        // Use actual tax percentages from RateMaster instead of recalculating from amounts
+                        var cgstPercentage = ViewBag.CGSTPercentage != null ? (decimal)ViewBag.CGSTPercentage : 6m;
+                        var sgstPercentage = ViewBag.SGSTPercentage != null ? (decimal)ViewBag.SGSTPercentage : 6m;
+                    }
                     <div class="total-row">
-                        <span class="total-label">Taxes</span>
-                        <span class="total-value">₹ @Model.TaxAmount.ToString("N2")</span>
+                        <span class="total-label">CGST @@ @cgstPercentage.ToString("0.##")%</span>
+                        <span class="total-value">₹ @Model.CGSTAmount.ToString("N2")</span>
+                    </div>
+                    <div class="total-row">
+                        <span class="total-label">SGST @@ @sgstPercentage.ToString("0.##")%</span>
+                        <span class="total-value">₹ @Model.SGSTAmount.ToString("N2")</span>
                     </div>
                     <div class="total-row highlight">
                         <span class="total-label">Total Amount</span>

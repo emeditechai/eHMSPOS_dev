@@ -22,6 +22,8 @@ namespace HotelApp.Web.Models
         public decimal TaxPercentage { get; set; }
         public decimal CGSTPercentage { get; set; }
         public decimal SGSTPercentage { get; set; }
+        public decimal DiscountPercentage { get; set; }
+        public decimal DiscountAmount { get; set; }
         public decimal TotalRoomRate { get; set; }
         public decimal TotalTaxAmount { get; set; }
         public decimal TotalCGSTAmount { get; set; }

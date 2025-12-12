@@ -1,0 +1,605 @@
+@{
+    ViewData["Title"] = "Payment Dashboard";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        .pd2 .container-fluid { max-width: 1320px; }
+
+        .pd2 {
+            background: #f6f8fc;
+            padding: 0 0 24px;
+        }
+
+        .pd2-header {
+            background: #0b5ed7;
+            color: #fff;
+            padding: 14px 0;
+            box-shadow: 0 10px 22px rgba(11, 94, 215, .18);
+        }
+
+        .pd2-header .title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 22px;
+        }
+
+        .pd2-header .right {
+            font-weight: 700;
+            opacity: .95;
+        }
+
+        .pd2-card {
+            border: 0;
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 10px 22px rgba(16,24,40,.08);
+        }
+
+        .pd2-stat {
+            border-radius: 14px;
+            color: #fff;
+            padding: 14px 14px;
+            width: 260px;
+            height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: space-between;
+            box-shadow: 0 10px 20px rgba(16,24,40,.14);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pd2-stats-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .pd2-stat::after {
+            content: '';
+            position: absolute;
+            right: -46px;
+            top: -46px;
+            width: 180px;
+            height: 180px;
+            border-radius: 999px;
+            background: rgba(255,255,255,.12);
+        }
+
+        .pd2-stat .label {
+            font-weight: 800;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            opacity: .9;
+        }
+
+        .pd2-stat .value {
+            font-weight: 900;
+            font-size: 24px;
+            margin-top: 6px;
+            line-height: 1.05;
+        }
+
+        .pd2-stat .icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 18px;
+            display: grid;
+            place-items: center;
+            background: rgba(255,255,255,.18);
+            font-size: 22px;
+            z-index: 1;
+            align-self: flex-end;
+        }
+
+        .bg-green { background: linear-gradient(135deg, #168a4b, #0b6b38); }
+        .bg-cyan { background: linear-gradient(135deg, #12b8d6, #0a8fb3); }
+        .bg-amber { background: linear-gradient(135deg, #f5b301, #e49100); }
+
+        .pd2-section-title {
+            background: #0b5ed7;
+            color: #fff;
+            padding: 12px 14px;
+            font-weight: 800;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 10px 20px rgba(11, 94, 215, .18);
+        }
+
+        .pd2-empty {
+            background: #fff;
+            border-radius: 14px;
+            padding: 42px 12px;
+            text-align: center;
+            color: rgba(2,6,23,.65);
+            box-shadow: 0 10px 22px rgba(16,24,40,.08);
+        }
+
+        .pd2-empty i { font-size: 44px; opacity: .6; }
+        .pd2-empty .h { font-weight: 900; margin-top: 10px; }
+
+        .pd2-filter {
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 10px 22px rgba(16,24,40,.08);
+            padding: 18px;
+        }
+
+        .pd2-filter .btn { border-radius: 10px; font-weight: 800; }
+
+        .pd2-filter .form-control {
+            border-radius: 10px;
+            border: 1px solid rgba(15,23,42,.12);
+            padding: 10px 12px;
+        }
+
+        .pd2-filter .form-control:focus {
+            border-color: rgba(11, 94, 215, .7);
+            box-shadow: 0 0 0 .2rem rgba(11, 94, 215, .12);
+        }
+
+        .pd2-table {
+            border-radius: 14px;
+            overflow: hidden;
+            background: #fff;
+            box-shadow: 0 10px 22px rgba(16,24,40,.08);
+        }
+
+        .pd2-table .table-responsive {
+            overflow-x: hidden;
+        }
+
+        .pd2-table .table {
+            width: 100%;
+            table-layout: fixed;
+        }
+
+        .pd2-table th,
+        .pd2-table td {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .pd2-table td.pd2-muted { color: rgba(15, 23, 42, .55); }
+
+        .pd2-table thead th {
+            background: #0f172a;
+            color: #fff;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .35px;
+            padding: 12px 14px;
+            border: 0;
+        }
+
+        .pd2-table tbody td {
+            padding: 12px 14px;
+            font-size: 13px;
+            color: #0f172a;
+            border-top: 1px solid rgba(15,23,42,.06);
+        }
+
+        .pd2-table tbody tr:hover { background: rgba(11, 94, 215, .04); }
+
+        .pd2-methods { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+        .pd2-method-tile {
+            background: #fff;
+            border-radius: 18px;
+            padding: 14px 16px;
+            border: 1px solid rgba(15,23,42,.08);
+            box-shadow: 0 14px 28px rgba(16,24,40,.10);
+            transition: transform .12s ease, box-shadow .12s ease;
+        }
+        .pd2-method-tile:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 18px 36px rgba(16,24,40,.14);
+        }
+        .pd2-method-name {
+            font-weight: 900;
+            font-size: 16px;
+            line-height: 1.1;
+            color: rgba(15,23,42,.70);
+            letter-spacing: .4px;
+            text-transform: uppercase;
+        }
+        .pd2-method-amount {
+            font-weight: 900;
+            font-size: 28px;
+            margin-top: 6px;
+            color: #0f172a;
+            letter-spacing: .2px;
+        }
+
+        @@media (max-width: 768px) {
+            .pd2-header .title { font-size: 18px; }
+            .pd2-stats-row {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                padding-bottom: 6px;
+                -webkit-overflow-scrolling: touch;
+            }
+            .pd2-stat { flex: 0 0 auto; }
+            .pd2-stat .value { font-size: 22px; }
+        }
+
+        .pd2-loading {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            color: #fff;
+            font-weight: 800;
+        }
+
+        .pd2-error { display: none; }
+
+        .pd2-actions .btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: inline-grid;
+            place-items: center;
+            padding: 0;
+        }
+
+        .pd2-actions .btn i { font-size: 18px; }
+    </style>
+}
+
+<div class="pd2">
+    <div class="pd2-header">
+        <div class="container-fluid">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="title">
+                    <i class="bi bi-graph-up"></i>
+                    <span>Payment Dashboard</span>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="right">Today: @DateTime.Now.ToString("MMM dd, yyyy")</div>
+                    <div class="pd2-loading" id="pdLoading">
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        Loading…
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid mt-3">
+        <div class="pd2-stats-row">
+            <div class="pd2-stat bg-green">
+                <div>
+                    <div class="label">Today's Total Payments</div>
+                    <div class="value" id="statTotalCollection">₹0.00</div>
+                </div>
+                <div class="icon"><span>₹</span></div>
+            </div>
+            <div class="pd2-stat bg-cyan">
+                <div>
+                    <div class="label">Today's Total GST</div>
+                    <div class="value" id="statTotalGst">₹0.00</div>
+                </div>
+                <div class="icon"><i class="bi bi-percent"></i></div>
+            </div>
+            <div class="pd2-stat bg-amber">
+                <div>
+                    <div class="label">Total Due Amount</div>
+                    <div class="value" id="statDueAmount">₹0.00</div>
+                </div>
+                <div class="icon"><i class="bi bi-exclamation-circle"></i></div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="pd2-section-title"><i class="bi bi-credit-card"></i> Today's Payment Methods</div>
+            </div>
+            <div class="col-12 mt-3">
+                <div class="pd2-methods" id="methodGrid"></div>
+                <div class="pd2-empty" id="methodsEmpty" style="display:none;">
+                    <i class="bi bi-credit-card"></i>
+                    <div class="h">No Payments Today</div>
+                    <div>No payment transactions have been processed today.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="pd2-filter">
+                    <div class="d-flex align-items-center gap-2 mb-3" style="font-weight:900;">
+                        <i class="bi bi-funnel"></i>
+                        <span>Payment History Filter</span>
+                    </div>
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">From Date</label>
+                            <input class="form-control" type="date" id="fromDate" value="@ViewBag.FromDate" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">To Date</label>
+                            <input class="form-control" type="date" id="toDate" value="@ViewBag.ToDate" />
+                        </div>
+                        <div class="col-md-4 d-flex gap-2">
+                            <button class="btn btn-primary" id="btnApply"><i class="bi bi-search me-1"></i>Filter</button>
+                            <button class="btn btn-outline-secondary" id="btnReset"><i class="bi bi-arrow-clockwise me-1"></i>Reset</button>
+                        </div>
+                    </div>
+                    <div class="alert alert-danger mt-3 mb-0 pd2-error" id="pdError"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="pd2-table">
+                    <div class="p-3 border-bottom d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2" style="font-weight:900;">
+                            <i class="bi bi-clock-history"></i>
+                            <span>Payment History</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary" id="paymentCountBadge">0 Records</span>
+                            <div class="pd2-actions d-flex align-items-center gap-2">
+                                <button class="btn btn-outline-secondary" id="btnExportCsv" title="Export CSV" type="button">
+                                    <i class="bi bi-filetype-csv"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary" id="btnExportExcel" title="Export Excel" type="button">
+                                    <i class="bi bi-file-earmark-excel"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary" id="btnExportPdf" title="Export PDF" type="button">
+                                    <i class="bi bi-filetype-pdf"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table mb-0" id="paymentsTable">
+                            <thead>
+                                <tr>
+                                    <th>Receipt No</th>
+                                    <th>Booking No</th>
+                                    <th class="text-end">Receipt Amount</th>
+                                    <th class="text-end">GST Amount</th>
+                                    <th>Created By</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        let lastPayments = [];
+
+        const formatCurrency = (v) => {
+            const n = Number(v || 0);
+            return n.toLocaleString('en-IN', { style: 'currency', currency: 'INR' });
+        };
+
+        const getExportRows = () => {
+            const items = lastPayments || [];
+            return items.map(p => {
+                const createdBy = (p.createdBy || p.createdByName || p.userName || '').toString().trim();
+                return {
+                    receiptNo: p.receiptNo || '',
+                    bookingNo: p.bookingNo || '',
+                    receiptAmount: Number(p.receiptAmount || 0),
+                    gstAmount: Number(p.gstAmount || 0),
+                    createdBy: createdBy || ''
+                };
+            });
+        };
+
+        const downloadBlob = (blob, filename) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 500);
+        };
+
+        const exportCsv = () => {
+            const rows = getExportRows();
+            const header = ['Receipt No', 'Booking No', 'Receipt Amount', 'GST Amount', 'Created By'];
+            const escape = (v) => {
+                const s = String(v ?? '');
+                if (/[\n\r,\"]/g.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+                return s;
+            };
+
+            const lines = [header.map(escape).join(',')];
+            rows.forEach(r => {
+                lines.push([
+                    r.receiptNo,
+                    r.bookingNo,
+                    r.receiptAmount.toFixed(2),
+                    r.gstAmount.toFixed(2),
+                    r.createdBy
+                ].map(escape).join(','));
+            });
+
+            const csv = '\uFEFF' + lines.join('\n');
+            downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `PaymentHistory_${document.getElementById('fromDate').value}_${document.getElementById('toDate').value}.csv`);
+        };
+
+        const exportExcel = () => {
+            // Simple Excel-compatible export by using an HTML table and .xls extension.
+            const rows = getExportRows();
+            const escHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            let html = '<table border="1">';
+            html += '<tr><th>Receipt No</th><th>Booking No</th><th>Receipt Amount</th><th>GST Amount</th><th>Created By</th></tr>';
+            rows.forEach(r => {
+                html += `<tr><td>${escHtml(r.receiptNo)}</td><td>${escHtml(r.bookingNo)}</td><td>${r.receiptAmount.toFixed(2)}</td><td>${r.gstAmount.toFixed(2)}</td><td>${escHtml(r.createdBy)}</td></tr>`;
+            });
+            html += '</table>';
+            const content = `<!doctype html><html><head><meta charset="utf-8"></head><body>${html}</body></html>`;
+            downloadBlob(new Blob([content], { type: 'application/vnd.ms-excel;charset=utf-8;' }), `PaymentHistory_${document.getElementById('fromDate').value}_${document.getElementById('toDate').value}.xls`);
+        };
+
+        const exportPdf = async () => {
+            const rows = getExportRows();
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                alert('PDF export library failed to load. Please refresh and try again.');
+                return;
+            }
+
+            // autoTable may attach to jsPDF.API OR to doc.autoTable depending on build.
+            const jsPDF = window.jspdf.jsPDF;
+
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+            const from = document.getElementById('fromDate').value;
+            const to = document.getElementById('toDate').value;
+            doc.setFontSize(14);
+            doc.text(`Payment History (${from} to ${to})`, 40, 40);
+
+            const autoTableFn = doc.autoTable || (jsPDF.API && jsPDF.API.autoTable);
+            if (!autoTableFn) {
+                alert('PDF table plugin failed to load. Please refresh and try again.');
+                return;
+            }
+
+            (doc.autoTable || autoTableFn).call(doc, {
+                startY: 60,
+                head: [['Receipt No', 'Booking No', 'Receipt Amount', 'GST Amount', 'Created By']],
+                body: rows.map(r => [
+                    r.receiptNo,
+                    r.bookingNo,
+                    r.receiptAmount.toFixed(2),
+                    r.gstAmount.toFixed(2),
+                    r.createdBy
+                ]),
+                styles: { fontSize: 10 },
+                headStyles: { fillColor: [15, 23, 42] }
+            });
+
+            doc.save(`PaymentHistory_${from}_${to}.pdf`);
+        };
+
+        const setLoading = (isLoading) => {
+            const el = document.getElementById('pdLoading');
+            if (el) el.style.display = isLoading ? 'flex' : 'none';
+            document.getElementById('btnApply').disabled = isLoading;
+            document.getElementById('btnReset').disabled = isLoading;
+        };
+
+        const showError = (message) => {
+            const el = document.getElementById('pdError');
+            if (!el) return;
+            if (!message) {
+                el.style.display = 'none';
+                el.textContent = '';
+                return;
+            }
+            el.style.display = 'block';
+            el.textContent = message;
+        };
+
+        const renderMethods = (methods) => {
+            const grid = document.getElementById('methodGrid');
+            const empty = document.getElementById('methodsEmpty');
+            grid.innerHTML = '';
+
+            if (!methods || methods.length === 0) {
+                if (empty) empty.style.display = 'block';
+                return;
+            }
+
+            if (empty) empty.style.display = 'none';
+
+            (methods || []).forEach(m => {
+                const tile = document.createElement('div');
+                tile.className = 'pd2-method-tile';
+                tile.innerHTML = `
+                    <div class="pd2-method-name">${(m.paymentMethod || 'Unknown')}</div>
+                    <div class="pd2-method-amount">${formatCurrency(m.totalAmount)}</div>
+                `;
+                grid.appendChild(tile);
+            });
+        };
+
+        const renderPayments = (payments) => {
+            const tbody = document.querySelector('#paymentsTable tbody');
+            const badge = document.getElementById('paymentCountBadge');
+            tbody.innerHTML = '';
+            const items = payments || [];
+            lastPayments = items;
+            if (badge) badge.textContent = `${items.length} Records`;
+
+            items.forEach(p => {
+                const createdBy = (p.createdBy || p.createdByName || p.userName || '').toString().trim();
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${p.receiptNo || ''}</td>
+                    <td>${p.bookingNo || ''}</td>
+                    <td class="text-end">${formatCurrency(p.receiptAmount)}</td>
+                    <td class="text-end">${formatCurrency(p.gstAmount)}</td>
+                    <td class="${createdBy ? '' : 'pd2-muted'}">${createdBy || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        };
+
+        const loadDashboard = async () => {
+            showError('');
+            setLoading(true);
+            try {
+                const fromDate = document.getElementById('fromDate').value;
+                const toDate = document.getElementById('toDate').value;
+                const url = '@Url.Action("GetPaymentDashboardData", "Booking")' + `?fromDate=${encodeURIComponent(fromDate)}&toDate=${encodeURIComponent(toDate)}`;
+
+                const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                const data = await res.json();
+                if (!res.ok || data.error) throw new Error(data.error || `Request failed (${res.status})`);
+
+                document.getElementById('statTotalCollection').textContent = formatCurrency(data.summary?.totalCollection);
+                document.getElementById('statTotalGst').textContent = formatCurrency(data.summary?.totalGst);
+                document.getElementById('statDueAmount').textContent = formatCurrency(data.summary?.totalDueAmount);
+
+                renderMethods(data.paymentMethods);
+                renderPayments(data.payments);
+            } catch (e) {
+                showError(e.message || 'Failed to load dashboard');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        document.getElementById('btnApply').addEventListener('click', () => loadDashboard());
+        document.getElementById('btnReset').addEventListener('click', () => {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const v = `${yyyy}-${mm}-${dd}`;
+            document.getElementById('fromDate').value = v;
+            document.getElementById('toDate').value = v;
+            loadDashboard();
+        });
+
+        document.getElementById('btnExportCsv').addEventListener('click', () => exportCsv());
+        document.getElementById('btnExportExcel').addEventListener('click', () => exportExcel());
+        document.getElementById('btnExportPdf').addEventListener('click', () => exportPdf());
+
+        loadDashboard();
+    </script>
+}
+

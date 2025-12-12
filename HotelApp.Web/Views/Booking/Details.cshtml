@@ -814,12 +814,17 @@
             <div class="financial-label">Room Total</div>
             <div class="financial-amount">₹@Model.BaseAmount.ToString("N2")</div>
         </div>
+        @{
+            // Use actual tax percentages from RateMaster instead of recalculating from amounts
+            var cgstPercentage = ViewBag.CGSTPercentage != null ? (decimal)ViewBag.CGSTPercentage : 6m;
+            var sgstPercentage = ViewBag.SGSTPercentage != null ? (decimal)ViewBag.SGSTPercentage : 6m;
+        }
         <div class="financial-item">
-            <div class="financial-label">CGST @((Model.BaseAmount > 0 ? (Model.CGSTAmount / Model.BaseAmount * 100) : 0).ToString("0.00"))%</div>
+            <div class="financial-label">CGST @cgstPercentage.ToString("0.##")%</div>
             <div class="financial-amount">₹@Model.CGSTAmount.ToString("N2")</div>
         </div>
         <div class="financial-item">
-            <div class="financial-label">SGST @((Model.BaseAmount > 0 ? (Model.SGSTAmount / Model.BaseAmount * 100) : 0).ToString("0.00"))%</div>
+            <div class="financial-label">SGST @sgstPercentage.ToString("0.##")%</div>
             <div class="financial-amount">₹@Model.SGSTAmount.ToString("N2")</div>
         </div>
         <div class="financial-item">

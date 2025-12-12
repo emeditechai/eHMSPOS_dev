@@ -349,8 +349,21 @@ public class RoomsController : BaseController
                 var roomTypeId = kvp.Key;
                 var roomData = kvp.Value;
                 
-                // Get the effective rate for this date and room type
+                // Get the effective rate for this date and room type (WITHOUT discount applied yet)
                 var rateInfo = GetEffectiveRateForDate(allRates, roomTypeId, start);
+                
+                // Calculate discount
+                decimal originalRate = rateInfo.baseRate;
+                decimal discountPercent = 0;
+                decimal discountedRate = originalRate;
+                decimal discountAmount = 0;
+                
+                if (!string.IsNullOrEmpty(roomData.discount) && decimal.TryParse(roomData.discount, out var discount))
+                {
+                    discountPercent = discount;
+                    discountedRate = Math.Round(originalRate * (1 - discountPercent / 100m), 2, MidpointRounding.AwayFromZero);
+                    discountAmount = originalRate - discountedRate;
+                }
                 
                 return new
                 {
@@ -359,7 +372,10 @@ public class RoomsController : BaseController
                     totalRooms = roomData.totalRooms,
                     availableRooms = roomData.availableRooms,
                     occupiedRooms = roomData.totalRooms - roomData.availableRooms,
-                    baseRate = rateInfo.baseRate,
+                    originalRate = originalRate,
+                    baseRate = discountedRate,  // This is the discounted rate
+                    discountPercent = discountPercent,
+                    discountAmount = discountAmount,
                     extraPaxRate = rateInfo.extraPaxRate,
                     rateType = rateInfo.rateType,
                     eventName = rateInfo.eventName,

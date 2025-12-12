@@ -87,6 +87,131 @@ namespace HotelApp.Web.Controllers
             return View(viewModel);
         }
 
+        [HttpGet]
+        public IActionResult PaymentDashboard(DateTime? fromDate, DateTime? toDate)
+        {
+            // Default to today
+            var from = (fromDate ?? DateTime.Today).Date;
+            var to = (toDate ?? DateTime.Today).Date;
+
+            ViewBag.FromDate = from.ToString("yyyy-MM-dd");
+            ViewBag.ToDate = to.ToString("yyyy-MM-dd");
+            ViewBag.FromDateDisplay = from.ToString("dd/MM/yyyy");
+            ViewBag.ToDateDisplay = to.ToString("dd/MM/yyyy");
+
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPaymentDashboardData(DateTime fromDate, DateTime toDate)
+        {
+            try
+            {
+                using var connection = new Microsoft.Data.SqlClient.SqlConnection(_bookingRepository.ConnectionString);
+                await connection.OpenAsync();
+
+                var command = new Microsoft.Data.SqlClient.SqlCommand("sp_GetPaymentDashboardData", connection)
+                {
+                    CommandType = System.Data.CommandType.StoredProcedure
+                };
+
+                command.Parameters.AddWithValue("@BranchID", CurrentBranchID);
+                command.Parameters.AddWithValue("@FromDate", fromDate.Date);
+                command.Parameters.AddWithValue("@ToDate", toDate.Date);
+
+                decimal totalCollection = 0m;
+                decimal totalGst = 0m;
+                int totalPaymentCount = 0;
+                decimal totalDueAmount = 0m;
+
+                var paymentMethods = new List<object>();
+                var payments = new List<object>();
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                // 1) Summary
+                if (await reader.ReadAsync())
+                {
+                    totalCollection = reader.GetDecimal(reader.GetOrdinal("TotalPayments"));
+                    totalGst = reader.GetDecimal(reader.GetOrdinal("TotalGST"));
+                    totalPaymentCount = reader.GetInt32(reader.GetOrdinal("PaymentCount"));
+                }
+
+                // 2) Payment methods
+                if (await reader.NextResultAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        paymentMethods.Add(new
+                        {
+                            paymentMethod = reader.IsDBNull(reader.GetOrdinal("PaymentMethod")) ? "Unknown" : reader.GetString(reader.GetOrdinal("PaymentMethod")),
+                            totalAmount = reader.GetDecimal(reader.GetOrdinal("TotalAmount")),
+                            transactionCount = reader.GetInt32(reader.GetOrdinal("TransactionCount"))
+                        });
+                    }
+                }
+
+                // 3) Payment details
+                var bookingDueMap = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+                if (await reader.NextResultAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        var bookingNumber = reader.IsDBNull(reader.GetOrdinal("BookingNumber")) ? string.Empty : reader.GetString(reader.GetOrdinal("BookingNumber"));
+                        var receiptNo = reader.IsDBNull(reader.GetOrdinal("ReceiptNumber")) ? string.Empty : reader.GetString(reader.GetOrdinal("ReceiptNumber"));
+                        var amount = reader.GetDecimal(reader.GetOrdinal("Amount"));
+
+                        // Allocate GST proportionally to each payment amount.
+                        decimal gstAmount = 0m;
+                        if (totalCollection > 0)
+                        {
+                            gstAmount = Math.Round((amount / totalCollection) * totalGst, 2);
+                        }
+
+                        // Track due (balance) per booking from the result set.
+                        var bookingBalanceOrdinal = reader.GetOrdinal("BookingBalance");
+                        var bookingBalance = reader.IsDBNull(bookingBalanceOrdinal) ? 0m : reader.GetDecimal(bookingBalanceOrdinal);
+                        if (!string.IsNullOrWhiteSpace(bookingNumber) && !bookingDueMap.ContainsKey(bookingNumber))
+                        {
+                            bookingDueMap[bookingNumber] = bookingBalance;
+                        }
+
+                        var createdByOrdinal = reader.GetOrdinal("CreatedBy");
+                        var createdBy = reader.IsDBNull(createdByOrdinal) ? string.Empty : reader.GetString(createdByOrdinal);
+
+                        payments.Add(new
+                        {
+                            receiptNo,
+                            bookingNo = bookingNumber,
+                            receiptAmount = amount,
+                            gstAmount,
+                            createdBy
+                        });
+                    }
+                }
+
+                // Due amount (sum of booking balances from the filtered result set)
+                totalDueAmount = bookingDueMap.Values.Where(v => v > 0).Sum();
+
+                return Json(new
+                {
+                    summary = new
+                    {
+                        totalCollection,
+                        totalGst,
+                        totalPaymentCount,
+                        totalDueAmount
+                    },
+                    paymentMethods,
+                    payments
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
         public async Task<IActionResult> ExportToExcel(DateTime? fromDate, DateTime? toDate, string? statusFilter)
         {
             // Default to last 3 days if no dates provided
@@ -265,6 +390,15 @@ namespace HotelApp.Web.Controllers
             var banks = await _bankRepository.GetAllActiveAsync();
             ViewBag.Banks = banks;
 
+            // Get rate master to determine actual tax percentage
+            if (booking.RatePlanId.HasValue)
+            {
+                var (taxPercentage, cgstPercentage, sgstPercentage) = await _bookingRepository.GetRateMasterTaxPercentagesAsync(booking.RatePlanId.Value);
+                ViewBag.TaxPercentage = taxPercentage;
+                ViewBag.CGSTPercentage = cgstPercentage;
+                ViewBag.SGSTPercentage = sgstPercentage;
+            }
+
             return View(booking);
         }
 
@@ -294,6 +428,15 @@ namespace HotelApp.Web.Controllers
             // Get assigned room numbers
             var assignedRooms = await _bookingRepository.GetAssignedRoomNumbersAsync(booking.Id);
             ViewBag.AssignedRooms = assignedRooms;
+
+            // Get rate master to determine actual tax percentage (not recalculated from amounts)
+            if (booking.RatePlanId.HasValue)
+            {
+                var (taxPercentage, cgstPercentage, sgstPercentage) = await _bookingRepository.GetRateMasterTaxPercentagesAsync(booking.RatePlanId.Value);
+                ViewBag.TaxPercentage = taxPercentage;
+                ViewBag.CGSTPercentage = cgstPercentage;
+                ViewBag.SGSTPercentage = sgstPercentage;
+            }
 
             return View(booking);
         }
@@ -431,18 +574,33 @@ namespace HotelApp.Web.Controllers
                 return View(model);
             }
 
-            // Check room availability but don't assign yet
-            var availableRoom = await _bookingRepository.FindAvailableRoomAsync(model.RoomTypeId, model.CheckInDate, model.CheckOutDate);
-            if (availableRoom == null)
+            // Check room capacity availability (supports multi-room bookings)
+            var hasCapacity = await _bookingRepository.CheckRoomCapacityAvailabilityAsync(
+                model.RoomTypeId, 
+                CurrentBranchID, 
+                model.CheckInDate, 
+                model.CheckOutDate, 
+                model.RequiredRooms
+            );
+            
+            if (!hasCapacity)
             {
-                ModelState.AddModelError(string.Empty, "No rooms are available for the selected room type and dates.");
+                var roomType = await _roomRepository.GetRoomTypeByIdAsync(model.RoomTypeId);
+                var roomTypeName = roomType?.TypeName ?? "selected room type";
+                ModelState.AddModelError(string.Empty, 
+                    $"Insufficient room capacity for {roomTypeName}. Only limited rooms are available for the selected dates. " +
+                    $"Please reduce the number of required rooms or select different dates.");
                 return View(model);
             }
 
             var bookingNumber = GenerateBookingNumber();
             var createdBy = GetCurrentUserId();
-            var discountAmount = 0m;
             var balanceAmount = quote.GrandTotal - model.DepositAmount;
+
+            // Calculate original base amount before discount
+            // quote.TotalRoomRate already contains the amount AFTER discount
+            // We need to add back the discount to get the original amount
+            decimal originalBaseAmount = quote.TotalRoomRate + quote.DiscountAmount;
 
             var booking = new Booking
             {
@@ -459,11 +617,11 @@ namespace HotelApp.Web.Controllers
                 RequiredRooms = model.RequiredRooms,
                 RoomId = null,
                 RatePlanId = quote.RatePlanId,
-                BaseAmount = quote.TotalRoomRate,
+                BaseAmount = originalBaseAmount, // Store original amount before discount
                 TaxAmount = quote.TotalTaxAmount,
                 CGSTAmount = quote.TotalCGSTAmount,
                 SGSTAmount = quote.TotalSGSTAmount,
-                DiscountAmount = discountAmount,
+                DiscountAmount = quote.DiscountAmount, // Store actual discount amount
                 TotalAmount = quote.GrandTotal,
                 DepositAmount = model.DepositAmount,
                 BalanceAmount = balanceAmount,

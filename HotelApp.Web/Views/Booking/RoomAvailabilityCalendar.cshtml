@@ -917,7 +917,10 @@
                         }
                         
                         const booked = total - available;
-                        const pricePerNight = roomData.baseRate;
+                        const originalRate = roomData.originalRate || roomData.baseRate;
+                        const discountedRate = roomData.baseRate;
+                        const discountPercent = roomData.discountPercent || 0;
+                        const discountAmount = roomData.discountAmount || 0;
                         const rateType = roomData.rateType || 'Standard';
                         const eventName = roomData.eventName || '';
                         
@@ -939,14 +942,15 @@
                         bodyHtml += `
                             <td>
                                 <div class="availability-cell ${availabilityClass}" 
-                                     onclick="cellClicked('${roomType.name}', '${dateStr}', ${available}, ${total}, ${booked}, ${pricePerNight}, '${rateType}', '${eventName}')"
-                                     title="${roomType.name} - ${dateStr}\n${available} available | ${booked} booked | ${total} total\n₹${pricePerNight.toLocaleString()}/night (${rateType})${eventName ? '\n' + eventName : ''}">
+                                     onclick="cellClicked('${roomType.name}', '${dateStr}', ${available}, ${total}, ${booked}, ${originalRate}, ${discountedRate}, ${discountPercent}, ${discountAmount}, '${rateType}', '${eventName}')"
+                                     title="${roomType.name} - ${dateStr}\n${available} available | ${booked} booked | ${total} total\n${discountPercent > 0 ? 'Original: ₹' + originalRate.toLocaleString() + '\nDiscount: ' + discountPercent + '%\n' : ''}Rate: ₹${discountedRate.toLocaleString()}/night (${rateType})${eventName ? '\n' + eventName : ''}">
                                     <div class="available-count">${available}</div>
                                     <div class="available-label">${available === 0 ? '🔒 Full' : '✅ Available'}</div>
                                     <div class="booked-count">📋 ${booked} Booked</div>
                                     <div class="cell-price">
                                         <span class="rate-badge ${rateBadgeClass}">${rateIcon} ${rateBadge}</span>
-                                        <span class="rate-amount">₹${pricePerNight.toLocaleString()}</span>
+                                        ${discountPercent > 0 ? `<span class="rate-amount" style="text-decoration: line-through; opacity: 0.6; font-size: 8px;">₹${originalRate.toLocaleString()}</span>` : ''}
+                                        <span class="rate-amount" style="${discountPercent > 0 ? 'color: #10b981; font-weight: 800;' : ''}">₹${discountedRate.toLocaleString()}</span>
                                     </div>
                                 </div>
                             </td>
@@ -969,7 +973,7 @@
             tbody.innerHTML = bodyHtml;
         }
         
-        function cellClicked(roomTypeName, date, available, total, booked, pricePerNight, rateType, eventName) {
+        function cellClicked(roomTypeName, date, available, total, booked, originalRate, discountedRate, discountPercent, discountAmount, rateType, eventName) {
             const dateObj = new Date(date + 'T00:00:00');
             const formattedDate = dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             
@@ -983,6 +987,18 @@
                 rateTypeLabel = 'Weekend Rate';
             }
             
+            // Build pricing HTML
+            let pricingHtml = '';
+            if (discountPercent > 0) {
+                pricingHtml = `
+                    <p style="margin: 10px 0;"><strong>💵 Original Rate:</strong> <span style="text-decoration: line-through; color: #9ca3af;">₹${originalRate.toLocaleString()}/night</span></p>
+                    <p style="margin: 10px 0;"><strong>🎁 Discount:</strong> <span style="color: #ef4444; font-weight: 600;">${discountPercent}% OFF (Save ₹${discountAmount.toLocaleString()})</span></p>
+                    <p style="margin: 10px 0;"><strong>✨ Discounted Rate:</strong> <span style="color: #10b981; font-size: 18px; font-weight: 700;">₹${discountedRate.toLocaleString()}/night</span></p>
+                `;
+            } else {
+                pricingHtml = `<p style="margin: 10px 0;"><strong>💵 Price:</strong> ₹${discountedRate.toLocaleString()}/night</p>`;
+            }
+            
             Swal.fire({
                 title: roomTypeName,
                 html: `
@@ -994,7 +1010,7 @@
                         <p style="margin: 10px 0;"><strong>Occupancy:</strong> ${((total - available) * 100 / total).toFixed(0)}%</p>
                         <hr style="margin: 15px 0; border: none; border-top: 1px solid #e5e7eb;">
                         <p style="margin: 10px 0;"><strong>${rateTypeIcon} Rate Type:</strong> ${rateTypeLabel}</p>
-                        <p style="margin: 10px 0;"><strong>💵 Price:</strong> ₹${pricePerNight ? pricePerNight.toLocaleString() : 'N/A'}/night</p>
+                        ${pricingHtml}
                     </div>
                 `,
                 icon: 'info',
