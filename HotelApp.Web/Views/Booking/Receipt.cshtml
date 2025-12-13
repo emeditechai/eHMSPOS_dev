@@ -875,7 +875,7 @@
                                         <br/><small style="color: #e74c3c; font-weight: 600;">After Discount: @discountedRatePerNight.ToString("N2")</small>
                                     }
                                 </td>
-                                <td class="text-right">@((Model.BaseAmount + Model.DiscountAmount).ToString("N2"))</td>
+                                <td class="text-right">@(preDiscountTotalFallback.ToString("N2"))</td>
                             </tr>
                         }
                     </tbody>
