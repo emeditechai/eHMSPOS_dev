@@ -48,6 +48,7 @@ namespace HotelApp.Web.Models
         public List<BookingGuest> Guests { get; set; } = new();
         public List<BookingPayment> Payments { get; set; } = new();
         public List<BookingRoomNight> RoomNights { get; set; } = new();
+        public List<ReservationRoomNight> ReservationRoomNights { get; set; } = new();
         public List<BookingRoom> AssignedRooms { get; set; } = new();
     }
 
@@ -112,5 +113,20 @@ namespace HotelApp.Web.Models
         public decimal CGSTAmount { get; set; }
         public decimal SGSTAmount { get; set; }
         public string Status { get; set; } = "Reserved";
+    }
+
+    public class ReservationRoomNight
+    {
+        public int Id { get; set; }
+        public int BookingId { get; set; }
+        public DateTime StayDate { get; set; }
+        public decimal RateAmount { get; set; }
+        public decimal ActualBaseRate { get; set; }
+        public decimal DiscountAmount { get; set; }
+        public decimal TaxAmount { get; set; }
+        public decimal CGSTAmount { get; set; }
+        public decimal SGSTAmount { get; set; }
+        public string Status { get; set; } = "Reserved";
+        public DateTime CreatedDate { get; set; }
     }
 }

@@ -697,7 +697,14 @@
 
             @{
                 // Compute totals once (used by both Plan Details and Totals sections)
-                var roomNightsForTotals = (Model.RoomNights ?? new List<HotelApp.Web.Models.BookingRoomNight>()).ToList();
+                var assignedRoomsForReceipt = ViewBag.AssignedRooms as IEnumerable<string>;
+                var hasAssignedRoomsForReceipt = assignedRoomsForReceipt != null && assignedRoomsForReceipt.Any();
+
+                // Use ReservationRoomNights only before room assignment.
+                // Keep current workflow unchanged: once rooms are assigned, BookingRoomNights continues to drive totals.
+                var roomNightsForTotals = hasAssignedRoomsForReceipt
+                    ? (Model.RoomNights ?? new List<HotelApp.Web.Models.BookingRoomNight>()).Cast<dynamic>().ToList()
+                    : (Model.ReservationRoomNights ?? new List<HotelApp.Web.Models.ReservationRoomNight>()).Cast<dynamic>().ToList();
                 var hasNightBreakdownForTotals = roomNightsForTotals.Any();
 
                 // IMPORTANT:
@@ -713,23 +720,23 @@
                     && roomNightsForTotals.Any(n => n.ActualBaseRate > 0 || n.DiscountAmount > 0);
 
                 var afterDiscountTotal = hasNightBreakdownForTotals
-                    ? roomNightsForTotals.Sum(n => n.RateAmount) * roomMultiplierForTotals
+                    ? ((decimal)roomNightsForTotals.Sum(n => (decimal)n.RateAmount) * roomMultiplierForTotals)
                     : Model.BaseAmount;
 
                 var taxTotal = hasNightBreakdownForTotals
-                    ? roomNightsForTotals.Sum(n => n.TaxAmount) * roomMultiplierForTotals
+                    ? ((decimal)roomNightsForTotals.Sum(n => (decimal)n.TaxAmount) * roomMultiplierForTotals)
                     : Model.TaxAmount;
 
                 var cgstTotal = hasNightBreakdownForTotals
-                    ? roomNightsForTotals.Sum(n => n.CGSTAmount) * roomMultiplierForTotals
+                    ? ((decimal)roomNightsForTotals.Sum(n => (decimal)n.CGSTAmount) * roomMultiplierForTotals)
                     : Model.CGSTAmount;
 
                 var sgstTotal = hasNightBreakdownForTotals
-                    ? roomNightsForTotals.Sum(n => n.SGSTAmount) * roomMultiplierForTotals
+                    ? ((decimal)roomNightsForTotals.Sum(n => (decimal)n.SGSTAmount) * roomMultiplierForTotals)
                     : Model.SGSTAmount;
 
                 var discountAmount = hasNightPricingColumns
-                    ? Math.Round(roomNightsForTotals.Sum(n => n.DiscountAmount) * roomMultiplierForTotals, 2, MidpointRounding.AwayFromZero)
+                    ? Math.Round(((decimal)roomNightsForTotals.Sum(n => (decimal)n.DiscountAmount) * roomMultiplierForTotals), 2, MidpointRounding.AwayFromZero)
                     : Model.DiscountAmount;
 
                 // Backward-compatible: if older data doesn't have per-night discount, reconstruct from discount percentage.
@@ -755,6 +762,7 @@
                         <tr>
                             <th>Room Category</th>
                             <th class="text-center">Nights</th>
+                            <th class="text-center">Room Qty</th>
                             <th class="text-center">Adults</th>
                             <th class="text-center">Children</th>
                             <th>Meal Plan</th>
@@ -765,20 +773,28 @@
                     <tbody>
                         @{
                             var rooms = Model.RequiredRooms > 0 ? Model.RequiredRooms : 1;
-                            var roomNights = (Model.RoomNights ?? new List<HotelApp.Web.Models.BookingRoomNight>())
-                                .OrderBy(n => n.StayDate)
-                                .ToList();
+                            var roomNights = hasAssignedRoomsForReceipt
+                                ? (Model.RoomNights ?? new List<HotelApp.Web.Models.BookingRoomNight>())
+                                    .Cast<dynamic>()
+                                    .OrderBy(n => n.StayDate)
+                                    .ToList()
+                                : (Model.ReservationRoomNights ?? new List<HotelApp.Web.Models.ReservationRoomNight>())
+                                    .Cast<dynamic>()
+                                    .OrderBy(n => n.StayDate)
+                                    .ToList();
                             var hasNightBreakdown = roomNights.Any();
 
                             // Group by actual AFTER-discount nightly rate so different dates show separately.
                             // Important: sort groups by date so the receipt reflects the stay chronology.
+                            // Use dynamic groups because the source collection can be BookingRoomNight or ReservationRoomNight.
                             var groupedNightRates = hasNightBreakdown
                                 ? roomNights
-                                    .GroupBy(n => Math.Round(n.RateAmount, 2, MidpointRounding.AwayFromZero))
-                                    .OrderBy(g => g.Min(x => x.StayDate))
-                                    .ThenByDescending(g => g.Key)
+                                    .GroupBy(n => Math.Round((decimal)n.RateAmount, 2, MidpointRounding.AwayFromZero))
+                                    .Select(g => (dynamic)new { Rate = g.Key, Items = g.ToList() })
+                                    .OrderBy(g => ((IEnumerable<dynamic>)g.Items).Min(x => ((DateTime)x.StayDate)))
+                                    .ThenByDescending(g => (decimal)g.Rate)
                                     .ToList()
-                                : new List<IGrouping<decimal, HotelApp.Web.Models.BookingRoomNight>>();
+                                : new List<dynamic>();
 
                             // Discount is shown in totals area; Plan Details focuses on visible per-night pricing.
                             // If nights are missing, fall back to a single summarized row.
@@ -790,26 +806,31 @@
                             {
                                 // Nights should represent distinct stay dates for the booking.
                                 // BookingRoomNights may contain one row per room per date, so counting rows can inflate nights.
-                                var groupNights = g.Select(x => x.StayDate.Date).Distinct().Count();
-                                var discountedRatePerNightPerRoom = g.Key;
-                                var discountedGroupTotalPerRoom = Math.Round(g.Sum(x => x.RateAmount), 2, MidpointRounding.AwayFromZero);
+                                var items = (IEnumerable<dynamic>)g.Items;
+                                var groupNights = items.Select(x => ((DateTime)x.StayDate).Date).Distinct().Count();
+                                decimal discountedRatePerNightPerRoom = (decimal)g.Rate;
+                                var discountedGroupTotalPerRoom = Math.Round(items.Sum(x => (decimal)x.RateAmount), 2, MidpointRounding.AwayFromZero);
 
                                 // Prefer persisted pricing columns.
-                                var hasActualNightRates = g.Any(x => x.ActualBaseRate > 0 || x.DiscountAmount > 0);
+                                var hasActualNightRates = items.Any(x => (decimal)x.ActualBaseRate > 0 || (decimal)x.DiscountAmount > 0);
                                 var actualRatePerNightPerRoom = hasActualNightRates
-                                    ? Math.Round(g.Average(x => x.ActualBaseRate), 2, MidpointRounding.AwayFromZero)
+                                    ? Math.Round(items.Average(x => (decimal)x.ActualBaseRate), 2, MidpointRounding.AwayFromZero)
                                     : discountedRatePerNightPerRoom;
                                 var actualGroupTotalPerRoom = hasActualNightRates
-                                    ? Math.Round(g.Sum(x => x.ActualBaseRate), 2, MidpointRounding.AwayFromZero)
+                                    ? Math.Round(items.Sum(x => (decimal)x.ActualBaseRate), 2, MidpointRounding.AwayFromZero)
                                     : discountedGroupTotalPerRoom;
 
                                 // For receipt consistency (before/after room assignment), show totals based on BookingRoomNights rows.
                                 // If BookingRoomNights is per-room-per-date, sums already represent all rooms.
                                 // If BookingRoomNights is per-date only, sums represent the booking plan total already (not per-room).
+                                var distinctDatesInGroup = items.Select(x => ((DateTime)x.StayDate).Date).Distinct().Count();
+                                var rowsPerDateInGroup = distinctDatesInGroup > 0 ? (decimal)items.Count() / distinctDatesInGroup : 0m;
+                                var groupIncludesAllRooms = hasAssignedRoomsForReceipt && rooms > 1 && rowsPerDateInGroup > 1m;
+                                var groupRoomMultiplier = groupIncludesAllRooms ? 1 : rooms;
                                 var planGroupTotal = actualGroupTotalPerRoom;
 
-                                var fromDate = g.Min(x => x.StayDate).Date;
-                                var toDate = g.Max(x => x.StayDate).Date;
+                                var fromDate = items.Min(x => ((DateTime)x.StayDate)).Date;
+                                var toDate = items.Max(x => ((DateTime)x.StayDate)).Date;
                                 var dateHint = fromDate == toDate
                                     ? fromDate.ToString("dd MMM yyyy")
                                     : $"{fromDate:dd MMM yyyy} - {toDate:dd MMM yyyy}";
@@ -820,21 +841,18 @@
                                         <br /><small style="color:#888;">@dateHint</small>
                                     </td>
                                     <td class="text-center">@groupNights</td>
+                                    <td class="text-center">@rooms</td>
                                     <td class="text-center">@Model.Adults</td>
                                     <td class="text-center">@Model.Children</td>
                                     <td>@(Model.CustomerType == "B2B" ? "EP" : "CP")</td>
                                     <td class="text-right">
                                         @actualRatePerNightPerRoom.ToString("N2")
-                                        @if (rooms > 1)
-                                        {
-                                            <br /><small style="color:#888;">@rooms room(s)</small>
-                                        }
                                         @if (hasActualNightRates)
                                         {
                                             <br /><small style="color:#888;">After discount: @discountedRatePerNightPerRoom.ToString("N2")</small>
                                         }
                                     </td>
-                                    <td class="text-right">@planGroupTotal.ToString("N2")</td>
+                                    <td class="text-right">@(Math.Round(planGroupTotal * groupRoomMultiplier, 2, MidpointRounding.AwayFromZero).ToString("N2"))</td>
                                 </tr>
                             }
                         }
@@ -844,6 +862,7 @@
                             <tr>
                                 <td>@(Model.RoomType?.TypeName ?? "N/A")</td>
                                 <td class="text-center">@Model.Nights</td>
+                                <td class="text-center">@rooms</td>
                                 <td class="text-center">@Model.Adults</td>
                                 <td class="text-center">@Model.Children</td>
                                 <td>@(Model.CustomerType == "B2B" ? "EP" : "CP")</td>
@@ -875,7 +894,7 @@
                                         <br/><small style="color: #e74c3c; font-weight: 600;">After Discount: @discountedRatePerNight.ToString("N2")</small>
                                     }
                                 </td>
-                                <td class="text-right">@(preDiscountTotalFallback.ToString("N2"))</td>
+                                <td class="text-right">@((Model.BaseAmount + Model.DiscountAmount).ToString("N2"))</td>
                             </tr>
                         }
                     </tbody>

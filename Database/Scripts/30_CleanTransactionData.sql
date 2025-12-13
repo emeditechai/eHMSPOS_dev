@@ -23,6 +23,7 @@ ALTER TABLE BookingAuditLog NOCHECK CONSTRAINT ALL;
 ALTER TABLE BookingPayments NOCHECK CONSTRAINT ALL;
 ALTER TABLE BookingGuests NOCHECK CONSTRAINT ALL;
 ALTER TABLE BookingRoomNights NOCHECK CONSTRAINT ALL;
+ALTER TABLE ReservationRoomNights NOCHECK CONSTRAINT ALL;
 ALTER TABLE Bookings NOCHECK CONSTRAINT ALL;
 PRINT '✓ Foreign key constraints disabled';
 PRINT '';
@@ -37,6 +38,7 @@ DECLARE @BookingAuditLogCount INT;
 DECLARE @BookingPaymentsCount INT;
 DECLARE @BookingGuestsCount INT;
 DECLARE @BookingRoomNightsCount INT;
+DECLARE @ReservationRoomNightsCount INT;
 DECLARE @BookingsCount INT;
 DECLARE @GuestsCount INT;
 
@@ -45,6 +47,7 @@ SELECT @BookingAuditLogCount = COUNT(*) FROM BookingAuditLog;
 SELECT @BookingPaymentsCount = COUNT(*) FROM BookingPayments;
 SELECT @BookingGuestsCount = COUNT(*) FROM BookingGuests;
 SELECT @BookingRoomNightsCount = COUNT(*) FROM BookingRoomNights;
+SELECT @ReservationRoomNightsCount = COUNT(*) FROM ReservationRoomNights;
 SELECT @BookingsCount = COUNT(*) FROM Bookings;
 SELECT @GuestsCount = COUNT(*) FROM Guests;
 
@@ -53,6 +56,7 @@ PRINT '  - BookingAuditLog: ' + CAST(@BookingAuditLogCount AS VARCHAR(10)) + ' r
 PRINT '  - BookingPayments: ' + CAST(@BookingPaymentsCount AS VARCHAR(10)) + ' records';
 PRINT '  - BookingGuests: ' + CAST(@BookingGuestsCount AS VARCHAR(10)) + ' records';
 PRINT '  - BookingRoomNights: ' + CAST(@BookingRoomNightsCount AS VARCHAR(10)) + ' records';
+PRINT '  - ReservationRoomNights: ' + CAST(@ReservationRoomNightsCount AS VARCHAR(10)) + ' records';
 PRINT '  - Bookings: ' + CAST(@BookingsCount AS VARCHAR(10)) + ' records';
 PRINT '  - Guests: ' + CAST(@GuestsCount AS VARCHAR(10)) + ' records';
 PRINT '';
@@ -81,6 +85,10 @@ PRINT '  ✓ Deleted ' + CAST(@BookingGuestsCount AS VARCHAR(10)) + ' BookingGue
 -- Delete BookingRoomNights (room-night inventory)
 DELETE FROM BookingRoomNights;
 PRINT '  ✓ Deleted ' + CAST(@BookingRoomNightsCount AS VARCHAR(10)) + ' BookingRoomNights records';
+
+-- Delete ReservationRoomNights (pre-assignment nightly breakdown)
+DELETE FROM ReservationRoomNights;
+PRINT '  ✓ Deleted ' + CAST(@ReservationRoomNightsCount AS VARCHAR(10)) + ' ReservationRoomNights records';
 
 -- Delete Bookings (main booking records)
 DELETE FROM Bookings;
@@ -115,6 +123,7 @@ ALTER TABLE BookingAuditLog CHECK CONSTRAINT ALL;
 ALTER TABLE BookingPayments CHECK CONSTRAINT ALL;
 ALTER TABLE BookingGuests CHECK CONSTRAINT ALL;
 ALTER TABLE BookingRoomNights CHECK CONSTRAINT ALL;
+ALTER TABLE ReservationRoomNights CHECK CONSTRAINT ALL;
 ALTER TABLE Bookings CHECK CONSTRAINT ALL;
 PRINT '✓ Foreign key constraints re-enabled';
 PRINT '';
@@ -129,6 +138,7 @@ DBCC CHECKIDENT ('BookingAuditLog', RESEED, 0);
 DBCC CHECKIDENT ('BookingPayments', RESEED, 0);
 DBCC CHECKIDENT ('BookingGuests', RESEED, 0);
 DBCC CHECKIDENT ('BookingRoomNights', RESEED, 0);
+DBCC CHECKIDENT ('ReservationRoomNights', RESEED, 0);
 DBCC CHECKIDENT ('Bookings', RESEED, 0);
 DBCC CHECKIDENT ('Guests', RESEED, 0);
 
@@ -192,7 +202,7 @@ PRINT 'Finished at: ' + CONVERT(VARCHAR(50), GETDATE(), 121);
 PRINT '========================================';
 PRINT '';
 PRINT 'SUMMARY:';
-PRINT '  Total Records Deleted: ' + CAST(@BookingsCount + @BookingPaymentsCount + @BookingGuestsCount + @BookingRoomNightsCount + @BookingAuditLogCount + @BookingRoomsCount + @GuestsCount AS VARCHAR(10));
+PRINT '  Total Records Deleted: ' + CAST(@BookingsCount + @BookingPaymentsCount + @BookingGuestsCount + @BookingRoomNightsCount + @ReservationRoomNightsCount + @BookingAuditLogCount + @BookingRoomsCount + @GuestsCount AS VARCHAR(10));
 PRINT '  Rooms Reset: ' + CAST(@RoomsUpdated AS VARCHAR(10));
 PRINT '  Master Data: PRESERVED';
 PRINT '';
