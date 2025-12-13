@@ -55,8 +55,17 @@ namespace HotelApp.Web.ViewModels
     [StringLength(20)]
     public string? Gender { get; set; }
 
+        [DataType(DataType.Date)]
+        [Display(Name = "Date of Birth")]
+        public DateTime? DateOfBirth { get; set; }
+
+        [Range(0, 120)]
+        public int? Age { get; set; }
+
     [StringLength(100)]
-    public string? LoyaltyId { get; set; }        [StringLength(1000)]
+    public string? LoyaltyId { get; set; }
+
+        [StringLength(1000)]
         public string? SpecialRequests { get; set; }
 
         [Range(0, 1000000)]
@@ -65,26 +74,21 @@ namespace HotelApp.Web.ViewModels
         [Display(Name = "Collect Advance Payment Now")]
         public bool CollectAdvancePayment { get; set; }
 
-        [Required]
         [Display(Name = "Country")]
-        public int CountryId { get; set; }
+        public int? CountryId { get; set; }
 
-        [Required]
         [Display(Name = "State")]
-        public int StateId { get; set; }
+        public int? StateId { get; set; }
 
-        [Required]
         [Display(Name = "City")]
-        public int CityId { get; set; }
+        public int? CityId { get; set; }
 
-        [Required]
         [StringLength(250)]
         [Display(Name = "Address")]
-        public string AddressLine { get; set; } = string.Empty;
+        public string? AddressLine { get; set; }
 
-        [Required]
         [StringLength(20)]
-        public string Pincode { get; set; } = string.Empty;
+        public string? Pincode { get; set; }
 
         public decimal? QuotedBaseAmount { get; set; }
         public decimal? QuotedTaxAmount { get; set; }

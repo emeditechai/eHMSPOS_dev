@@ -818,6 +818,28 @@
             // Use actual tax percentages from RateMaster instead of recalculating from amounts
             var cgstPercentage = ViewBag.CGSTPercentage != null ? (decimal)ViewBag.CGSTPercentage : 6m;
             var sgstPercentage = ViewBag.SGSTPercentage != null ? (decimal)ViewBag.SGSTPercentage : 6m;
+
+            // Prefer night-wise breakdown (same as what user sees in details table)
+            // to avoid incorrect stored DiscountAmount on older multi-night bookings.
+            var rooms = Model.RequiredRooms > 0 ? Model.RequiredRooms : 1;
+            var roomNights = Model.RoomNights ?? new List<HotelApp.Web.Models.BookingRoomNight>();
+            var hasNightBreakdown = roomNights.Any();
+
+            var afterDiscountTotal = hasNightBreakdown
+                ? roomNights.Sum(n => n.RateAmount) * rooms
+                : Model.BaseAmount;
+
+            var discountPercent = ViewBag.DiscountPercentage != null ? (decimal)ViewBag.DiscountPercentage : 0m;
+            var computedDiscountAmount = Model.DiscountAmount;
+            if (hasNightBreakdown && discountPercent > 0)
+            {
+                var divisor = 1 - (discountPercent / 100m);
+                if (divisor > 0)
+                {
+                    var originalTotal = Math.Round(afterDiscountTotal / divisor, 2, MidpointRounding.AwayFromZero);
+                    computedDiscountAmount = Math.Round(originalTotal - afterDiscountTotal, 2, MidpointRounding.AwayFromZero);
+                }
+            }
         }
         <div class="financial-item">
             <div class="financial-label">CGST @cgstPercentage.ToString("0.##")%</div>
@@ -833,7 +855,7 @@
         </div>
         <div class="financial-item">
             <div class="financial-label">Discount</div>
-            <div class="financial-amount">₹@Model.DiscountAmount.ToString("N2")</div>
+            <div class="financial-amount">₹@(computedDiscountAmount.ToString("N2"))</div>
         </div>
         <div class="financial-item financial-grand-total">
             <div class="financial-label">Grand Total</div>
@@ -1003,7 +1025,9 @@
             <thead>
                 <tr>
                     <th><i class="fas fa-calendar"></i> Date</th>
-                    <th><i class="fas fa-rupee-sign"></i> Room Rate</th>
+                    <th><i class="fas fa-tag"></i> Actual Rate</th>
+                    <th><i class="fas fa-percentage"></i> Discount</th>
+                    <th><i class="fas fa-rupee-sign"></i> Charged Rate</th>
                     <th><i class="fas fa-percentage"></i> CGST</th>
                     <th><i class="fas fa-percentage"></i> SGST</th>
                     <th><i class="fas fa-calculator"></i> Total Tax</th>
@@ -1015,7 +1039,27 @@
                 {
                     <tr>
                         <td><strong>@night.StayDate.ToString("ddd, dd MMM yyyy")</strong></td>
-                        <td>₹@night.RateAmount.ToString("N2")</td>
+                        <td>
+                            @if (night.ActualBaseRate > 0)
+                            {
+                                <span>₹@night.ActualBaseRate.ToString("N2")</span>
+                            }
+                            else
+                            {
+                                <span style="color:#9ca3af;">-</span>
+                            }
+                        </td>
+                        <td>
+                            @if (night.DiscountAmount > 0)
+                            {
+                                <span style="color:#dc2626; font-weight: 600;">-₹@night.DiscountAmount.ToString("N2")</span>
+                            }
+                            else
+                            {
+                                <span style="color:#9ca3af;">-</span>
+                            }
+                        </td>
+                        <td><strong>₹@night.RateAmount.ToString("N2")</strong></td>
                         <td>₹@night.CGSTAmount.ToString("N2")</td>
                         <td>₹@night.SGSTAmount.ToString("N2")</td>
                         <td><strong>₹@night.TaxAmount.ToString("N2")</strong></td>

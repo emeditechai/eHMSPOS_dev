@@ -462,6 +462,25 @@ namespace HotelApp.Web.Controllers
                 ViewBag.TaxPercentage = taxPercentage;
                 ViewBag.CGSTPercentage = cgstPercentage;
                 ViewBag.SGSTPercentage = sgstPercentage;
+
+                // Also pass discount percentage so receipt can reconstruct the correct
+                // pre-discount totals when using night-wise breakdown.
+                try
+                {
+                    using var connection = new Microsoft.Data.SqlClient.SqlConnection(_bookingRepository.ConnectionString);
+                    await connection.OpenAsync();
+                    using var cmd = new Microsoft.Data.SqlClient.SqlCommand("SELECT ApplyDiscount FROM RateMaster WHERE Id = @Id", connection);
+                    cmd.Parameters.AddWithValue("@Id", booking.RatePlanId.Value);
+                    var discountObj = await cmd.ExecuteScalarAsync();
+                    if (discountObj != null && decimal.TryParse(discountObj.ToString(), out var discountPercent))
+                    {
+                        ViewBag.DiscountPercentage = discountPercent;
+                    }
+                }
+                catch
+                {
+                    // Best-effort only; receipt has safe fallbacks.
+                }
             }
 
             return View(booking);
@@ -621,12 +640,17 @@ namespace HotelApp.Web.Controllers
 
             var bookingNumber = GenerateBookingNumber();
             var createdBy = GetCurrentUserId();
-            var balanceAmount = quote.GrandTotal - model.DepositAmount;
+            // Persist consistent monetary totals from the start:
+            // - BaseAmount: amount AFTER discount (what we charge for rooms)
+            // - DiscountAmount: total discount across all nights/rooms
+            // - TotalAmount: BaseAmount + TaxAmount
+            // This prevents multi-night bookings from showing wrong discounts on receipts/details
+            // even before room nights are created.
+            var baseAmountAfterDiscount = quote.TotalRoomRate;
+            var discountAmount = quote.DiscountAmount;
+            var totalAmount = Math.Round(baseAmountAfterDiscount + quote.TotalTaxAmount, 2, MidpointRounding.AwayFromZero);
 
-            // Calculate original base amount before discount
-            // quote.TotalRoomRate already contains the amount AFTER discount
-            // We need to add back the discount to get the original amount
-            decimal originalBaseAmount = quote.TotalRoomRate + quote.DiscountAmount;
+            var balanceAmount = totalAmount - model.DepositAmount;
 
             var booking = new Booking
             {
@@ -643,12 +667,12 @@ namespace HotelApp.Web.Controllers
                 RequiredRooms = model.RequiredRooms,
                 RoomId = null,
                 RatePlanId = quote.RatePlanId,
-                BaseAmount = originalBaseAmount, // Store original amount before discount
+                BaseAmount = baseAmountAfterDiscount,
                 TaxAmount = quote.TotalTaxAmount,
                 CGSTAmount = quote.TotalCGSTAmount,
                 SGSTAmount = quote.TotalSGSTAmount,
-                DiscountAmount = quote.DiscountAmount, // Store actual discount amount
-                TotalAmount = quote.GrandTotal,
+                DiscountAmount = discountAmount,
+                TotalAmount = totalAmount,
                 DepositAmount = model.DepositAmount,
                 BalanceAmount = balanceAmount,
                 Adults = model.Adults,
@@ -664,9 +688,22 @@ namespace HotelApp.Web.Controllers
                 LastModifiedBy = createdBy
             };
 
-            var country = await _locationRepository.GetCountryByIdAsync(model.CountryId);
-            var state = await _locationRepository.GetStateByIdAsync(model.StateId);
-            var city = await _locationRepository.GetCityByIdAsync(model.CityId);
+            Country? country = null;
+            State? state = null;
+            City? city = null;
+
+            if (model.CountryId.HasValue)
+            {
+                country = await _locationRepository.GetCountryByIdAsync(model.CountryId.Value);
+            }
+            if (model.StateId.HasValue)
+            {
+                state = await _locationRepository.GetStateByIdAsync(model.StateId.Value);
+            }
+            if (model.CityId.HasValue)
+            {
+                city = await _locationRepository.GetCityByIdAsync(model.CityId.Value);
+            }
 
             var guests = new List<BookingGuest>
             {
@@ -678,13 +715,15 @@ namespace HotelApp.Web.Controllers
                     Gender = model.Gender?.Trim(),
                     GuestType = "Primary",
                     IsPrimary = true,
+                    Age = model.Age,
+                    DateOfBirth = model.DateOfBirth,
                     Address = model.AddressLine,
                     CountryId = model.CountryId,
                     StateId = model.StateId,
                     CityId = model.CityId,
-                    Country = country?.Name,
-                    State = state?.Name,
-                    City = city?.Name,
+                    Country = model.CountryId.HasValue ? country?.Name : null,
+                    State = model.StateId.HasValue ? state?.Name : null,
+                    City = model.CityId.HasValue ? city?.Name : null,
                     Pincode = model.Pincode
                 }
             };
@@ -1102,18 +1141,18 @@ namespace HotelApp.Web.Controllers
             var countries = await _locationRepository.GetCountriesAsync();
             ViewBag.Countries = countries;
 
-            if (model != null && model.CountryId > 0)
+            if (model?.CountryId is > 0)
             {
-                ViewBag.States = await _locationRepository.GetStatesByCountryAsync(model.CountryId);
+                ViewBag.States = await _locationRepository.GetStatesByCountryAsync(model.CountryId.Value);
             }
             else
             {
                 ViewBag.States = Enumerable.Empty<State>();
             }
 
-            if (model != null && model.StateId > 0)
+            if (model?.StateId is > 0)
             {
-                ViewBag.Cities = await _locationRepository.GetCitiesByStateAsync(model.StateId);
+                ViewBag.Cities = await _locationRepository.GetCitiesByStateAsync(model.StateId.Value);
             }
             else
             {
@@ -1464,6 +1503,7 @@ namespace HotelApp.Web.Controllers
                     newCheckOutDate,
                     nights,
                     quote.TotalRoomRate,
+                    quote.DiscountAmount,
                     quote.TotalTaxAmount,
                     quote.TotalCGSTAmount,
                     quote.TotalSGSTAmount,
@@ -1588,6 +1628,8 @@ namespace HotelApp.Web.Controllers
                     phone = guest.Phone,
                     gender = guest.Gender,
                     loyaltyId = guest.LoyaltyId,
+                    dateOfBirth = guest.DateOfBirth.HasValue ? guest.DateOfBirth.Value.ToString("yyyy-MM-dd") : null,
+                    age = guest.DateOfBirth.HasValue ? CalculateAge(guest.DateOfBirth.Value) : (int?)null,
                     address = guest.Address,
                     countryId = guest.CountryId,
                     stateId = guest.StateId,
@@ -1602,6 +1644,17 @@ namespace HotelApp.Web.Controllers
                     createdDate = lastBooking.CreatedDate.ToString("dd MMM yyyy")
                 } : null
             });
+        }
+
+        private static int CalculateAge(DateTime dateOfBirth)
+        {
+            var today = DateTime.Today;
+            var age = today.Year - dateOfBirth.Year;
+            if (dateOfBirth.Date > today.AddYears(-age))
+            {
+                age--;
+            }
+            return age < 0 ? 0 : age;
         }
     }
 

@@ -19,6 +19,7 @@ namespace HotelApp.Web.Models
         public string? IdentityType { get; set; }
         public string? IdentityNumber { get; set; }
         public DateTime? DateOfBirth { get; set; }
+        public int? Age { get; set; }
         public string? LoyaltyId { get; set; }
         public string GuestType { get; set; } = "Primary"; // Primary, Companion, Child
         public int? ParentGuestId { get; set; }

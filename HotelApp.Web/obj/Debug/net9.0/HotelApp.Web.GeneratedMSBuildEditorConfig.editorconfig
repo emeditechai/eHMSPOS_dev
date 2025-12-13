@@ -52,6 +52,14 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQm9va2luZy9MaXN0LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
+[/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/Booking/PaymentDashboard.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQm9va2luZy9QYXltZW50RGFzaGJvYXJkLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/Booking/PaymentDashboardV2.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQm9va2luZy9QYXltZW50RGFzaGJvYXJkVjIuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
 [/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/Booking/Receipt.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQm9va2luZy9SZWNlaXB0LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 

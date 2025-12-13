@@ -496,7 +496,9 @@ else
         border: none;
         border-radius: 8px;
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
-        min-width: 160px;
+        width: max-content;
+        min-width: 180px;
+        max-width: min(260px, calc(100vw - 16px));
         z-index: 10000;
         overflow: hidden;
         backdrop-filter: blur(10px);
@@ -599,7 +601,7 @@ else
         const dropdown = document.getElementById(dropdownId);
         
         // Close all other dropdowns
-        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        document.querySelectorAll('.data-table .dropdown-menu').forEach(menu => {
             if (menu.id !== dropdownId) {
                 menu.classList.remove('show');
             }
@@ -611,26 +613,52 @@ else
         if (!isShown) {
             // Position dropdown relative to button
             const rect = button.getBoundingClientRect();
-            dropdown.style.top = (rect.bottom + 5) + 'px';
-            dropdown.style.right = (window.innerWidth - rect.right) + 'px';
+            const gap = 6;
+            const margin = 8;
+
+            dropdown.style.visibility = 'hidden';
+            dropdown.style.display = 'block';
+
+            const menuWidth = dropdown.offsetWidth || 180;
+            const menuHeight = dropdown.offsetHeight || 0;
+
+            // Prefer opening down-right aligned to the button.
+            let left = rect.right - menuWidth;
+            let top = rect.bottom + gap;
+
+            // Clamp horizontally to viewport
+            left = Math.max(margin, Math.min(left, window.innerWidth - menuWidth - margin));
+
+            // If it would overflow bottom, open upwards.
+            if (menuHeight && top + menuHeight + margin > window.innerHeight) {
+                top = rect.top - menuHeight - gap;
+            }
+
+            top = Math.max(margin, Math.min(top, window.innerHeight - (menuHeight || 0) - margin));
+
+            dropdown.style.left = left + 'px';
+            dropdown.style.top = top + 'px';
+            dropdown.style.right = 'auto';
+            dropdown.style.visibility = 'visible';
             dropdown.classList.add('show');
         } else {
             dropdown.classList.remove('show');
         }
     }
 
-    // Close dropdowns when clicking outside
+    // Close ONLY booking-row action dropdowns when clicking outside them.
+    // (Don't interfere with the top navbar dropdowns which also use `.dropdown-menu`.)
     document.addEventListener('click', function(event) {
         if (!event.target.closest('.dropdown')) {
-            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            document.querySelectorAll('.data-table .dropdown-menu').forEach(menu => {
                 menu.classList.remove('show');
             });
         }
     });
 
-    // Close dropdown on scroll
+    // Close ONLY booking-row action dropdowns on scroll
     document.addEventListener('scroll', function() {
-        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        document.querySelectorAll('.data-table .dropdown-menu').forEach(menu => {
             menu.classList.remove('show');
         });
     }, true);

@@ -40,11 +40,11 @@ namespace HotelApp.Web.Repositories
             const string sql = @"
                 INSERT INTO Guests (FirstName, LastName, Email, Phone, Address, City, State, Country,
                            Pincode, CountryId, StateId, CityId,
-                           IdentityType, IdentityNumber, DateOfBirth, LoyaltyId, GuestType, 
+                           Gender, IdentityType, IdentityNumber, DateOfBirth, Age, LoyaltyId, GuestType, 
                            ParentGuestId, BranchID, IsActive, CreatedDate, LastModifiedDate)
                 VALUES (@FirstName, @LastName, @Email, @Phone, @Address, @City, @State, @Country,
                     @Pincode, @CountryId, @StateId, @CityId,
-                    @IdentityType, @IdentityNumber, @DateOfBirth, @LoyaltyId, @GuestType,
+                    @Gender, @IdentityType, @IdentityNumber, @DateOfBirth, @Age, @LoyaltyId, @GuestType,
                     @ParentGuestId, @BranchID, @IsActive, GETDATE(), GETDATE());
                 SELECT CAST(SCOPE_IDENTITY() as int);";
 
@@ -71,6 +71,7 @@ namespace HotelApp.Web.Repositories
                     IdentityType = @IdentityType,
                     IdentityNumber = @IdentityNumber,
                     DateOfBirth = @DateOfBirth,
+                    Age = @Age,
                     LoyaltyId = @LoyaltyId,
                     GuestType = @GuestType,
                     ParentGuestId = @ParentGuestId,

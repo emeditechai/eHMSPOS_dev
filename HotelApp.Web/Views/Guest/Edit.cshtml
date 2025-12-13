@@ -56,8 +56,14 @@
         <div class="form-row">
             <div class="form-group">
                 <label asp-for="DateOfBirth">Date of Birth</label>
-                <input asp-for="DateOfBirth" type="date" />
+                <input asp-for="DateOfBirth" id="guestDob" type="date" />
                 <span asp-validation-for="DateOfBirth" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Age">Age</label>
+                <input asp-for="Age" id="guestAge" type="number" min="0" max="120" placeholder="Age" />
+                <span asp-validation-for="Age" class="text-danger"></span>
             </div>
 
             <div class="form-group">
@@ -426,6 +432,60 @@
                 }
                 </text>
             }
+
+            function calculateAgeFromDob(dobString) {
+                if (!dobString) return null;
+                const dob = new Date(dobString);
+                if (Number.isNaN(dob.getTime())) return null;
+
+                const today = new Date();
+                let age = today.getFullYear() - dob.getFullYear();
+                const m = today.getMonth() - dob.getMonth();
+                if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+                    age--;
+                }
+                return age < 0 ? 0 : age;
+            }
+
+            function calculateDobFromAge(age) {
+                if (age === null || age === undefined || age === '') return '';
+                const parsed = parseInt(age, 10);
+                if (Number.isNaN(parsed) || parsed < 0 || parsed > 120) return '';
+                const today = new Date();
+                const dob = new Date(today.getFullYear() - parsed, today.getMonth(), today.getDate());
+                const yyyy = dob.getFullYear();
+                const mm = String(dob.getMonth() + 1).padStart(2, '0');
+                const dd = String(dob.getDate()).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
+            }
+
+            let isSyncingDobAge = false;
+
+            // If DOB already exists and Age is blank, derive Age on load (no overwrite of existing Age)
+            const initialDob = $('#guestDob').val();
+            const initialAge = $('#guestAge').val();
+            if (initialDob && (!initialAge || initialAge === '')) {
+                const age = calculateAgeFromDob(initialDob);
+                if (age !== null) {
+                    $('#guestAge').val(age);
+                }
+            }
+
+            $('#guestDob').on('change', function() {
+                if (isSyncingDobAge) return;
+                isSyncingDobAge = true;
+                const age = calculateAgeFromDob($(this).val());
+                $('#guestAge').val(age ?? '');
+                isSyncingDobAge = false;
+            });
+
+            $('#guestAge').on('input', function() {
+                if (isSyncingDobAge) return;
+                isSyncingDobAge = true;
+                const dob = calculateDobFromAge($(this).val());
+                $('#guestDob').val(dob);
+                isSyncingDobAge = false;
+            });
         });
 
         function setupAutocomplete(fieldName, dataSource, onSelect) {

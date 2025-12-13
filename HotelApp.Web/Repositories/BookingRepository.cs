@@ -244,7 +244,7 @@ namespace HotelApp.Web.Repositories
             return (defaultBase, defaultExtra, discountPercent);
         }
 
-        private async Task<List<(DateTime date, decimal rateAmount, decimal taxAmount, decimal cgstAmount, decimal sgstAmount)>> BuildRoomNightBreakdownAsync(
+        private async Task<List<(DateTime date, decimal rateAmountAfterDiscount, decimal actualBaseRate, decimal discountAmount, decimal taxAmount, decimal cgstAmount, decimal sgstAmount)>> BuildRoomNightBreakdownAsync(
             int rateMasterId,
             DateTime checkInDate,
             DateTime checkOutDate,
@@ -256,24 +256,35 @@ namespace HotelApp.Web.Repositories
             decimal sgstPercentage,
             IDbTransaction? transaction = null)
         {
-            var breakdown = new List<(DateTime, decimal, decimal, decimal, decimal)>();
+            var breakdown = new List<(DateTime, decimal, decimal, decimal, decimal, decimal, decimal)>();
 
             for (var date = checkInDate.Date; date < checkOutDate.Date; date = date.AddDays(1))
             {
-                var (nightlyBase, nightlyExtra, discountPercent) = await GetEffectiveRateForDateAsync(
+                // Get original (pre-discount) nightly base/extra first
+                var (originalBase, originalExtra, discountPercent) = await GetEffectiveRateForDateAsync(
                     rateMasterId,
                     date,
                     defaultBaseRate,
                     defaultExtraPaxRate,
                     transaction,
-                    applyDiscount: true); // Apply discount for room night breakdown
+                    applyDiscount: false);
 
-                var nightRoomRate = nightlyBase + (nightlyExtra * extraGuests);
-                var nightTax = Math.Round(nightRoomRate * (taxPercentage / 100m), 2, MidpointRounding.AwayFromZero);
-                var nightCGST = Math.Round(nightRoomRate * (cgstPercentage / 100m), 2, MidpointRounding.AwayFromZero);
-                var nightSGST = Math.Round(nightRoomRate * (sgstPercentage / 100m), 2, MidpointRounding.AwayFromZero);
+                var actualBaseRate = Math.Round(originalBase + (originalExtra * extraGuests), 2, MidpointRounding.AwayFromZero);
 
-                breakdown.Add((date, nightRoomRate, nightTax, nightCGST, nightSGST));
+                var rateAfterDiscount = actualBaseRate;
+                var discountAmount = 0m;
+                if (discountPercent > 0)
+                {
+                    discountAmount = Math.Round(actualBaseRate * (discountPercent / 100m), 2, MidpointRounding.AwayFromZero);
+                    rateAfterDiscount = Math.Round(actualBaseRate - discountAmount, 2, MidpointRounding.AwayFromZero);
+                }
+
+                // Taxes are calculated on the AFTER-discount amount
+                var nightTax = Math.Round(rateAfterDiscount * (taxPercentage / 100m), 2, MidpointRounding.AwayFromZero);
+                var nightCGST = Math.Round(rateAfterDiscount * (cgstPercentage / 100m), 2, MidpointRounding.AwayFromZero);
+                var nightSGST = Math.Round(rateAfterDiscount * (sgstPercentage / 100m), 2, MidpointRounding.AwayFromZero);
+
+                breakdown.Add((date, rateAfterDiscount, actualBaseRate, discountAmount, nightTax, nightCGST, nightSGST));
             }
 
             return breakdown;
@@ -389,6 +400,64 @@ namespace HotelApp.Web.Repositories
 
             using var transaction = _dbConnection.BeginTransaction();
 
+            // Ensure booking monetary totals are consistent with the night-wise breakdown.
+            // We treat BookingRoomNights.RateAmount as the AFTER-discount nightly room charge.
+            // DiscountAmount is derived from RateMaster.ApplyDiscount over the ORIGINAL nightly rates.
+            // This avoids situations where nights are discounted correctly but DiscountAmount is stored only for a single night.
+            if (roomNights != null)
+            {
+                var nightsList = roomNights.ToList();
+                if (nightsList.Count > 0)
+                {
+                    var nightlyBaseAfterDiscountSum = nightsList.Sum(n => n.RateAmount);
+                    var nightlyTaxSum = nightsList.Sum(n => n.TaxAmount);
+                    var nightlyCGSTSum = nightsList.Sum(n => n.CGSTAmount);
+                    var nightlySGSTSum = nightsList.Sum(n => n.SGSTAmount);
+
+                    var ratePlanId = booking.RatePlanId ?? 0;
+                    decimal discountPercent = 0;
+                    if (ratePlanId > 0)
+                    {
+                        const string discountSql = "SELECT ApplyDiscount FROM RateMaster WHERE Id = @RateMasterId";
+                        var discountStr = await _dbConnection.QueryFirstOrDefaultAsync<string>(
+                            discountSql,
+                            new { RateMasterId = ratePlanId },
+                            transaction);
+
+                        if (!string.IsNullOrWhiteSpace(discountStr) && decimal.TryParse(discountStr, out var parsedDiscount))
+                        {
+                            discountPercent = parsedDiscount;
+                        }
+                    }
+
+                    var requiredRooms = booking.RequiredRooms > 0 ? booking.RequiredRooms : 1;
+                    var nightlyAfterDiscountForAllRooms = nightlyBaseAfterDiscountSum * requiredRooms;
+                    var nightlyTaxForAllRooms = nightlyTaxSum * requiredRooms;
+                    var nightlyCGSTForAllRooms = nightlyCGSTSum * requiredRooms;
+                    var nightlySGSTForAllRooms = nightlySGSTSum * requiredRooms;
+
+                    decimal discountAmount = 0;
+                    if (discountPercent > 0)
+                    {
+                        // If we know the after-discount sum, original sum can be reconstructed:
+                        // after = original * (1 - d)  =>  original = after / (1 - d)
+                        var divisor = 1 - (discountPercent / 100m);
+                        if (divisor > 0)
+                        {
+                            var originalTotal = Math.Round(nightlyAfterDiscountForAllRooms / divisor, 2, MidpointRounding.AwayFromZero);
+                            discountAmount = Math.Round(originalTotal - nightlyAfterDiscountForAllRooms, 2, MidpointRounding.AwayFromZero);
+                        }
+                    }
+
+                    booking.BaseAmount = Math.Round(nightlyAfterDiscountForAllRooms, 2, MidpointRounding.AwayFromZero);
+                    booking.TaxAmount = Math.Round(nightlyTaxForAllRooms, 2, MidpointRounding.AwayFromZero);
+                    booking.CGSTAmount = Math.Round(nightlyCGSTForAllRooms, 2, MidpointRounding.AwayFromZero);
+                    booking.SGSTAmount = Math.Round(nightlySGSTForAllRooms, 2, MidpointRounding.AwayFromZero);
+                    booking.DiscountAmount = discountAmount;
+                    booking.TotalAmount = Math.Round(booking.BaseAmount + booking.TaxAmount, 2, MidpointRounding.AwayFromZero);
+                }
+            }
+
             const string insertBookingSql = @"
                 INSERT INTO Bookings (
                     BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
@@ -411,9 +480,11 @@ namespace HotelApp.Web.Repositories
             // Insert/Update guests in Guests table and link to BookingGuests
             Guest? primaryGuest = null;
             const string insertGuestSql = @"
-                INSERT INTO BookingGuests (BookingId, FullName, Email, Phone, Gender, GuestType, IsPrimary, 
+                INSERT INTO BookingGuests (BookingId, FullName, Email, Phone, Gender, GuestType, IsPrimary,
+                                         Age, DateOfBirth,
                                          Address, City, State, Country, Pincode, CountryId, StateId, CityId)
                 VALUES (@BookingId, @FullName, @Email, @Phone, @Gender, @GuestType, @IsPrimary,
+                        @Age, @DateOfBirth,
                         @Address, @City, @State, @Country, @Pincode, @CountryId, @StateId, @CityId);";
 
             foreach (var bookingGuest in guests)
@@ -439,6 +510,8 @@ namespace HotelApp.Web.Repositories
                             LastName = @LastName, 
                             Email = @Email, 
                             Gender = @Gender,
+                            DateOfBirth = @DateOfBirth,
+                            Age = @Age,
                             GuestType = @GuestType, 
                             ParentGuestId = @ParentGuestId,
                             Address = @Address,
@@ -459,6 +532,8 @@ namespace HotelApp.Web.Repositories
                         LastName = lastName,
                         Email = bookingGuest.Email ?? "",
                         Gender = bookingGuest.Gender,
+                        DateOfBirth = bookingGuest.DateOfBirth,
+                        Age = bookingGuest.Age,
                         GuestType = guestType,
                         ParentGuestId = parentGuestId,
                         Address = bookingGuest.Address,
@@ -484,12 +559,12 @@ namespace HotelApp.Web.Repositories
                     // Create new guest with all details including address
                     const string insertNewGuestSql = @"
                         INSERT INTO Guests (
-                            FirstName, LastName, Email, Phone, Gender, GuestType, ParentGuestId,
+                            FirstName, LastName, Email, Phone, Gender, DateOfBirth, Age, GuestType, ParentGuestId,
                             Address, City, State, Country, Pincode, CountryId, StateId, CityId,
                             BranchID, IsActive, CreatedDate, LastModifiedDate
                         )
                         VALUES (
-                            @FirstName, @LastName, @Email, @Phone, @Gender, @GuestType, @ParentGuestId,
+                            @FirstName, @LastName, @Email, @Phone, @Gender, @DateOfBirth, @Age, @GuestType, @ParentGuestId,
                             @Address, @City, @State, @Country, @Pincode, @CountryId, @StateId, @CityId,
                             @BranchID, 1, GETDATE(), GETDATE()
                         );
@@ -502,6 +577,8 @@ namespace HotelApp.Web.Repositories
                         Email = bookingGuest.Email ?? "",
                         Phone = bookingGuest.Phone ?? "",
                         Gender = bookingGuest.Gender,
+                        DateOfBirth = bookingGuest.DateOfBirth,
+                        Age = bookingGuest.Age,
                         GuestType = guestType,
                         ParentGuestId = parentGuestId,
                         Address = bookingGuest.Address,
@@ -554,8 +631,8 @@ namespace HotelApp.Web.Repositories
             }
 
             const string insertNightSql = @"
-                INSERT INTO BookingRoomNights (BookingId, RoomId, StayDate, RateAmount, TaxAmount, CGSTAmount, SGSTAmount, Status)
-                VALUES (@BookingId, @RoomId, @StayDate, @RateAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @Status);";
+                INSERT INTO BookingRoomNights (BookingId, RoomId, StayDate, RateAmount, ActualBaseRate, DiscountAmount, TaxAmount, CGSTAmount, SGSTAmount, Status)
+                VALUES (@BookingId, @RoomId, @StayDate, @RateAmount, @ActualBaseRate, @DiscountAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @Status);";
 
             foreach (var night in roomNights)
             {
@@ -869,8 +946,8 @@ namespace HotelApp.Web.Repositories
                     var nightlySGST = Math.Round(sgstAmount / booking.Nights, 2, MidpointRounding.AwayFromZero);
 
                     const string insertNightSql = @"
-                        INSERT INTO BookingRoomNights (BookingId, RoomId, StayDate, RateAmount, TaxAmount, CGSTAmount, SGSTAmount, Status)
-                        VALUES (@BookingId, @RoomId, @StayDate, @RateAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @Status)";
+                        INSERT INTO BookingRoomNights (BookingId, RoomId, StayDate, RateAmount, ActualBaseRate, DiscountAmount, TaxAmount, CGSTAmount, SGSTAmount, Status)
+                        VALUES (@BookingId, @RoomId, @StayDate, @RateAmount, @ActualBaseRate, @DiscountAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @Status)";
 
                     for (var date = booking.CheckInDate.Date; date < booking.CheckOutDate.Date; date = date.AddDays(1))
                     {
@@ -882,6 +959,8 @@ namespace HotelApp.Web.Repositories
                                 RoomId = booking.RoomId.Value,
                                 StayDate = date,
                                 RateAmount = nightlyRoomAmount,
+                                ActualBaseRate = nightlyRoomAmount,
+                                DiscountAmount = 0m,
                                 TaxAmount = nightlyTax,
                                 CGSTAmount = nightlyCGST,
                                 SGSTAmount = nightlySGST,
@@ -1139,10 +1218,10 @@ namespace HotelApp.Web.Repositories
                     sgstPercentage);
 
                 const string insertRoomNightSql = @"
-                    INSERT INTO BookingRoomNights (BookingId, RoomId, StayDate, RateAmount, TaxAmount, CGSTAmount, SGSTAmount, Status)
-                    VALUES (@BookingId, @RoomId, @StayDate, @RateAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @Status)";
+                    INSERT INTO BookingRoomNights (BookingId, RoomId, StayDate, RateAmount, ActualBaseRate, DiscountAmount, TaxAmount, CGSTAmount, SGSTAmount, Status)
+                    VALUES (@BookingId, @RoomId, @StayDate, @RateAmount, @ActualBaseRate, @DiscountAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @Status)";
 
-                foreach (var (date, rateAmount, taxAmount, cgstAmount, sgstAmount) in roomNightBreakdown)
+                foreach (var (date, rateAmountAfterDiscount, actualBaseRate, discountAmount, taxAmount, cgstAmount, sgstAmount) in roomNightBreakdown)
                 {
                     await _dbConnection.ExecuteAsync(
                         insertRoomNightSql,
@@ -1151,7 +1230,9 @@ namespace HotelApp.Web.Repositories
                             BookingId = bookingId,
                             RoomId = roomId,
                             StayDate = date,
-                            RateAmount = rateAmount,
+                            RateAmount = rateAmountAfterDiscount,
+                            ActualBaseRate = actualBaseRate,
+                            DiscountAmount = discountAmount,
                             TaxAmount = taxAmount,
                             CGSTAmount = cgstAmount,
                             SGSTAmount = sgstAmount,
@@ -1368,12 +1449,12 @@ namespace HotelApp.Web.Repositories
 
                     // Create room nights for each assigned room
                     const string insertRoomNightSql = @"
-                        INSERT INTO BookingRoomNights (BookingId, RoomId, StayDate, RateAmount, TaxAmount, CGSTAmount, SGSTAmount, Status)
-                        VALUES (@BookingId, @RoomId, @StayDate, @RateAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @Status)";
+                        INSERT INTO BookingRoomNights (BookingId, RoomId, StayDate, RateAmount, ActualBaseRate, DiscountAmount, TaxAmount, CGSTAmount, SGSTAmount, Status)
+                        VALUES (@BookingId, @RoomId, @StayDate, @RateAmount, @ActualBaseRate, @DiscountAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @Status)";
 
                     foreach (var roomId in roomIds)
                     {
-                        foreach (var (date, rateAmount, taxAmount, cgstAmount, sgstAmount) in roomNightBreakdown)
+                        foreach (var (date, rateAmountAfterDiscount, actualBaseRate, discountAmount, taxAmount, cgstAmount, sgstAmount) in roomNightBreakdown)
                         {
                             await _dbConnection.ExecuteAsync(
                                 insertRoomNightSql,
@@ -1382,7 +1463,9 @@ namespace HotelApp.Web.Repositories
                                     BookingId = bookingId,
                                     RoomId = roomId,
                                     StayDate = date,
-                                    RateAmount = rateAmount,
+                                    RateAmount = rateAmountAfterDiscount,
+                                    ActualBaseRate = actualBaseRate,
+                                    DiscountAmount = discountAmount,
                                     TaxAmount = taxAmount,
                                     CGSTAmount = cgstAmount,
                                     SGSTAmount = sgstAmount,
@@ -1432,7 +1515,7 @@ namespace HotelApp.Web.Repositories
             }
         }
 
-        public async Task<bool> UpdateBookingDatesAsync(string bookingNumber, DateTime checkInDate, DateTime checkOutDate, int nights, decimal baseAmount, decimal taxAmount, decimal cgstAmount, decimal sgstAmount, decimal totalAmount)
+        public async Task<bool> UpdateBookingDatesAsync(string bookingNumber, DateTime checkInDate, DateTime checkOutDate, int nights, decimal baseAmount, decimal discountAmount, decimal taxAmount, decimal cgstAmount, decimal sgstAmount, decimal totalAmount)
         {
             if (_dbConnection.State != ConnectionState.Open)
             {
@@ -1464,6 +1547,119 @@ namespace HotelApp.Web.Repositories
                 var bookingId = (int)booking.Id;
                 var roomId = booking.RoomId as int?;
                 var depositAmount = (decimal)booking.DepositAmount;
+
+                // Recalculate totals from source-of-truth logic to avoid persisting a single-night discount
+                // when extending dates. Quote-based amounts can drift if requiredRooms/rate plan logic changes.
+                const string bookingMetaSql = @"
+                    SELECT RoomTypeId, RequiredRooms, Adults, Children, RatePlanId, BranchID
+                    FROM Bookings
+                    WHERE BookingNumber = @BookingNumber";
+
+                var bookingMeta = await _dbConnection.QueryFirstOrDefaultAsync<dynamic>(
+                    bookingMetaSql,
+                    new { BookingNumber = bookingNumber },
+                    transaction);
+
+                if (bookingMeta == null)
+                {
+                    transaction.Rollback();
+                    return false;
+                }
+
+                int roomTypeId = (int)bookingMeta.RoomTypeId;
+                int requiredRooms = (int)bookingMeta.RequiredRooms;
+                int adults = (int)bookingMeta.Adults;
+                int children = (int)bookingMeta.Children;
+                int ratePlanId = bookingMeta.RatePlanId == null ? 0 : (int)bookingMeta.RatePlanId;
+                int branchId = (int)bookingMeta.BranchID;
+
+                // Resolve room type and rate plan for accurate weekend/special-day pricing.
+                const string roomTypeSql = "SELECT * FROM RoomTypes WHERE Id = @RoomTypeId AND IsActive = 1";
+                var roomType = await _dbConnection.QueryFirstOrDefaultAsync<RoomType>(
+                    roomTypeSql,
+                    new { RoomTypeId = roomTypeId },
+                    transaction);
+
+                const string rateSql = @"
+                    SELECT TOP 1 *
+                    FROM RateMaster
+                    WHERE Id = @RatePlanId AND BranchID = @BranchID AND IsActive = 1";
+
+                var ratePlan = ratePlanId > 0
+                    ? await _dbConnection.QueryFirstOrDefaultAsync<RateMaster>(
+                        rateSql,
+                        new { RatePlanId = ratePlanId, BranchID = branchId },
+                        transaction)
+                    : null;
+
+                if (roomType != null)
+                {
+                    var hotelSettings = await _hotelSettingsRepository.GetByBranchAsync(branchId);
+                    var checkInTime = hotelSettings?.CheckInTime ?? new TimeSpan(14, 0, 0);
+                    var checkOutTime = hotelSettings?.CheckOutTime ?? new TimeSpan(12, 0, 0);
+
+                    // Keep nights consistent with system rule.
+                    var computedNights = CalculateNights(checkInDate, checkOutDate, checkInTime, checkOutTime);
+                    nights = computedNights;
+
+                    var taxPercentage = ratePlan?.TaxPercentage ?? 0;
+                    var cgstPercentage = (ratePlan?.CGSTPercentage > 0 ? ratePlan.CGSTPercentage : taxPercentage / 2);
+                    var sgstPercentage = (ratePlan?.SGSTPercentage > 0 ? ratePlan.SGSTPercentage : taxPercentage / 2);
+
+                    var totalGuests = adults + children;
+                    var extraGuests = Math.Max(0, totalGuests - roomType.MaxOccupancy);
+
+                    // Build AFTER-discount nightly amounts (this matches what we charge and what nights store).
+                    var breakdown = await BuildRoomNightBreakdownAsync(
+                        ratePlan?.Id ?? 0,
+                        checkInDate,
+                        checkOutDate,
+                        ratePlan?.BaseRate ?? roomType.BaseRate,
+                        ratePlan?.ExtraPaxRate ?? 0,
+                        extraGuests,
+                        taxPercentage,
+                        cgstPercentage,
+                        sgstPercentage,
+                        transaction);
+
+                    var nightlyBaseAfterDiscountSum = breakdown.Sum(x => x.rateAmountAfterDiscount);
+                    var nightlyTaxSum = breakdown.Sum(x => x.taxAmount);
+                    var nightlyCGSTSum = breakdown.Sum(x => x.cgstAmount);
+                    var nightlySGSTSum = breakdown.Sum(x => x.sgstAmount);
+
+                    var rr = requiredRooms > 0 ? requiredRooms : 1;
+                    baseAmount = Math.Round(nightlyBaseAfterDiscountSum * rr, 2, MidpointRounding.AwayFromZero);
+                    taxAmount = Math.Round(nightlyTaxSum * rr, 2, MidpointRounding.AwayFromZero);
+                    cgstAmount = Math.Round(nightlyCGSTSum * rr, 2, MidpointRounding.AwayFromZero);
+                    sgstAmount = Math.Round(nightlySGSTSum * rr, 2, MidpointRounding.AwayFromZero);
+
+                    // Derive discount amount from RateMaster discount percent over ORIGINAL totals.
+                    decimal discountPercent = 0;
+                    if (ratePlan?.Id > 0)
+                    {
+                        const string discountSql = "SELECT ApplyDiscount FROM RateMaster WHERE Id = @RateMasterId";
+                        var discountStr = await _dbConnection.QueryFirstOrDefaultAsync<string>(
+                            discountSql,
+                            new { RateMasterId = ratePlan.Id },
+                            transaction);
+
+                        if (!string.IsNullOrWhiteSpace(discountStr) && decimal.TryParse(discountStr, out var parsedDiscount))
+                        {
+                            discountPercent = parsedDiscount;
+                        }
+                    }
+
+                    discountAmount = 0;
+                    if (discountPercent > 0)
+                    {
+                        var divisor = 1 - (discountPercent / 100m);
+                        if (divisor > 0)
+                        {
+                            var originalTotal = Math.Round(baseAmount / divisor, 2, MidpointRounding.AwayFromZero);
+                            discountAmount = Math.Round(originalTotal - baseAmount, 2, MidpointRounding.AwayFromZero);
+                        }
+                    }
+                }
                 
                 // Store old values for audit log
                 var oldCheckIn = (DateTime)booking.CheckInDate;
@@ -1473,8 +1669,12 @@ namespace HotelApp.Web.Repositories
                 var oldTaxAmount = (decimal)booking.TaxAmount;
                 var oldTotalAmount = (decimal)booking.TotalAmount;
 
+                // Ensure totals remain consistent when dates change.
+                // BaseAmount is AFTER-discount room total, DiscountAmount is total discount across stay.
+                var computedTotalAmount = Math.Round(baseAmount + taxAmount, 2, MidpointRounding.AwayFromZero);
+
                 // Calculate new balance
-                var balanceAmount = totalAmount - depositAmount;
+                var balanceAmount = computedTotalAmount - depositAmount;
 
                 // Update booking with new dates and amounts
                 const string updateBookingSql = @"
@@ -1483,6 +1683,7 @@ namespace HotelApp.Web.Repositories
                         CheckOutDate = @CheckOutDate,
                         Nights = @Nights,
                         BaseAmount = @BaseAmount,
+                        DiscountAmount = @DiscountAmount,
                         TaxAmount = @TaxAmount,
                         CGSTAmount = @CGSTAmount,
                         SGSTAmount = @SGSTAmount,
@@ -1499,10 +1700,11 @@ namespace HotelApp.Web.Repositories
                         CheckOutDate = checkOutDate,
                         Nights = nights,
                         BaseAmount = baseAmount,
+                        DiscountAmount = discountAmount,
                         TaxAmount = taxAmount,
                         CGSTAmount = cgstAmount,
                         SGSTAmount = sgstAmount,
-                        TotalAmount = totalAmount,
+                        TotalAmount = computedTotalAmount,
                         BalanceAmount = balanceAmount,
                         BookingNumber = bookingNumber
                     },
@@ -1526,41 +1728,132 @@ namespace HotelApp.Web.Repositories
                     transaction
                 );
 
+                // If this booking has multiple assigned rooms (BookingRooms), regenerate nights per-room.
+                // This ensures BookingRoomNights.RoomId is populated for each room and avoids multi-room calculation drift.
+                var assignedRoomIds = (await _dbConnection.QueryAsync<int>(
+                        @"SELECT br.RoomId FROM BookingRooms br WHERE br.BookingId = @BookingId AND br.IsActive = 1",
+                        new { BookingId = bookingId },
+                        transaction))
+                    .Distinct()
+                    .ToList();
+
+                var shouldWritePerRoomNights = assignedRoomIds.Count > 0;
+
                 // Create new BookingRoomNights records if room is assigned
-                if (roomId.HasValue)
+                if (roomId.HasValue || shouldWritePerRoomNights)
                 {
-                    var nightlyRoomAmount = Math.Round(baseAmount / nights, 2, MidpointRounding.AwayFromZero);
-                    var nightlyTax = Math.Round(taxAmount / nights, 2, MidpointRounding.AwayFromZero);
-                    var nightlyCGST = Math.Round(cgstAmount / nights, 2, MidpointRounding.AwayFromZero);
-                    var nightlySGST = Math.Round(sgstAmount / nights, 2, MidpointRounding.AwayFromZero);
+                    // Prefer true night-wise rates when possible (special day/weekend), fallback to even split.
+                    var nightlyBreakdown = new List<(DateTime date, decimal rateAmountAfterDiscount, decimal actualBaseRate, decimal discountAmount, decimal taxAmount, decimal cgstAmount, decimal sgstAmount)>();
+                    try
+                    {
+                        if (bookingMeta != null && roomType != null)
+                        {
+                            var rateMasterIdForNights = ratePlan?.Id ?? 0;
+                            var taxPercentageForNights = ratePlan?.TaxPercentage ?? 0;
+                            var cgstPercentageForNights = (ratePlan?.CGSTPercentage > 0 ? ratePlan.CGSTPercentage : taxPercentageForNights / 2);
+                            var sgstPercentageForNights = (ratePlan?.SGSTPercentage > 0 ? ratePlan.SGSTPercentage : taxPercentageForNights / 2);
+
+                            var totalGuests = adults + children;
+                            var extraGuests = Math.Max(0, totalGuests - roomType.MaxOccupancy);
+
+                            nightlyBreakdown = await BuildRoomNightBreakdownAsync(
+                                rateMasterIdForNights,
+                                checkInDate,
+                                checkOutDate,
+                                ratePlan?.BaseRate ?? roomType.BaseRate,
+                                ratePlan?.ExtraPaxRate ?? 0,
+                                extraGuests,
+                                taxPercentageForNights,
+                                cgstPercentageForNights,
+                                sgstPercentageForNights,
+                                transaction);
+                        }
+                    }
+                    catch
+                    {
+                        nightlyBreakdown = new List<(DateTime, decimal, decimal, decimal, decimal, decimal, decimal)>();
+                    }
+
+                    var fallbackNightlyRoomAmount = nights > 0 ? Math.Round(baseAmount / nights, 2, MidpointRounding.AwayFromZero) : 0m;
+                    var fallbackNightlyTax = nights > 0 ? Math.Round(taxAmount / nights, 2, MidpointRounding.AwayFromZero) : 0m;
+                    var fallbackNightlyCGST = nights > 0 ? Math.Round(cgstAmount / nights, 2, MidpointRounding.AwayFromZero) : 0m;
+                    var fallbackNightlySGST = nights > 0 ? Math.Round(sgstAmount / nights, 2, MidpointRounding.AwayFromZero) : 0m;
 
                     const string insertRoomNightSql = @"
-                        INSERT INTO BookingRoomNights (BookingId, RoomId, StayDate, RateAmount, TaxAmount, CGSTAmount, SGSTAmount, Status)
-                        VALUES (@BookingId, @RoomId, @StayDate, @RateAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @Status)";
+                        INSERT INTO BookingRoomNights (BookingId, RoomId, StayDate, RateAmount, ActualBaseRate, DiscountAmount, TaxAmount, CGSTAmount, SGSTAmount, Status)
+                        VALUES (@BookingId, @RoomId, @StayDate, @RateAmount, @ActualBaseRate, @DiscountAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @Status)";
+
+                    // If assigned rooms exist, write one row per room per date.
+                    // Otherwise, fall back to using the single booking RoomId.
+                    var targetRoomIds = shouldWritePerRoomNights
+                        ? assignedRoomIds
+                        : new List<int> { roomId!.Value };
+
+                    // Determine how to distribute totals.
+                    // When writing per-room rows, each row should contain per-room amounts.
+                    // When writing a single room id, we keep legacy behavior (single room).
+                    var perRoomDivisor = shouldWritePerRoomNights ? (targetRoomIds.Count > 0 ? targetRoomIds.Count : 1) : 1;
 
                     for (var date = checkInDate.Date; date < checkOutDate.Date; date = date.AddDays(1))
                     {
-                        await _dbConnection.ExecuteAsync(
-                            insertRoomNightSql,
-                            new
-                            {
-                                BookingId = bookingId,
-                                RoomId = roomId.Value,
-                                StayDate = date,
-                                RateAmount = nightlyRoomAmount,
-                                TaxAmount = nightlyTax,
-                                CGSTAmount = nightlyCGST,
-                                SGSTAmount = nightlySGST,
-                                Status = "Reserved"
-                            },
-                            transaction
-                        );
+                        var match = nightlyBreakdown.FirstOrDefault(x => x.date.Date == date);
+
+                        // Values from nightlyBreakdown are per-room.
+                        // Fallback values (baseAmount/discount/tax) are booking totals, so split by number of rooms.
+                        var nightRatePerRoom = match.date == default
+                            ? Math.Round(fallbackNightlyRoomAmount / perRoomDivisor, 2, MidpointRounding.AwayFromZero)
+                            : Math.Round(match.rateAmountAfterDiscount, 2, MidpointRounding.AwayFromZero);
+
+                        var nightActualBasePerRoom = match.date == default
+                            ? (discountAmount > 0 && nights > 0
+                                ? Math.Round(((baseAmount + discountAmount) / nights) / perRoomDivisor, 2, MidpointRounding.AwayFromZero)
+                                : Math.Round((baseAmount / nights) / perRoomDivisor, 2, MidpointRounding.AwayFromZero))
+                            : Math.Round(match.actualBaseRate, 2, MidpointRounding.AwayFromZero);
+
+                        var nightDiscountPerRoom = match.date == default
+                            ? (discountAmount > 0 && nights > 0
+                                ? Math.Round((discountAmount / nights) / perRoomDivisor, 2, MidpointRounding.AwayFromZero)
+                                : 0m)
+                            : Math.Round(match.discountAmount, 2, MidpointRounding.AwayFromZero);
+
+                        var nightTaxPerRoom = match.date == default
+                            ? Math.Round(fallbackNightlyTax / perRoomDivisor, 2, MidpointRounding.AwayFromZero)
+                            : Math.Round(match.taxAmount, 2, MidpointRounding.AwayFromZero);
+
+                        var nightCGSTPerRoom = match.date == default
+                            ? Math.Round(fallbackNightlyCGST / perRoomDivisor, 2, MidpointRounding.AwayFromZero)
+                            : Math.Round(match.cgstAmount, 2, MidpointRounding.AwayFromZero);
+
+                        var nightSGSTPerRoom = match.date == default
+                            ? Math.Round(fallbackNightlySGST / perRoomDivisor, 2, MidpointRounding.AwayFromZero)
+                            : Math.Round(match.sgstAmount, 2, MidpointRounding.AwayFromZero);
+
+                        foreach (var rid in targetRoomIds)
+                        {
+                            await _dbConnection.ExecuteAsync(
+                                insertRoomNightSql,
+                                new
+                                {
+                                    BookingId = bookingId,
+                                    RoomId = rid,
+                                    StayDate = date,
+                                    RateAmount = nightRatePerRoom,
+                                    ActualBaseRate = nightActualBasePerRoom,
+                                    DiscountAmount = nightDiscountPerRoom,
+                                    TaxAmount = nightTaxPerRoom,
+                                    CGSTAmount = nightCGSTPerRoom,
+                                    SGSTAmount = nightSGSTPerRoom,
+                                    Status = "Reserved"
+                                },
+                                transaction
+                            );
+                        }
                     }
                 }
 
                 // Log the date change in audit log
                 var oldValueStr = $"Check-In: {oldCheckIn:dd/MM/yyyy}, Check-Out: {oldCheckOut:dd/MM/yyyy}, Nights: {oldNights}, Room Total: ₹{oldBaseAmount:N2}, Tax: ₹{oldTaxAmount:N2}, Grand Total: ₹{oldTotalAmount:N2}";
-                var newValueStr = $"Check-In: {checkInDate:dd/MM/yyyy}, Check-Out: {checkOutDate:dd/MM/yyyy}, Nights: {nights}, Room Total: ₹{baseAmount:N2}, Tax: ₹{taxAmount:N2}, Grand Total: ₹{totalAmount:N2}";
+                var newValueStr = $"Check-In: {checkInDate:dd/MM/yyyy}, Check-Out: {checkOutDate:dd/MM/yyyy}, Nights: {nights}, Room Total: ₹{baseAmount:N2}, Discount: ₹{discountAmount:N2}, Tax: ₹{taxAmount:N2}, Grand Total: ₹{computedTotalAmount:N2}";
                 
                 await AddAuditLogAsync(bookingId, bookingNumber, "DatesChanged", 
                     $"Booking dates changed from {oldCheckIn:dd/MM/yyyy}-{oldCheckOut:dd/MM/yyyy} to {checkInDate:dd/MM/yyyy}-{checkOutDate:dd/MM/yyyy}", 

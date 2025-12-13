@@ -106,6 +106,8 @@ namespace HotelApp.Web.Models
         public int? RoomId { get; set; }
         public DateTime StayDate { get; set; }
         public decimal RateAmount { get; set; }
+        public decimal ActualBaseRate { get; set; }
+        public decimal DiscountAmount { get; set; }
         public decimal TaxAmount { get; set; }
         public decimal CGSTAmount { get; set; }
         public decimal SGSTAmount { get; set; }
