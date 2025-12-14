@@ -112,5 +112,17 @@ namespace HotelApp.Web.Repositories
             var count = await _connection.ExecuteScalarAsync<int>(sql, new { TypeName = typeName, BranchId = branchId, ExcludeId = excludeId });
             return count > 0;
         }
+
+        public async Task<IEnumerable<Amenity>> GetAmenitiesByBranchAsync(int branchId)
+        {
+            var sql = @"
+                SELECT Id, AmenityName, BranchID, IsActive,
+                       CreatedDate, CreatedBy, UpdatedDate, UpdatedBy
+                FROM Amenities
+                WHERE BranchID = @BranchId AND IsActive = 1
+                ORDER BY AmenityName";
+
+            return await _connection.QueryAsync<Amenity>(sql, new { BranchId = branchId });
+        }
     }
 }

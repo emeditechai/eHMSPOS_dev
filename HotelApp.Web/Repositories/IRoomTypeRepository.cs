@@ -10,5 +10,7 @@ namespace HotelApp.Web.Repositories
         Task<int> CreateAsync(RoomType roomType);
         Task<bool> UpdateAsync(RoomType roomType);
         Task<bool> RoomTypeNameExistsAsync(string typeName, int branchId, int? excludeId = null);
+
+        Task<IEnumerable<Amenity>> GetAmenitiesByBranchAsync(int branchId);
     }
 }

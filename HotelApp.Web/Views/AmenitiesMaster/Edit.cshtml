@@ -1,9 +1,8 @@
-@model HotelApp.Web.Models.RoomType
+@model HotelApp.Web.Models.Amenity
 @{
     var isReadOnly = (bool?)(ViewBag.IsReadOnly) ?? false;
-    var amenities = ViewBag.Amenities as IEnumerable<HotelApp.Web.Models.Amenity> ?? Enumerable.Empty<HotelApp.Web.Models.Amenity>();
-    ViewData["Title"] ??= isReadOnly ? "Room Type Details" : "Edit Room Type";
-    var headingText = ViewData["Title"]?.ToString() ?? (isReadOnly ? "Room Type Details" : "Edit Room Type");
+    ViewData["Title"] ??= isReadOnly ? "Amenity Details" : "Edit Amenity";
+    var headingText = ViewData["Title"]?.ToString() ?? (isReadOnly ? "Amenity Details" : "Edit Amenity");
     string FormatDate(DateTime date) => date == default ? "Not recorded" : date.ToString("dd MMM yyyy HH:mm");
     string FormatUser(int? userId) => userId.HasValue ? $"User #{userId}" : "System";
 }
@@ -123,7 +122,8 @@
     }
 
     .master-form-group input:read-only,
-    .master-form-group select:disabled {
+    .master-form-group select:disabled,
+    .master-form-group textarea:read-only {
         background-color: #f5f5f5;
         cursor: not-allowed;
     }
@@ -131,17 +131,6 @@
     .master-form-group textarea {
         min-height: 80px;
         resize: vertical;
-    }
-
-    .master-form-group select[multiple] {
-        min-height: 120px;
-        padding: 10px 12px;
-    }
-
-    .form-hint {
-        margin-top: 6px;
-        color: #666;
-        font-size: 12px;
     }
 
     .master-form-group-full {
@@ -190,21 +179,6 @@
             max-width: 98%;
         }
     }
-
-    @@media print {
-        body {
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-        }
-        @@page {
-            size: landscape;
-            margin: 0.5cm;
-        }
-        .master-edit-container {
-            max-width: 100%;
-            padding: 20px;
-        }
-    }
 </style>
 
 <div class="page-header">
@@ -216,9 +190,9 @@
 
 <div class="master-edit-container @(isReadOnly ? "form-readonly" : string.Empty)">
     <div class="master-edit-header">
-        <h3><i class="fas fa-bed"></i> @headingText</h3>
+        <h3><i class="fas fa-concierge-bell"></i> @headingText</h3>
     </div>
-    
+
     <form asp-action="Edit" method="post">
         <input type="hidden" asp-for="Id" />
         <input type="hidden" asp-for="CreatedDate" />
@@ -226,7 +200,7 @@
         @Html.AntiForgeryToken()
         <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
 
-        @if (Model != null && (Model.CreatedDate != default || Model.LastModifiedDate != default))
+        @if (Model != null && (Model.CreatedDate != default || (Model.UpdatedDate.HasValue && Model.UpdatedDate.Value != default)))
         {
             <div class="audit-info">
                 <div class="audit-item">
@@ -236,8 +210,8 @@
                 </div>
                 <div class="audit-item">
                     <span class="audit-label">Last Updated</span>
-                    <span class="audit-value">@FormatDate(Model.LastModifiedDate)</span>
-                    <span class="audit-subtext">@FormatUser(Model.LastModifiedBy)</span>
+                    <span class="audit-value">@FormatDate(Model.UpdatedDate ?? default)</span>
+                    <span class="audit-subtext">@FormatUser(Model.UpdatedBy)</span>
                 </div>
             </div>
         }
@@ -245,25 +219,14 @@
         <div class="master-form-section">
             <div class="section-title">
                 <i class="fas fa-info-circle"></i>
-                Room Type Information
+                Amenity Information
             </div>
+
             <div class="master-form-grid">
                 <div class="master-form-group">
-                    <label asp-for="TypeName">Type Name <span class="text-danger">*</span></label>
-                    <input asp-for="TypeName" type="text" placeholder="e.g., Deluxe" required readonly="@(isReadOnly ? "readonly" : null)" />
-                    <span asp-validation-for="TypeName" class="text-danger"></span>
-                </div>
-
-                <div class="master-form-group">
-                    <label asp-for="MaxOccupancy">Max Occupancy <span class="text-danger">*</span></label>
-                    <input asp-for="MaxOccupancy" type="number" min="1" placeholder="e.g., 2" required readonly="@(isReadOnly ? "readonly" : null)" />
-                    <span asp-validation-for="MaxOccupancy" class="text-danger"></span>
-                </div>
-
-                <div class="master-form-group">
-                    <label asp-for="Max_RoomAvailability">Max Room Availability</label>
-                    <input asp-for="Max_RoomAvailability" type="number" min="0" placeholder="e.g., 10" readonly="@(isReadOnly ? "readonly" : null)" />
-                    <span asp-validation-for="Max_RoomAvailability" class="text-danger"></span>
+                    <label asp-for="AmenityName">Amenity Name <span class="text-danger">*</span></label>
+                    <input asp-for="AmenityName" type="text" placeholder="e.g., WiFi" required readonly="@(isReadOnly ? "readonly" : null)" />
+                    <span asp-validation-for="AmenityName" class="text-danger"></span>
                 </div>
 
                 <div class="master-form-group">
@@ -274,30 +237,6 @@
                     </select>
                 </div>
 
-                <div class="master-form-group master-form-group-full">
-                    <label asp-for="Description">Description</label>
-                    <textarea asp-for="Description" placeholder="e.g., Spacious room with king-size bed" readonly="@(isReadOnly ? "readonly" : null)"></textarea>
-                    <span asp-validation-for="Description" class="text-danger"></span>
-                </div>
-
-                <div class="master-form-group master-form-group-full">
-                    <label asp-for="Amenities">Amenities</label>
-                    @if (amenities.Any())
-                    {
-                        <select id="Amenities" name="amenitiesSelected" multiple disabled="@(isReadOnly ? "disabled" : null)">
-                            @foreach (var a in amenities)
-                            {
-                                <option value="@a.AmenityName">@a.AmenityName</option>
-                            }
-                        </select>
-                        <div class="form-hint">Hold Ctrl/Cmd to select multiple amenities.</div>
-                    }
-                    else
-                    {
-                        <textarea asp-for="Amenities" placeholder="e.g., AC, WiFi, TV, Mini Bar" readonly="@(isReadOnly ? "readonly" : null)"></textarea>
-                    }
-                    <span asp-validation-for="Amenities" class="text-danger"></span>
-                </div>
             </div>
         </div>
 
@@ -316,7 +255,7 @@
                     <i class="fas fa-times"></i> Cancel
                 </a>
                 <button type="submit" class="btn-save">
-                    <i class="fas fa-save"></i> Update Room Type
+                    <i class="fas fa-save"></i> Update Amenity
                 </button>
             </div>
         }
@@ -325,23 +264,4 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-
-    <script>
-        (function () {
-            const select = document.getElementById('Amenities');
-            if (!select) return;
-
-            const initial = '@(Model?.Amenities ?? string.Empty)';
-            const selected = initial
-                .split(',')
-                .map(s => s.trim())
-                .filter(Boolean);
-
-            for (const opt of select.options) {
-                if (selected.includes(opt.value)) {
-                    opt.selected = true;
-                }
-            }
-        })();
-    </script>
 }

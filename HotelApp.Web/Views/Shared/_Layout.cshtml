@@ -19,7 +19,7 @@
         var action = (string?)ViewContext.RouteData.Values["Action"] ?? string.Empty;
         var isLoginPage = controller.Equals("Account", StringComparison.OrdinalIgnoreCase) && action.Equals("Login", StringComparison.OrdinalIgnoreCase);
         var displayName = User.FindFirst("displayName")?.Value ?? User.Identity?.Name ?? "Guest";
-        bool roomsNavActive = controller is "Rooms" or "RoomMaster" or "RateMaster" or "FloorMaster" or "RoomTypeMaster";
+        bool roomsNavActive = controller is "Rooms" or "RoomMaster" or "RateMaster" or "FloorMaster" or "RoomTypeMaster" or "AmenitiesMaster";
     }
 
     @if (!isLoginPage)
@@ -63,6 +63,11 @@
                             <a asp-controller="RoomTypeMaster" asp-action="List" class="@(controller == "RoomTypeMaster" ? "active" : string.Empty)">
                                 <i class="fas fa-cube"></i>
                                 <span>Room Type Master</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+                            <a asp-controller="AmenitiesMaster" asp-action="List" class="@(controller == "AmenitiesMaster" ? "active" : string.Empty)">
+                                <i class="fas fa-concierge-bell"></i>
+                                <span>Amenities Master</span>
                                 <i class="fas fa-arrow-right dropdown-arrow"></i>
                             </a>
                         </div>

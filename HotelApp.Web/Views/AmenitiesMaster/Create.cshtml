@@ -1,7 +1,6 @@
-@model HotelApp.Web.Models.RoomType
+@model HotelApp.Web.Models.Amenity
 @{
-    ViewData["Title"] = "Create Room Type";
-    var amenities = ViewBag.Amenities as IEnumerable<HotelApp.Web.Models.Amenity> ?? Enumerable.Empty<HotelApp.Web.Models.Amenity>();
+    ViewData["Title"] = "Create Amenity";
 }
 
 <style>
@@ -89,17 +88,6 @@
         resize: vertical;
     }
 
-    .master-form-group select[multiple] {
-        min-height: 120px;
-        padding: 10px 12px;
-    }
-
-    .form-hint {
-        margin-top: 6px;
-        color: #666;
-        font-size: 12px;
-    }
-
     .master-form-group-full {
         grid-column: 1 / -1;
     }
@@ -143,32 +131,17 @@
             max-width: 98%;
         }
     }
-
-    @@media print {
-        body {
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-        }
-        @@page {
-            size: landscape;
-            margin: 0.5cm;
-        }
-        .master-create-container {
-            max-width: 100%;
-            padding: 20px;
-        }
-    }
 </style>
 
 <div class="page-header">
-    <h2><i class="fas fa-cube"></i> Room Type Master</h2>
+    <h2><i class="fas fa-concierge-bell"></i> Amenities Master</h2>
 </div>
 
 <div class="master-create-container">
     <div class="master-create-header">
-        <h3><i class="fas fa-plus-circle"></i> Add New Room Type</h3>
+        <h3><i class="fas fa-plus-circle"></i> Add New Amenity</h3>
     </div>
-    
+
     <form asp-action="Create" method="post">
         @Html.AntiForgeryToken()
         <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
@@ -176,25 +149,14 @@
         <div class="master-form-section">
             <div class="section-title">
                 <i class="fas fa-info-circle"></i>
-                Room Type Information
+                Amenity Information
             </div>
+
             <div class="master-form-grid">
                 <div class="master-form-group">
-                    <label asp-for="TypeName">Type Name <span class="text-danger">*</span></label>
-                    <input asp-for="TypeName" type="text" placeholder="e.g., Deluxe" required />
-                    <span asp-validation-for="TypeName" class="text-danger"></span>
-                </div>
-
-                <div class="master-form-group">
-                    <label asp-for="MaxOccupancy">Max Occupancy <span class="text-danger">*</span></label>
-                    <input asp-for="MaxOccupancy" type="number" min="1" placeholder="e.g., 2" required />
-                    <span asp-validation-for="MaxOccupancy" class="text-danger"></span>
-                </div>
-
-                <div class="master-form-group">
-                    <label asp-for="Max_RoomAvailability">Max Room Availability</label>
-                    <input asp-for="Max_RoomAvailability" type="number" min="0" placeholder="e.g., 10" />
-                    <span asp-validation-for="Max_RoomAvailability" class="text-danger"></span>
+                    <label asp-for="AmenityName">Amenity Name <span class="text-danger">*</span></label>
+                    <input asp-for="AmenityName" type="text" placeholder="e.g., WiFi" required />
+                    <span asp-validation-for="AmenityName" class="text-danger"></span>
                 </div>
 
                 <div class="master-form-group">
@@ -205,30 +167,6 @@
                     </select>
                 </div>
 
-                <div class="master-form-group master-form-group-full">
-                    <label asp-for="Description">Description</label>
-                    <textarea asp-for="Description" placeholder="e.g., Spacious room with king-size bed"></textarea>
-                    <span asp-validation-for="Description" class="text-danger"></span>
-                </div>
-
-                <div class="master-form-group master-form-group-full">
-                    <label asp-for="Amenities">Amenities</label>
-                    @if (amenities.Any())
-                    {
-                        <select id="Amenities" name="amenitiesSelected" multiple>
-                            @foreach (var a in amenities)
-                            {
-                                <option value="@a.AmenityName">@a.AmenityName</option>
-                            }
-                        </select>
-                        <div class="form-hint">Hold Ctrl/Cmd to select multiple amenities.</div>
-                    }
-                    else
-                    {
-                        <textarea asp-for="Amenities" placeholder="e.g., AC, WiFi, TV, Mini Bar"></textarea>
-                    }
-                    <span asp-validation-for="Amenities" class="text-danger"></span>
-                </div>
             </div>
         </div>
 
@@ -237,7 +175,7 @@
                 <i class="fas fa-times"></i> Cancel
             </a>
             <button type="submit" class="btn-save">
-                <i class="fas fa-save"></i> Save Room Type
+                <i class="fas fa-save"></i> Save Amenity
             </button>
         </div>
     </form>
@@ -245,25 +183,4 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-
-    <script>
-        (function () {
-            const select = document.getElementById('Amenities');
-            if (!select) return;
-
-            const initial = '@(Model?.Amenities ?? string.Empty)';
-            const selected = initial
-                .split(',')
-                .map(s => s.trim())
-                .filter(Boolean);
-
-            if (selected.length === 0) return;
-
-            for (const opt of select.options) {
-                if (selected.includes(opt.value)) {
-                    opt.selected = true;
-                }
-            }
-        })();
-    </script>
 }

@@ -23,15 +23,17 @@ namespace HotelApp.Web.Controllers
         }
 
         // GET: RoomTypeMaster/Create
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            var amenities = await _roomTypeRepository.GetAmenitiesByBranchAsync(CurrentBranchID);
+            ViewBag.Amenities = amenities;
             return View();
         }
 
         // POST: RoomTypeMaster/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(RoomType roomType)
+        public async Task<IActionResult> Create(RoomType roomType, string[]? amenitiesSelected)
         {
             if (ModelState.IsValid)
             {
@@ -45,11 +47,19 @@ namespace HotelApp.Web.Controllers
                 roomType.CreatedBy = GetCurrentUserId();
                 roomType.BranchID = CurrentBranchID;
                 roomType.BaseRate = 0; // Base rate is managed in Rate Master
+
+                if (amenitiesSelected != null)
+                {
+                    roomType.Amenities = string.Join(", ", amenitiesSelected.Where(a => !string.IsNullOrWhiteSpace(a)).Select(a => a.Trim()).Distinct());
+                }
+
                 await _roomTypeRepository.CreateAsync(roomType);
                 TempData["SuccessMessage"] = "Room Type created successfully!";
                 return RedirectToAction(nameof(List));
             }
 
+            var amenities = await _roomTypeRepository.GetAmenitiesByBranchAsync(CurrentBranchID);
+            ViewBag.Amenities = amenities;
             return View(roomType);
         }
 
@@ -62,6 +72,8 @@ namespace HotelApp.Web.Controllers
                 return NotFound();
             }
 
+            var amenities = await _roomTypeRepository.GetAmenitiesByBranchAsync(CurrentBranchID);
+            ViewBag.Amenities = amenities;
             return View(roomType);
         }
 
@@ -73,6 +85,9 @@ namespace HotelApp.Web.Controllers
             {
                 return NotFound();
             }
+
+            var amenities = await _roomTypeRepository.GetAmenitiesByBranchAsync(CurrentBranchID);
+            ViewBag.Amenities = amenities;
             ViewBag.IsReadOnly = true;
             ViewData["Title"] = "View Room Type";
             return View("Edit", roomType);
@@ -81,7 +96,7 @@ namespace HotelApp.Web.Controllers
         // POST: RoomTypeMaster/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, RoomType roomType)
+        public async Task<IActionResult> Edit(int id, RoomType roomType, string[]? amenitiesSelected)
         {
             if (id != roomType.Id)
             {
@@ -98,12 +113,19 @@ namespace HotelApp.Web.Controllers
                 }
 
                 roomType.BaseRate = 0; // Base rate is managed in Rate Master
-                await _roomTypeRepository.UpdateAsync(roomType);
+
+                if (amenitiesSelected != null)
+                {
+                    roomType.Amenities = string.Join(", ", amenitiesSelected.Where(a => !string.IsNullOrWhiteSpace(a)).Select(a => a.Trim()).Distinct());
+                }
+
                 await _roomTypeRepository.UpdateAsync(roomType);
                 TempData["SuccessMessage"] = "Room Type updated successfully!";
                 return RedirectToAction(nameof(List));
             }
 
+            var amenities = await _roomTypeRepository.GetAmenitiesByBranchAsync(CurrentBranchID);
+            ViewBag.Amenities = amenities;
             return View(roomType);
         }
 
