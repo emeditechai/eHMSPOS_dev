@@ -56,6 +56,7 @@ namespace HotelApp.Web.Models
     {
         public int Id { get; set; }
         public int BookingId { get; set; }
+        public int GuestId { get; set; }
         public string FullName { get; set; } = string.Empty;
         public string? Email { get; set; }
         public string? Phone { get; set; }

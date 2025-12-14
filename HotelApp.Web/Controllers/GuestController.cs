@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using HotelApp.Web.Models;
 using HotelApp.Web.Repositories;
+using System.Text.RegularExpressions;
 
 namespace HotelApp.Web.Controllers
 {
@@ -8,13 +9,16 @@ namespace HotelApp.Web.Controllers
     {
         private readonly IGuestRepository _guestRepository;
         private readonly ILocationRepository _locationRepository;
+        private readonly IBookingRepository _bookingRepository;
 
         public GuestController(
             IGuestRepository guestRepository,
-            ILocationRepository locationRepository)
+            ILocationRepository locationRepository,
+            IBookingRepository bookingRepository)
         {
             _guestRepository = guestRepository;
             _locationRepository = locationRepository;
+            _bookingRepository = bookingRepository;
         }
 
         public async Task<IActionResult> Index()
@@ -100,7 +104,7 @@ namespace HotelApp.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Guest guest)
+        public async Task<IActionResult> Edit(Guest guest, IFormFile? documentFile)
         {
             if (!ModelState.IsValid)
             {
@@ -114,6 +118,28 @@ namespace HotelApp.Web.Controllers
                 await PopulateLocationDataAsync(guest.CountryId, guest.StateId, guest.CityId);
                 
                 return View(guest);
+            }
+
+            if (documentFile != null && documentFile.Length > 0)
+            {
+                var savedPath = await SaveGuestDocumentAsync(documentFile);
+                if (savedPath == null)
+                {
+                    ModelState.AddModelError(string.Empty, "Invalid document file. Please upload JPG/PNG/GIF/PDF under 5MB.");
+
+                    if (guest.GuestType == "Primary")
+                    {
+                        var childGuests = await _guestRepository.GetChildGuestsAsync(guest.Id);
+                        ViewBag.ChildGuests = childGuests;
+                    }
+
+                    await PopulateLocationDataAsync(guest.CountryId, guest.StateId, guest.CityId);
+                    return View(guest);
+                }
+
+                // Persist the uploaded document path against BookingGuests (latest row) using GuestId.
+                // Note: this requires BookingGuests.GuestId column (see DB script 37_AddGuestIdToBookingGuests.sql).
+                await _bookingRepository.UpdateLatestGuestDocumentPathAsync(guest.Id, savedPath, CurrentUserId ?? 0);
             }
 
             // Preserve BranchID from the existing guest record
@@ -141,6 +167,38 @@ namespace HotelApp.Web.Controllers
             await PopulateLocationDataAsync(guest.CountryId, guest.StateId, guest.CityId);
             
             return View(guest);
+        }
+
+        private static async Task<string?> SaveGuestDocumentAsync(IFormFile file)
+        {
+            if (file.Length > 5 * 1024 * 1024)
+            {
+                return null;
+            }
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".pdf" };
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(extension))
+            {
+                return null;
+            }
+
+            var safeExt = Regex.Replace(extension, "[^a-z0-9\\.]", string.Empty);
+            var fileName = $"guest_{Guid.NewGuid()}{safeExt}";
+
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "guests");
+            if (!Directory.Exists(uploadsFolder))
+            {
+                Directory.CreateDirectory(uploadsFolder);
+            }
+
+            var filePath = Path.Combine(uploadsFolder, fileName);
+            await using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            return $"/uploads/guests/{fileName}";
         }
 
         public async Task<IActionResult> Details(int id)

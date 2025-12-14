@@ -352,9 +352,22 @@ public class RoomsController : BaseController
                 // B2C: Get the effective rate for this date and room type (WITHOUT discount applied yet)
                 var rateInfo = GetEffectiveRateForDate(allRates, roomTypeId, start, "B2C");
 
+                // Tax % should come from RateMaster (default rate for this date range/customer type)
+                var b2cTaxPercentage = allRates
+                    .Where(r => r.RoomTypeId == roomTypeId && r.IsActive && r.CustomerType == "B2C")
+                    .Where(r => r.StartDate.Date <= start.Date && r.EndDate.Date >= start.Date)
+                    .Select(r => r.TaxPercentage)
+                    .FirstOrDefault();
+
                 // B2B: Optional rate (same rate-type logic). Only include if a B2B entry exists.
                 var b2bRateInfo = GetEffectiveRateForDate(allRates, roomTypeId, start, "B2B");
                 var hasB2BRate = b2bRateInfo.baseRate > 0;
+
+                var b2bTaxPercentage = allRates
+                    .Where(r => r.RoomTypeId == roomTypeId && r.IsActive && r.CustomerType == "B2B")
+                    .Where(r => r.StartDate.Date <= start.Date && r.EndDate.Date >= start.Date)
+                    .Select(r => r.TaxPercentage)
+                    .FirstOrDefault();
                 
                 // Calculate discount
                 decimal originalRate = rateInfo.baseRate;
@@ -370,12 +383,12 @@ public class RoomsController : BaseController
                 {
                     discountPercent = discount;
                     discountedRate = Math.Round(originalRate * (1 - discountPercent / 100m), 2, MidpointRounding.AwayFromZero);
-                    discountAmount = originalRate - discountedRate;
+                    discountAmount = Math.Round(originalRate - discountedRate, 2, MidpointRounding.AwayFromZero);
 
                     if (hasB2BRate)
                     {
                         b2bDiscountedRate = Math.Round(b2bOriginalRate * (1 - discountPercent / 100m), 2, MidpointRounding.AwayFromZero);
-                        b2bDiscountAmount = b2bOriginalRate - b2bDiscountedRate;
+                        b2bDiscountAmount = Math.Round(b2bOriginalRate - b2bDiscountedRate, 2, MidpointRounding.AwayFromZero);
                     }
                 }
                 
@@ -390,6 +403,7 @@ public class RoomsController : BaseController
                     baseRate = discountedRate,  // This is the discounted rate
                     discountPercent = discountPercent,
                     discountAmount = discountAmount,
+                    taxPercentage = b2cTaxPercentage,
                     extraPaxRate = rateInfo.extraPaxRate,
                     rateType = rateInfo.rateType,
                     eventName = rateInfo.eventName,
@@ -397,6 +411,7 @@ public class RoomsController : BaseController
                     b2bRate = hasB2BRate ? b2bDiscountedRate : (decimal?)null,
                     b2bDiscountPercent = hasB2BRate ? discountPercent : (decimal?)null,
                     b2bDiscountAmount = hasB2BRate ? b2bDiscountAmount : (decimal?)null,
+                    b2bTaxPercentage = hasB2BRate ? b2bTaxPercentage : (decimal?)null,
                     b2bExtraPaxRate = hasB2BRate ? b2bRateInfo.extraPaxRate : (decimal?)null,
                     b2bRateType = hasB2BRate ? b2bRateInfo.rateType : null,
                     b2bEventName = hasB2BRate ? b2bRateInfo.eventName : null,

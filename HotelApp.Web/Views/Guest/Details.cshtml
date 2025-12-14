@@ -5,208 +5,210 @@
     var parentGuest = ViewBag.ParentGuest as HotelApp.Web.Models.Guest;
 }
 
-<style>
-    .guest-details-container {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 1.5rem;
-    }
-    
-    .guest-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 2rem;
-        border-radius: 12px;
-        margin-bottom: 2rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    
-    .guest-header h1 {
-        margin: 0;
-        font-size: 2rem;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-    
-    .guest-header .header-actions {
-        display: flex;
-        gap: 0.75rem;
-        margin-top: 1rem;
-        flex-wrap: wrap;
-    }
-    
-    .guest-header .header-actions a {
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        text-decoration: none;
-        font-weight: 500;
-        transition: all 0.3s;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    
-    .guest-header .header-actions a:hover {
-        background: rgba(255, 255, 255, 0.3);
-        transform: translateY(-2px);
-    }
-    
-    .details-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-    
-    .detail-card {
-        background: white;
-        border-radius: 12px;
-        padding: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        border: 1px solid #e5e7eb;
-        transition: all 0.3s;
-    }
-    
-    .detail-card:hover {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-        transform: translateY(-2px);
-    }
-    
-    .detail-card h3 {
-        color: #667eea;
-        font-size: 1.25rem;
-        margin: 0 0 1.5rem 0;
-        padding-bottom: 0.75rem;
-        border-bottom: 2px solid #f3f4f6;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-    
-    .detail-card h3 i {
-        font-size: 1.5rem;
-    }
-    
-    .detail-row {
-        display: flex;
-        margin-bottom: 1rem;
-        align-items: flex-start;
-    }
-    
-    .detail-row:last-child {
-        margin-bottom: 0;
-    }
-    
-    .detail-label {
-        font-weight: 600;
-        color: #4b5563;
-        min-width: 140px;
-        margin-right: 1rem;
-    }
-    
-    .detail-value {
-        color: #1f2937;
-        flex: 1;
-    }
-    
-    .detail-value.text-muted {
-        color: #9ca3af;
-        font-style: italic;
-    }
-    
-    .document-preview {
-        margin-top: 1rem;
-        border-radius: 8px;
-        overflow: hidden;
-        border: 1px solid #e5e7eb;
-    }
-    
-    .document-preview img {
-        width: 100%;
-        height: auto;
-        max-height: 300px;
-        object-fit: contain;
-        background: #f9fafb;
-    }
-    
-    .document-download {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 1rem;
-        background: #f9fafb;
-        border-radius: 8px;
-        text-decoration: none;
-        color: #667eea;
-        font-weight: 500;
-        transition: all 0.3s;
-        margin-top: 0.5rem;
-    }
-    
-    .document-download:hover {
-        background: #667eea;
-        color: white;
-    }
-    
-    .document-download i {
-        font-size: 1.5rem;
-    }
-    
-    .full-width-card {
-        grid-column: 1 / -1;
-    }
-    
-    @@media (max-width: 768px) {
-        .details-grid {
-            grid-template-columns: 1fr;
+@section Styles {
+    <style>
+        .guest-details-shell {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 12px;
         }
-        
-        .guest-header h1 {
-            font-size: 1.5rem;
-        }
-        
-        .detail-row {
-            flex-direction: column;
-        }
-        
-        .detail-label {
-            min-width: auto;
-            margin-bottom: 0.25rem;
-        }
-    }
-</style>
 
-<div class="guest-details-container">
-    <div class="guest-header">
-        <h1>
-            <i class="fas fa-user-circle"></i>
-            @Model.FirstName @Model.LastName
-        </h1>
-        <div class="header-actions">
-            <a asp-action="Edit" asp-route-id="@Model.Id">
-                <i class="fas fa-edit"></i> Edit Details
-            </a>
-            <a asp-action="Index">
-                <i class="fas fa-arrow-left"></i> Back to List
-            </a>
-        </div>
-    </div>
-    
-    <div class="details-grid">
-        <!-- Personal Information Card -->
-        <div class="detail-card">
-            <h3><i class="fas fa-user"></i> Personal Information</h3>
-            <div class="detail-row">
-                <div class="detail-label">Full Name:</div>
-                <div class="detail-value">@Model.FirstName @Model.LastName</div>
+        .guest-details-card {
+            background: #fff;
+            border-radius: 16px;
+            border: 1px solid rgba(0,0,0,0.06);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+
+        .guest-details-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 18px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+        }
+
+        .guest-details-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .guest-details-title h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 800;
+            line-height: 1.1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .guest-details-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .guest-details-actions a {
+            background: rgba(255,255,255,0.18);
+            color: #fff;
+            padding: 10px 12px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(255,255,255,0.20);
+        }
+
+        .guest-details-actions a:hover {
+            background: rgba(255,255,255,0.26);
+        }
+
+        .guest-details-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 18px;
+            padding: 18px 20px 22px;
+        }
+
+        .guest-details-section {
+            border: 1px solid rgba(0,0,0,0.06);
+            border-radius: 14px;
+            padding: 16px;
+            background: #fff;
+        }
+
+        .guest-details-section__title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 900;
+            color: #111827;
+            margin: 0 0 12px 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+        }
+
+        .guest-details-section__title i {
+            color: #4c51bf;
+        }
+
+        .guest-details-row {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            gap: 12px;
+            padding: 8px 0;
+        }
+
+        .guest-details-label {
+            font-weight: 800;
+            color: #4b5563;
+        }
+
+        .guest-details-value {
+            color: #111827;
+            overflow-wrap: anywhere;
+        }
+
+        .guest-details-muted {
+            color: #9ca3af;
+            font-style: italic;
+        }
+
+        .guest-details-full {
+            grid-column: 1 / -1;
+        }
+
+        .guest-doc-preview {
+            width: 100%;
+            max-height: 320px;
+            object-fit: contain;
+            border-radius: 12px;
+            border: 1px solid rgba(0,0,0,0.06);
+            background: #f9fafb;
+        }
+
+        .guest-doc-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .guest-doc-actions a {
+            background: #eef2ff;
+            color: #3730a3;
+            padding: 8px 10px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 800;
+            border: 1px solid rgba(55, 48, 163, 0.18);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .guest-doc-actions a:hover {
+            background: #e0e7ff;
+        }
+
+        @@media (max-width: 1100px) {
+            .guest-details-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @@media (max-width: 640px) {
+            .guest-details-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .guest-details-title h1 {
+                white-space: normal;
+            }
+            .guest-details-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+}
+
+<div class="guest-details-shell">
+    <div class="guest-details-card">
+        <div class="guest-details-header">
+            <div class="guest-details-title">
+                <i class="fas fa-user-circle" style="font-size: 28px;"></i>
+                <div>
+                    <h1>@Model.FirstName @Model.LastName</h1>
+                    <div style="opacity: 0.9; font-weight: 600; font-size: 12px; margin-top: 2px;">
+                        Guest profile details
+                    </div>
+                </div>
             </div>
-            <div class="detail-row">
-                <div class="detail-label">Guest Type:</div>
-                <div class="detail-value">
+            <div class="guest-details-actions">
+                <a asp-action="Edit" asp-route-id="@Model.Id"><i class="fas fa-edit"></i> Edit</a>
+                <a asp-action="Index"><i class="fas fa-arrow-left"></i> Back</a>
+            </div>
+        </div>
+
+        <div class="guest-details-grid">
+            <div class="guest-details-section">
+                <div class="guest-details-section__title"><i class="fas fa-user"></i> Personal</div>
+                <div class="guest-details-row">
+                    <div class="guest-details-label">Full Name</div>
+                    <div class="guest-details-value">@Model.FirstName @Model.LastName</div>
+                </div>
+                <div class="guest-details-row">
+                    <div class="guest-details-label">Guest Type</div>
+                    <div class="guest-details-value">
                     @if (Model.GuestType == "Primary")
                     {
                         <span class="badge badge-available"><i class="fas fa-star"></i> Primary</span>
@@ -223,30 +225,32 @@
                     {
                         <span class="badge badge-muted">@Model.GuestType</span>
                     }
-                </div>
-            </div>
-            @if (Model.DateOfBirth.HasValue)
-            {
-                <div class="detail-row">
-                    <div class="detail-label">Date of Birth:</div>
-                    <div class="detail-value">@Model.DateOfBirth.Value.ToString("dd MMM yyyy")</div>
-                </div>
-                <div class="detail-row">
-                    <div class="detail-label">Age:</div>
-                    <div class="detail-value">
-                        @{
-                            var age = DateTime.Now.Year - Model.DateOfBirth.Value.Year;
-                            if (DateTime.Now < Model.DateOfBirth.Value.AddYears(age)) age--;
-                        }
-                        <i class="fas fa-birthday-cake"></i> @age years
                     </div>
                 </div>
-            }
-            @if (!string.IsNullOrWhiteSpace(Model.Gender))
-            {
-                <div class="detail-row">
-                    <div class="detail-label">Gender:</div>
-                    <div class="detail-value">
+
+                @if (Model.DateOfBirth.HasValue)
+                {
+                    <div class="guest-details-row">
+                        <div class="guest-details-label">Date of Birth</div>
+                        <div class="guest-details-value">@Model.DateOfBirth.Value.ToString("dd MMM yyyy")</div>
+                    </div>
+                    <div class="guest-details-row">
+                        <div class="guest-details-label">Age</div>
+                        <div class="guest-details-value">
+                            @{
+                                var age = DateTime.Now.Year - Model.DateOfBirth.Value.Year;
+                                if (DateTime.Now < Model.DateOfBirth.Value.AddYears(age)) age--;
+                            }
+                            <i class="fas fa-birthday-cake"></i> @age years
+                        </div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model.Gender))
+                {
+                    <div class="guest-details-row">
+                        <div class="guest-details-label">Gender</div>
+                        <div class="guest-details-value">
                         @if (Model.Gender == "Male")
                         {
                             <i class="fas fa-mars"></i> <text>Male</text>
@@ -259,240 +263,219 @@
                         {
                             <i class="fas fa-genderless"></i> @Model.Gender
                         }
+                        </div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model.LoyaltyId))
+                {
+                    <div class="guest-details-row">
+                        <div class="guest-details-label">Loyalty ID</div>
+                        <div class="guest-details-value"><i class="fas fa-id-badge"></i> @Model.LoyaltyId</div>
+                    </div>
+                }
+            </div>
+
+            <div class="guest-details-section">
+                <div class="guest-details-section__title"><i class="fas fa-file-alt"></i> Document</div>
+                <div class="guest-details-muted">Guest documents are stored per booking guest. Open the booking and view guest there to see the uploaded document.</div>
+            </div>
+
+            <div class="guest-details-section">
+                <div class="guest-details-section__title"><i class="fas fa-address-book"></i> Contact</div>
+                <div class="guest-details-row">
+                    <div class="guest-details-label">Email</div>
+                    <div class="guest-details-value">
+                        @if (!string.IsNullOrWhiteSpace(Model.Email))
+                        {
+                            <i class="fas fa-envelope"></i>
+                            <a href="mailto:@Model.Email" style="color: #4c51bf; font-weight: 700;">@Model.Email</a>
+                        }
+                        else
+                        {
+                            <span class="guest-details-muted">Not provided</span>
+                        }
+                    </div>
+                </div>
+                <div class="guest-details-row">
+                    <div class="guest-details-label">Phone</div>
+                    <div class="guest-details-value">
+                        @if (!string.IsNullOrWhiteSpace(Model.Phone))
+                        {
+                            <i class="fas fa-phone"></i>
+                            <a href="tel:@Model.Phone" style="color: #4c51bf; font-weight: 700;">@Model.Phone</a>
+                        }
+                        else
+                        {
+                            <span class="guest-details-muted">Not provided</span>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="guest-details-section">
+                <div class="guest-details-section__title"><i class="fas fa-map-marker-alt"></i> Address</div>
+                @if (!string.IsNullOrWhiteSpace(Model.Address) || !string.IsNullOrWhiteSpace(Model.City))
+                {
+                    @if (!string.IsNullOrWhiteSpace(Model.Address))
+                    {
+                        <div class="guest-details-row">
+                            <div class="guest-details-label">Street</div>
+                            <div class="guest-details-value">@Model.Address</div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.City))
+                    {
+                        <div class="guest-details-row">
+                            <div class="guest-details-label">City</div>
+                            <div class="guest-details-value">@Model.City</div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.State))
+                    {
+                        <div class="guest-details-row">
+                            <div class="guest-details-label">State</div>
+                            <div class="guest-details-value">@Model.State</div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.Country))
+                    {
+                        <div class="guest-details-row">
+                            <div class="guest-details-label">Country</div>
+                            <div class="guest-details-value">@Model.Country</div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.Pincode))
+                    {
+                        <div class="guest-details-row">
+                            <div class="guest-details-label">Pincode</div>
+                            <div class="guest-details-value"><i class="fas fa-map-pin"></i> @Model.Pincode</div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="guest-details-muted">No address information available</div>
+                }
+            </div>
+
+            <div class="guest-details-section">
+                <div class="guest-details-section__title"><i class="fas fa-id-card"></i> Identity</div>
+                @if (!string.IsNullOrWhiteSpace(Model.IdentityType) || !string.IsNullOrWhiteSpace(Model.IdentityNumber))
+                {
+                    @if (!string.IsNullOrWhiteSpace(Model.IdentityType))
+                    {
+                        <div class="guest-details-row">
+                            <div class="guest-details-label">Type</div>
+                            <div class="guest-details-value">@Model.IdentityType</div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.IdentityNumber))
+                    {
+                        <div class="guest-details-row">
+                            <div class="guest-details-label">Number</div>
+                            <div class="guest-details-value"><strong>@Model.IdentityNumber</strong></div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="guest-details-muted">No identity information available</div>
+                }
+            </div>
+
+            <div class="guest-details-section">
+                <div class="guest-details-section__title"><i class="fas fa-info-circle"></i> Account</div>
+                <div class="guest-details-row">
+                    <div class="guest-details-label">Status</div>
+                    <div class="guest-details-value">
+                        @if (Model.IsActive)
+                        {
+                            <span class="badge badge-available"><i class="fas fa-check-circle"></i> Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-maintenance"><i class="fas fa-times-circle"></i> Inactive</span>
+                        }
+                    </div>
+                </div>
+                <div class="guest-details-row">
+                    <div class="guest-details-label">Member Since</div>
+                    <div class="guest-details-value"><i class="fas fa-calendar-plus"></i> @Model.CreatedDate.ToLocalTime().ToString("dd MMM yyyy")</div>
+                </div>
+                <div class="guest-details-row">
+                    <div class="guest-details-label">Last Updated</div>
+                    <div class="guest-details-value"><i class="fas fa-clock"></i> @Model.LastModifiedDate.ToLocalTime().ToString("dd MMM yyyy")</div>
+                </div>
+            </div>
+
+            @if (parentGuest != null)
+            {
+                <div class="guest-details-section guest-details-full" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border-color: rgba(255,255,255,0.18);">
+                    <div class="guest-details-section__title" style="color: white; border-color: rgba(255,255,255,0.25);">
+                        <i class="fas fa-user-tie" style="color: white;"></i> Linked to Primary Guest
+                    </div>
+                    <div class="guest-details-row" style="grid-template-columns: 150px 1fr;">
+                        <div class="guest-details-label" style="color: rgba(255,255,255,0.92);">Primary Guest</div>
+                        <div class="guest-details-value" style="color: white; font-weight: 800;">
+                            @parentGuest.FirstName @parentGuest.LastName
+                        </div>
+                    </div>
+                    <div style="margin-top: 12px;">
+                        <a asp-action="Details" asp-route-id="@parentGuest.Id" style="background: rgba(255,255,255,0.18); color: white; padding: 10px 12px; border-radius: 10px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; font-weight: 800; border: 1px solid rgba(255,255,255,0.20);">
+                            <i class="fas fa-eye"></i> View Profile
+                        </a>
                     </div>
                 </div>
             }
-            @if (!string.IsNullOrWhiteSpace(Model.LoyaltyId))
+
+            @if (Model.GuestType == "Primary" && childGuests != null && childGuests.Any())
             {
-                <div class="detail-row">
-                    <div class="detail-label">Loyalty ID:</div>
-                    <div class="detail-value"><i class="fas fa-id-badge"></i> @Model.LoyaltyId</div>
+                <div class="guest-details-section guest-details-full">
+                    <div class="guest-details-section__title"><i class="fas fa-user-friends"></i> Family Members / Companions (@childGuests.Count())</div>
+                    <div class="table-container">
+                        <table class="data-table compact">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Type</th>
+                                    <th style="text-align:center;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var child in childGuests)
+                                {
+                                    <tr>
+                                        <td><strong>@child.FirstName @child.LastName</strong></td>
+                                        <td>@(string.IsNullOrWhiteSpace(child.Email) ? "—" : child.Email)</td>
+                                        <td>@(string.IsNullOrWhiteSpace(child.Phone) ? "—" : child.Phone)</td>
+                                        <td>
+                                            @if (child.GuestType == "Child")
+                                            {
+                                                <span class="badge badge-inactive"><i class="fas fa-child"></i> Child</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge badge-muted"><i class="fas fa-user-friends"></i> Companion</span>
+                                            }
+                                        </td>
+                                        <td style="text-align:center;">
+                                            <a asp-action="Details" asp-route-id="@child.Id" class="btn-view" style="padding: 0.35rem 0.65rem; font-size: 0.875rem;">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                            <a asp-action="Edit" asp-route-id="@child.Id" class="btn-edit" style="padding: 0.35rem 0.65rem; font-size: 0.875rem;">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             }
-        </div>
-        
-        <!-- Contact Information Card -->
-        <div class="detail-card">
-            <h3><i class="fas fa-address-book"></i> Contact Information</h3>
-            <div class="detail-row">
-                <div class="detail-label">Email:</div>
-                <div class="detail-value">
-                    @if (!string.IsNullOrWhiteSpace(Model.Email))
-                    {
-                        <i class="fas fa-envelope"></i>
-                        <a href="mailto:@Model.Email" style="color: #667eea;">@Model.Email</a>
-                    }
-                    else
-                    {
-                        <span class="text-muted">Not provided</span>
-                    }
-                </div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">Phone:</div>
-                <div class="detail-value">
-                    @if (!string.IsNullOrWhiteSpace(Model.Phone))
-                    {
-                        <i class="fas fa-phone"></i>
-                        <a href="tel:@Model.Phone" style="color: #667eea;">@Model.Phone</a>
-                    }
-                    else
-                    {
-                        <span class="text-muted">Not provided</span>
-                    }
-                </div>
-            </div>
-        </div>
-        
-        <!-- Address Card -->
-        <div class="detail-card">
-            <h3><i class="fas fa-map-marker-alt"></i> Address</h3>
-            @if (!string.IsNullOrWhiteSpace(Model.Address) || !string.IsNullOrWhiteSpace(Model.City))
-            {
-                @if (!string.IsNullOrWhiteSpace(Model.Address))
-                {
-                    <div class="detail-row">
-                        <div class="detail-label">Street:</div>
-                        <div class="detail-value">@Model.Address</div>
-                    </div>
-                }
-                @if (!string.IsNullOrWhiteSpace(Model.City))
-                {
-                    <div class="detail-row">
-                        <div class="detail-label">City:</div>
-                        <div class="detail-value">@Model.City</div>
-                    </div>
-                }
-                @if (!string.IsNullOrWhiteSpace(Model.State))
-                {
-                    <div class="detail-row">
-                        <div class="detail-label">State:</div>
-                        <div class="detail-value">@Model.State</div>
-                    </div>
-                }
-                @if (!string.IsNullOrWhiteSpace(Model.Country))
-                {
-                    <div class="detail-row">
-                        <div class="detail-label">Country:</div>
-                        <div class="detail-value">@Model.Country</div>
-                    </div>
-                }
-                @if (!string.IsNullOrWhiteSpace(Model.Pincode))
-                {
-                    <div class="detail-row">
-                        <div class="detail-label">Pincode:</div>
-                        <div class="detail-value"><i class="fas fa-map-pin"></i> @Model.Pincode</div>
-                    </div>
-                }
-            }
-            else
-            {
-                <div class="detail-value text-muted">No address information available</div>
-            }
-        </div>
-        
-        <!-- Identity Information Card -->
-        <div class="detail-card">
-            <h3><i class="fas fa-id-card"></i> Identity Information</h3>
-            @if (!string.IsNullOrWhiteSpace(Model.IdentityType) || !string.IsNullOrWhiteSpace(Model.IdentityNumber))
-            {
-                @if (!string.IsNullOrWhiteSpace(Model.IdentityType))
-                {
-                    <div class="detail-row">
-                        <div class="detail-label">Identity Type:</div>
-                        <div class="detail-value">@Model.IdentityType</div>
-                    </div>
-                }
-                @if (!string.IsNullOrWhiteSpace(Model.IdentityNumber))
-                {
-                    <div class="detail-row">
-                        <div class="detail-label">Identity Number:</div>
-                        <div class="detail-value"><strong>@Model.IdentityNumber</strong></div>
-                    </div>
-                }
-            }
-            else
-            {
-                <div class="detail-value text-muted">No identity information available</div>
-            }
-        </div>
-        
-        <!-- Account Information Card -->
-        <div class="detail-card">
-            <h3><i class="fas fa-info-circle"></i> Account Information</h3>
-            <div class="detail-row">
-                <div class="detail-label">Status:</div>
-                <div class="detail-value">
-                    @if (Model.IsActive)
-                    {
-                        <span class="badge badge-available"><i class="fas fa-check-circle"></i> Active</span>
-                    }
-                    else
-                    {
-                        <span class="badge badge-maintenance"><i class="fas fa-times-circle"></i> Inactive</span>
-                    }
-                </div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">Member Since:</div>
-                <div class="detail-value"><i class="fas fa-calendar-plus"></i> @Model.CreatedDate.ToLocalTime().ToString("dd MMM yyyy")</div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">Last Updated:</div>
-                <div class="detail-value"><i class="fas fa-clock"></i> @Model.LastModifiedDate.ToLocalTime().ToString("dd MMM yyyy")</div>
-            </div>
         </div>
     </div>
-
-    <!-- Primary Guest Relationship Card -->
-    @if (parentGuest != null)
-    {
-        <div class="detail-card full-width-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
-            <h3 style="color: white; border-color: rgba(255, 255, 255, 0.3);">
-                <i class="fas fa-user-tie"></i> Linked to Primary Guest
-            </h3>
-            <div class="detail-row" style="align-items: center;">
-                <div class="detail-label" style="color: rgba(255, 255, 255, 0.9);">Primary Guest:</div>
-                <div class="detail-value" style="color: white;">
-                    <strong style="font-size: 1.1rem;">@parentGuest.FirstName @parentGuest.LastName</strong>
-                </div>
-            </div>
-            <div style="margin-top: 1rem;">
-                <a asp-action="Details" asp-route-id="@parentGuest.Id" style="background: rgba(255, 255, 255, 0.2); color: white; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500;">
-                    <i class="fas fa-eye"></i> View Primary Guest Profile
-                </a>
-            </div>
-        </div>
-    }
-    
-    <!-- Family Members / Companions Card -->
-    @if (Model.GuestType == "Primary" && childGuests != null && childGuests.Any())
-    {
-        <div class="detail-card full-width-card">
-            <h3><i class="fas fa-user-friends"></i> Family Members / Companions (@childGuests.Count())</h3>
-            <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
-                            <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #4b5563;">Name</th>
-                            <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #4b5563;">Email</th>
-                            <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #4b5563;">Phone</th>
-                            <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #4b5563;">Type</th>
-                            <th style="padding: 0.75rem; text-align: center; font-weight: 600; color: #4b5563;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var child in childGuests)
-                        {
-                            <tr style="border-bottom: 1px solid #e5e7eb;">
-                                <td style="padding: 0.75rem;">
-                                    <strong style="color: #1f2937;">@child.FirstName @child.LastName</strong>
-                                </td>
-                                <td style="padding: 0.75rem; color: #6b7280;">
-                                    @if (!string.IsNullOrWhiteSpace(child.Email))
-                                    {
-                                        <i class="fas fa-envelope" style="color: #9ca3af; margin-right: 0.5rem;"></i>@child.Email
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted">Not provided</span>
-                                    }
-                                </td>
-                                <td style="padding: 0.75rem; color: #6b7280;">
-                                    @if (!string.IsNullOrWhiteSpace(child.Phone))
-                                    {
-                                        <i class="fas fa-phone" style="color: #9ca3af; margin-right: 0.5rem;"></i>@child.Phone
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted">Not provided</span>
-                                    }
-                                </td>
-                                <td style="padding: 0.75rem;">
-                                    @if (child.GuestType == "Child")
-                                    {
-                                        <span class="badge badge-inactive"><i class="fas fa-child"></i> Child</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge badge-muted"><i class="fas fa-user-friends"></i> Companion</span>
-                                    }
-                                </td>
-                                <td style="padding: 0.75rem; text-align: center;">
-                                    <div style="display: flex; gap: 0.5rem; justify-content: center;">
-                                        <a asp-action="Details" asp-route-id="@child.Id" class="btn-view" style="padding: 0.4rem 0.75rem; font-size: 0.875rem;">
-                                            <i class="fas fa-eye"></i> View
-                                        </a>
-                                        <a asp-action="Edit" asp-route-id="@child.Id" class="btn-edit" style="padding: 0.4rem 0.75rem; font-size: 0.875rem;">
-                                            <i class="fas fa-edit"></i> Edit
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    }
 </div>

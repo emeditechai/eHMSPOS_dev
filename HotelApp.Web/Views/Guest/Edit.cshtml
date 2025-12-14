@@ -4,200 +4,235 @@
     var childGuests = ViewBag.ChildGuests as IEnumerable<HotelApp.Web.Models.Guest>;
 }
 
-<div class="page-header">
-    <h2><i class="fas fa-user-edit"></i> Edit Guest Details</h2>
-    <a asp-action="Index" class="btn-cancel">
-        <i class="fas fa-arrow-left"></i> Back to Guest List
-    </a>
-</div>
-
-<div class="form-container">
-    <form asp-action="Edit" method="post">
-        @Html.AntiForgeryToken()
-        <input type="hidden" asp-for="Id" />
-        <input type="hidden" asp-for="CreatedDate" />
-        <input type="hidden" asp-for="GuestType" />
-        <input type="hidden" asp-for="ParentGuestId" />
-        
-        <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
-
-        <h3 style="margin-bottom: 1.5rem; color: var(--primary);">
-            <i class="fas fa-user"></i> Personal Information
-        </h3>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label asp-for="FirstName">First Name <span class="text-danger">*</span></label>
-                <input asp-for="FirstName" type="text" required />
-                <span asp-validation-for="FirstName" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="LastName">Last Name <span class="text-danger">*</span></label>
-                <input asp-for="LastName" type="text" required />
-                <span asp-validation-for="LastName" class="text-danger"></span>
-            </div>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label asp-for="Email">Email <span class="text-danger">*</span></label>
-                <input asp-for="Email" type="email" required />
-                <span asp-validation-for="Email" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="Phone">Phone <span class="text-danger">*</span></label>
-                <input asp-for="Phone" type="tel" required />
-                <span asp-validation-for="Phone" class="text-danger"></span>
-            </div>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label asp-for="DateOfBirth">Date of Birth</label>
-                <input asp-for="DateOfBirth" id="guestDob" type="date" />
-                <span asp-validation-for="DateOfBirth" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="Age">Age</label>
-                <input asp-for="Age" id="guestAge" type="number" min="0" max="120" placeholder="Age" />
-                <span asp-validation-for="Age" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="Gender">Gender</label>
-                <select asp-for="Gender" class="form-control">
-                    <option value="">Select Gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                </select>
-                <span asp-validation-for="Gender" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="LoyaltyId">Loyalty ID</label>
-                <input asp-for="LoyaltyId" type="text" />
-                <span asp-validation-for="LoyaltyId" class="text-danger"></span>
-            </div>
-        </div>
-
-        <h3 style="margin: 2rem 0 1.5rem; color: var(--primary);">
-            <i class="fas fa-map-marker-alt"></i> Address Information
-        </h3>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label for="countryAutocomplete">Country <span class="text-danger">*</span></label>
-                <div style="position: relative;">
-                    <input type="text" 
-                           id="countryAutocomplete" 
-                           name="countryAutocomplete"
-                           class="autocomplete-input" 
-                           placeholder="Type to search country..." 
-                           autocomplete="new-password" />
-                    <div id="countryResults" class="autocomplete-results"></div>
+<div class="guest-edit-shell">
+    <div class="guest-edit-card">
+        <div class="guest-edit-card__header">
+            <div class="guest-edit-card__title">
+                <div class="guest-avatar">
+                    <i class="fas fa-user"></i>
                 </div>
-                <input type="hidden" asp-for="CountryId" id="countryDropdown" />
-                <input type="hidden" asp-for="Country" id="countryName" />
-                <span asp-validation-for="CountryId" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label for="stateAutocomplete">State <span class="text-danger">*</span></label>
-                <div style="position: relative;">
-                    <input type="text" 
-                           id="stateAutocomplete" 
-                           name="stateAutocomplete"
-                           class="autocomplete-input" 
-                           placeholder="Select country first..." 
-                           autocomplete="new-password" 
-                           disabled />
-                    <div id="stateResults" class="autocomplete-results"></div>
+                <div>
+                    <div class="guest-edit-heading">Edit Guest</div>
+                    <div class="guest-edit-subtitle">Update personal, address and identity details</div>
                 </div>
-                <input type="hidden" asp-for="StateId" id="stateDropdown" />
-                <input type="hidden" asp-for="State" id="stateName" />
-                <span asp-validation-for="StateId" class="text-danger"></span>
             </div>
+            <div class="guest-edit-card__actions">
+                <a asp-action="Index" class="btn-cancel">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+            </div>
+        </div>
 
-            <div class="form-group">
-                <label for="cityAutocomplete">City <span class="text-danger">*</span></label>
-                <div style="position: relative;">
-                    <input type="text" 
-                           id="cityAutocomplete" 
-                           name="cityAutocomplete"
-                           class="autocomplete-input" 
-                           placeholder="Select state first..." 
-                           autocomplete="new-password" 
-                           disabled />
-                    <div id="cityResults" class="autocomplete-results"></div>
+        <form asp-action="Edit" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="CreatedDate" />
+            <input type="hidden" asp-for="GuestType" />
+            <input type="hidden" asp-for="ParentGuestId" />
+
+            <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+            <div class="guest-edit-grid">
+                <div class="guest-edit-grid__col">
+                    <div class="guest-edit-section">
+                        <div class="guest-edit-section__title">
+                            <i class="fas fa-user"></i>
+                            <span>Personal Information</span>
+                        </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label asp-for="FirstName">First Name <span class="text-danger">*</span></label>
+                            <input asp-for="FirstName" type="text" required />
+                            <span asp-validation-for="FirstName" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label asp-for="LastName">Last Name <span class="text-danger">*</span></label>
+                            <input asp-for="LastName" type="text" required />
+                            <span asp-validation-for="LastName" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label asp-for="Email">Email <span class="text-danger">*</span></label>
+                            <input asp-for="Email" type="email" required />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label asp-for="Phone">Phone <span class="text-danger">*</span></label>
+                            <input asp-for="Phone" type="tel" required />
+                            <span asp-validation-for="Phone" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label asp-for="DateOfBirth">Date of Birth</label>
+                            <input asp-for="DateOfBirth" id="guestDob" type="date" />
+                            <span asp-validation-for="DateOfBirth" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label asp-for="Age">Age</label>
+                            <input asp-for="Age" id="guestAge" type="number" min="0" max="120" placeholder="Age" />
+                            <span asp-validation-for="Age" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label asp-for="Gender">Gender</label>
+                            <select asp-for="Gender" class="form-control">
+                                <option value="">Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <span asp-validation-for="Gender" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label asp-for="LoyaltyId">Loyalty ID</label>
+                            <input asp-for="LoyaltyId" type="text" />
+                            <span asp-validation-for="LoyaltyId" class="text-danger"></span>
+                        </div>
+                    </div>
                 </div>
-                <input type="hidden" asp-for="CityId" id="cityDropdown" />
-                <input type="hidden" asp-for="City" id="cityName" />
-                <span asp-validation-for="CityId" class="text-danger"></span>
+
+                <div class="guest-edit-section">
+                    <div class="guest-edit-section__title">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>Address Information</span>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="countryAutocomplete">Country <span class="text-danger">*</span></label>
+                            <div style="position: relative;">
+                                <input type="text" 
+                                       id="countryAutocomplete" 
+                                       name="countryAutocomplete"
+                                       class="autocomplete-input" 
+                                       placeholder="Type to search country..." 
+                                       autocomplete="new-password" />
+                                <div id="countryResults" class="autocomplete-results"></div>
+                            </div>
+                            <input type="hidden" asp-for="CountryId" id="countryDropdown" />
+                            <input type="hidden" asp-for="Country" id="countryName" />
+                            <span asp-validation-for="CountryId" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="stateAutocomplete">State <span class="text-danger">*</span></label>
+                            <div style="position: relative;">
+                                <input type="text" 
+                                       id="stateAutocomplete" 
+                                       name="stateAutocomplete"
+                                       class="autocomplete-input" 
+                                       placeholder="Select country first..." 
+                                       autocomplete="new-password" 
+                                       disabled />
+                                <div id="stateResults" class="autocomplete-results"></div>
+                            </div>
+                            <input type="hidden" asp-for="StateId" id="stateDropdown" />
+                            <input type="hidden" asp-for="State" id="stateName" />
+                            <span asp-validation-for="StateId" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cityAutocomplete">City <span class="text-danger">*</span></label>
+                            <div style="position: relative;">
+                                <input type="text" 
+                                       id="cityAutocomplete" 
+                                       name="cityAutocomplete"
+                                       class="autocomplete-input" 
+                                       placeholder="Select state first..." 
+                                       autocomplete="new-password" 
+                                       disabled />
+                                <div id="cityResults" class="autocomplete-results"></div>
+                            </div>
+                            <input type="hidden" asp-for="CityId" id="cityDropdown" />
+                            <input type="hidden" asp-for="City" id="cityName" />
+                            <span asp-validation-for="CityId" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label asp-for="Address">Address Line</label>
+                            <textarea asp-for="Address" rows="2" placeholder="Enter street address, building name, etc."></textarea>
+                            <span asp-validation-for="Address" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label asp-for="Pincode">Pincode</label>
+                            <input asp-for="Pincode" type="text" maxlength="10" placeholder="Enter pincode" />
+                            <span asp-validation-for="Pincode" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
 
-        <div class="form-row">
-            <div class="form-group" style="grid-column: span 2;">
-                <label asp-for="Address">Address Line</label>
-                <textarea asp-for="Address" rows="2" placeholder="Enter street address, building name, etc."></textarea>
-                <span asp-validation-for="Address" class="text-danger"></span>
+                <div class="guest-edit-grid__col">
+                    <div class="guest-edit-section">
+                        <div class="guest-edit-section__title">
+                            <i class="fas fa-id-card"></i>
+                            <span>Identity Information</span>
+                        </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label asp-for="IdentityType">Identity Type</label>
+                            <select asp-for="IdentityType">
+                                <option value="">-- Select Identity Type --</option>
+                                <option value="Passport">Passport</option>
+                                <option value="National ID">National ID</option>
+                                <option value="Driver License">Driver License</option>
+                                <option value="Aadhar Card">Aadhar Card</option>
+                                <option value="PAN Card">PAN Card</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <span asp-validation-for="IdentityType" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label asp-for="IdentityNumber">Identity Number</label>
+                            <input asp-for="IdentityNumber" type="text" />
+                            <span asp-validation-for="IdentityNumber" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label>Document Upload</label>
+                            <input type="file" name="documentFile" accept=".jpg,.jpeg,.png,.gif,.pdf" />
+                            <small class="text-muted">Supported: JPG/PNG/GIF/PDF (max 5MB). Saved into BookingGuests for this Guest.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label asp-for="IsActive">Status</label>
+                            <select asp-for="IsActive">
+                                <option value="true">Active</option>
+                                <option value="false">Inactive</option>
+                            </select>
+                            <span asp-validation-for="IsActive" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                    <div class="guest-edit-sticky-actions">
+                        <div class="form-actions" style="margin: 0;">
+                            <button type="submit" class="btn-save">
+                                <i class="fas fa-save"></i> Save Changes
+                            </button>
+                            <a asp-action="Index" class="btn-cancel">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
-
-            <div class="form-group">
-                <label asp-for="Pincode">Pincode</label>
-                <input asp-for="Pincode" type="text" maxlength="10" placeholder="Enter pincode" />
-                <span asp-validation-for="Pincode" class="text-danger"></span>
-            </div>
-        </div>
-
-        <h3 style="margin: 2rem 0 1.5rem; color: var(--primary);">
-            <i class="fas fa-id-card"></i> Identity Information
-        </h3>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label asp-for="IdentityType">Identity Type</label>
-                <select asp-for="IdentityType">
-                    <option value="">-- Select Identity Type --</option>
-                    <option value="Passport">Passport</option>
-                    <option value="National ID">National ID</option>
-                    <option value="Driver License">Driver License</option>
-                    <option value="Aadhar Card">Aadhar Card</option>
-                    <option value="PAN Card">PAN Card</option>
-                    <option value="Other">Other</option>
-                </select>
-                <span asp-validation-for="IdentityType" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="IdentityNumber">Identity Number</label>
-                <input asp-for="IdentityNumber" type="text" />
-                <span asp-validation-for="IdentityNumber" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="IsActive">Status</label>
-                <select asp-for="IsActive">
-                    <option value="true">Active</option>
-                    <option value="false">Inactive</option>
-                </select>
-                <span asp-validation-for="IsActive" class="text-danger"></span>
-            </div>
-        </div>
-
-        <div class="form-actions">
-            <button type="submit" class="btn-save">
-                <i class="fas fa-save"></i> Save Changes
-            </button>
-            <a asp-action="Index" class="btn-cancel">
-                <i class="fas fa-times"></i> Cancel
-            </a>
-        </div>
-    </form>
+        </form>
+    </div>
 </div>
 
 @if (Model.GuestType == "Primary" && childGuests != null && childGuests.Any())
@@ -245,10 +280,146 @@
     </div>
 }
 
-@section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-    
+@section Styles {
     <style>
+        .guest-edit-shell {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 12px;
+        }
+
+        .guest-edit-card {
+            background: #fff;
+            border-radius: 16px;
+            border: 1px solid rgba(0,0,0,0.06);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+
+        .guest-edit-card__header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 18px 20px;
+            background: linear-gradient(135deg, rgba(102,126,234,0.10), rgba(118,75,162,0.08));
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+        }
+
+        .guest-edit-card__title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .guest-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #4c51bf;
+            background: rgba(76,81,191,0.12);
+        }
+
+        .guest-edit-heading {
+            font-size: 18px;
+            font-weight: 800;
+            color: #111827;
+            line-height: 1.1;
+        }
+
+        .guest-edit-subtitle {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 620px;
+        }
+
+        .guest-edit-card form {
+            margin: 0;
+        }
+
+        .guest-edit-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 18px;
+            padding: 18px 20px 22px;
+        }
+
+        .guest-edit-section .form-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .guest-edit-section .form-row .form-group {
+            margin: 0;
+        }
+
+        .guest-edit-section input,
+        .guest-edit-section select,
+        .guest-edit-section textarea {
+            width: 100%;
+        }
+
+        .guest-edit-section {
+            border: 1px solid rgba(0,0,0,0.06);
+            border-radius: 14px;
+            padding: 16px;
+            background: #ffffff;
+        }
+
+        .guest-edit-section + .guest-edit-section {
+            margin-top: 14px;
+        }
+
+        .guest-edit-section__title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            color: #111827;
+            margin-bottom: 12px;
+        }
+
+        .guest-edit-section__title i {
+            color: #4c51bf;
+        }
+
+        .guest-edit-sticky-actions {
+            position: sticky;
+            top: 12px;
+        }
+
+        @@media (max-width: 1100px) {
+            .guest-edit-grid {
+                grid-template-columns: 1fr;
+            }
+            .guest-edit-subtitle {
+                max-width: 420px;
+            }
+        }
+
+        @@media (max-width: 640px) {
+            .guest-edit-card__header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .guest-edit-subtitle {
+                white-space: normal;
+            }
+
+            .guest-edit-section .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .autocomplete-input {
             width: 100%;
         }
@@ -296,7 +467,12 @@
             font-style: italic;
         }
     </style>
-    
+
+}
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+
     <script>
         // Normalize data from ViewBag (PascalCase to camelCase)
         let countriesRaw = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.Countries ?? new List<object>()));

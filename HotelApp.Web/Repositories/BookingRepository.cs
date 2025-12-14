@@ -480,10 +480,10 @@ namespace HotelApp.Web.Repositories
             // Insert/Update guests in Guests table and link to BookingGuests
             Guest? primaryGuest = null;
             const string insertGuestSql = @"
-                INSERT INTO BookingGuests (BookingId, FullName, Email, Phone, Gender, GuestType, IsPrimary,
+                INSERT INTO BookingGuests (BookingId, GuestId, FullName, Email, Phone, Gender, GuestType, IsPrimary,
                                          Age, DateOfBirth,
                                          Address, City, State, Country, Pincode, CountryId, StateId, CityId)
-                VALUES (@BookingId, @FullName, @Email, @Phone, @Gender, @GuestType, @IsPrimary,
+                VALUES (@BookingId, @GuestId, @FullName, @Email, @Phone, @Gender, @GuestType, @IsPrimary,
                         @Age, @DateOfBirth,
                         @Address, @City, @State, @Country, @Pincode, @CountryId, @StateId, @CityId);";
 
@@ -501,6 +501,7 @@ namespace HotelApp.Web.Repositories
                 const string findGuestSql = "SELECT TOP 1 * FROM Guests WHERE Phone = @Phone AND IsActive = 1 ORDER BY LastModifiedDate DESC";
                 var existingGuest = await _dbConnection.QueryFirstOrDefaultAsync<Guest>(findGuestSql, new { Phone = bookingGuest.Phone }, transaction);
                 
+                int persistedGuestId;
                 if (existingGuest != null)
                 {
                     // Update existing guest with all details including address
@@ -553,6 +554,8 @@ namespace HotelApp.Web.Repositories
                         existingGuest.LastName = lastName;
                         primaryGuest = existingGuest;
                     }
+
+                    persistedGuestId = existingGuest.Id;
                 }
                 else
                 {
@@ -601,10 +604,13 @@ namespace HotelApp.Web.Repositories
                             LastName = lastName
                         };
                     }
+
+                    persistedGuestId = newGuestId;
                 }
                 
                 // Insert into BookingGuests for this booking
                 bookingGuest.BookingId = bookingId;
+                bookingGuest.GuestId = persistedGuestId;
                 await _dbConnection.ExecuteAsync(insertGuestSql, bookingGuest, transaction);
             }
 
@@ -2225,13 +2231,24 @@ namespace HotelApp.Web.Repositories
             using var transaction = _dbConnection.BeginTransaction();
             try
             {
+                // Ensure BookingGuests.GuestId is populated when possible
+                if (guest.GuestId <= 0 && !string.IsNullOrWhiteSpace(guest.Phone))
+                {
+                    const string findGuestIdByPhoneSql = "SELECT TOP 1 Id FROM Guests WHERE Phone = @Phone AND IsActive = 1 ORDER BY LastModifiedDate DESC";
+                    var existingGuestId = await _dbConnection.QueryFirstOrDefaultAsync<int?>(findGuestIdByPhoneSql, new { Phone = guest.Phone }, transaction);
+                    if (existingGuestId.HasValue)
+                    {
+                        guest.GuestId = existingGuestId.Value;
+                    }
+                }
+
                 // Insert into BookingGuests table
                 const string bookingGuestSql = @"
-                    INSERT INTO BookingGuests (BookingId, FullName, Email, Phone, GuestType, IsPrimary, 
+                    INSERT INTO BookingGuests (BookingId, GuestId, FullName, Email, Phone, GuestType, IsPrimary, 
                                              RelationshipToPrimary, Age, DateOfBirth, Gender, IdentityType, 
                                              IdentityNumber, DocumentPath, Address, City, State, Country,
                                              Pincode, CountryId, StateId, CityId, CreatedDate, CreatedBy)
-                    VALUES (@BookingId, @FullName, @Email, @Phone, @GuestType, 0, 
+                    VALUES (@BookingId, @GuestId, @FullName, @Email, @Phone, @GuestType, 0, 
                             @RelationshipToPrimary, @Age, @DateOfBirth, @Gender, @IdentityType, 
                             @IdentityNumber, @DocumentPath, @Address, @City, @State, @Country,
                             @Pincode, @CountryId, @StateId, @CityId, GETDATE(), @CreatedBy);
@@ -2331,6 +2348,17 @@ namespace HotelApp.Web.Repositories
                             StateId = guest.StateId,
                             CityId = guest.CityId
                         }, transaction);
+
+                        // Link the newly created/ensured master Guest record back to BookingGuests.GuestId
+                        // Best-effort: set GuestId for the just inserted BookingGuests row by phone.
+                        const string linkGuestIdSql = @"
+                            UPDATE bg
+                            SET bg.GuestId = g.Id
+                            FROM BookingGuests bg
+                            INNER JOIN Guests g ON g.Phone = bg.Phone AND g.IsActive = 1
+                            WHERE bg.Id = @BookingGuestId AND (bg.GuestId IS NULL OR bg.GuestId = 0);";
+
+                        await _dbConnection.ExecuteAsync(linkGuestIdSql, new { BookingGuestId = bookingGuestId }, transaction);
                     }
                 }
 
@@ -2483,6 +2511,36 @@ namespace HotelApp.Web.Repositories
                 transaction.Rollback();
                 throw;
             }
+        }
+
+        public async Task<bool> UpdateLatestGuestDocumentPathAsync(int guestId, string documentPath, int performedBy)
+        {
+            if (_dbConnection.State != ConnectionState.Open)
+            {
+                _dbConnection.Open();
+            }
+
+            const string sql = @"
+                UPDATE bg
+                SET bg.DocumentPath = @DocumentPath,
+                    bg.ModifiedDate = GETDATE(),
+                    bg.ModifiedBy = @PerformedBy
+                FROM BookingGuests bg
+                WHERE bg.Id = (
+                    SELECT TOP 1 Id
+                    FROM BookingGuests
+                    WHERE GuestId = @GuestId AND IsActive = 1
+                    ORDER BY CreatedDate DESC, Id DESC
+                );";
+
+            var rows = await _dbConnection.ExecuteAsync(sql, new
+            {
+                GuestId = guestId,
+                DocumentPath = documentPath,
+                PerformedBy = performedBy
+            });
+
+            return rows > 0;
         }
 
         public async Task<bool> DeleteGuestAsync(int guestId, int deletedBy)
