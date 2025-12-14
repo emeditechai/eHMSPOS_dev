@@ -5,6 +5,7 @@
     var hotelSettings = ViewBag.HotelSettings as HotelApp.Web.Models.HotelSettings;
     var payments = ViewBag.Payments as IEnumerable<HotelApp.Web.Models.BookingPayment>;
     var totalPaid = payments?.Sum(p => p.Amount) ?? 0;
+    var receiptIssueDate = DateTime.Now;
 }
 
 <!DOCTYPE html>
@@ -28,6 +29,15 @@
             color: #333;
         }
 
+        .mono {
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum" 1;
+        }
+
+        .subtle {
+            color: #6b7280;
+        }
+
         .receipt-container {
             max-width: 210mm; /* A4 width */
             margin: 0 auto;
@@ -47,6 +57,37 @@
             padding-bottom: 25px;
             border-bottom: 2px solid #e0e0e0;
             margin-bottom: 30px;
+        }
+
+        .receipt-meta {
+            flex-shrink: 0;
+            text-align: right;
+            min-width: 220px;
+        }
+
+        .receipt-meta .title {
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1.8px;
+            color: #111827;
+            text-transform: uppercase;
+        }
+
+        .receipt-meta .subtitle {
+            font-size: 11px;
+            margin-top: 6px;
+            color: #6b7280;
+        }
+
+        .receipt-meta .meta-row {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #374151;
+        }
+
+        .receipt-meta .meta-row .label {
+            color: #6b7280;
+            margin-right: 6px;
         }
 
         .hotel-logo-section {
@@ -86,6 +127,10 @@
             padding: 8px 0;
         }
 
+        .receipt-title {
+            display: none;
+        }
+
         .hotel-details {
             font-size: 12px;
             color: #555;
@@ -111,6 +156,64 @@
             gap: 20px;
             padding-bottom: 20px;
             border-bottom: 1px solid #e0e0e0;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 18px;
+            margin-bottom: 22px;
+            padding-bottom: 18px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .summary-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 14px 14px;
+            background: #fff;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 8px;
+            font-size: 13px;
+        }
+
+        .summary-row:first-child {
+            margin-top: 0;
+        }
+
+        .summary-row .label {
+            color: #6b7280;
+        }
+
+        .summary-row .value {
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .summary-row.total .value {
+            color: #4f46e5;
+            font-size: 15px;
+        }
+
+        .summary-row.due .value {
+            color: #ef4444;
+            font-size: 15px;
+        }
+
+        .section-title {
+            margin-bottom: 12px;
+        }
+
+        .section-title.small {
+            font-size: 13px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #111827;
         }
 
         .info-section {
@@ -578,37 +681,55 @@
                         }
                         @if (!string.IsNullOrEmpty(hotelSettings.GSTCode))
                         {
-                            <p><span class="detail-label">GST No:</span> @hotelSettings.GSTCode</p>
+                            <p><span class="detail-label">GSTIN:</span> @hotelSettings.GSTCode</p>
                         }
                     </div>
                     }
                 </div>
+                <div class="receipt-meta">
+                    <div class="title">@(isFinalBill ? "Tax Invoice" : "Receipt")</div>
+                    <div class="subtitle">@(isFinalBill ? "Final Bill" : "Booking Receipt")</div>
+                    <div class="meta-row"><span class="label">Booking No.</span> <span class="mono"><strong>@Model.BookingNumber</strong></span></div>
+                    <div class="meta-row"><span class="label">Issue</span> <span class="mono">@receiptIssueDate.ToString("dd MMM yyyy hh:mm tt")</span></div>
+                    <div class="meta-row"><span class="label">Status</span> <span class="mono">@(Model.BalanceAmount <= 0 ? "Paid" : "Due")</span></div>
+                </div>
             </div>
 
             <!-- Reservation Info -->
-            <div class="reservation-info">
-                <div class="info-section">
-                    <div class="info-label">@(isFinalBill ? "BILL #" : "Reservation #")</div>
-                    <div class="booking-number">@Model.BookingNumber</div>
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="section-title small">Booking Details</div>
+                    <div class="summary-row">
+                        <span class="label">Booking No.</span>
+                        <span class="value mono">@Model.BookingNumber</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="label">Ref. ID</span>
+                        <span class="value mono">@Model.Id</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="label">Issue Date</span>
+                        <span class="value mono">@receiptIssueDate.ToString("dd MMM yyyy hh:mm tt")</span>
+                    </div>
                 </div>
-                <div class="info-section">
-                    <div class="info-label">REF. ID</div>
-                    <div class="info-value">@(Model.Id)</div>
-                </div>
-            </div>
-
-            <div class="reservation-info">
-                <div class="info-section">
-                    <div class="info-label">Guest Name</div>
-                    <div class="info-value">@Model.PrimaryGuestFirstName @Model.PrimaryGuestLastName</div>
-                    <div class="info-label" style="margin-top: 8px;">Contact</div>
-                    <div class="info-value">@Model.PrimaryGuestPhone</div>
-                </div>
-                <div class="info-section">
-                    <div class="info-label">Total Bill</div>
-                    <div class="info-value" style="font-size: 20px; color: #667eea;">₹ @Model.TotalAmount.ToString("N2")</div>
-                    <div class="info-label" style="margin-top: 8px;">Outstanding</div>
-                    <div class="info-value" style="color: #f5576c;">₹ @Model.BalanceAmount.ToString("N2")</div>
+                <div class="summary-card">
+                    <div class="section-title small">Guest & Amount</div>
+                    <div class="summary-row">
+                        <span class="label">Guest</span>
+                        <span class="value">@Model.PrimaryGuestFirstName @Model.PrimaryGuestLastName</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="label">Phone</span>
+                        <span class="value mono">@Model.PrimaryGuestPhone</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span class="label">Grand Total</span>
+                        <span class="value mono">₹ @Model.TotalAmount.ToString("N2")</span>
+                    </div>
+                    <div class="summary-row due">
+                        <span class="label">Balance Due</span>
+                        <span class="value mono">₹ @Model.BalanceAmount.ToString("N2")</span>
+                    </div>
                 </div>
             </div>
 
@@ -754,9 +875,9 @@
                 var preDiscountTotal = afterDiscountTotal + discountAmount;
             }
 
-            <!-- Plan Details -->
+            <!-- Stay Summary -->
             <div class="plan-details">
-                <h2 class="section-title">Plan Details</h2>
+                <h2 class="section-title">Stay Summary</h2>
                 <table class="detail-table">
                     <thead>
                         <tr>
@@ -766,7 +887,7 @@
                             <th class="text-center">Adults</th>
                             <th class="text-center">Children</th>
                             <th>Meal Plan</th>
-                            <th class="text-right">Rate/Night (per room)</th>
+                            <th class="text-right">Rate / Night (Per Room)</th>
                             <th class="text-right">Total</th>
                         </tr>
                     </thead>
@@ -846,13 +967,13 @@
                                     <td class="text-center">@Model.Children</td>
                                     <td>@(Model.CustomerType == "B2B" ? "EP" : "CP")</td>
                                     <td class="text-right">
-                                        @actualRatePerNightPerRoom.ToString("N2")
+                                        <span class="mono">@actualRatePerNightPerRoom.ToString("N2")</span>
                                         @if (hasActualNightRates)
                                         {
-                                            <br /><small style="color:#888;">After discount: @discountedRatePerNightPerRoom.ToString("N2")</small>
+                                            <br /><small class="subtle mono">After discount: @discountedRatePerNightPerRoom.ToString("N2")</small>
                                         }
                                     </td>
-                                    <td class="text-right">@(Math.Round(planGroupTotal * groupRoomMultiplier, 2, MidpointRounding.AwayFromZero).ToString("N2"))</td>
+                                    <td class="text-right mono">₹ @(Math.Round(planGroupTotal * groupRoomMultiplier, 2, MidpointRounding.AwayFromZero).ToString("N2"))</td>
                                 </tr>
                             }
                         }
@@ -888,13 +1009,13 @@
                                         var ratePerNight = totalRoomNights > 0 ? (preDiscountTotalFallback / totalRoomNights) : 0;
                                         var discountedRatePerNight = totalRoomNights > 0 ? (afterDiscountTotalFallback / totalRoomNights) : 0;
                                     }
-                                    @ratePerNight.ToString("N2")
+                                    <span class="mono">@ratePerNight.ToString("N2")</span>
                                     @if (discountedRatePerNight > 0)
                                     {
-                                        <br/><small style="color: #e74c3c; font-weight: 600;">After Discount: @discountedRatePerNight.ToString("N2")</small>
+                                        <br/><small style="color: #e74c3c; font-weight: 600;" class="mono">After Discount: @discountedRatePerNight.ToString("N2")</small>
                                     }
                                 </td>
-                                <td class="text-right">@((Model.BaseAmount + Model.DiscountAmount).ToString("N2"))</td>
+                                <td class="text-right mono">₹ @((Model.BaseAmount + Model.DiscountAmount).ToString("N2"))</td>
                             </tr>
                         }
                     </tbody>
@@ -904,18 +1025,18 @@
                 <div class="totals-section">
                     <div class="total-row">
                         <span class="total-label">Room&nbsp;Total&nbsp;(Before&nbsp;Discount)</span>
-                        <span class="total-value">₹ @(preDiscountTotal.ToString("N2"))</span>
+                        <span class="total-value mono">₹ @(preDiscountTotal.ToString("N2"))</span>
                     </div>
                     @if (discountAmount > 0)
                     {
                         var discountedAmount = afterDiscountTotal;
                         <div class="total-row">
                             <span class="total-label">Discount&nbsp;Applied</span>
-                            <span class="total-value" style="color: #e74c3c;">- ₹ @discountAmount.ToString("N2")</span>
+                            <span class="total-value mono" style="color: #e74c3c;">- ₹ @discountAmount.ToString("N2")</span>
                         </div>
                         <div class="total-row" style="font-weight: 600;">
                             <span class="total-label">Subtotal&nbsp;(After&nbsp;Discount)</span>
-                            <span class="total-value">₹ @discountedAmount.ToString("N2")</span>
+                            <span class="total-value mono">₹ @discountedAmount.ToString("N2")</span>
                         </div>
                     }
                     else
@@ -923,7 +1044,7 @@
                         var discountedAmount = afterDiscountTotal;
                         <div class="total-row" style="font-weight: 600;">
                             <span class="total-label">Subtotal</span>
-                            <span class="total-value">₹ @discountedAmount.ToString("N2")</span>
+                            <span class="total-value mono">₹ @discountedAmount.ToString("N2")</span>
                         </div>
                     }
                     @{
@@ -933,23 +1054,23 @@
                     }
                     <div class="total-row">
                         <span class="total-label">CGST @@ @cgstPercentage.ToString("0.##")%</span>
-                        <span class="total-value">₹ @(cgstTotal.ToString("N2"))</span>
+                        <span class="total-value mono">₹ @(cgstTotal.ToString("N2"))</span>
                     </div>
                     <div class="total-row">
                         <span class="total-label">SGST @@ @sgstPercentage.ToString("0.##")%</span>
-                        <span class="total-value">₹ @(sgstTotal.ToString("N2"))</span>
+                        <span class="total-value mono">₹ @(sgstTotal.ToString("N2"))</span>
                     </div>
                     <div class="total-row highlight">
                         <span class="total-label">Total Amount</span>
-                        <span class="total-value">₹ @(Math.Round(afterDiscountTotal + taxTotal, 2, MidpointRounding.AwayFromZero).ToString("N2"))</span>
+                        <span class="total-value mono">₹ @(Math.Round(afterDiscountTotal + taxTotal, 2, MidpointRounding.AwayFromZero).ToString("N2"))</span>
                     </div>
                     <div class="total-row">
                         <span class="total-label">Payments</span>
-                        <span class="total-value" style="color: #4caf50;">₹ @(totalPaid.ToString("N2"))</span>
+                        <span class="total-value mono" style="color: #4caf50;">₹ @(totalPaid.ToString("N2"))</span>
                     </div>
                     <div class="total-row highlight" style="color: #f5576c;">
                         <span class="total-label">Balance Payable</span>
-                        <span class="total-value">₹ @(Model.BalanceAmount.ToString("N2"))</span>
+                        <span class="total-value mono">₹ @(Model.BalanceAmount.ToString("N2"))</span>
                     </div>
                 </div>
             </div>
@@ -1025,7 +1146,8 @@
                         <div>Website: @hotelSettings.Website</div>
                     }
                 }
-                <div style="margin-top: 10px; font-weight: 600;">Thank you for choosing us!</div>
+                <div style="margin-top: 12px; font-weight: 600;">This is a system-generated receipt.</div>
+                <div class="subtle" style="margin-top: 6px;">Thank you for choosing us!</div>
             </div>
         </div>
     </div>
