@@ -67,7 +67,7 @@
                             </a>
                         </div>
                     </div>
-                    @{ bool bookingsNavActive = controller == "Booking"; }
+                    @{ bool bookingsNavActive = controller == "Booking" || controller == "Guest"; }
                     <div class="menu-item has-dropdown @(bookingsNavActive ? "active" : string.Empty)">
                         <i class="fas fa-calendar-check"></i>
                         <span>Bookings</span>
@@ -76,6 +76,11 @@
                             <a asp-controller="Booking" asp-action="List" class="@(controller == "Booking" && action == "List" ? "active" : string.Empty)">
                                 <i class="fas fa-list"></i>
                                 <span>Bookings</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+                            <a asp-controller="Guest" asp-action="Index" class="@(controller == "Guest" && action == "Index" ? "active" : string.Empty)">
+                                <i class="fas fa-users"></i>
+                                <span>Guests</span>
                                 <i class="fas fa-arrow-right dropdown-arrow"></i>
                             </a>
                             <a asp-controller="Booking" asp-action="RoomAvailabilityCalendar" class="@(controller == "Booking" && action == "RoomAvailabilityCalendar" ? "active" : string.Empty)">
@@ -92,14 +97,19 @@
 
                         </div>
                     </div>
-                    <a asp-controller="Guest" asp-action="Index" class="menu-item @(controller == "Guest" ? "active" : string.Empty)">
-                        <i class="fas fa-users"></i>
-                        <span>Guests</span>
-                    </a>
-                    <a href="#" class="menu-item">
+                    @{ bool reportsNavActive = controller == "Reports"; }
+                    <div class="menu-item has-dropdown @(reportsNavActive ? "active" : string.Empty)">
                         <i class="fas fa-chart-bar"></i>
                         <span>Reports</span>
-                    </a>
+                        <i class="fas fa-chevron-down dropdown-icon"></i>
+                        <div class="dropdown-menu">
+                            <a asp-controller="Reports" asp-action="RoomPriceDetails" class="@(controller == "Reports" && action == "RoomPriceDetails" ? "active" : string.Empty)">
+                                <i class="fas fa-rupee-sign"></i>
+                                <span>Room Price Details</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+                        </div>
+                    </div>
                     <div class="menu-item has-dropdown @(controller == "BranchMaster" || controller == "UserManagement" || controller == "HotelSettings" ? "active" : string.Empty)">
                         <i class="fas fa-cog"></i>
                         <span>Settings</span>

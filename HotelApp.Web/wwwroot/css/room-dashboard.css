@@ -80,13 +80,13 @@
 }
 
 .status-card {
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    background: #ffffff;
     padding: 18px;
-    border-radius: 12px;
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+    border-radius: 14px;
+    box-shadow: 0 6px 18px rgba(26, 42, 108, 0.10);
     min-width: 0;
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
+    border: 1px solid rgba(102, 126, 234, 0.18);
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
     position: relative;
     overflow: hidden;
 }
@@ -97,62 +97,73 @@
     top: 0;
     left: 0;
     right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    height: 5px;
+    background: linear-gradient(90deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%);
+}
+
+.status-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(80% 80% at 85% 10%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 60%);
+    pointer-events: none;
 }
 
 .status-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.12);
+    box-shadow: 0 14px 34px rgba(102, 126, 234, 0.20);
+    border-color: rgba(102, 126, 234, 0.35);
 }
 
 .status-card h3 {
     font-size: 0.8rem;
-    color: var(--gray);
-    font-weight: 500;
+    color: rgba(255, 255, 255, 0.88);
+    font-weight: 700;
     margin-bottom: 8px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    position: relative;
+    z-index: 1;
 }
 
 .status-card .value {
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 4px;
-}
-
-.status-card.available .value {
-    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.status-card.occupied .value {
-    background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.status-card.maintenance .value {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.status-card.cleaning .value {
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 6px;
+    color: #ffffff;
+    letter-spacing: 0.3px;
+    position: relative;
+    z-index: 1;
 }
 
 .status-card .change {
-    font-size: 0.85rem;
-    color: var(--gray);
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.85);
+    position: relative;
+    z-index: 1;
 }
+
+/* Colorful, theme-aligned card variants */
+.status-card.available {
+    background: linear-gradient(135deg, #1fa97a 0%, #18c08f 45%, #0fb7ff 130%);
+}
+
+.status-card.occupied {
+    background: linear-gradient(135deg, #ff4b7d 0%, #ff6a00 55%, #ffb703 140%);
+}
+
+.status-card.maintenance {
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 55%, #ec4899 140%);
+}
+
+.status-card.cleaning {
+    background: linear-gradient(135deg, #1d4ed8 0%, #2dd4bf 60%, #22c55e 160%);
+}
+
+.status-card.available::before { background: linear-gradient(90deg, rgba(255,255,255,0.55), rgba(255,255,255,0.15)); }
+.status-card.occupied::before { background: linear-gradient(90deg, rgba(255,255,255,0.55), rgba(255,255,255,0.15)); }
+.status-card.maintenance::before { background: linear-gradient(90deg, rgba(255,255,255,0.55), rgba(255,255,255,0.15)); }
+.status-card.cleaning::before { background: linear-gradient(90deg, rgba(255,255,255,0.55), rgba(255,255,255,0.15)); }
 
 /* Room Grid */
 .room-content {

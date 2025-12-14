@@ -1,0 +1,200 @@
+@model HotelApp.Web.ViewModels.RoomPriceDetailsReportViewModel
+@{
+    ViewData["Title"] = "Room Price Details";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-chart-line"></i> Room Price Details</h2>
+</div>
+
+<div class="filters-container" style="margin-bottom: 18px;">
+    <form method="get" action="@Url.Action("RoomPriceDetails", "Reports")" style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; justify-content: space-between;">
+        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;">
+            <div>
+                <label for="asOfDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">Rate as of</label>
+                <input id="asOfDate" name="asOfDate" type="date" class="form-control"
+                       value="@Model.AsOfDate.ToString("yyyy-MM-dd")" />
+            </div>
+
+            <div>
+                <label for="roomTypeId" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">Room Type</label>
+                <select id="roomTypeId" name="roomTypeId" class="form-control">
+                    <option value="">All</option>
+                    @foreach (var opt in Model.RoomTypes)
+                    {
+                        <option value="@opt.Id" selected="@(Model.SelectedRoomTypeId == opt.Id)">@opt.Name</option>
+                    }
+                </select>
+            </div>
+
+            <div>
+                <label for="roomStatus" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">Status</label>
+                <select id="roomStatus" name="roomStatus" class="form-control">
+                    <option value="">All</option>
+                    @foreach (var s in Model.RoomStatuses)
+                    {
+                        <option value="@s" selected="@(string.Equals(Model.SelectedRoomStatus, s, StringComparison.OrdinalIgnoreCase))">@s</option>
+                    }
+                </select>
+            </div>
+
+            <div>
+                <label for="floorId" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">Floor</label>
+                <select id="floorId" name="floorId" class="form-control">
+                    <option value="">All</option>
+                    @foreach (var f in Model.Floors)
+                    {
+                        <option value="@f.Id" selected="@(Model.SelectedFloorId == f.Id)">@f.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:flex-end;">
+            <button class="btn-filter-apply" type="submit">
+                <i class="fas fa-filter"></i> Apply
+            </button>
+            <a class="btn-filter-clear" href="@Url.Action("RoomPriceDetails", "Reports")">
+                <i class="fas fa-undo"></i> Reset
+            </a>
+        </div>
+    </form>
+</div>
+
+<div class="status-cards booking-status-cards" style="margin-bottom: 26px;">
+    <div class="status-card available">
+        <h3>Total Rooms</h3>
+        <div class="value">@Model.TotalRooms</div>
+    </div>
+
+    <div class="status-card cleaning">
+        <h3>Available</h3>
+        <div class="value">@Model.AvailableRooms</div>
+    </div>
+
+    <div class="status-card occupied">
+        <h3>Occupied</h3>
+        <div class="value">@Model.OccupiedRooms</div>
+    </div>
+
+    <div class="status-card maintenance">
+        <h3>Avg Current Rate</h3>
+        <div class="value">₹@Model.AvgCurrentBaseRate.ToString("N0")</div>
+    </div>
+</div>
+
+<div class="filters-container" style="margin-bottom: 18px;">
+    <div style="display:flex; gap:12px; flex-wrap: wrap; align-items:center; justify-content: space-between;">
+        <div>
+            <div style="font-weight:700; color:#1f2937;">Summary</div>
+            <div class="subtext" style="margin-top:4px;">Min: ₹@Model.MinCurrentBaseRate.ToString("N0") • Max: ₹@Model.MaxCurrentBaseRate.ToString("N0")</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn-filter-apply" type="button" onclick="exportRoomPriceDetailsToCSV()">
+                <i class="fas fa-file-export"></i> Export CSV
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="table-container" style="overflow: visible;">
+    <table class="data-table" id="roomPriceTable">
+        <thead>
+            <tr>
+                <th>Room #</th>
+                <th>Status</th>
+                <th>Floor</th>
+                <th>Room Type</th>
+                <th>Max Occ.</th>
+                <th>Default Rate</th>
+                <th>Current Rate</th>
+                <th>Extra Pax</th>
+                <th>Tax %</th>
+                <th>Rate Validity</th>
+                <th>Customer Type</th>
+                <th>Source</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var row in Model.Rows)
+        {
+            <tr>
+                <td><strong>@row.RoomNumber</strong></td>
+                <td>
+                    <span class="badge badge-available">@row.RoomStatus</span>
+                </td>
+                <td>@(row.FloorName ?? (row.Floor?.ToString() ?? "-"))</td>
+                <td>
+                    <div>@row.RoomType</div>
+                    @if (!string.IsNullOrWhiteSpace(row.RoomTypeDescription))
+                    {
+                        <div class="subtext">@row.RoomTypeDescription</div>
+                    }
+                </td>
+                <td>@(row.MaxOccupancy?.ToString() ?? "-")</td>
+                <td>₹@(row.DefaultBaseRate?.ToString("N0") ?? "0")</td>
+                <td>
+                    @if (row.CurrentBaseRate.HasValue)
+                    {
+                        <strong>₹@row.CurrentBaseRate.Value.ToString("N0")</strong>
+                    }
+                    else
+                    {
+                        <span class="subtext text-muted">No active rate</span>
+                    }
+                </td>
+                <td>₹@(row.CurrentExtraPaxRate?.ToString("N0") ?? "-")</td>
+                <td>@(row.CurrentTaxPercentage?.ToString("N0") ?? "-")</td>
+                <td>
+                    @if (row.CurrentRateStartDate.HasValue && row.CurrentRateEndDate.HasValue)
+                    {
+                        <div>@row.CurrentRateStartDate.Value.ToString("dd MMM yyyy")</div>
+                        <div class="subtext">to @row.CurrentRateEndDate.Value.ToString("dd MMM yyyy")</div>
+                    }
+                    else
+                    {
+                        <span class="subtext text-muted">-</span>
+                    }
+                </td>
+                <td>@(string.IsNullOrWhiteSpace(row.CurrentCustomerType) ? "-" : row.CurrentCustomerType)</td>
+                <td>@(string.IsNullOrWhiteSpace(row.CurrentSource) ? "-" : row.CurrentSource)</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+<style>
+    .text-muted { color: #a0aec0 !important; }
+</style>
+
+<script>
+    function exportRoomPriceDetailsToCSV() {
+        const table = document.getElementById('roomPriceTable');
+        if (!table) return;
+
+        const rows = Array.from(table.querySelectorAll('tr'));
+        const csv = rows.map(tr => {
+            const cols = Array.from(tr.querySelectorAll('th,td')).map(td => {
+                const text = (td.innerText || '').replace(/\s+/g, ' ').trim();
+                const escaped = '"' + text.replace(/"/g, '""') + '"';
+                return escaped;
+            });
+            return cols.join(',');
+        }).join('\n');
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'room-price-details.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
+</script>

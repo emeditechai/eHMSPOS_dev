@@ -3,3 +3,12 @@
 **/bin/
 **/obj/
 HotelApp.Web/wwwroot/uploads/
+# Build outputs
+**/bin/
+**/obj/
+
+# User uploads (generated at runtime)
+HotelApp.Web/wwwroot/uploads/
+
+# OS
+.DS_Store

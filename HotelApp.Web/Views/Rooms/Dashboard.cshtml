@@ -1059,12 +1059,19 @@
                             });
                         } else {
                             // Check if booking not found - offer force checkout
-                            if (data.message && data.message.includes('No active booking found')) {
+                            if (data && (data.isExpired === true || (data.message && data.message.includes('No active booking found')))) {
+                                const detectedDateText = data.detectedCheckOutDate
+                                    ? new Date(data.detectedCheckOutDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' })
+                                    : null;
+                                const expiredHtml = detectedDateText
+                                    ? `<p>This booking was expected to check out on <strong>${detectedDateText}</strong>.</p>`
+                                    : `<p>The checkout date for this booking has passed.</p>`;
+
                                 Swal.fire({
                                     icon: 'warning',
                                     title: 'Booking Expired',
                                     html: `
-                                        <p>The checkout date for this booking has passed.</p>
+                                        ${expiredHtml}
                                         <p>Would you like to <strong>Force Checkout</strong>?</p>
                                     `,
                                     showCancelButton: true,

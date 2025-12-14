@@ -304,7 +304,14 @@ namespace HotelApp.Web.Repositories
                 FROM Bookings
                 WHERE RoomId = @RoomId 
                     AND Status IN ('Confirmed', 'CheckedIn')
-                    AND CAST(GETDATE() AS DATE) BETWEEN CAST(CheckInDate AS DATE) AND CAST(CheckOutDate AS DATE)
+                    -- A room is occupied on a date if: CheckInDate <= today AND (ActualCheckOutDate ?? CheckOutDate) > today
+                    AND CAST(CheckInDate AS DATE) <= CAST(GETDATE() AS DATE)
+                    AND (
+                        CASE 
+                            WHEN ActualCheckOutDate IS NOT NULL THEN CAST(ActualCheckOutDate AS DATE)
+                            ELSE CAST(CheckOutDate AS DATE)
+                        END
+                    ) > CAST(GETDATE() AS DATE)
                 ORDER BY CheckInDate DESC";
 
             var booking = await _dbConnection.QueryFirstOrDefaultAsync<dynamic>(sql, new { RoomId = roomId });
@@ -327,16 +334,31 @@ namespace HotelApp.Web.Repositories
         public async Task<(bool hasBooking, string? bookingNumber, decimal balanceAmount, DateTime? checkOutDate)> GetAnyBookingForRoomAsync(int roomId)
         {
             var sql = @"
+                -- Prefer BookingRooms mapping (multi-room bookings)
+                SELECT TOP 1
+                    b.BookingNumber,
+                    b.BalanceAmount,
+                    COALESCE(b.ActualCheckOutDate, b.CheckOutDate) AS CheckOutDate,
+                    b.PaymentStatus
+                FROM BookingRooms br
+                INNER JOIN Bookings b ON br.BookingId = b.Id
+                WHERE br.RoomId = @RoomId
+                    AND br.IsActive = 1
+                    AND b.Status IN ('Confirmed', 'CheckedIn')
+                ORDER BY b.CheckInDate DESC;
+
+                -- Fallback for legacy single-room assignment
                 SELECT TOP 1 
                     BookingNumber,
                     BalanceAmount,
-                    CheckOutDate,
+                    COALESCE(ActualCheckOutDate, CheckOutDate) AS CheckOutDate,
                     PaymentStatus
                 FROM Bookings
                 WHERE RoomId = @RoomId 
                     AND Status IN ('Confirmed', 'CheckedIn')
                 ORDER BY CheckInDate DESC";
 
+            // Dapper will return the first result set's first row (if any). If none, it will move to the next.
             var booking = await _dbConnection.QueryFirstOrDefaultAsync<dynamic>(sql, new { RoomId = roomId });
 
             if (booking == null)

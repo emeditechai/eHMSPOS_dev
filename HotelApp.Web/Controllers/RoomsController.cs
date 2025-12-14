@@ -158,7 +158,24 @@ public class RoomsController : BaseController
 
             if (!hasActiveBooking)
             {
-                return Json(new { success = false, message = "No active booking found for this room" });
+                var anyBooking = await _roomRepository.GetAnyBookingForRoomAsync(request.RoomId);
+                if (anyBooking.hasBooking && !string.IsNullOrWhiteSpace(anyBooking.bookingNumber))
+                {
+                    var detectedCheckOutDate = anyBooking.checkOutDate;
+                    var today = DateTime.Today;
+                    var isExpired = detectedCheckOutDate.HasValue && detectedCheckOutDate.Value.Date <= today;
+                    return Json(new
+                    {
+                        success = false,
+                        message = "No active booking found for this room",
+                        reason = isExpired ? "Expired" : "NoActiveBooking",
+                        isExpired,
+                        bookingNumber = anyBooking.bookingNumber,
+                        detectedCheckOutDate = detectedCheckOutDate
+                    });
+                }
+
+                return Json(new { success = false, message = "No active booking found for this room", reason = "NoBooking" });
             }
 
             if (string.IsNullOrWhiteSpace(bookingNumber))

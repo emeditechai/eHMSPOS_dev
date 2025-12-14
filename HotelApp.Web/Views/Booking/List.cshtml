@@ -3,6 +3,10 @@
     ViewData["Title"] = "Bookings Dashboard";
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
+}
+
 <div class="page-header">
     <h2><i class="fas fa-calendar-check"></i> Bookings Dashboard</h2>
     <a asp-action="Create" class="btn-create">
@@ -23,46 +27,26 @@
     </div>
 }
 
-<!-- Dashboard Cards -->
-<div class="dashboard-cards">
-    <div class="dashboard-card card-blue">
-        <div class="card-icon">
-            <i class="fas fa-calendar-plus"></i>
-        </div>
-        <div class="card-content">
-            <h3>@Model.TodayBookingCount</h3>
-            <p>Today's Bookings</p>
-        </div>
+<!-- Dashboard Cards (match Rooms Dashboard style) -->
+<div class="status-cards booking-status-cards">
+    <div class="status-card available">
+        <h3>Today's Bookings</h3>
+        <div class="value">@Model.TodayBookingCount</div>
     </div>
-    
-    <div class="dashboard-card card-green">
-        <div class="card-icon">
-            <i class="fas fa-money-bill-wave"></i>
-        </div>
-        <div class="card-content">
-            <h3>₹@Model.TodayAdvanceAmount.ToString("N0")</h3>
-            <p>Today's Advance Amount</p>
-        </div>
+
+    <div class="status-card occupied">
+        <h3>Today's Advance Amount</h3>
+        <div class="value">₹@Model.TodayAdvanceAmount.ToString("N0")</div>
     </div>
-    
-    <div class="dashboard-card card-orange">
-        <div class="card-icon">
-            <i class="fas fa-sign-in-alt"></i>
-        </div>
-        <div class="card-content">
-            <h3>@Model.TodayCheckInCount</h3>
-            <p>Today's Check-ins</p>
-        </div>
+
+    <div class="status-card maintenance">
+        <h3>Today's Check-ins</h3>
+        <div class="value">@Model.TodayCheckInCount</div>
     </div>
-    
-    <div class="dashboard-card card-purple">
-        <div class="card-icon">
-            <i class="fas fa-sign-out-alt"></i>
-        </div>
-        <div class="card-content">
-            <h3>@Model.TodayCheckOutCount</h3>
-            <p>Today's Check-outs</p>
-        </div>
+
+    <div class="status-card cleaning">
+        <h3>Today's Check-outs</h3>
+        <div class="value">@Model.TodayCheckOutCount</div>
     </div>
 </div>
 
@@ -268,95 +252,16 @@ else
 }
 
 <style>
-    .dashboard-cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 20px;
+    /* Booking cards should look identical to Rooms Dashboard cards */
+    .booking-status-cards {
         margin-bottom: 30px;
     }
 
-    .dashboard-card {
-        background: white;
-        border-radius: 12px;
-        padding: 25px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        transition: transform 0.2s, box-shadow 0.2s;
-        position: relative;
-        overflow: hidden;
-        border: 1px solid rgba(255, 255, 255, 0.45);
-    }
-
-    /* Make full cards colorful (no gradient) */
-    .dashboard-card::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: var(--card-bg, #e5e7eb);
-        opacity: 1;
-        z-index: 0;
-    }
-
-    .dashboard-card::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.10);
-        z-index: 0;
-    }
-
-    .dashboard-card .card-icon,
-    .dashboard-card .card-content {
-        position: relative;
-        z-index: 1;
-    }
-
-    .dashboard-card .card-content h3,
-    .dashboard-card .card-content p {
-        color: #ffffff;
-        text-shadow: none;
-    }
-
-    .dashboard-card .card-content p {
-        opacity: 0.98;
-    }
-
-    .dashboard-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
-    }
-
-    .dashboard-card .card-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 28px;
-        color: white;
-        background: rgba(255, 255, 255, 0.18);
-        border: 1px solid rgba(255, 255, 255, 0.28);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-    }
-
-    .card-blue {
-        --card-bg: #c7d2fe;
-    }
-
-    .card-green {
-        --card-bg: #a7f3d0;
-    }
-
-    .card-orange {
-        --card-bg: #fed7aa;
-    }
-
-    .card-purple {
-        --card-bg: #e9d5ff;
+    /* Fallback in case room-dashboard.css is not loaded for some reason */
+    .booking-status-cards.status-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 18px;
     }
 
     /* Date Filters */
@@ -444,19 +349,7 @@ else
         color: #374151;
     }
 
-    .dashboard-card .card-content h3 {
-        margin: 0;
-        font-size: 32px;
-        font-weight: 700;
-        color: #2d3748;
-    }
-
-    .dashboard-card .card-content p {
-        margin: 5px 0 0 0;
-        font-size: 14px;
-        color: #718096;
-        font-weight: 500;
-    }
+    /* Note: We intentionally reuse global `.status-cards`/`.status-card` styles */
 
     .dropdown {
         position: relative;
@@ -594,18 +487,34 @@ else
 </style>
 
 <script>
+    // Toggle to `true` temporarily while debugging dropdown close behavior.
+    const BOOKING_DROPDOWN_DEBUG = false;
+    function bookingDropdownLog(...args) {
+        if (BOOKING_DROPDOWN_DEBUG && window?.console) console.log('[BookingDropdown]', ...args);
+    }
+
+    // ----- Booking List action dropdown helpers -----
+    function closeAllBookingActionDropdowns(exceptId) {
+        bookingDropdownLog('closeAllBookingActionDropdowns', { exceptId });
+        document.querySelectorAll('.data-table .dropdown-menu.show').forEach(menu => {
+            if (!exceptId || menu.id !== exceptId) {
+                menu.classList.remove('show');
+            }
+        });
+    }
+
     function toggleDropdown(event, dropdownId) {
+        event.preventDefault();
         event.stopPropagation();
         
         const button = event.currentTarget;
         const dropdown = document.getElementById(dropdownId);
+
+        bookingDropdownLog('toggleDropdown', { dropdownId, hasDropdown: !!dropdown });
+        if (!dropdown) return;
         
-        // Close all other dropdowns
-        document.querySelectorAll('.data-table .dropdown-menu').forEach(menu => {
-            if (menu.id !== dropdownId) {
-                menu.classList.remove('show');
-            }
-        });
+        // Close all other booking-row dropdowns
+        closeAllBookingActionDropdowns(dropdownId);
         
         // Toggle current dropdown
         const isShown = dropdown.classList.contains('show');
@@ -641,26 +550,51 @@ else
             dropdown.style.right = 'auto';
             dropdown.style.visibility = 'visible';
             dropdown.classList.add('show');
+            bookingDropdownLog('opened', { dropdownId, left, top });
         } else {
             dropdown.classList.remove('show');
+            bookingDropdownLog('closed', { dropdownId });
         }
     }
 
-    // Close ONLY booking-row action dropdowns when clicking outside them.
-    // (Don't interfere with the top navbar dropdowns which also use `.dropdown-menu`.)
-    document.addEventListener('click', function(event) {
-        if (!event.target.closest('.dropdown')) {
-            document.querySelectorAll('.data-table .dropdown-menu').forEach(menu => {
-                menu.classList.remove('show');
-            });
+    // Ensure the close handlers are attached even if other scripts override bubbling.
+    // Use pointerdown (fires earlier than click) + capture phase.
+    window.addEventListener('pointerdown', function(event) {
+        bookingDropdownLog('pointerdown', { target: event.target?.tagName, inside: !!event.target.closest('.data-table .dropdown, .data-table .dropdown-menu') });
+        if (!event.target.closest('.data-table .dropdown') && !event.target.closest('.data-table .dropdown-menu')) {
+            closeAllBookingActionDropdowns();
         }
-    });
+    }, true);
+
+    // Close on ESC (capture phase)
+    window.addEventListener('keydown', function(event) {
+        bookingDropdownLog('keydown', { key: event.key });
+        if (event.key === 'Escape') {
+            closeAllBookingActionDropdowns();
+        }
+    }, true);
+
+    // Close when a dropdown item is clicked (capture)
+    window.addEventListener('pointerdown', function(event) {
+        if (event.target.closest('.data-table .dropdown-menu .dropdown-item')) {
+            closeAllBookingActionDropdowns();
+        }
+    }, true);
 
     // Close ONLY booking-row action dropdowns on scroll
-    document.addEventListener('scroll', function() {
-        document.querySelectorAll('.data-table .dropdown-menu').forEach(menu => {
-            menu.classList.remove('show');
-        });
+    window.addEventListener('scroll', function() {
+        closeAllBookingActionDropdowns();
+    }, true);
+
+    // Extra safety: close if focus moves elsewhere or viewport changes.
+    window.addEventListener('focusin', function(event) {
+        if (!event.target.closest('.data-table .dropdown') && !event.target.closest('.data-table .dropdown-menu')) {
+            closeAllBookingActionDropdowns();
+        }
+    }, true);
+
+    window.addEventListener('resize', function() {
+        closeAllBookingActionDropdowns();
     }, true);
 
     function assignRoom(bookingNumber) {
@@ -772,12 +706,19 @@ else
                         });
                     } else {
                         // Check if booking not found - offer force checkout
-                        if (data.message && data.message.includes('No active booking found')) {
+                        if (data && (data.isExpired === true || (data.message && data.message.includes('No active booking found')))) {
+                            const detectedDateText = data.detectedCheckOutDate
+                                ? new Date(data.detectedCheckOutDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' })
+                                : null;
+                            const expiredHtml = detectedDateText
+                                ? `<p>This booking was expected to check out on <strong>${detectedDateText}</strong>.</p>`
+                                : `<p>The checkout date for this booking has passed.</p>`;
+
                             Swal.fire({
                                 icon: 'warning',
                                 title: 'Booking Expired',
                                 html: `
-                                    <p>The checkout date for this booking has passed.</p>
+                                    ${expiredHtml}
                                     <p>Would you like to <strong>Force Checkout</strong>?</p>
                                 `,
                                 showCancelButton: true,
