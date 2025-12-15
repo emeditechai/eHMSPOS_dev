@@ -1,0 +1,334 @@
+@model HotelApp.Web.Models.OtherCharge
+@{
+    var isReadOnly = (bool?)(ViewBag.IsReadOnly) ?? false;
+    ViewData["Title"] ??= isReadOnly ? "Other Charge Details" : "Edit Other Charge";
+    var headingText = ViewData["Title"]?.ToString() ?? (isReadOnly ? "Other Charge Details" : "Edit Other Charge");
+    string FormatDate(DateTime date) => date == default ? "Not recorded" : date.ToString("dd MMM yyyy HH:mm");
+    string FormatUser(int? userId) => userId.HasValue ? $"User #{userId}" : "System";
+
+    string TypeLabel(OtherChargeType t) => t switch
+    {
+        OtherChargeType.CarRental => "Car Rentral",
+        OtherChargeType.Fitness => "Fitness",
+        OtherChargeType.Laundry => "Laundry",
+        OtherChargeType.Others => "Others",
+        _ => t.ToString()
+    };
+}
+
+<style>
+    .master-edit-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        padding: 30px 50px;
+        max-width: 95%;
+        width: 100%;
+        margin: 0 auto;
+    }
+
+    .master-edit-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .master-edit-header h3 {
+        margin: 0;
+        color: var(--primary);
+        font-size: 24px;
+        font-weight: 600;
+    }
+
+    .audit-info {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+    }
+
+    .audit-item {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .audit-label {
+        font-weight: 600;
+        color: #666;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+
+    .audit-value {
+        color: #333;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .audit-subtext {
+        color: #888;
+        font-size: 13px;
+    }
+
+    .master-form-section {
+        margin-bottom: 25px;
+    }
+
+    .section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .section-title i {
+        color: var(--primary);
+    }
+
+    .master-form-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px 25px;
+    }
+
+    .master-form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .master-form-group label {
+        font-weight: 500;
+        margin-bottom: 8px;
+        color: #333;
+        font-size: 14px;
+    }
+
+    .master-form-group input,
+    .master-form-group select {
+        padding: 12px 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .master-form-group input:focus,
+    .master-form-group select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(26, 42, 108, 0.1);
+    }
+
+    .master-form-group input:read-only,
+    .master-form-group select:disabled {
+        background-color: #f5f5f5;
+        cursor: not-allowed;
+    }
+
+    .master-form-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: flex-end;
+        padding-top: 25px;
+        border-top: 2px solid #f0f0f0;
+    }
+
+    .master-form-actions .btn-save,
+    .master-form-actions .btn-cancel {
+        padding: 12px 30px;
+        font-size: 15px;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+
+    .page-header {
+        max-width: 95%;
+        margin: 0 auto 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    @@media (max-width: 1400px) {
+        .master-form-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .audit-info {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .master-form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media screen and (min-width: 1200px) {
+        .master-edit-container {
+            max-width: 98%;
+        }
+    }
+</style>
+
+<div class="page-header">
+    <h2><i class="fas fa-edit"></i> @headingText</h2>
+    <a asp-action="List" class="btn-cancel">
+        <i class="fas fa-arrow-left"></i> Back to List
+    </a>
+</div>
+
+<div class="master-edit-container @(isReadOnly ? "form-readonly" : string.Empty)">
+    <div class="master-edit-header">
+        <h3><i class="fas fa-receipt"></i> @headingText</h3>
+    </div>
+
+    <form asp-action="Edit" method="post">
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="BranchID" />
+        <input type="hidden" asp-for="CreatedDate" />
+        <input type="hidden" asp-for="CreatedBy" />
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+        @if (Model != null && (Model.CreatedDate != default || (Model.UpdatedDate.HasValue && Model.UpdatedDate.Value != default)))
+        {
+            <div class="audit-info">
+                <div class="audit-item">
+                    <span class="audit-label">Created</span>
+                    <span class="audit-value">@FormatDate(Model.CreatedDate)</span>
+                    <span class="audit-subtext">@FormatUser(Model.CreatedBy)</span>
+                </div>
+                <div class="audit-item">
+                    <span class="audit-label">Last Updated</span>
+                    <span class="audit-value">@FormatDate(Model.UpdatedDate ?? default)</span>
+                    <span class="audit-subtext">@FormatUser(Model.UpdatedBy)</span>
+                </div>
+            </div>
+        }
+
+        <div class="master-form-section">
+            <div class="section-title">
+                <i class="fas fa-info-circle"></i>
+                Other Charge Information
+            </div>
+
+            <div class="master-form-grid">
+                <div class="master-form-group">
+                    <label asp-for="Code">Code <span class="text-danger">*</span></label>
+                    <input asp-for="Code" type="text" required readonly="@(isReadOnly ? "readonly" : null)" />
+                    <span asp-validation-for="Code" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="Name">Name <span class="text-danger">*</span></label>
+                    <input asp-for="Name" type="text" required readonly="@(isReadOnly ? "readonly" : null)" />
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="Type">Type</label>
+                    <select asp-for="Type" disabled="@(isReadOnly ? "disabled" : null)">
+                        @foreach (OtherChargeType t in Enum.GetValues(typeof(OtherChargeType)))
+                        {
+                            <option value="@((int)t)">@TypeLabel(t)</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="Rate">Rate</label>
+                    <input asp-for="Rate" type="number" step="0.01" min="0" readonly="@(isReadOnly ? "readonly" : null)" />
+                    <span asp-validation-for="Rate" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="GSTPercent">GST %</label>
+                    <input asp-for="GSTPercent" id="gstPercent" type="number" step="0.01" min="0" readonly="@(isReadOnly ? "readonly" : null)" />
+                    <span asp-validation-for="GSTPercent" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="CGSTPercent">CGST %</label>
+                    <input asp-for="CGSTPercent" id="cgstPercent" type="number" step="0.01" min="0" readonly />
+                    <span asp-validation-for="CGSTPercent" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="SGSTPercent">SGST %</label>
+                    <input asp-for="SGSTPercent" id="sgstPercent" type="number" step="0.01" min="0" readonly />
+                    <span asp-validation-for="SGSTPercent" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="IsActive">Status</label>
+                    <select asp-for="IsActive" disabled="@(isReadOnly ? "disabled" : null)">
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        @if (isReadOnly)
+        {
+            <div class="master-form-actions">
+                <a asp-action="List" class="btn-cancel">
+                    <i class="fas fa-arrow-left"></i> Back to List
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="master-form-actions">
+                <a asp-action="List" class="btn-cancel">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+                <button type="submit" class="btn-save">
+                    <i class="fas fa-save"></i> Update Other Charge
+                </button>
+            </div>
+        }
+    </form>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+
+    <script>
+        (function () {
+            const gst = document.getElementById('gstPercent');
+            const cgst = document.getElementById('cgstPercent');
+            const sgst = document.getElementById('sgstPercent');
+
+            function round2(value) {
+                return Math.round((value + Number.EPSILON) * 100) / 100;
+            }
+
+            function sync() {
+                const gstVal = parseFloat(gst.value);
+                const safeGst = Number.isFinite(gstVal) ? Math.max(0, gstVal) : 0;
+                const half = round2(safeGst / 2);
+                cgst.value = half.toFixed(2);
+                sgst.value = half.toFixed(2);
+            }
+
+            gst.addEventListener('input', sync);
+            document.addEventListener('DOMContentLoaded', sync);
+            sync();
+        })();
+    </script>
+}

@@ -1,0 +1,247 @@
+@model HotelApp.Web.Models.OtherCharge
+@{
+    ViewData["Title"] = "Create Other Charge";
+
+    string TypeLabel(OtherChargeType t) => t switch
+    {
+        OtherChargeType.CarRental => "Car Rentral",
+        OtherChargeType.Fitness => "Fitness",
+        OtherChargeType.Laundry => "Laundry",
+        OtherChargeType.Others => "Others",
+        _ => t.ToString()
+    };
+}
+
+<style>
+    .master-create-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        padding: 30px 50px;
+        max-width: 95%;
+        width: 100%;
+        margin: 0 auto;
+    }
+
+    .master-create-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .master-create-header h3 {
+        margin: 0;
+        color: var(--primary);
+        font-size: 24px;
+        font-weight: 600;
+    }
+
+    .master-form-section {
+        margin-bottom: 25px;
+    }
+
+    .section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .section-title i {
+        color: var(--primary);
+    }
+
+    .master-form-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px 25px;
+    }
+
+    .master-form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .master-form-group label {
+        font-weight: 500;
+        margin-bottom: 8px;
+        color: #333;
+        font-size: 14px;
+    }
+
+    .master-form-group input,
+    .master-form-group select {
+        padding: 12px 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .master-form-group input:focus,
+    .master-form-group select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(26, 42, 108, 0.1);
+    }
+
+    .master-form-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: flex-end;
+        padding-top: 25px;
+        border-top: 2px solid #f0f0f0;
+    }
+
+    .master-form-actions .btn-save,
+    .master-form-actions .btn-cancel {
+        padding: 12px 30px;
+        font-size: 15px;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+
+    .page-header {
+        max-width: 95%;
+        margin: 0 auto 20px;
+    }
+
+    @@media (max-width: 1400px) {
+        .master-form-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .master-form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media screen and (min-width: 1200px) {
+        .master-create-container {
+            max-width: 98%;
+        }
+    }
+</style>
+
+<div class="page-header">
+    <h2><i class="fas fa-receipt"></i> Other Charges Master</h2>
+</div>
+
+<div class="master-create-container">
+    <div class="master-create-header">
+        <h3><i class="fas fa-plus-circle"></i> Add Other Charge</h3>
+    </div>
+
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+        <div class="master-form-section">
+            <div class="section-title">
+                <i class="fas fa-info-circle"></i>
+                Other Charge Information
+            </div>
+
+            <div class="master-form-grid">
+                <div class="master-form-group">
+                    <label asp-for="Code">Code <span class="text-danger">*</span></label>
+                    <input asp-for="Code" type="text" placeholder="e.g., OC001" required />
+                    <span asp-validation-for="Code" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="Name">Name <span class="text-danger">*</span></label>
+                    <input asp-for="Name" type="text" placeholder="e.g., Laundry" required />
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="Type">Type</label>
+                    <select asp-for="Type">
+                        @foreach (OtherChargeType t in Enum.GetValues(typeof(OtherChargeType)))
+                        {
+                            <option value="@((int)t)">@TypeLabel(t)</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="Rate">Rate</label>
+                    <input asp-for="Rate" type="number" step="0.01" min="0" placeholder="0.00" />
+                    <span asp-validation-for="Rate" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="GSTPercent">GST %</label>
+                    <input asp-for="GSTPercent" id="gstPercent" type="number" step="0.01" min="0" placeholder="0.00" />
+                    <span asp-validation-for="GSTPercent" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="CGSTPercent">CGST %</label>
+                    <input asp-for="CGSTPercent" id="cgstPercent" type="number" step="0.01" min="0" readonly />
+                    <span asp-validation-for="CGSTPercent" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="SGSTPercent">SGST %</label>
+                    <input asp-for="SGSTPercent" id="sgstPercent" type="number" step="0.01" min="0" readonly />
+                    <span asp-validation-for="SGSTPercent" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="IsActive">Status</label>
+                    <select asp-for="IsActive">
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="master-form-actions">
+            <a asp-action="List" class="btn-cancel">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+            <button type="submit" class="btn-save">
+                <i class="fas fa-save"></i> Save Other Charge
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+
+    <script>
+        (function () {
+            const gst = document.getElementById('gstPercent');
+            const cgst = document.getElementById('cgstPercent');
+            const sgst = document.getElementById('sgstPercent');
+
+            function round2(value) {
+                return Math.round((value + Number.EPSILON) * 100) / 100;
+            }
+
+            function sync() {
+                const gstVal = parseFloat(gst.value);
+                const safeGst = Number.isFinite(gstVal) ? Math.max(0, gstVal) : 0;
+                const half = round2(safeGst / 2);
+                cgst.value = half.toFixed(2);
+                sgst.value = half.toFixed(2);
+            }
+
+            gst.addEventListener('input', sync);
+            document.addEventListener('DOMContentLoaded', sync);
+            sync();
+        })();
+    </script>
+}

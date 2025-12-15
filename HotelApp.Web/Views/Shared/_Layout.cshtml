@@ -20,6 +20,7 @@
         var isLoginPage = controller.Equals("Account", StringComparison.OrdinalIgnoreCase) && action.Equals("Login", StringComparison.OrdinalIgnoreCase);
         var displayName = User.FindFirst("displayName")?.Value ?? User.Identity?.Name ?? "Guest";
         bool roomsNavActive = controller is "Rooms" or "RoomMaster" or "RateMaster" or "FloorMaster" or "RoomTypeMaster" or "AmenitiesMaster";
+        bool utilityNavActive = controller is "OtherChargesMaster";
     }
 
     @if (!isLoginPage)
@@ -133,6 +134,19 @@
                             <a asp-controller="UserManagement" asp-action="Index" class="@(controller == "UserManagement" ? "active" : string.Empty)">
                                 <i class="fas fa-users-cog"></i>
                                 <span>User Management</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="menu-item has-dropdown @(utilityNavActive ? "active" : string.Empty)">
+                        <i class="fas fa-screwdriver-wrench"></i>
+                        <span>Utility</span>
+                        <i class="fas fa-chevron-down dropdown-icon"></i>
+                        <div class="dropdown-menu">
+                            <a asp-controller="OtherChargesMaster" asp-action="List" class="@(controller == "OtherChargesMaster" ? "active" : string.Empty)">
+                                <i class="fas fa-receipt"></i>
+                                <span>Other Charges Master</span>
                                 <i class="fas fa-arrow-right dropdown-arrow"></i>
                             </a>
                         </div>

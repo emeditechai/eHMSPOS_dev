@@ -29,6 +29,8 @@ namespace HotelApp.Web.Controllers
         private readonly IBankRepository _bankRepository;
         private readonly IHotelSettingsRepository _hotelSettingsRepository;
         private readonly ILocationRepository _locationRepository;
+        private readonly IOtherChargeRepository _otherChargeRepository;
+        private readonly IBookingOtherChargeRepository _bookingOtherChargeRepository;
 
         public BookingController(
             IBookingRepository bookingRepository,
@@ -36,7 +38,9 @@ namespace HotelApp.Web.Controllers
             IGuestRepository guestRepository,
             IBankRepository bankRepository,
             IHotelSettingsRepository hotelSettingsRepository,
-            ILocationRepository locationRepository)
+            ILocationRepository locationRepository,
+            IOtherChargeRepository otherChargeRepository,
+            IBookingOtherChargeRepository bookingOtherChargeRepository)
         {
             _bookingRepository = bookingRepository;
             _roomRepository = roomRepository;
@@ -44,6 +48,211 @@ namespace HotelApp.Web.Controllers
             _bankRepository = bankRepository;
             _hotelSettingsRepository = hotelSettingsRepository;
             _locationRepository = locationRepository;
+            _otherChargeRepository = otherChargeRepository;
+            _bookingOtherChargeRepository = bookingOtherChargeRepository;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetOtherChargesMaster()
+        {
+            var rows = await _otherChargeRepository.GetByBranchAsync(CurrentBranchID);
+            var active = rows.Where(r => r.IsActive)
+                .OrderBy(r => r.Name)
+                .ThenBy(r => r.Code)
+                .Select(r => new
+                {
+                    id = r.Id,
+                    code = r.Code,
+                    name = r.Name,
+                    type = (int)r.Type,
+                    rate = r.Rate,
+                    gstPercent = r.GSTPercent,
+                    cgstPercent = r.CGSTPercent,
+                    sgstPercent = r.SGSTPercent
+                });
+
+            return Json(new { success = true, rows = active });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetBookingOtherCharges(string bookingNumber)
+        {
+            if (string.IsNullOrWhiteSpace(bookingNumber))
+            {
+                return Json(new { success = false, message = "Invalid booking number", rows = Array.Empty<object>() });
+            }
+
+            var booking = await _bookingRepository.GetByBookingNumberAsync(bookingNumber);
+            if (booking == null)
+            {
+                return Json(new { success = false, message = "Booking not found", rows = Array.Empty<object>() });
+            }
+
+            var rows = await _bookingOtherChargeRepository.GetDetailsByBookingIdAsync(booking.Id);
+            return Json(new { success = true, rows });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveBookingOtherCharges([FromBody] SaveBookingOtherChargesRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.BookingNumber))
+            {
+                return Json(new { success = false, message = "Invalid request" });
+            }
+
+            var booking = await _bookingRepository.GetByBookingNumberAsync(request.BookingNumber);
+            if (booking == null)
+            {
+                return Json(new { success = false, message = "Booking not found" });
+            }
+
+            var items = request.Items ?? new List<SaveBookingOtherChargesItem>();
+            var distinctItems = items
+                .Where(i => i.OtherChargeId > 0)
+                .GroupBy(i => i.OtherChargeId)
+                .Select(g => g.Last())
+                .ToList();
+
+            var performedBy = GetCurrentUserId();
+            var existingRows = (await _bookingOtherChargeRepository.GetDetailsByBookingIdAsync(booking.Id)).ToList();
+            var existingById = existingRows.ToDictionary(r => r.OtherChargeId, r => r);
+
+            // If empty list, we interpret as "clear all other charges".
+            if (distinctItems.Count == 0)
+            {
+                if (existingRows.Count > 0)
+                {
+                    foreach (var existing in existingRows.OrderBy(r => r.Name).ThenBy(r => r.Code))
+                    {
+                        var qty = existing.Qty <= 0 ? 1 : existing.Qty;
+                        await _bookingRepository.AddAuditLogAsync(
+                            booking.Id,
+                            booking.BookingNumber,
+                            "Other Charge Removed",
+                            $"Removed other charge: {existing.Code} - {existing.Name}",
+                            $"Qty: {qty}, Rate: ₹{existing.Rate:N2}",
+                            null,
+                            performedBy);
+                    }
+                }
+
+                await _bookingOtherChargeRepository.UpsertForBookingAsync(booking.Id, Array.Empty<BookingOtherChargeUpsertRow>(), GetCurrentUserId());
+                return Json(new { success = true, message = "Other charges cleared" });
+            }
+
+            // Build a lookup from master for tax % and defaults
+            var master = (await _otherChargeRepository.GetByBranchAsync(CurrentBranchID))
+                .Where(r => r.IsActive)
+                .ToDictionary(r => r.Id, r => r);
+
+            var upserts = new List<BookingOtherChargeUpsertRow>();
+            foreach (var item in distinctItems)
+            {
+                if (!master.TryGetValue(item.OtherChargeId, out var charge))
+                {
+                    return Json(new { success = false, message = $"Invalid other charge selected (Id: {item.OtherChargeId})" });
+                }
+
+                var qty = item.Qty <= 0 ? 1 : item.Qty;
+                var unitRate = item.Rate < 0 ? 0 : item.Rate;
+                var taxable = Round2(unitRate * qty);
+                var gstAmt = Round2(taxable * (charge.GSTPercent / 100m));
+                var cgstAmt = Round2(taxable * (charge.CGSTPercent / 100m));
+                var sgstAmt = Round2(taxable * (charge.SGSTPercent / 100m));
+
+                upserts.Add(new BookingOtherChargeUpsertRow
+                {
+                    OtherChargeId = item.OtherChargeId,
+                    Qty = qty,
+                    Rate = Round2(unitRate),
+                    GSTAmount = gstAmt,
+                    CGSTAmount = cgstAmt,
+                    SGSTAmount = sgstAmt
+                });
+            }
+
+            // Activity Timeline logging (add/update/remove)
+            var upsertById = upserts.ToDictionary(u => u.OtherChargeId, u => u);
+            var newIds = upserts.Select(u => u.OtherChargeId).ToHashSet();
+            var oldIds = existingById.Keys.ToHashSet();
+
+            var addedIds = newIds.Except(oldIds).ToList();
+            var removedIds = oldIds.Except(newIds).ToList();
+            var commonIds = newIds.Intersect(oldIds).ToList();
+
+            foreach (var id in addedIds)
+            {
+                if (master.TryGetValue(id, out var charge))
+                {
+                    var row = upsertById[id];
+                    await _bookingRepository.AddAuditLogAsync(
+                        booking.Id,
+                        booking.BookingNumber,
+                        "Other Charge Added",
+                        $"Added other charge: {charge.Code} - {charge.Name}",
+                        null,
+                        $"Qty: {row.Qty}, Rate: ₹{row.Rate:N2}",
+                        performedBy);
+                }
+            }
+
+            foreach (var id in commonIds)
+            {
+                var existing = existingById[id];
+                var oldQty = existing.Qty <= 0 ? 1 : existing.Qty;
+                var oldRate = Round2(existing.Rate);
+                var incoming = upsertById[id];
+                var newQty = incoming.Qty <= 0 ? 1 : incoming.Qty;
+                var newRate = Round2(incoming.Rate);
+                if (oldQty != newQty || oldRate != newRate)
+                {
+                    var label = master.TryGetValue(id, out var charge)
+                        ? $"{charge.Code} - {charge.Name}"
+                        : $"{existingById[id].Code} - {existingById[id].Name}";
+
+                    await _bookingRepository.AddAuditLogAsync(
+                        booking.Id,
+                        booking.BookingNumber,
+                        "Other Charge Updated",
+                        $"Updated other charge: {label}",
+                        $"Qty: {oldQty}, Rate: ₹{oldRate:N2}",
+                        $"Qty: {newQty}, Rate: ₹{newRate:N2}",
+                        performedBy);
+                }
+            }
+
+            foreach (var id in removedIds)
+            {
+                var existing = existingById[id];
+                var qty = existing.Qty <= 0 ? 1 : existing.Qty;
+                await _bookingRepository.AddAuditLogAsync(
+                    booking.Id,
+                    booking.BookingNumber,
+                    "Other Charge Removed",
+                    $"Removed other charge: {existing.Code} - {existing.Name}",
+                    $"Qty: {qty}, Rate: ₹{existing.Rate:N2}",
+                    null,
+                    performedBy);
+            }
+
+            await _bookingOtherChargeRepository.UpsertForBookingAsync(booking.Id, upserts, GetCurrentUserId());
+            return Json(new { success = true, message = "Other charges saved" });
+        }
+
+        private static decimal Round2(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
+
+        public class SaveBookingOtherChargesRequest
+        {
+            public string BookingNumber { get; set; } = string.Empty;
+            public List<SaveBookingOtherChargesItem> Items { get; set; } = new();
+        }
+
+        public class SaveBookingOtherChargesItem
+        {
+            public int OtherChargeId { get; set; }
+            public decimal Rate { get; set; }
+            public int Qty { get; set; }
         }
 
         public async Task<IActionResult> List(DateTime? fromDate, DateTime? toDate, string? statusFilter)
@@ -411,6 +620,10 @@ namespace HotelApp.Web.Controllers
             // Get payments for this booking
             var payments = await _bookingRepository.GetPaymentsAsync(booking.Id);
             ViewBag.Payments = payments;
+
+            // Get other charges for this booking
+            var otherCharges = await _bookingOtherChargeRepository.GetDetailsByBookingIdAsync(booking.Id);
+            ViewBag.BookingOtherCharges = otherCharges;
 
             // Get all banks for payment modal
             var banks = await _bankRepository.GetAllActiveAsync();
