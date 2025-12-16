@@ -6,6 +6,20 @@
     var payments = ViewBag.Payments as IEnumerable<HotelApp.Web.Models.BookingPayment>;
     var totalPaid = payments?.Sum(p => p.Amount) ?? 0;
     var receiptIssueDate = DateTime.Now;
+
+    // Other Charges (for receipt display + totals)
+    var bookingOtherCharges = ViewBag.BookingOtherCharges as IEnumerable<HotelApp.Web.Repositories.BookingOtherChargeDetailRow>
+        ?? Enumerable.Empty<HotelApp.Web.Repositories.BookingOtherChargeDetailRow>();
+    var hasOtherCharges = bookingOtherCharges.Any();
+    var ocAmountTotal = bookingOtherCharges.Sum(x => x.Rate * (x.Qty <= 0 ? 1 : x.Qty));
+    var ocGstTotal = bookingOtherCharges.Sum(x => x.GSTAmount);
+    var ocCgstTotal = bookingOtherCharges.Sum(x => x.CGSTAmount);
+    var ocSgstTotal = bookingOtherCharges.Sum(x => x.SGSTAmount);
+    var ocGrandTotal = ocAmountTotal + ocGstTotal;
+
+    // Header/summary totals (safe display-only adjustments)
+    var receiptAdjustedGrandTotal = Model.TotalAmount + ocGrandTotal;
+    var receiptAdjustedBalanceDue = Model.BalanceAmount + ocGrandTotal;
 }
 
 <!DOCTYPE html>
@@ -631,7 +645,7 @@
 <body>
     @{
         var isCheckedOut = Model.ActualCheckOutDate != null || Model.Status == "CheckedOut";
-        var isFullyPaid = Model.BalanceAmount <= 0;
+        var isFullyPaid = receiptAdjustedBalanceDue <= 0;
         var showWatermark = isCheckedOut && isFullyPaid;
         var isFinalBill = showWatermark; // Can add more conditions here if needed
     }
@@ -691,7 +705,7 @@
                     <div class="subtitle">@(isFinalBill ? "Final Bill" : "Booking Receipt")</div>
                     <div class="meta-row"><span class="label">Booking No.</span> <span class="mono"><strong>@Model.BookingNumber</strong></span></div>
                     <div class="meta-row"><span class="label">Issue</span> <span class="mono">@receiptIssueDate.ToString("dd MMM yyyy hh:mm tt")</span></div>
-                    <div class="meta-row"><span class="label">Status</span> <span class="mono">@(Model.BalanceAmount <= 0 ? "Paid" : "Due")</span></div>
+                    <div class="meta-row"><span class="label">Status</span> <span class="mono">@(receiptAdjustedBalanceDue <= 0 ? "Paid" : "Due")</span></div>
                 </div>
             </div>
 
@@ -724,11 +738,11 @@
                     </div>
                     <div class="summary-row total">
                         <span class="label">Grand Total</span>
-                        <span class="value mono">₹ @Model.TotalAmount.ToString("N2")</span>
+                        <span class="value mono">₹ @receiptAdjustedGrandTotal.ToString("N2")</span>
                     </div>
                     <div class="summary-row due">
                         <span class="label">Balance Due</span>
-                        <span class="value mono">₹ @Model.BalanceAmount.ToString("N2")</span>
+                        <span class="value mono">₹ @receiptAdjustedBalanceDue.ToString("N2")</span>
                     </div>
                 </div>
             </div>
@@ -873,6 +887,13 @@
                 }
 
                 var preDiscountTotal = afterDiscountTotal + discountAmount;
+
+                // Receipt-level adjusted totals (display-only)
+                var adjustedCgstTotal = cgstTotal + ocCgstTotal;
+                var adjustedSgstTotal = sgstTotal + ocSgstTotal;
+                var adjustedTaxTotal = taxTotal + ocGstTotal;
+                var adjustedTotalAmount = Math.Round(afterDiscountTotal + taxTotal + ocGrandTotal, 2, MidpointRounding.AwayFromZero);
+                var adjustedBalancePayable = Model.BalanceAmount + ocGrandTotal;
             }
 
             <!-- Stay Summary -->
@@ -1021,6 +1042,54 @@
                     </tbody>
                 </table>
 
+                @if (hasOtherCharges)
+                {
+                    <h2 class="section-title" style="margin-top: 22px;">Other Charges</h2>
+                    <table class="detail-table">
+                        <thead>
+                            <tr>
+                                <th>Particulars</th>
+                                <th class="text-center">Qty</th>
+                                <th class="text-right">Rate</th>
+                                <th class="text-right">Amount</th>
+                                <th class="text-right">GST</th>
+                                <th class="text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var oc in bookingOtherCharges)
+                            {
+                                var qty = oc.Qty <= 0 ? 1 : oc.Qty;
+                                var amount = oc.Rate * qty;
+                                var total = amount + oc.GSTAmount;
+                                <tr>
+                                    <td>
+                                        <strong>@oc.Name</strong>
+                                        <br /><small class="subtle">@oc.Code</small>
+                                        @if (!string.IsNullOrWhiteSpace(oc.Note))
+                                        {
+                                            <br /><small class="subtle">Note: @oc.Note</small>
+                                        }
+                                    </td>
+                                    <td class="text-center mono">@qty</td>
+                                    <td class="text-right mono">₹ @oc.Rate.ToString("N2")</td>
+                                    <td class="text-right mono">₹ @amount.ToString("N2")</td>
+                                    <td class="text-right mono">₹ @oc.GSTAmount.ToString("N2")</td>
+                                    <td class="text-right mono">₹ @total.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr style="font-weight: 600; background: #f8f9fa;">
+                                <td colspan="3" class="text-right" style="padding: 12px;">Total Other Charges:</td>
+                                <td class="text-right mono" style="padding: 12px;">₹ @ocAmountTotal.ToString("N2")</td>
+                                <td class="text-right mono" style="padding: 12px;">₹ @ocGstTotal.ToString("N2")</td>
+                                <td class="text-right mono" style="padding: 12px;">₹ @ocGrandTotal.ToString("N2")</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                }
+
                 <!-- Totals -->
                 <div class="totals-section">
                     <div class="total-row">
@@ -1054,15 +1123,22 @@
                     }
                     <div class="total-row">
                         <span class="total-label">CGST @@ @cgstPercentage.ToString("0.##")%</span>
-                        <span class="total-value mono">₹ @(cgstTotal.ToString("N2"))</span>
+                        <span class="total-value mono">₹ @(adjustedCgstTotal.ToString("N2"))</span>
                     </div>
                     <div class="total-row">
                         <span class="total-label">SGST @@ @sgstPercentage.ToString("0.##")%</span>
-                        <span class="total-value mono">₹ @(sgstTotal.ToString("N2"))</span>
+                        <span class="total-value mono">₹ @(adjustedSgstTotal.ToString("N2"))</span>
                     </div>
+                    @if (hasOtherCharges)
+                    {
+                        <div class="total-row">
+                            <span class="total-label">Other Charges (incl. GST)</span>
+                            <span class="total-value mono">₹ @(ocGrandTotal.ToString("N2"))</span>
+                        </div>
+                    }
                     <div class="total-row highlight">
                         <span class="total-label">Total Amount</span>
-                        <span class="total-value mono">₹ @(Math.Round(afterDiscountTotal + taxTotal, 2, MidpointRounding.AwayFromZero).ToString("N2"))</span>
+                        <span class="total-value mono">₹ @(adjustedTotalAmount.ToString("N2"))</span>
                     </div>
                     <div class="total-row">
                         <span class="total-label">Payments</span>
@@ -1070,7 +1146,7 @@
                     </div>
                     <div class="total-row highlight" style="color: #f5576c;">
                         <span class="total-label">Balance Payable</span>
-                        <span class="total-value mono">₹ @(Model.BalanceAmount.ToString("N2"))</span>
+                        <span class="total-value mono">₹ @(adjustedBalancePayable.ToString("N2"))</span>
                     </div>
                 </div>
             </div>

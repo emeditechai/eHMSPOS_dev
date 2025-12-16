@@ -24,6 +24,7 @@ namespace HotelApp.Web.Repositories
                        oc.SGSTPercent,
                       boc.Qty,
                        boc.Rate,
+                      boc.Note,
                        boc.GSTAmount,
                        boc.CGSTAmount,
                        boc.SGSTAmount
@@ -59,6 +60,7 @@ namespace HotelApp.Web.Repositories
                         UPDATE BookingOtherCharges
                            SET Qty = @Qty,
                                Rate = @Rate,
+                               Note = @Note,
                                GSTAmount = @GSTAmount,
                                CGSTAmount = @CGSTAmount,
                                SGSTAmount = @SGSTAmount,
@@ -72,6 +74,7 @@ namespace HotelApp.Web.Repositories
                         row.OtherChargeId,
                         row.Qty,
                         row.Rate,
+                        row.Note,
                         row.GSTAmount,
                         row.CGSTAmount,
                         row.SGSTAmount,
@@ -82,9 +85,9 @@ namespace HotelApp.Web.Repositories
                 {
                     const string insertSql = @"
                         INSERT INTO BookingOtherCharges
-                            (BookingId, OtherChargeId, Qty, Rate, GSTAmount, CGSTAmount, SGSTAmount, CreatedDate, CreatedBy)
+                            (BookingId, OtherChargeId, Qty, Rate, Note, GSTAmount, CGSTAmount, SGSTAmount, CreatedDate, CreatedBy)
                         VALUES
-                            (@BookingId, @OtherChargeId, @Qty, @Rate, @GSTAmount, @CGSTAmount, @SGSTAmount, SYSUTCDATETIME(), @CreatedBy);";
+                            (@BookingId, @OtherChargeId, @Qty, @Rate, @Note, @GSTAmount, @CGSTAmount, @SGSTAmount, SYSUTCDATETIME(), @CreatedBy);";
 
                     await _connection.ExecuteAsync(insertSql, new
                     {
@@ -92,6 +95,7 @@ namespace HotelApp.Web.Repositories
                         row.OtherChargeId,
                         row.Qty,
                         row.Rate,
+                        row.Note,
                         row.GSTAmount,
                         row.CGSTAmount,
                         row.SGSTAmount,

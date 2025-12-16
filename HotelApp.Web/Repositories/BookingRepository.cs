@@ -2176,7 +2176,12 @@ namespace HotelApp.Web.Repositories
                     SET DepositAmount = DepositAmount + @Amount,
                         BalanceAmount = BalanceAmount - @Amount,
                         PaymentStatus = CASE 
-                            WHEN (BalanceAmount - @Amount) <= 0 THEN 'Paid'
+                            WHEN ((BalanceAmount - @Amount) + (
+                                SELECT ISNULL(SUM((Rate * CASE WHEN Qty IS NULL OR Qty <= 0 THEN 1 ELSE Qty END) + GSTAmount), 0)
+                                FROM BookingOtherCharges
+                                WHERE BookingId = @BookingId
+                                  AND IsActive = 1
+                            )) <= 0 THEN 'Paid'
                             WHEN (DepositAmount + @Amount) > 0 THEN 'Partially Paid'
                             ELSE 'Pending'
                         END,

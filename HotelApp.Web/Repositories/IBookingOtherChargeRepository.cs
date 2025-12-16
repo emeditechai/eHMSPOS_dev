@@ -19,6 +19,7 @@ namespace HotelApp.Web.Repositories
         public decimal SGSTPercent { get; set; }
         public int Qty { get; set; }
         public decimal Rate { get; set; }
+        public string? Note { get; set; }
         public decimal GSTAmount { get; set; }
         public decimal CGSTAmount { get; set; }
         public decimal SGSTAmount { get; set; }
@@ -29,6 +30,7 @@ namespace HotelApp.Web.Repositories
         public int OtherChargeId { get; set; }
         public int Qty { get; set; }
         public decimal Rate { get; set; }
+        public string? Note { get; set; }
         public decimal GSTAmount { get; set; }
         public decimal CGSTAmount { get; set; }
         public decimal SGSTAmount { get; set; }

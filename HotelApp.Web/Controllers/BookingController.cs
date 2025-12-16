@@ -156,6 +156,11 @@ namespace HotelApp.Web.Controllers
 
                 var qty = item.Qty <= 0 ? 1 : item.Qty;
                 var unitRate = item.Rate < 0 ? 0 : item.Rate;
+                var note = string.IsNullOrWhiteSpace(item.Note) ? null : item.Note.Trim();
+                if (note != null && note.Length > 500)
+                {
+                    note = note.Substring(0, 500);
+                }
                 var taxable = Round2(unitRate * qty);
                 var gstAmt = Round2(taxable * (charge.GSTPercent / 100m));
                 var cgstAmt = Round2(taxable * (charge.CGSTPercent / 100m));
@@ -166,6 +171,7 @@ namespace HotelApp.Web.Controllers
                     OtherChargeId = item.OtherChargeId,
                     Qty = qty,
                     Rate = Round2(unitRate),
+                    Note = note,
                     GSTAmount = gstAmt,
                     CGSTAmount = cgstAmt,
                     SGSTAmount = sgstAmt
@@ -192,7 +198,7 @@ namespace HotelApp.Web.Controllers
                         "Other Charge Added",
                         $"Added other charge: {charge.Code} - {charge.Name}",
                         null,
-                        $"Qty: {row.Qty}, Rate: ₹{row.Rate:N2}",
+                        $"Qty: {row.Qty}, Rate: ₹{row.Rate:N2}, Note: {(string.IsNullOrWhiteSpace(row.Note) ? "-" : row.Note)}",
                         performedBy);
                 }
             }
@@ -202,10 +208,13 @@ namespace HotelApp.Web.Controllers
                 var existing = existingById[id];
                 var oldQty = existing.Qty <= 0 ? 1 : existing.Qty;
                 var oldRate = Round2(existing.Rate);
+                var oldNote = string.IsNullOrWhiteSpace(existing.Note) ? null : existing.Note.Trim();
                 var incoming = upsertById[id];
                 var newQty = incoming.Qty <= 0 ? 1 : incoming.Qty;
                 var newRate = Round2(incoming.Rate);
-                if (oldQty != newQty || oldRate != newRate)
+                var newNote = string.IsNullOrWhiteSpace(incoming.Note) ? null : incoming.Note.Trim();
+
+                if (oldQty != newQty || oldRate != newRate || !string.Equals(oldNote, newNote, StringComparison.Ordinal))
                 {
                     var label = master.TryGetValue(id, out var charge)
                         ? $"{charge.Code} - {charge.Name}"
@@ -216,8 +225,8 @@ namespace HotelApp.Web.Controllers
                         booking.BookingNumber,
                         "Other Charge Updated",
                         $"Updated other charge: {label}",
-                        $"Qty: {oldQty}, Rate: ₹{oldRate:N2}",
-                        $"Qty: {newQty}, Rate: ₹{newRate:N2}",
+                        $"Qty: {oldQty}, Rate: ₹{oldRate:N2}, Note: {(string.IsNullOrWhiteSpace(oldNote) ? "-" : oldNote)}",
+                        $"Qty: {newQty}, Rate: ₹{newRate:N2}, Note: {(string.IsNullOrWhiteSpace(newNote) ? "-" : newNote)}",
                         performedBy);
                 }
             }
@@ -253,6 +262,7 @@ namespace HotelApp.Web.Controllers
             public int OtherChargeId { get; set; }
             public decimal Rate { get; set; }
             public int Qty { get; set; }
+            public string? Note { get; set; }
         }
 
         public async Task<IActionResult> List(DateTime? fromDate, DateTime? toDate, string? statusFilter)
@@ -663,6 +673,10 @@ namespace HotelApp.Web.Controllers
             // Get payments for this booking
             var payments = await _bookingRepository.GetPaymentsAsync(booking.Id);
             ViewBag.Payments = payments;
+
+            // Get other charges for this booking (for receipt display + totals)
+            var otherCharges = await _bookingOtherChargeRepository.GetDetailsByBookingIdAsync(booking.Id);
+            ViewBag.BookingOtherCharges = otherCharges;
 
             // Get assigned room numbers
             var assignedRooms = await _bookingRepository.GetAssignedRoomNumbersAsync(booking.Id);
@@ -1313,9 +1327,13 @@ namespace HotelApp.Web.Controllers
                 return Json(new { success = false, message = "Booking not found." });
             }
 
-            if (amount > booking.BalanceAmount)
+            var otherChargesRows = await _bookingOtherChargeRepository.GetDetailsByBookingIdAsync(booking.Id);
+            var otherChargesGrandTotal = otherChargesRows.Sum(x => (x.Rate * (x.Qty <= 0 ? 1 : x.Qty)) + x.GSTAmount);
+            var effectiveBalanceAmount = booking.BalanceAmount + otherChargesGrandTotal;
+
+            if (amount > effectiveBalanceAmount)
             {
-                return Json(new { success = false, message = $"Payment amount cannot exceed balance amount of ₹{booking.BalanceAmount:N2}." });
+                return Json(new { success = false, message = $"Payment amount cannot exceed balance amount of ₹{effectiveBalanceAmount:N2}." });
             }
 
             var payment = new BookingPayment

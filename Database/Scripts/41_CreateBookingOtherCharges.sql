@@ -9,6 +9,7 @@ BEGIN
         OtherChargeId INT NOT NULL,
         Qty INT NOT NULL CONSTRAINT DF_BookingOtherCharges_Qty DEFAULT(1),
         Rate DECIMAL(18,2) NOT NULL CONSTRAINT DF_BookingOtherCharges_Rate DEFAULT(0),
+        Note NVARCHAR(500) NULL,
         GSTAmount DECIMAL(18,2) NOT NULL CONSTRAINT DF_BookingOtherCharges_GSTAmount DEFAULT(0),
         CGSTAmount DECIMAL(18,2) NOT NULL CONSTRAINT DF_BookingOtherCharges_CGSTAmount DEFAULT(0),
         SGSTAmount DECIMAL(18,2) NOT NULL CONSTRAINT DF_BookingOtherCharges_SGSTAmount DEFAULT(0),
@@ -29,7 +30,7 @@ BEGIN
 
     CREATE INDEX IX_BookingOtherCharges_BookingId
         ON dbo.BookingOtherCharges (BookingId)
-        INCLUDE (OtherChargeId, Qty, Rate, GSTAmount, CGSTAmount, SGSTAmount);
+        INCLUDE (OtherChargeId, Qty, Rate, Note, GSTAmount, CGSTAmount, SGSTAmount);
 END
 ELSE
 BEGIN
@@ -39,6 +40,12 @@ BEGIN
     BEGIN
         ALTER TABLE dbo.BookingOtherCharges
             ADD Qty INT NOT NULL CONSTRAINT DF_BookingOtherCharges_Qty DEFAULT(1);
+    END
+
+    IF COL_LENGTH('dbo.BookingOtherCharges', 'Note') IS NULL
+    BEGIN
+        ALTER TABLE dbo.BookingOtherCharges
+            ADD Note NVARCHAR(500) NULL;
     END
 
     IF NOT EXISTS (
@@ -66,6 +73,6 @@ BEGIN
     BEGIN
         CREATE INDEX IX_BookingOtherCharges_BookingId
             ON dbo.BookingOtherCharges (BookingId)
-            INCLUDE (OtherChargeId, Qty, Rate, GSTAmount, CGSTAmount, SGSTAmount);
+            INCLUDE (OtherChargeId, Qty, Rate, Note, GSTAmount, CGSTAmount, SGSTAmount);
     END
 END

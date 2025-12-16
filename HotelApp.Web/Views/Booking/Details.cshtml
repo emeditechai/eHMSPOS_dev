@@ -819,6 +819,22 @@
             var cgstPercentage = ViewBag.CGSTPercentage != null ? (decimal)ViewBag.CGSTPercentage : 6m;
             var sgstPercentage = ViewBag.SGSTPercentage != null ? (decimal)ViewBag.SGSTPercentage : 6m;
 
+            // Other Charges totals (inclusive of GSTAmount)
+            var bookingOtherCharges = ViewBag.BookingOtherCharges as IEnumerable<HotelApp.Web.Repositories.BookingOtherChargeDetailRow>
+                ?? Enumerable.Empty<HotelApp.Web.Repositories.BookingOtherChargeDetailRow>();
+
+            var ocAmountTotal = bookingOtherCharges.Sum(x => x.Rate * (x.Qty <= 0 ? 1 : x.Qty));
+            var ocGstTotal = bookingOtherCharges.Sum(x => x.GSTAmount);
+            var ocCgstTotal = bookingOtherCharges.Sum(x => x.CGSTAmount);
+            var ocSgstTotal = bookingOtherCharges.Sum(x => x.SGSTAmount);
+            var ocGrandTotal = ocAmountTotal + ocGstTotal;
+
+            var adjustedCgstAmount = Model.CGSTAmount + ocCgstTotal;
+            var adjustedSgstAmount = Model.SGSTAmount + ocSgstTotal;
+            var adjustedTotalGstAmount = Model.TaxAmount + ocGstTotal;
+            var adjustedGrandTotal = Model.TotalAmount + ocGrandTotal;
+            var adjustedBalanceAmount = Model.BalanceAmount + ocGrandTotal;
+
             // Prefer night-wise breakdown (same as what user sees in details table)
             // to avoid incorrect stored DiscountAmount on older multi-night bookings.
             var rooms = Model.RequiredRooms > 0 ? Model.RequiredRooms : 1;
@@ -843,23 +859,27 @@
         }
         <div class="financial-item">
             <div class="financial-label">CGST @cgstPercentage.ToString("0.##")%</div>
-            <div class="financial-amount">₹@Model.CGSTAmount.ToString("N2")</div>
+            <div class="financial-amount">₹@adjustedCgstAmount.ToString("N2")</div>
         </div>
         <div class="financial-item">
             <div class="financial-label">SGST @sgstPercentage.ToString("0.##")%</div>
-            <div class="financial-amount">₹@Model.SGSTAmount.ToString("N2")</div>
+            <div class="financial-amount">₹@adjustedSgstAmount.ToString("N2")</div>
         </div>
         <div class="financial-item">
             <div class="financial-label">Total GST</div>
-            <div class="financial-amount">₹@Model.TaxAmount.ToString("N2")</div>
+            <div class="financial-amount">₹@adjustedTotalGstAmount.ToString("N2")</div>
         </div>
         <div class="financial-item">
             <div class="financial-label">Discount</div>
             <div class="financial-amount">₹@(computedDiscountAmount.ToString("N2"))</div>
         </div>
+        <div class="financial-item">
+            <div class="financial-label">Other Charges</div>
+            <div class="financial-amount">₹@ocGrandTotal.ToString("N2")</div>
+        </div>
         <div class="financial-item financial-grand-total">
             <div class="financial-label">Grand Total</div>
-            <div class="financial-amount">₹@Model.TotalAmount.ToString("N2")</div>
+            <div class="financial-amount">₹@adjustedGrandTotal.ToString("N2")</div>
         </div>
         <div class="financial-item">
             <div class="financial-label">Deposit</div>
@@ -867,7 +887,7 @@
         </div>
         <div class="financial-item">
             <div class="financial-label">Balance Due</div>
-            <div class="financial-amount">₹@Model.BalanceAmount.ToString("N2")</div>
+            <div class="financial-amount">₹@adjustedBalanceAmount.ToString("N2")</div>
         </div>
     </div>
 </div>
@@ -965,7 +985,7 @@
             <i class="fas fa-money-bill-wave"></i>
         </div>
         <h3 class="section-title">Payment History</h3>
-        @if (Model.BalanceAmount > 0)
+        @if (adjustedBalanceAmount > 0)
         {
             <button type="button" class="btn btn-primary" onclick="showPaymentModal()" style="margin-left: auto;">
                 <i class="fas fa-plus"></i> Add Payment
@@ -1050,6 +1070,7 @@
                     <th style="text-align:right;"><i class="fas fa-rupee-sign"></i> Rate</th>
                     <th style="text-align:right;"><i class="fas fa-sort-numeric-up"></i> Qty</th>
                     <th style="text-align:right;"><i class="fas fa-rupee-sign"></i> Amount</th>
+                    <th><i class="fas fa-sticky-note"></i> Note</th>
                     <th style="text-align:right;"><i class="fas fa-percent"></i> GST %</th>
                     <th style="text-align:right;"><i class="fas fa-receipt"></i> GST Amt</th>
                     <th style="text-align:right;"><i class="fas fa-receipt"></i> CGST Amt</th>
@@ -1069,6 +1090,7 @@
                         <td style="text-align:right;"><strong>₹@oc.Rate.ToString("N2")</strong></td>
                         <td style="text-align:right;">@safeQty</td>
                         <td style="text-align:right;"><strong>₹@amount.ToString("N2")</strong></td>
+                        <td>@(string.IsNullOrWhiteSpace(oc.Note) ? "-" : oc.Note)</td>
                         <td style="text-align:right;">@oc.GSTPercent.ToString("0.##")</td>
                         <td style="text-align:right;">₹@oc.GSTAmount.ToString("N2")</td>
                         <td style="text-align:right;">₹@oc.CGSTAmount.ToString("N2")</td>
@@ -1083,6 +1105,7 @@
                     <td></td>
                     <td></td>
                     <td style="text-align:right; font-weight:700;">₹@otherAmountTotal.ToString("N2")</td>
+                    <td></td>
                     <td></td>
                     <td style="text-align:right; font-weight:700;">₹@otherGstTotal.ToString("N2")</td>
                     <td style="text-align:right; font-weight:700;">₹@otherCgstTotal.ToString("N2")</td>
@@ -1282,9 +1305,9 @@
             
             <div class="form-group">
                 <label for="amount">Amount (₹) *</label>
-                <input type="number" id="amount" name="amount" step="0.01" min="0.01" max="@Model.BalanceAmount" 
+                <input type="number" id="amount" name="amount" step="0.01" min="0.01" max="@adjustedBalanceAmount" 
                        class="form-control" required placeholder="Enter payment amount" />
-                <small class="text-muted">Balance Amount: ₹@Model.BalanceAmount.ToString("N2")</small>
+                <small class="text-muted">Balance Amount: ₹@adjustedBalanceAmount.ToString("N2")</small>
             </div>
 
             <div class="form-group">
@@ -2128,7 +2151,7 @@
 @section Scripts {
 <script>
     function showPaymentModal() {
-        const balanceAmount = @Model.BalanceAmount;
+        const balanceAmount = @adjustedBalanceAmount;
         document.getElementById('paymentModal').style.display = 'flex';
         document.getElementById('amount').value = balanceAmount.toFixed(2);
         document.getElementById('amount').focus();
