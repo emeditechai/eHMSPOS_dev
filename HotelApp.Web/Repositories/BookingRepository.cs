@@ -2170,18 +2170,35 @@ namespace HotelApp.Web.Repositories
 
                 await _dbConnection.ExecuteAsync(insertPaymentSql, paymentParams, transaction);
 
+                // Compute other charges grand total safely (may not exist on older DBs)
+                decimal otherChargesGrandTotal = 0m;
+                try
+                {
+                    const string otherChargesTotalSql = @"
+                        SELECT ISNULL(SUM((Rate * CASE WHEN Qty IS NULL OR Qty <= 0 THEN 1 ELSE Qty END) + GSTAmount), 0)
+                        FROM BookingOtherCharges
+                        WHERE BookingId = @BookingId
+                          AND IsActive = 1";
+
+                    otherChargesGrandTotal = await _dbConnection.ExecuteScalarAsync<decimal>(
+                        otherChargesTotalSql,
+                        new { BookingId = payment.BookingId },
+                        transaction
+                    );
+                }
+                catch
+                {
+                    // Best-effort only: if the table/columns don't exist yet, treat as 0
+                    otherChargesGrandTotal = 0m;
+                }
+
                 // Update booking deposit and balance
                 const string updateBookingSql = @"
                     UPDATE Bookings 
                     SET DepositAmount = DepositAmount + @Amount,
                         BalanceAmount = BalanceAmount - @Amount,
                         PaymentStatus = CASE 
-                            WHEN ((BalanceAmount - @Amount) + (
-                                SELECT ISNULL(SUM((Rate * CASE WHEN Qty IS NULL OR Qty <= 0 THEN 1 ELSE Qty END) + GSTAmount), 0)
-                                FROM BookingOtherCharges
-                                WHERE BookingId = @BookingId
-                                  AND IsActive = 1
-                            )) <= 0 THEN 'Paid'
+                            WHEN ((BalanceAmount - @Amount) + @OtherChargesGrandTotal) <= 0 THEN 'Paid'
                             WHEN (DepositAmount + @Amount) > 0 THEN 'Partially Paid'
                             ELSE 'Pending'
                         END,
@@ -2193,6 +2210,7 @@ namespace HotelApp.Web.Repositories
                 { 
                     BookingId = payment.BookingId, 
                     Amount = payment.Amount,
+                    OtherChargesGrandTotal = otherChargesGrandTotal,
                     PerformedBy = performedBy
                 }, transaction);
 

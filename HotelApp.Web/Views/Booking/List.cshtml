@@ -503,6 +503,11 @@ else
         document.querySelectorAll('.data-table .dropdown-menu.show').forEach(menu => {
             if (!exceptId || menu.id !== exceptId) {
                 menu.classList.remove('show');
+                // Clear any inline styles used for positioning so CSS can hide it.
+                menu.style.left = '';
+                menu.style.top = '';
+                menu.style.right = '';
+                menu.style.visibility = '';
             }
         });
     }
@@ -529,8 +534,9 @@ else
             const gap = 6;
             const margin = 8;
 
+            // Make it measurable using CSS-controlled display via `.show`.
             dropdown.style.visibility = 'hidden';
-            dropdown.style.display = 'block';
+            dropdown.classList.add('show');
 
             const menuWidth = dropdown.offsetWidth || 180;
             const menuHeight = dropdown.offsetHeight || 0;
@@ -553,10 +559,13 @@ else
             dropdown.style.top = top + 'px';
             dropdown.style.right = 'auto';
             dropdown.style.visibility = 'visible';
-            dropdown.classList.add('show');
             bookingDropdownLog('opened', { dropdownId, left, top });
         } else {
             dropdown.classList.remove('show');
+            dropdown.style.left = '';
+            dropdown.style.top = '';
+            dropdown.style.right = '';
+            dropdown.style.visibility = '';
             bookingDropdownLog('closed', { dropdownId });
         }
     }
@@ -578,10 +587,12 @@ else
         }
     }, true);
 
-    // Close when a dropdown item is clicked (capture)
-    window.addEventListener('pointerdown', function(event) {
+    // Close when a dropdown item is clicked.
+    // IMPORTANT: do NOT close on pointerdown, otherwise the subsequent click may not fire
+    // (because the element becomes hidden before pointerup/click).
+    window.addEventListener('click', function(event) {
         if (event.target.closest('.data-table .dropdown-menu .dropdown-item')) {
-            closeAllBookingActionDropdowns();
+            setTimeout(() => closeAllBookingActionDropdowns(), 0);
         }
     }, true);
 

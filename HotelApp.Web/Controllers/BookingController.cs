@@ -1327,8 +1327,17 @@ namespace HotelApp.Web.Controllers
                 return Json(new { success = false, message = "Booking not found." });
             }
 
-            var otherChargesRows = await _bookingOtherChargeRepository.GetDetailsByBookingIdAsync(booking.Id);
-            var otherChargesGrandTotal = otherChargesRows.Sum(x => (x.Rate * (x.Qty <= 0 ? 1 : x.Qty)) + x.GSTAmount);
+            decimal otherChargesGrandTotal = 0m;
+            try
+            {
+                var otherChargesRows = await _bookingOtherChargeRepository.GetDetailsByBookingIdAsync(booking.Id);
+                otherChargesGrandTotal = otherChargesRows.Sum(x => (x.Rate * (x.Qty <= 0 ? 1 : x.Qty)) + x.GSTAmount);
+            }
+            catch
+            {
+                // Best-effort only: if other charges table isn't present, treat it as 0.
+                otherChargesGrandTotal = 0m;
+            }
             var effectiveBalanceAmount = booking.BalanceAmount + otherChargesGrandTotal;
 
             if (amount > effectiveBalanceAmount)
