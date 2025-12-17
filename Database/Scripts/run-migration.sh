@@ -6,14 +6,14 @@
 SCRIPT_FILE=${1:-"26_AddGenderColumn.sql"}
 SERVER="tcp:198.38.81.123,1433"
 DATABASE="HMS_dev"
-USERNAME="HMS_SA"
-PASSWORD="HMS_root_123"
+USERNAME="sa"
+PASSWORD="asdf@1234"
 
 echo "🔄 Running SQL migration: $SCRIPT_FILE"
 echo "📦 Database: $DATABASE"
 echo ""
 
-sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USERNAME" -P "$PASSWORD" -i "$SCRIPT_FILE"
+sqlcmd -C -S "$SERVER" -d "$DATABASE" -U "$USERNAME" -P "$PASSWORD" -i "$SCRIPT_FILE"
 
 if [ $? -eq 0 ]; then
     echo ""

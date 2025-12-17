@@ -44,9 +44,8 @@ namespace HotelApp.Web.ViewModels
         [StringLength(100)]
         public string PrimaryGuestLastName { get; set; } = string.Empty;
 
-        [Required]
         [EmailAddress]
-        public string PrimaryGuestEmail { get; set; } = string.Empty;
+        public string? PrimaryGuestEmail { get; set; }
 
     [Required]
     [Phone]

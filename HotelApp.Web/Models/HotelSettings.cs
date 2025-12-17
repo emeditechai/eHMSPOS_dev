@@ -14,6 +14,10 @@ namespace HotelApp.Web.Models
         public string? LogoPath { get; set; }
         public TimeSpan CheckInTime { get; set; } = new TimeSpan(14, 0, 0); // 2:00 PM
         public TimeSpan CheckOutTime { get; set; } = new TimeSpan(12, 0, 0); // 12:00 PM
+        public bool ByPassActualDayRate { get; set; } = false;
+        public bool DiscountApprovalRequired { get; set; } = false;
+        public bool MinimumBookingAmountRequired { get; set; } = false;
+        public decimal? MinimumBookingAmount { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime CreatedDate { get; set; }
         public int? CreatedBy { get; set; }

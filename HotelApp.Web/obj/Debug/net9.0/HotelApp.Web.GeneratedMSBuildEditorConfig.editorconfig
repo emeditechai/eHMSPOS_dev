@@ -28,6 +28,18 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQWNjb3VudC9TZWxlY3RCcmFuY2guY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
+[/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/AmenitiesMaster/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQW1lbml0aWVzTWFzdGVyL0NyZWF0ZS5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/AmenitiesMaster/Edit.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQW1lbml0aWVzTWFzdGVyL0VkaXQuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/AmenitiesMaster/List.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQW1lbml0aWVzTWFzdGVyL0xpc3QuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
 [/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/Booking/AssignRoom.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQm9va2luZy9Bc3NpZ25Sb29tLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
@@ -132,6 +144,18 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3MvSG90ZWxTZXR0aW5ncy9JbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
+[/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/OtherChargesMaster/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvT3RoZXJDaGFyZ2VzTWFzdGVyL0NyZWF0ZS5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/OtherChargesMaster/Edit.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvT3RoZXJDaGFyZ2VzTWFzdGVyL0VkaXQuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/OtherChargesMaster/List.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvT3RoZXJDaGFyZ2VzTWFzdGVyL0xpc3QuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
 [/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/RateMaster/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3MvUmF0ZU1hc3Rlci9DcmVhdGUuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
@@ -142,6 +166,10 @@ build_metadata.AdditionalFiles.CssScope =
 
 [/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/RateMaster/List.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3MvUmF0ZU1hc3Rlci9MaXN0LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/Reports/RoomPriceDetails.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvUmVwb3J0cy9Sb29tUHJpY2VEZXRhaWxzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
 [/Users/abhikporel/dev/Hotelapp/HotelApp.Web/Views/RoomMaster/Create.cshtml]

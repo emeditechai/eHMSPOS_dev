@@ -801,6 +801,10 @@ namespace HotelApp.Web.Controllers
         {
             await PopulateLookupsAsync(model);
 
+            var primaryGuestEmail = string.IsNullOrWhiteSpace(model.PrimaryGuestEmail)
+                ? null
+                : model.PrimaryGuestEmail.Trim();
+
             if (model.CheckOutDate <= model.CheckInDate)
             {
                 ModelState.AddModelError(nameof(model.CheckOutDate), "Check-out date must be after check-in date.");
@@ -906,7 +910,7 @@ namespace HotelApp.Web.Controllers
                 Children = model.Children,
                 PrimaryGuestFirstName = model.PrimaryGuestFirstName,
                 PrimaryGuestLastName = model.PrimaryGuestLastName,
-                PrimaryGuestEmail = model.PrimaryGuestEmail,
+                PrimaryGuestEmail = primaryGuestEmail ?? string.Empty,
                 PrimaryGuestPhone = model.PrimaryGuestPhone,
                 LoyaltyId = model.LoyaltyId,
                 SpecialRequests = model.SpecialRequests,
@@ -937,7 +941,7 @@ namespace HotelApp.Web.Controllers
                 new BookingGuest
                 {
                     FullName = $"{model.PrimaryGuestFirstName} {model.PrimaryGuestLastName}".Trim(),
-                    Email = model.PrimaryGuestEmail,
+                    Email = primaryGuestEmail,
                     Phone = model.PrimaryGuestPhone,
                     Gender = model.Gender?.Trim(),
                     GuestType = "Primary",

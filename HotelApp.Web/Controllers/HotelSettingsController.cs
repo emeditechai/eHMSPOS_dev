@@ -33,6 +33,10 @@ namespace HotelApp.Web.Controllers
                     GSTCode = "",
                     CheckInTime = new TimeSpan(14, 0, 0), // 2:00 PM
                     CheckOutTime = new TimeSpan(11, 0, 0), // 11:00 AM
+                    ByPassActualDayRate = false,
+                    DiscountApprovalRequired = false,
+                    MinimumBookingAmountRequired = false,
+                    MinimumBookingAmount = null,
                     IsActive = true
                 };
             }
@@ -58,6 +62,10 @@ namespace HotelApp.Web.Controllers
                     GSTCode = "",
                     CheckInTime = new TimeSpan(14, 0, 0), // 2:00 PM
                     CheckOutTime = new TimeSpan(11, 0, 0), // 11:00 AM
+                    ByPassActualDayRate = false,
+                    DiscountApprovalRequired = false,
+                    MinimumBookingAmountRequired = false,
+                    MinimumBookingAmount = null,
                     IsActive = true
                 };
             }
@@ -93,6 +101,14 @@ namespace HotelApp.Web.Controllers
                 
                 // Set the logo path in the model
                 model.LogoPath = $"/uploads/logos/{uniqueFileName}";
+            }
+
+            if (model.MinimumBookingAmountRequired)
+            {
+                if (!model.MinimumBookingAmount.HasValue || model.MinimumBookingAmount.Value <= 0 || model.MinimumBookingAmount.Value > 100)
+                {
+                    ModelState.AddModelError(nameof(model.MinimumBookingAmount), "Minimum Booking Percentage must be between 0 and 100.");
+                }
             }
             
             if (!ModelState.IsValid)

@@ -196,6 +196,64 @@
         background: #7f8c8d;
         color: white;
     }
+
+    .toggle-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-height: 42px;
+    }
+
+    .toggle-input {
+        position: absolute;
+        opacity: 0;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+        clip-path: inset(50%);
+    }
+
+    .toggle-pill {
+        width: 54px;
+        height: 30px;
+        border-radius: 999px;
+        background: #cbd5e1;
+        display: inline-flex;
+        align-items: center;
+        padding: 3px;
+        cursor: pointer;
+        transition: background 0.15s ease;
+        flex-shrink: 0;
+    }
+
+    .toggle-thumb {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #ffffff;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+        transform: translateX(0);
+        transition: transform 0.15s ease;
+    }
+
+    .toggle-input:checked + label .toggle-pill {
+        background: #4A90E2;
+    }
+
+    .toggle-input:checked + label .toggle-thumb {
+        transform: translateX(24px);
+    }
+
+    .toggle-input:focus-visible + label .toggle-pill {
+        box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
+    }
+
+    .toggle-text {
+        font-weight: 600;
+        color: #7f8c8d;
+    }
 </style>
 
 <div class="container-fluid" style="padding: 1.5rem;">
@@ -316,6 +374,54 @@
                     <input type="hidden" asp-for="CheckOutTime" id="checkOutTimeHidden" />
                     <span asp-validation-for="CheckOutTime" class="text-danger"></span>
                 </div>
+
+                <div class="form-group">
+                    <label class="form-label">By Pass Actual Day Rate</label>
+                    <div class="toggle-row">
+                        <input asp-for="ByPassActualDayRate" class="toggle-input" type="checkbox" id="byPassActualDayRateToggle" />
+                        <label for="byPassActualDayRateToggle" class="d-flex align-items-center gap-2 m-0">
+                            <span class="toggle-pill" aria-hidden="true">
+                                <span class="toggle-thumb"></span>
+                            </span>
+                        </label>
+                        <span id="byPassActualDayRateText" class="toggle-text">@(Model.ByPassActualDayRate ? "YES" : "NO")</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Discount Approval Required</label>
+                    <div class="toggle-row">
+                        <input asp-for="DiscountApprovalRequired" class="toggle-input" type="checkbox" id="discountApprovalRequiredToggle" />
+                        <label for="discountApprovalRequiredToggle" class="d-flex align-items-center gap-2 m-0">
+                            <span class="toggle-pill" aria-hidden="true">
+                                <span class="toggle-thumb"></span>
+                            </span>
+                        </label>
+                        <span id="discountApprovalRequiredText" class="toggle-text">@(Model.DiscountApprovalRequired ? "YES" : "NO")</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Minimum Booking Amount Required</label>
+                    <div class="toggle-row">
+                        <input asp-for="MinimumBookingAmountRequired" class="toggle-input" type="checkbox" id="minimumBookingAmountRequiredToggle" />
+                        <label for="minimumBookingAmountRequiredToggle" class="d-flex align-items-center gap-2 m-0">
+                            <span class="toggle-pill" aria-hidden="true">
+                                <span class="toggle-thumb"></span>
+                            </span>
+                        </label>
+                        <span id="minimumBookingAmountRequiredText" class="toggle-text">@(Model.MinimumBookingAmountRequired ? "YES" : "NO")</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="MinimumBookingAmount" class="form-label">Minimum Booking Percentage</label>
+                    <div class="input-group">
+                        <input asp-for="MinimumBookingAmount" class="form-control" type="number" step="0.01" min="0" max="100" id="minimumBookingAmount" placeholder="Enter %" />
+                        <span class="input-group-text">%</span>
+                    </div>
+                    <span asp-validation-for="MinimumBookingAmount" class="text-danger"></span>
+                </div>
             </div>
         </div>
 
@@ -334,6 +440,31 @@
 @section Scripts {
     <script>
         $(document).ready(function() {
+            function updateByPassActualDayRateText() {
+                var isOn = $('#byPassActualDayRateToggle').is(':checked');
+                $('#byPassActualDayRateText').text(isOn ? 'YES' : 'NO');
+            }
+
+            function updateDiscountApprovalRequiredText() {
+                var isOn = $('#discountApprovalRequiredToggle').is(':checked');
+                $('#discountApprovalRequiredText').text(isOn ? 'YES' : 'NO');
+            }
+
+            function updateMinimumBookingAmountState() {
+                var isOn = $('#minimumBookingAmountRequiredToggle').is(':checked');
+                $('#minimumBookingAmountRequiredText').text(isOn ? 'YES' : 'NO');
+                $('#minimumBookingAmount').prop('readonly', !isOn);
+            }
+
+            updateByPassActualDayRateText();
+            $('#byPassActualDayRateToggle').on('change', updateByPassActualDayRateText);
+
+            updateDiscountApprovalRequiredText();
+            $('#discountApprovalRequiredToggle').on('change', updateDiscountApprovalRequiredText);
+
+            updateMinimumBookingAmountState();
+            $('#minimumBookingAmountRequiredToggle').on('change', updateMinimumBookingAmountState);
+
             // Convert time input to TimeSpan format before form submission
             $('form').on('submit', function() {
                 var checkInTime = $('#checkInTime').val();

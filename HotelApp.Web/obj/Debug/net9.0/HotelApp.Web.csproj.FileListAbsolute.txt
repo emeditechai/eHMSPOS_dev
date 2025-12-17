@@ -133,12 +133,6 @@
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/staticwebassets.build.json
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/staticwebassets.development.json
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/staticwebassets.build.endpoints.json
-/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/staticwebassets/msbuild.HotelApp.Web.Microsoft.AspNetCore.StaticWebAssets.props
-/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/staticwebassets/msbuild.HotelApp.Web.Microsoft.AspNetCore.StaticWebAssetEndpoints.props
-/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/staticwebassets/msbuild.build.HotelApp.Web.props
-/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/staticwebassets/msbuild.buildMultiTargeting.HotelApp.Web.props
-/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/staticwebassets/msbuild.buildTransitive.HotelApp.Web.props
-/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/staticwebassets.pack.json
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/HotelApp.05BC3D8F.Up2Date
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/HotelApp.Web.dll
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/refint/HotelApp.Web.dll
@@ -150,5 +144,11 @@
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/fzxrofkyxv-3c9xwj6zr0.gz
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/jb81mcvper-i835cioyqt.gz
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/u6b4j9ztt4-80d44pmsz7.gz
-/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/hcih34dean-2jplbbift0.gz
 /Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/17spjb448e-xryq115t6n.gz
+/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/compressed/hcih34dean-11u14wp9vc.gz
+/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/staticwebassets/msbuild.HotelApp.Web.Microsoft.AspNetCore.StaticWebAssets.props
+/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/staticwebassets/msbuild.HotelApp.Web.Microsoft.AspNetCore.StaticWebAssetEndpoints.props
+/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/staticwebassets/msbuild.build.HotelApp.Web.props
+/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/staticwebassets/msbuild.buildMultiTargeting.HotelApp.Web.props
+/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/staticwebassets/msbuild.buildTransitive.HotelApp.Web.props
+/Users/abhikporel/dev/Hotelapp/HotelApp.Web/obj/Debug/net9.0/staticwebassets.pack.json

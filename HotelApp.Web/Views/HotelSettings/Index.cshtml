@@ -128,48 +128,80 @@
     
     .parameter-grid {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(5, minmax(180px, 1fr));
         gap: 0.75rem;
+    }
+
+    @@media (max-width: 1400px) {
+        .parameter-grid {
+            grid-template-columns: repeat(4, minmax(180px, 1fr));
+        }
+    }
+
+    @@media (max-width: 1200px) {
+        .parameter-grid {
+            grid-template-columns: repeat(3, minmax(200px, 1fr));
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .parameter-grid {
+            grid-template-columns: repeat(2, minmax(200px, 1fr));
+        }
+    }
+
+    @@media (max-width: 520px) {
+        .parameter-grid {
+            grid-template-columns: 1fr;
+        }
     }
     
     .parameter-item {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        padding: 1rem;
+        background: #f8f9fa;
+        padding: 0.75rem 0.85rem;
         border-radius: 6px;
-        text-align: center;
         border: 1px solid #e0e0e0;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    
-    .parameter-item:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        border-left: 3px solid #4A90E2;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-height: 72px;
     }
     
     .parameter-icon {
-        width: 36px;
-        height: 36px;
+        width: 32px;
+        height: 32px;
         background: #4A90E2;
-        border-radius: 50%;
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
-        font-size: 1rem;
-        margin: 0 auto 0.75rem;
+        font-size: 0.9rem;
+        flex-shrink: 0;
     }
     
     .parameter-label {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         color: #7f8c8d;
-        margin-bottom: 0.35rem;
-        font-weight: 500;
+        margin-bottom: 0.2rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
     }
     
     .parameter-value {
-        font-size: 1.25rem;
+        font-size: 1rem;
         color: #2c3e50;
-        font-weight: 600;
+        font-weight: 700;
+        line-height: 1.1;
+    }
+
+    .parameter-text {
+        display: flex;
+        flex-direction: column;
+        text-align: left;
+        min-width: 0;
     }
     
     .logo-section {
@@ -325,15 +357,57 @@
                         <div class="parameter-icon">
                             <i class="fas fa-sign-in-alt"></i>
                         </div>
-                        <div class="parameter-label">Check-In Time</div>
-                        <div class="parameter-value">@Model.CheckInTime.ToString(@"hh\:mm")</div>
+                        <div class="parameter-text">
+                            <div class="parameter-label">Check-In Time</div>
+                            <div class="parameter-value">@Model.CheckInTime.ToString(@"hh\:mm")</div>
+                        </div>
                     </div>
                     <div class="parameter-item">
                         <div class="parameter-icon">
                             <i class="fas fa-sign-out-alt"></i>
                         </div>
-                        <div class="parameter-label">Check-Out Time</div>
-                        <div class="parameter-value">@Model.CheckOutTime.ToString(@"hh\:mm")</div>
+                        <div class="parameter-text">
+                            <div class="parameter-label">Check-Out Time</div>
+                            <div class="parameter-value">@Model.CheckOutTime.ToString(@"hh\:mm")</div>
+                        </div>
+                    </div>
+                    <div class="parameter-item">
+                        <div class="parameter-icon">
+                            <i class="fas fa-toggle-on"></i>
+                        </div>
+                        <div class="parameter-text">
+                            <div class="parameter-label">By Pass Actual Day Rate</div>
+                            <div class="parameter-value">@(Model.ByPassActualDayRate ? "YES" : "NO")</div>
+                        </div>
+                    </div>
+                    <div class="parameter-item">
+                        <div class="parameter-icon">
+                            <i class="fas fa-percent"></i>
+                        </div>
+                        <div class="parameter-text">
+                            <div class="parameter-label">Discount Approval Required</div>
+                            <div class="parameter-value">@(Model.DiscountApprovalRequired ? "YES" : "NO")</div>
+                        </div>
+                    </div>
+
+                    <div class="parameter-item">
+                        <div class="parameter-icon">
+                            <i class="fas fa-rupee-sign"></i>
+                        </div>
+                        <div class="parameter-text">
+                            <div class="parameter-label">Minimum Booking Amount Required</div>
+                            <div class="parameter-value">@(Model.MinimumBookingAmountRequired ? "YES" : "NO")</div>
+                        </div>
+                    </div>
+
+                    <div class="parameter-item">
+                        <div class="parameter-icon">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <div class="parameter-text">
+                            <div class="parameter-label">Minimum Booking Percentage</div>
+                            <div class="parameter-value">@(Model.MinimumBookingAmount.HasValue ? $"{Model.MinimumBookingAmount.Value:N2}%" : "Not Set")</div>
+                        </div>
                     </div>
                 </div>
             </div>

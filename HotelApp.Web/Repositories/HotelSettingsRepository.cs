@@ -47,6 +47,10 @@ namespace HotelApp.Web.Repositories
             parameters.Add("@LogoPath", settings.LogoPath, DbType.String);
             parameters.Add("@CheckInTime", settings.CheckInTime, DbType.Time);
             parameters.Add("@CheckOutTime", settings.CheckOutTime, DbType.Time);
+            parameters.Add("@ByPassActualDayRate", settings.ByPassActualDayRate, DbType.Boolean);
+            parameters.Add("@DiscountApprovalRequired", settings.DiscountApprovalRequired, DbType.Boolean);
+            parameters.Add("@MinimumBookingAmountRequired", settings.MinimumBookingAmountRequired, DbType.Boolean);
+            parameters.Add("@MinimumBookingAmount", settings.MinimumBookingAmount, DbType.Decimal);
             parameters.Add("@ModifiedBy", modifiedBy, DbType.Int32);
 
             var result = await connection.ExecuteAsync(

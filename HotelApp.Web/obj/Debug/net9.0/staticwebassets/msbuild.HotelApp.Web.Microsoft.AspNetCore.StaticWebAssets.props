@@ -66,8 +66,8 @@
       <RelatedAsset></RelatedAsset>
       <AssetTraitName></AssetTraitName>
       <AssetTraitValue></AssetTraitValue>
-      <Fingerprint>2jplbbift0</Fingerprint>
-      <Integrity>fksANMWd9i15EV7nKezNlFSpYn8RMwGUN8kV4IXJ7dQ=</Integrity>
+      <Fingerprint>11u14wp9vc</Fingerprint>
+      <Integrity>u93LBFXwDzjMa9D65WBRyTBMOROQqsNq5Ejxhxr1EGg=</Integrity>
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       <OriginalItemSpec>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\css\room-dashboard.css'))</OriginalItemSpec>
