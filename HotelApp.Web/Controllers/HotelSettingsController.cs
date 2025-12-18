@@ -133,5 +133,30 @@ namespace HotelApp.Web.Controllers
                 return View(model);
             }
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetSettings()
+        {
+            try
+            {
+                var settings = await _hotelSettingsRepository.GetByBranchAsync(CurrentBranchID);
+                
+                if (settings == null)
+                {
+                    return Json(new { success = false, message = "Hotel settings not found" });
+                }
+
+                return Json(new
+                {
+                    success = true,
+                    minimumBookingAmountRequired = settings.MinimumBookingAmountRequired,
+                    minimumBookingAmount = settings.MinimumBookingAmount ?? 0
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
     }
 }

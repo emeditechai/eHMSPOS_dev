@@ -21,6 +21,7 @@ PRINT 'Step 1: Disabling foreign key constraints...';
 ALTER TABLE BookingRooms NOCHECK CONSTRAINT ALL;
 ALTER TABLE BookingAuditLog NOCHECK CONSTRAINT ALL;
 ALTER TABLE BookingPayments NOCHECK CONSTRAINT ALL;
+ALTER TABLE BookingOtherCharges NOCHECK CONSTRAINT ALL;
 ALTER TABLE BookingGuests NOCHECK CONSTRAINT ALL;
 ALTER TABLE BookingRoomNights NOCHECK CONSTRAINT ALL;
 ALTER TABLE ReservationRoomNights NOCHECK CONSTRAINT ALL;
@@ -36,6 +37,7 @@ PRINT 'Step 2: Counting existing transaction records...';
 DECLARE @BookingRoomsCount INT;
 DECLARE @BookingAuditLogCount INT;
 DECLARE @BookingPaymentsCount INT;
+DECLARE @BookingOtherChargesCount INT;
 DECLARE @BookingGuestsCount INT;
 DECLARE @BookingRoomNightsCount INT;
 DECLARE @ReservationRoomNightsCount INT;
@@ -45,6 +47,7 @@ DECLARE @GuestsCount INT;
 SELECT @BookingRoomsCount = COUNT(*) FROM BookingRooms;
 SELECT @BookingAuditLogCount = COUNT(*) FROM BookingAuditLog;
 SELECT @BookingPaymentsCount = COUNT(*) FROM BookingPayments;
+SELECT @BookingOtherChargesCount = COUNT(*) FROM BookingOtherCharges;
 SELECT @BookingGuestsCount = COUNT(*) FROM BookingGuests;
 SELECT @BookingRoomNightsCount = COUNT(*) FROM BookingRoomNights;
 SELECT @ReservationRoomNightsCount = COUNT(*) FROM ReservationRoomNights;
@@ -54,6 +57,7 @@ SELECT @GuestsCount = COUNT(*) FROM Guests;
 PRINT '  - BookingRooms: ' + CAST(@BookingRoomsCount AS VARCHAR(10)) + ' records';
 PRINT '  - BookingAuditLog: ' + CAST(@BookingAuditLogCount AS VARCHAR(10)) + ' records';
 PRINT '  - BookingPayments: ' + CAST(@BookingPaymentsCount AS VARCHAR(10)) + ' records';
+PRINT '  - BookingOtherCharges: ' + CAST(@BookingOtherChargesCount AS VARCHAR(10)) + ' records';
 PRINT '  - BookingGuests: ' + CAST(@BookingGuestsCount AS VARCHAR(10)) + ' records';
 PRINT '  - BookingRoomNights: ' + CAST(@BookingRoomNightsCount AS VARCHAR(10)) + ' records';
 PRINT '  - ReservationRoomNights: ' + CAST(@ReservationRoomNightsCount AS VARCHAR(10)) + ' records';
@@ -77,6 +81,10 @@ PRINT '  ✓ Deleted ' + CAST(@BookingAuditLogCount AS VARCHAR(10)) + ' BookingA
 -- Delete BookingPayments (payment transactions)
 DELETE FROM BookingPayments;
 PRINT '  ✓ Deleted ' + CAST(@BookingPaymentsCount AS VARCHAR(10)) + ' BookingPayments records';
+
+-- Delete BookingOtherCharges (additional charges)
+DELETE FROM BookingOtherCharges;
+PRINT '  ✓ Deleted ' + CAST(@BookingOtherChargesCount AS VARCHAR(10)) + ' BookingOtherCharges records';
 
 -- Delete BookingGuests (additional guests)
 DELETE FROM BookingGuests;
@@ -121,6 +129,7 @@ PRINT 'Step 5: Re-enabling foreign key constraints...';
 ALTER TABLE BookingRooms CHECK CONSTRAINT ALL;
 ALTER TABLE BookingAuditLog CHECK CONSTRAINT ALL;
 ALTER TABLE BookingPayments CHECK CONSTRAINT ALL;
+ALTER TABLE BookingOtherCharges CHECK CONSTRAINT ALL;
 ALTER TABLE BookingGuests CHECK CONSTRAINT ALL;
 ALTER TABLE BookingRoomNights CHECK CONSTRAINT ALL;
 ALTER TABLE ReservationRoomNights CHECK CONSTRAINT ALL;
@@ -136,6 +145,7 @@ PRINT 'Step 6: Resetting identity seeds to start from 1...';
 DBCC CHECKIDENT ('BookingRooms', RESEED, 0);
 DBCC CHECKIDENT ('BookingAuditLog', RESEED, 0);
 DBCC CHECKIDENT ('BookingPayments', RESEED, 0);
+DBCC CHECKIDENT ('BookingOtherCharges', RESEED, 0);
 DBCC CHECKIDENT ('BookingGuests', RESEED, 0);
 DBCC CHECKIDENT ('BookingRoomNights', RESEED, 0);
 DBCC CHECKIDENT ('ReservationRoomNights', RESEED, 0);
@@ -202,7 +212,7 @@ PRINT 'Finished at: ' + CONVERT(VARCHAR(50), GETDATE(), 121);
 PRINT '========================================';
 PRINT '';
 PRINT 'SUMMARY:';
-PRINT '  Total Records Deleted: ' + CAST(@BookingsCount + @BookingPaymentsCount + @BookingGuestsCount + @BookingRoomNightsCount + @ReservationRoomNightsCount + @BookingAuditLogCount + @BookingRoomsCount + @GuestsCount AS VARCHAR(10));
+PRINT '  Total Records Deleted: ' + CAST(@BookingsCount + @BookingPaymentsCount + @BookingOtherChargesCount + @BookingGuestsCount + @BookingRoomNightsCount + @ReservationRoomNightsCount + @BookingAuditLogCount + @BookingRoomsCount + @GuestsCount AS VARCHAR(10));
 PRINT '  Rooms Reset: ' + CAST(@RoomsUpdated AS VARCHAR(10));
 PRINT '  Master Data: PRESERVED';
 PRINT '';

@@ -1313,7 +1313,7 @@ namespace HotelApp.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddPayment(string bookingNumber, decimal amount, string paymentMethod, string? paymentReference, string? notes, string? cardType, string? cardLastFourDigits, int? bankId, DateTime? chequeDate)
+        public async Task<IActionResult> AddPayment(string bookingNumber, decimal amount, string paymentMethod, string? paymentReference, string? notes, string? cardType, string? cardLastFourDigits, int? bankId, DateTime? chequeDate, bool isAdvancePayment = false)
         {
             if (string.IsNullOrWhiteSpace(bookingNumber))
             {
@@ -1361,7 +1361,8 @@ namespace HotelApp.Web.Controllers
                 CardType = cardType,
                 CardLastFourDigits = cardLastFourDigits,
                 BankId = bankId,
-                ChequeDate = chequeDate
+                ChequeDate = chequeDate,
+                IsAdvancePayment = isAdvancePayment
             };
 
             var currentUserId = GetCurrentUserId() ?? 0;

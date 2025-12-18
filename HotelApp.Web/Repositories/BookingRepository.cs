@@ -615,8 +615,8 @@ namespace HotelApp.Web.Repositories
             }
 
             const string insertPaymentSql = @"
-                INSERT INTO BookingPayments (BookingId, Amount, PaymentMethod, PaymentReference, Status, PaidOn, Notes)
-                VALUES (@BookingId, @Amount, @PaymentMethod, @PaymentReference, @Status, @PaidOn, @Notes);";
+                INSERT INTO BookingPayments (BookingId, Amount, PaymentMethod, PaymentReference, Status, PaidOn, Notes, IsAdvancePayment)
+                VALUES (@BookingId, @Amount, @PaymentMethod, @PaymentReference, @Status, @PaidOn, @Notes, @IsAdvancePayment);";
 
             var depositAccumulator = 0m;
             foreach (var payment in payments)
@@ -2148,8 +2148,8 @@ namespace HotelApp.Web.Repositories
 
                 // Insert payment
                 const string insertPaymentSql = @"
-                    INSERT INTO BookingPayments (BookingId, ReceiptNumber, Amount, PaymentMethod, PaymentReference, Status, PaidOn, Notes, CardType, CardLastFourDigits, BankId, ChequeDate, CreatedBy)
-                    VALUES (@BookingId, @ReceiptNumber, @Amount, @PaymentMethod, @PaymentReference, @Status, @PaidOn, @Notes, @CardType, @CardLastFourDigits, @BankId, @ChequeDate, @CreatedBy)";
+                    INSERT INTO BookingPayments (BookingId, ReceiptNumber, Amount, PaymentMethod, PaymentReference, Status, PaidOn, Notes, CardType, CardLastFourDigits, BankId, ChequeDate, CreatedBy, IsAdvancePayment)
+                    VALUES (@BookingId, @ReceiptNumber, @Amount, @PaymentMethod, @PaymentReference, @Status, @PaidOn, @Notes, @CardType, @CardLastFourDigits, @BankId, @ChequeDate, @CreatedBy, @IsAdvancePayment)";
 
                 var paymentParams = new
                 {
@@ -2165,7 +2165,8 @@ namespace HotelApp.Web.Repositories
                     payment.CardLastFourDigits,
                     payment.BankId,
                     payment.ChequeDate,
-                    CreatedBy = performedBy
+                    CreatedBy = performedBy,
+                    payment.IsAdvancePayment
                 };
 
                 await _dbConnection.ExecuteAsync(insertPaymentSql, paymentParams, transaction);

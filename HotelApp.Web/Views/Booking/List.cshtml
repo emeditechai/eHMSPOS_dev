@@ -198,12 +198,13 @@
                                         <i class="fas fa-eye"></i> View Details
                                     </a>
 
-                                    <a href="#" onclick="openOtherChargesModal('@booking.BookingNumber'); return false;" class="dropdown-item">
-                                        <i class="fas fa-receipt"></i> Other Charges
-                                    </a>
-                                    @* Only show edit actions if booking is NOT checked out *@
+                                    @* Only show other options if booking is NOT checked out *@
                                     @if (!booking.ActualCheckOutDate.HasValue)
                                     {
+                                        <a href="#" onclick="openOtherChargesModal('@booking.BookingNumber'); return false;" class="dropdown-item">
+                                            <i class="fas fa-receipt"></i> Other Charges
+                                        </a>
+                                        
                                         @if (booking.ActualCheckInDate.HasValue)
                                         {
                                             <a href="#" onclick="checkoutGuest('@booking.BookingNumber', '@booking.Room?.Id')" class="dropdown-item" style="color: #059669;">

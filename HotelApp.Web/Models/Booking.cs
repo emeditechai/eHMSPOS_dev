@@ -99,6 +99,7 @@ namespace HotelApp.Web.Models
         public string? CardLastFourDigits { get; set; }
         public int? BankId { get; set; }
         public DateTime? ChequeDate { get; set; }
+        public bool IsAdvancePayment { get; set; } = false;
     }
 
     public class BookingRoomNight

@@ -1013,7 +1013,15 @@
                 {
                     <tr>
                         <td>@payment.PaidOn.ToString("dd MMM yyyy, hh:mm tt")</td>
-                        <td><strong>₹@payment.Amount.ToString("N2")</strong></td>
+                        <td>
+                            <strong>₹@payment.Amount.ToString("N2")</strong>
+                            @if (payment.IsAdvancePayment)
+                            {
+                                <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 0.25rem; margin-left: 0.5rem;">
+                                    <i class="fas fa-star"></i> Advance
+                                </span>
+                            }
+                        </td>
                         <td><span class="badge badge-info">@payment.PaymentMethod</span></td>
                         <td><span class="badge badge-success">@payment.Status</span></td>
                         <td style="font-family: monospace;">@(payment.PaymentReference ?? "-")</td>
@@ -1302,6 +1310,7 @@
         <form id="paymentForm">
             @Html.AntiForgeryToken()
             <input type="hidden" id="bookingNumber" name="bookingNumber" value="@Model.BookingNumber" />
+            <input type="hidden" id="isAdvancePayment" name="isAdvancePayment" value="false" />
             
             <div class="form-group">
                 <label for="amount">Amount (₹) *</label>
@@ -2150,11 +2159,46 @@
 
 @section Scripts {
 <script>
-    function showPaymentModal() {
+    async function showPaymentModal(isAdvance = false) {
         const balanceAmount = @adjustedBalanceAmount;
-        document.getElementById('paymentModal').style.display = 'flex';
-        document.getElementById('amount').value = balanceAmount.toFixed(2);
-        document.getElementById('amount').focus();
+        const modal = document.getElementById('paymentModal');
+        const amountField = document.getElementById('amount');
+        const isAdvanceField = document.getElementById('isAdvancePayment');
+        
+        modal.style.display = 'flex';
+        
+        if (isAdvance) {
+            // Fetch hotel settings for minimum booking amount
+            try {
+                const response = await fetch('/HotelSettings/GetSettings');
+                const result = await response.json();
+                
+                if (result.success && result.minimumBookingAmountRequired) {
+                    // Calculate minimum advance amount
+                    const totalAmount = @Model.TotalAmount;
+                    const minPercentage = result.minimumBookingAmount;
+                    const minAdvanceAmount = (totalAmount * minPercentage / 100).toFixed(2);
+                    
+                    amountField.value = minAdvanceAmount;
+                    amountField.setAttribute('min', minAdvanceAmount);
+                    amountField.setAttribute('data-min-advance', minAdvanceAmount);
+                } else {
+                    amountField.value = balanceAmount.toFixed(2);
+                }
+            } catch (error) {
+                console.error('Error fetching hotel settings:', error);
+                amountField.value = balanceAmount.toFixed(2);
+            }
+            
+            isAdvanceField.value = 'true';
+        } else {
+            amountField.value = balanceAmount.toFixed(2);
+            amountField.removeAttribute('min');
+            amountField.removeAttribute('data-min-advance');
+            isAdvanceField.value = 'false';
+        }
+        
+        amountField.focus();
     }
 
     function closePaymentModal() {
@@ -2203,13 +2247,31 @@
             const formData = new FormData(this);
             const paymentMethod = formData.get('paymentMethod');
             const amount = parseFloat(formData.get('amount'));
+            const isAdvance = formData.get('isAdvancePayment') === 'true';
+            
+            // Validate minimum advance amount if this is an advance payment
+            if (isAdvance) {
+                const amountField = document.getElementById('amount');
+                const minAdvance = parseFloat(amountField.getAttribute('data-min-advance'));
+                
+                if (minAdvance && amount < minAdvance) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Minimum Amount Required',
+                        text: `Minimum advance payment required is ₹${minAdvance.toFixed(2)}`,
+                        confirmButtonColor: '#667eea'
+                    });
+                    return;
+                }
+            }
             
             const data = {
                 bookingNumber: formData.get('bookingNumber'),
                 amount: amount,
                 paymentMethod: paymentMethod,
                 paymentReference: formData.get('paymentReference'),
-                notes: formData.get('notes')
+                notes: formData.get('notes'),
+                isAdvancePayment: isAdvance
             };
 
             // Add card-specific fields
@@ -2461,8 +2523,8 @@
                 @if (showPaymentModal)
                 {
                     <text>
-                    // Open payment modal automatically
-                    showPaymentModal();
+                    // Open payment modal automatically for advance payment
+                    showPaymentModal(true);
                     </text>
                 }
             });
