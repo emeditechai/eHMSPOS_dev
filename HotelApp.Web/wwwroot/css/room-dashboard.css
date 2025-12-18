@@ -143,6 +143,40 @@
     z-index: 1;
 }
 
+/* Change indicators with arrows */
+.change-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.3s;
+}
+
+.change-indicator i {
+    font-size: 0.75rem;
+}
+
+.change-indicator.positive {
+    background: rgba(40, 167, 69, 0.25);
+    color: #ffffff;
+    border: 1px solid rgba(40, 167, 69, 0.4);
+}
+
+.change-indicator.negative {
+    background: rgba(220, 53, 69, 0.25);
+    color: #ffffff;
+    border: 1px solid rgba(220, 53, 69, 0.4);
+}
+
+.change-indicator.neutral {
+    background: rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
 /* Colorful, theme-aligned card variants */
 .status-card.available {
     background: linear-gradient(135deg, #1fa97a 0%, #18c08f 45%, #0fb7ff 130%);
@@ -164,6 +198,140 @@
 .status-card.occupied::before { background: linear-gradient(90deg, rgba(255,255,255,0.55), rgba(255,255,255,0.15)); }
 .status-card.maintenance::before { background: linear-gradient(90deg, rgba(255,255,255,0.55), rgba(255,255,255,0.15)); }
 .status-card.cleaning::before { background: linear-gradient(90deg, rgba(255,255,255,0.55), rgba(255,255,255,0.15)); }
+
+/* Occupancy Bar Styles */
+.occupancy-bar-container {
+    background: #ffffff;
+    padding: 20px 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    margin-bottom: 20px;
+    border: 1px solid rgba(102, 126, 234, 0.15);
+}
+
+.occupancy-bar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.occupancy-info h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.occupancy-info h3 i {
+    color: #667eea;
+    font-size: 0.95rem;
+}
+
+.occupancy-stats {
+    font-size: 0.85rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.occupancy-percentage {
+    text-align: right;
+}
+
+.percentage-value {
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -1px;
+}
+
+.occupancy-bar {
+    height: 30px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 15px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 12px;
+}
+
+.occupancy-bar-fill {
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    position: relative;
+    transition: width 1s ease-in-out;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 12px;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+.occupancy-bar-fill::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(255, 255, 255, 0.2) 50%, 
+        transparent 100%);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.occupancy-legend {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.occupancy-legend .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #495057;
+    font-weight: 500;
+}
+
+.legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.legend-dot.available {
+    background: linear-gradient(135deg, #1fa97a 0%, #18c08f 100%);
+}
+
+.legend-dot.occupied {
+    background: linear-gradient(135deg, #ff4b7d 0%, #ff6a00 100%);
+}
+
+.legend-dot.maintenance {
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+}
+
+.legend-dot.cleaning {
+    background: linear-gradient(135deg, #1d4ed8 0%, #2dd4bf 100%);
+}
 
 /* Room Grid */
 .room-content {
@@ -578,5 +746,198 @@
     
     .room-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+/* Search and Filter Bar Styles */
+.search-filter-bar {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin-bottom: 20px;
+    border: 1px solid rgba(102, 126, 234, 0.15);
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.search-box:focus-within {
+    border-color: #667eea;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.search-box i.fa-search {
+    color: #667eea;
+    margin-right: 12px;
+    font-size: 16px;
+}
+
+.search-box input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    outline: none;
+    color: #333;
+}
+
+.search-box input::placeholder {
+    color: #adb5bd;
+}
+
+.clear-search {
+    background: transparent;
+    border: none;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.clear-search:hover {
+    background: #e9ecef;
+    color: #495057;
+}
+
+.filter-controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.filter-group {
+    flex: 1;
+    min-width: 150px;
+}
+
+.filter-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filter-group label i {
+    color: #667eea;
+    font-size: 11px;
+}
+
+.filter-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #ffffff;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.3s;
+    outline: none;
+}
+
+.filter-group select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.filter-group select:hover {
+    border-color: #667eea;
+}
+
+.filter-group select[multiple] {
+    min-height: 45px;
+    max-height: 45px;
+    overflow-y: auto;
+}
+
+.btn-reset-filters {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    white-space: nowrap;
+}
+
+.btn-reset-filters:hover {
+    background: linear-gradient(135deg, #5568d3 0%, #6b3f8f 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-reset-filters i {
+    font-size: 12px;
+}
+
+.filter-results-info {
+    background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #495057;
+    font-weight: 600;
+    margin-bottom: 16px;
+    border-left: 4px solid #667eea;
+}
+
+.filter-results-info span {
+    color: #667eea;
+    font-weight: 700;
+    font-size: 15px;
+}
+
+/* Responsive adjustments for search and filter */
+@media (max-width: 992px) {
+    .filter-controls {
+        flex-direction: column;
+    }
+    
+    .filter-group {
+        width: 100%;
+        min-width: 100%;
+    }
+    
+    .btn-reset-filters {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .search-filter-bar {
+        padding: 16px;
+    }
+    
+    .search-box {
+        padding: 10px 14px;
     }
 }

@@ -160,30 +160,158 @@
                             <div class="subtext">Deposit: ₹@booking.DepositAmount.ToString("N0")</div>
                         </td>
                         <td>
-                            <span class="badge badge-available">@booking.Status</span>
-                            <div class="subtext">@booking.PaymentStatus</div>
+                            @{
+                                // Calculate status badge class
+                                var statusBadgeClass = booking.Status?.ToLower() switch
+                                {
+                                    "confirmed" => "status-badge-confirmed",
+                                    "checkedin" => "status-badge-checkedin",
+                                    "pending" => "status-badge-pending",
+                                    "cancelled" => "status-badge-cancelled",
+                                    _ => "status-badge-default"
+                                };
+                                
+                                if (booking.ActualCheckOutDate.HasValue)
+                                {
+                                    statusBadgeClass = "status-badge-checkedout";
+                                }
+                                
+                                // Calculate payment status
+                                var balanceAmount = booking.TotalAmount - booking.DepositAmount;
+                                var paymentPercentage = booking.TotalAmount > 0 ? (booking.DepositAmount / booking.TotalAmount) * 100 : 0;
+                                var paymentStatusClass = "";
+                                var paymentStatusIcon = "";
+                                var paymentStatusText = "";
+                                
+                                if (balanceAmount <= 0)
+                                {
+                                    paymentStatusClass = "payment-badge-fullypaid";
+                                    paymentStatusIcon = "fas fa-check-circle";
+                                    paymentStatusText = "Fully Paid";
+                                }
+                                else if (booking.DepositAmount > 0)
+                                {
+                                    paymentStatusClass = "payment-badge-partial";
+                                    paymentStatusIcon = "fas fa-clock";
+                                    paymentStatusText = $"Partial ({paymentPercentage:F0}%)";
+                                }
+                                else
+                                {
+                                    paymentStatusClass = "payment-badge-pending";
+                                    paymentStatusIcon = "fas fa-hourglass-half";
+                                    paymentStatusText = "Pending";
+                                }
+                                
+                                // Check if payment is overdue (checked out but balance remaining)
+                                if (booking.ActualCheckOutDate.HasValue && balanceAmount > 0)
+                                {
+                                    paymentStatusClass = "payment-badge-overdue";
+                                    paymentStatusIcon = "fas fa-exclamation-triangle";
+                                    paymentStatusText = "Overdue";
+                                }
+                                
+                                // Urgency flags
+                                var isCheckInToday = booking.CheckInDate.Date == DateTime.Today && !booking.ActualCheckInDate.HasValue;
+                                var isCheckOutToday = booking.CheckOutDate.Date == DateTime.Today && !booking.ActualCheckOutDate.HasValue;
+                                var isArrivingSoon = booking.CheckInDate.Date == DateTime.Today && 
+                                                     (booking.CheckInDate - DateTime.Now).TotalHours <= 2 && 
+                                                     (booking.CheckInDate - DateTime.Now).TotalHours > 0 &&
+                                                     !booking.ActualCheckInDate.HasValue;
+                                var isPaymentOverdue = booking.ActualCheckOutDate.HasValue && balanceAmount > 0;
+                                
+                                // Timeline calculation
+                                var totalDays = (booking.CheckOutDate - booking.CheckInDate).Days;
+                                var today = DateTime.Today;
+                                var progressPercentage = 0.0;
+                                
+                                if (today < booking.CheckInDate.Date)
+                                {
+                                    progressPercentage = 0; // Not started
+                                }
+                                else if (today > booking.CheckOutDate.Date || booking.ActualCheckOutDate.HasValue)
+                                {
+                                    progressPercentage = 100; // Completed
+                                }
+                                else
+                                {
+                                    var daysPassed = (today - booking.CheckInDate.Date).Days;
+                                    progressPercentage = totalDays > 0 ? (daysPassed / (double)totalDays) * 100 : 0;
+                                }
+                            }
+                            
+                            @* Urgency Flags *@
+                            <div class="urgency-flags">
+                                @if (isCheckInToday)
+                                {
+                                    <div class="urgency-flag flag-checkin-today">
+                                        <i class="fas fa-flag"></i> Check-in Today
+                                    </div>
+                                }
+                                @if (isCheckOutToday)
+                                {
+                                    <div class="urgency-flag flag-checkout-today">
+                                        <i class="fas fa-flag"></i> Check-out Today
+                                    </div>
+                                }
+                                @if (isArrivingSoon)
+                                {
+                                    <div class="urgency-flag flag-arriving-soon">
+                                        <i class="fas fa-bolt"></i> Arriving Soon
+                                    </div>
+                                }
+                                @if (isPaymentOverdue)
+                                {
+                                    <div class="urgency-flag flag-payment-overdue">
+                                        <i class="fas fa-exclamation-circle"></i> ₹@balanceAmount.ToString("N0") Due
+                                    </div>
+                                }
+                            </div>
+                            
+                            @* Status Badge *@
+                            <span class="status-badge @statusBadgeClass">
+                                @if (booking.ActualCheckOutDate.HasValue)
+                                {
+                                    <i class="fas fa-check-circle"></i> <text>Checked Out</text>
+                                }
+                                else
+                                {
+                                    @booking.Status
+                                }
+                            </span>
+                            
+                            @* Payment Status Badge *@
+                            <div class="payment-status-badge @paymentStatusClass" style="margin-top: 6px;">
+                                <i class="@paymentStatusIcon"></i>
+                                <span>@paymentStatusText</span>
+                                @if (paymentStatusClass == "payment-badge-partial")
+                                {
+                                    <div class="payment-progress-bar">
+                                        <div class="payment-progress-fill" style="width: @paymentPercentage%"></div>
+                                    </div>
+                                }
+                            </div>
+                            
+                            @* Visual Timeline Bar *@
+                            <div class="booking-timeline-container" style="margin-top: 8px;">
+                                <div class="timeline-bar">
+                                    <div class="timeline-progress" style="width: @progressPercentage%"></div>
+                                </div>
+                                <div class="timeline-labels">
+                                    <span class="timeline-label-start">@booking.CheckInDate.ToString("dd MMM")</span>
+                                    <span class="timeline-label-end">@booking.CheckOutDate.ToString("dd MMM")</span>
+                                </div>
+                            </div>
+                            
                             @if (booking.ActualCheckInDate.HasValue)
                             {
                                 <div class="subtext" style="margin-top: 4px; color: #0d6efd; font-weight: 600;">
                                     <i class="fas fa-sign-in-alt" style="font-size: 10px;"></i> Checked In: @booking.ActualCheckInDate.Value.ToString("dd MMM yyyy hh:mm tt")
                                 </div>
                             }
-                            else
-                            {
-                                <div class="subtext" style="margin-top: 4px; color: #6c757d; font-weight: 500;">
-                                    <i class="fas fa-door-open" style="font-size: 10px;"></i> Due In: @booking.CheckInDate.ToString("dd MMM yyyy")
-                                </div>
-                            }
                             @if (booking.ActualCheckOutDate.HasValue)
                             {
                                 <div class="subtext" style="margin-top: 4px; color: #28a745; font-weight: 600;">
                                     <i class="fas fa-check-circle" style="font-size: 10px;"></i> Checked Out: @booking.ActualCheckOutDate.Value.ToString("dd MMM yyyy hh:mm tt")
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="subtext" style="margin-top: 4px; color: #dc3545; font-weight: 500;">
-                                    <i class="fas fa-calendar-check" style="font-size: 10px;"></i> Out: @booking.CheckOutDate.ToString("dd MMM yyyy")
                                 </div>
                             }
                         </td>
@@ -468,6 +596,271 @@ else
     .text-muted {
         color: #a0aec0 !important;
         font-style: italic;
+    }
+    
+    /* Color-Coded Status Badges */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s;
+    }
+    
+    .status-badge i {
+        font-size: 10px;
+    }
+    
+    /* Blue - Confirmed */
+    .status-badge-confirmed {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    /* Green - Checked In */
+    .status-badge-checkedin {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    /* Yellow/Orange - Pending */
+    .status-badge-pending {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    /* Gray - Checked Out */
+    .status-badge-checkedout {
+        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    /* Red - Cancelled */
+    .status-badge-cancelled {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .status-badge-default {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    /* Payment Status Badges */
+    .payment-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 10px;
+        border-radius: 6px;
+        font-size: 10px;
+        font-weight: 600;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    }
+    
+    .payment-status-badge i {
+        font-size: 11px;
+    }
+    
+    /* Green with checkmark - Fully Paid */
+    .payment-badge-fullypaid {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    /* Orange with progress bar - Partial */
+    .payment-badge-partial {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .payment-progress-bar {
+        width: 100%;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 2px;
+        overflow: hidden;
+    }
+    
+    .payment-progress-fill {
+        height: 100%;
+        background: white;
+        border-radius: 2px;
+        transition: width 0.5s ease;
+    }
+    
+    /* Red pulsing - Overdue */
+    .payment-badge-overdue {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        animation: pulse-payment 2s ease-in-out infinite;
+    }
+    
+    @@keyframes pulse-payment {
+        0%, 100% { 
+            opacity: 1;
+            transform: scale(1);
+        }
+        50% { 
+            opacity: 0.85;
+            transform: scale(1.02);
+        }
+    }
+    
+    /* Yellow - Pending */
+    .payment-badge-pending {
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+        color: #78350f;
+        border: 1px solid rgba(120, 53, 15, 0.2);
+    }
+    
+    /* Urgency Flags */
+    .urgency-flags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-bottom: 6px;
+    }
+    
+    .urgency-flag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .urgency-flag i {
+        font-size: 9px;
+    }
+    
+    /* Red flag - Check-in today */
+    .flag-checkin-today {
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    /* Orange flag - Check-out today */
+    .flag-checkout-today {
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    /* Animated - Arriving within 2 hours */
+    .flag-arriving-soon {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        animation: blink-flag 1s ease-in-out infinite;
+    }
+    
+    @@keyframes blink-flag {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+    }
+    
+    .flag-arriving-soon i {
+        animation: shake-icon 0.5s ease-in-out infinite;
+    }
+    
+    @@keyframes shake-icon {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-2px); }
+        75% { transform: translateX(2px); }
+    }
+    
+    /* Red badge - Payment overdue */
+    .flag-payment-overdue {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        animation: pulse-overdue 2s ease-in-out infinite;
+    }
+    
+    @@keyframes pulse-overdue {
+        0%, 100% { 
+            box-shadow: 0 2px 4px rgba(239, 68, 68, 0.4);
+        }
+        50% { 
+            box-shadow: 0 4px 8px rgba(239, 68, 68, 0.6);
+        }
+    }
+    
+    /* Visual Timeline Bar */
+    .booking-timeline-container {
+        width: 100%;
+    }
+    
+    .timeline-bar {
+        width: 100%;
+        height: 8px;
+        background: linear-gradient(90deg, #e5e7eb 0%, #d1d5db 100%);
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .timeline-progress {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        border-radius: 4px;
+        transition: width 0.5s ease;
+        position: relative;
+        box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+    }
+    
+    .timeline-progress::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(255, 255, 255, 0.3) 50%, 
+            transparent 100%);
+        animation: shimmer-timeline 2s infinite;
+    }
+    
+    @@keyframes shimmer-timeline {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+    }
+    
+    .timeline-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 4px;
+        font-size: 9px;
+        color: #6b7280;
+        font-weight: 600;
     }
 
     @@media (max-width: 768px) {

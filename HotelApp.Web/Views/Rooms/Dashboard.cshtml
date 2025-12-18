@@ -90,6 +90,118 @@
             border-left: 2px solid #ffc107;
         }
         
+        .room-checkout-date.overdue {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 2px solid #dc3545;
+            animation: pulse 2s infinite;
+        }
+        
+        @@keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .room-overdue-badge {
+            margin-top: 6px;
+            padding: 6px 10px;
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            border-radius: 6px;
+            font-size: 9px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4);
+            animation: blink 1.5s ease-in-out infinite;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        @@keyframes blink {
+            0%, 100% { 
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% { 
+                opacity: 0.85;
+                transform: scale(0.98);
+            }
+        }
+        
+        .room-overdue-badge i {
+            font-size: 10px;
+            animation: shake 0.5s ease-in-out infinite;
+        }
+        
+        @@keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-2px); }
+            75% { transform: translateX(2px); }
+        }
+        
+        .room-guest-count-badge {
+            margin-top: 6px;
+            padding: 5px 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 6px;
+            font-size: 10px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .room-guest-count-badge i {
+            font-size: 11px;
+        }
+        
+        .room-days-remaining {
+            margin-top: 6px;
+            padding: 5px 10px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 6px;
+            font-size: 10px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .room-days-remaining.soon {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+        }
+        
+        .room-days-remaining.urgent {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+            animation: pulse-urgent 2s ease-in-out infinite;
+        }
+        
+        @@keyframes pulse-urgent {
+            0%, 100% { 
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% { 
+                opacity: 0.9;
+                transform: scale(1.02);
+            }
+        }
+        
+        .room-days-remaining i {
+            font-size: 11px;
+        }
+        
         .room-checkout-date i {
             font-size: 10px;
         }
@@ -515,17 +627,28 @@
             <h3>Available Rooms</h3>
             <div class="value">@Model.AvailableCount</div>
             <div class="change">
+                @{
+                    var totalRooms = Model.AvailableCount + Model.OccupiedCount + Model.MaintenanceCount + Model.CleaningCount;
+                    var availableYesterday = Model.AvailableCount - Model.AvailableChange;
+                    var availablePercentChange = availableYesterday > 0 ? Math.Round((decimal)Model.AvailableChange / availableYesterday * 100, 1) : 0;
+                }
                 @if (Model.AvailableChange > 0)
                 {
-                    <text>+@Model.AvailableChange from yesterday</text>
+                    <span class="change-indicator positive">
+                        <i class="fas fa-arrow-up"></i> @Model.AvailableChange (@availablePercentChange%)
+                    </span>
                 }
                 else if (Model.AvailableChange < 0)
                 {
-                    <text>@Model.AvailableChange from yesterday</text>
+                    <span class="change-indicator negative">
+                        <i class="fas fa-arrow-down"></i> @Model.AvailableChange (@availablePercentChange%)
+                    </span>
                 }
                 else
                 {
-                    <text>No change</text>
+                    <span class="change-indicator neutral">
+                        <i class="fas fa-minus"></i> No change
+                    </span>
                 }
             </div>
         </div>
@@ -533,17 +656,27 @@
             <h3>Occupied Rooms</h3>
             <div class="value">@Model.OccupiedCount</div>
             <div class="change">
+                @{
+                    var occupiedYesterday = Model.OccupiedCount - Model.OccupiedChange;
+                    var occupiedPercentChange = occupiedYesterday > 0 ? Math.Round((decimal)Model.OccupiedChange / occupiedYesterday * 100, 1) : 0;
+                }
                 @if (Model.OccupiedChange > 0)
                 {
-                    <text>+@Model.OccupiedChange from yesterday</text>
+                    <span class="change-indicator positive">
+                        <i class="fas fa-arrow-up"></i> @Model.OccupiedChange (@occupiedPercentChange%)
+                    </span>
                 }
                 else if (Model.OccupiedChange < 0)
                 {
-                    <text>@Model.OccupiedChange from yesterday</text>
+                    <span class="change-indicator negative">
+                        <i class="fas fa-arrow-down"></i> @Model.OccupiedChange (@occupiedPercentChange%)
+                    </span>
                 }
                 else
                 {
-                    <text>No change</text>
+                    <span class="change-indicator neutral">
+                        <i class="fas fa-minus"></i> No change
+                    </span>
                 }
             </div>
         </div>
@@ -551,17 +684,27 @@
             <h3>Under Maintenance</h3>
             <div class="value">@Model.MaintenanceCount</div>
             <div class="change">
+                @{
+                    var maintenanceYesterday = Model.MaintenanceCount - Model.MaintenanceChange;
+                    var maintenancePercentChange = maintenanceYesterday > 0 ? Math.Round((decimal)Model.MaintenanceChange / maintenanceYesterday * 100, 1) : 0;
+                }
                 @if (Model.MaintenanceChange > 0)
                 {
-                    <text>+@Model.MaintenanceChange from yesterday</text>
+                    <span class="change-indicator positive">
+                        <i class="fas fa-arrow-up"></i> @Model.MaintenanceChange (@maintenancePercentChange%)
+                    </span>
                 }
                 else if (Model.MaintenanceChange < 0)
                 {
-                    <text>@Model.MaintenanceChange from yesterday</text>
+                    <span class="change-indicator negative">
+                        <i class="fas fa-arrow-down"></i> @Model.MaintenanceChange (@maintenancePercentChange%)
+                    </span>
                 }
                 else
                 {
-                    <text>No change</text>
+                    <span class="change-indicator neutral">
+                        <i class="fas fa-minus"></i> No change
+                    </span>
                 }
             </div>
         </div>
@@ -569,18 +712,66 @@
             <h3>Cleaning in Progress</h3>
             <div class="value">@Model.CleaningCount</div>
             <div class="change">
+                @{
+                    var cleaningYesterday = Model.CleaningCount - Model.CleaningChange;
+                    var cleaningPercentChange = cleaningYesterday > 0 ? Math.Round((decimal)Model.CleaningChange / cleaningYesterday * 100, 1) : 0;
+                }
                 @if (Model.CleaningChange > 0)
                 {
-                    <text>+@Model.CleaningChange from yesterday</text>
+                    <span class="change-indicator positive">
+                        <i class="fas fa-arrow-up"></i> @Model.CleaningChange (@cleaningPercentChange%)
+                    </span>
                 }
                 else if (Model.CleaningChange < 0)
                 {
-                    <text>@Model.CleaningChange from yesterday</text>
+                    <span class="change-indicator negative">
+                        <i class="fas fa-arrow-down"></i> @Model.CleaningChange (@cleaningPercentChange%)
+                    </span>
                 }
                 else
                 {
-                    <text>No change</text>
+                    <span class="change-indicator neutral">
+                        <i class="fas fa-minus"></i> No change
+                    </span>
                 }
+            </div>
+        </div>
+    </div>
+    
+    <!-- Occupancy Percentage Bar -->
+    @{
+        var totalRoomsCount = Model.AvailableCount + Model.OccupiedCount + Model.MaintenanceCount + Model.CleaningCount;
+        var occupancyPercentage = totalRoomsCount > 0 ? Math.Round((decimal)Model.OccupiedCount / totalRoomsCount * 100, 1) : 0;
+    }
+    <div class="occupancy-bar-container">
+        <div class="occupancy-bar-header">
+            <div class="occupancy-info">
+                <h3><i class="fas fa-chart-line"></i> Overall Occupancy</h3>
+                <span class="occupancy-stats">@Model.OccupiedCount of @totalRoomsCount rooms occupied</span>
+            </div>
+            <div class="occupancy-percentage">
+                <span class="percentage-value">@occupancyPercentage%</span>
+            </div>
+        </div>
+        <div class="occupancy-bar">
+            <div class="occupancy-bar-fill" style="width: @occupancyPercentage%" data-percentage="@occupancyPercentage"></div>
+        </div>
+        <div class="occupancy-legend">
+            <div class="legend-item">
+                <span class="legend-dot available"></span>
+                <span>Available (@Model.AvailableCount)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-dot occupied"></span>
+                <span>Occupied (@Model.OccupiedCount)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-dot maintenance"></span>
+                <span>Maintenance (@Model.MaintenanceCount)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-dot cleaning"></span>
+                <span>Cleaning (@Model.CleaningCount)</span>
             </div>
         </div>
     </div>
@@ -600,12 +791,83 @@
                 </div>
             </div>
 
+            <!-- Search and Filter Bar -->
+            <div class="search-filter-bar">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="roomSearch" placeholder="Search by room number, type, or guest name..." />
+                    <button id="clearSearch" class="clear-search" style="display: none;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="filter-controls">
+                    <div class="filter-group">
+                        <label><i class="fas fa-bed"></i> Room Type</label>
+                        <select id="roomTypeFilter" multiple>
+                            <option value="all" selected>All Types</option>
+                            @foreach (var roomType in Model.Rooms.Select(r => r.RoomTypeName).Distinct())
+                            {
+                                <option value="@roomType">@roomType</option>
+                            }
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label><i class="fas fa-circle"></i> Status</label>
+                        <select id="statusFilter" multiple>
+                            <option value="all" selected>All Status</option>
+                            <option value="Available">Available</option>
+                            <option value="Occupied">Occupied</option>
+                            <option value="Cleaning">Cleaning</option>
+                            <option value="Maintenance">Maintenance</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label><i class="fas fa-rupee-sign"></i> Rate Range</label>
+                        <select id="rateFilter">
+                            <option value="all" selected>All Rates</option>
+                            <option value="0-2000">₹0 - ₹2,000</option>
+                            <option value="2000-5000">₹2,000 - ₹5,000</option>
+                            <option value="5000-10000">₹5,000 - ₹10,000</option>
+                            <option value="10000-999999">₹10,000+</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label><i class="fas fa-sort"></i> Sort By</label>
+                        <select id="sortBy">
+                            <option value="roomNumber">Room Number</option>
+                            <option value="roomType">Room Type</option>
+                            <option value="status">Status</option>
+                            <option value="rate">Rate (Low to High)</option>
+                            <option value="rateDesc">Rate (High to Low)</option>
+                            <option value="guestName">Guest Name</option>
+                        </select>
+                    </div>
+                    
+                    <button class="btn-reset-filters" id="resetFilters" title="Reset all filters">
+                        <i class="fas fa-redo"></i> Reset
+                    </button>
+                </div>
+            </div>
+            
+            <div class="filter-results-info" id="filterResults" style="display: none;">
+                <span id="resultsCount">0</span> room(s) found
+            </div>
+
             <div class="room-grid" id="roomGrid">
                 @foreach (var room in Model.Rooms)
                 {
                     <div class="room-card @room.Status.ToLower()" 
                          data-room-id="@room.Id" 
                          data-floor="@room.Floor"
+                         data-rate="@room.BaseRate"
+                         data-room-number="@room.RoomNumber"
+                         data-room-type="@room.RoomTypeName"
+                         data-status="@room.Status"
+                         data-guest-name="@(room.PrimaryGuestName ?? "")"
                          onclick="selectRoom(@room.Id)">
                         <div class="room-actions-menu">
                             <button class="room-actions-btn" onclick="event.stopPropagation(); toggleActions(@room.Id)">
@@ -648,6 +910,51 @@
                         <span class="room-status-badge @room.Status.ToLower()">@room.Status</span>
                         @if (room.Status == "Occupied")
                         {
+                            var isOverdue = room.CheckOutDate.HasValue && room.CheckOutDate.Value.Date < DateTime.Today;
+                            var daysRemaining = room.CheckOutDate.HasValue ? (room.CheckOutDate.Value.Date - DateTime.Today).Days : 0;
+                            
+                            @* Guest Count Badge *@
+                            if (room.GuestCount.HasValue && room.GuestCount.Value > 0)
+                            {
+                                <div class="room-guest-count-badge">
+                                    <i class="fas fa-users"></i>
+                                    <span>@room.GuestCount @(room.GuestCount == 1 ? "Guest" : "Guests")</span>
+                                </div>
+                            }
+                            
+                            @* Days Remaining Countdown *@
+                            if (room.CheckOutDate.HasValue)
+                            {
+                                <div class="room-days-remaining @(daysRemaining <= 1 ? "urgent" : daysRemaining <= 3 ? "soon" : "")">
+                                    <i class="fas fa-clock"></i>
+                                    <span>
+                                        @if (daysRemaining < 0)
+                                        {
+                                            @($"{Math.Abs(daysRemaining)} day{(Math.Abs(daysRemaining) != 1 ? "s" : "")} overdue")
+                                        }
+                                        else if (daysRemaining == 0)
+                                        {
+                                            @("Checking out today")
+                                        }
+                                        else if (daysRemaining == 1)
+                                        {
+                                            @("1 day remaining")
+                                        }
+                                        else
+                                        {
+                                            @($"{daysRemaining} days remaining")
+                                        }
+                                    </span>
+                                </div>
+                            }
+                            
+                            if (isOverdue)
+                            {
+                                <div class="room-overdue-badge">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    <span>OVERDUE CHECKOUT</span>
+                                </div>
+                            }
                             @if (!string.IsNullOrEmpty(room.BookingNumber))
                             {
                                 <div class="room-booking-info">
@@ -671,7 +978,7 @@
                             }
                             @if (room.CheckOutDate.HasValue)
                             {
-                                <div class="room-checkout-date">
+                                <div class="room-checkout-date @(isOverdue ? "overdue" : "")">
                                     <i class="fas fa-calendar-check"></i>
                                     <span>Checkout: @room.CheckOutDate.Value.ToString("MMM dd, yyyy")</span>
                                 </div>
@@ -1216,17 +1523,166 @@
                 document.querySelectorAll('.floor-tab').forEach(t => t.classList.remove('active'));
                 this.classList.add('active');
                 
-                // Filter rooms by floor
-                const floorId = this.getAttribute('data-floor');
-                document.querySelectorAll('.room-card').forEach(card => {
-                    if (floorId === 'all' || card.getAttribute('data-floor') === floorId) {
-                        card.style.display = 'flex';
-                    } else {
-                        card.style.display = 'none';
-                    }
+                // Apply all filters including floor
+                applyFilters();
+            });
+        });
+        
+        // Search and Filter Functionality
+        let allRooms = [];
+        
+        // Store all rooms data on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const roomCards = document.querySelectorAll('.room-card');
+            roomCards.forEach(card => {
+                allRooms.push({
+                    element: card,
+                    roomNumber: card.getAttribute('data-room-number') || '',
+                    roomType: card.getAttribute('data-room-type') || '',
+                    status: card.getAttribute('data-status') || '',
+                    guestName: card.getAttribute('data-guest-name') || '',
+                    floor: card.getAttribute('data-floor') || '',
+                    rate: parseFloat(card.getAttribute('data-rate') || '0')
                 });
             });
         });
+        
+        // Search functionality
+        const searchInput = document.getElementById('roomSearch');
+        const clearSearch = document.getElementById('clearSearch');
+        
+        searchInput.addEventListener('input', function() {
+            if (this.value) {
+                clearSearch.style.display = 'flex';
+            } else {
+                clearSearch.style.display = 'none';
+            }
+            applyFilters();
+        });
+        
+        clearSearch.addEventListener('click', function() {
+            searchInput.value = '';
+            clearSearch.style.display = 'none';
+            applyFilters();
+        });
+        
+        // Filter change listeners
+        document.getElementById('roomTypeFilter').addEventListener('change', applyFilters);
+        document.getElementById('statusFilter').addEventListener('change', applyFilters);
+        document.getElementById('rateFilter').addEventListener('change', applyFilters);
+        document.getElementById('sortBy').addEventListener('change', applyFilters);
+        
+        // Reset filters
+        document.getElementById('resetFilters').addEventListener('click', function() {
+            searchInput.value = '';
+            clearSearch.style.display = 'none';
+            document.getElementById('roomTypeFilter').value = 'all';
+            document.getElementById('statusFilter').value = 'all';
+            document.getElementById('rateFilter').value = 'all';
+            document.getElementById('sortBy').value = 'roomNumber';
+            
+            // Reset floor tab to "All Floors"
+            document.querySelectorAll('.floor-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector('.floor-tab[data-floor=\"all\"]').classList.add('active');
+            
+            applyFilters();
+        });
+        
+        function applyFilters() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const selectedRoomTypes = getSelectedOptions('roomTypeFilter');
+            const selectedStatuses = getSelectedOptions('statusFilter');
+            const rateRange = document.getElementById('rateFilter').value;
+            const sortBy = document.getElementById('sortBy').value;
+            const activeFloor = document.querySelector('.floor-tab.active')?.getAttribute('data-floor') || 'all';
+            
+            let visibleCount = 0;
+            let filteredRooms = [...allRooms];
+            
+            // Apply filters
+            filteredRooms.forEach(room => {
+                let show = true;
+                
+                // Floor filter
+                if (activeFloor !== 'all' && room.floor !== activeFloor) {
+                    show = false;
+                }
+                
+                // Search filter
+                if (searchTerm && show) {
+                    const searchableText = `${room.roomNumber} ${room.roomType} ${room.guestName}`.toLowerCase();
+                    if (!searchableText.includes(searchTerm)) {
+                        show = false;
+                    }
+                }
+                
+                // Room type filter
+                if (show && !selectedRoomTypes.includes('all') && !selectedRoomTypes.includes(room.roomType)) {
+                    show = false;
+                }
+                
+                // Status filter
+                if (show && !selectedStatuses.includes('all') && !selectedStatuses.includes(room.status)) {
+                    show = false;
+                }
+                
+                // Rate range filter
+                if (show && rateRange !== 'all') {
+                    const [min, max] = rateRange.split('-').map(Number);
+                    if (room.rate < min || room.rate > max) {
+                        show = false;
+                    }
+                }
+                
+                room.element.style.display = show ? 'flex' : 'none';
+                if (show) visibleCount++;
+            });
+            
+            // Sort visible rooms
+            const roomGrid = document.getElementById('roomGrid');
+            const visibleRooms = filteredRooms.filter(room => room.element.style.display !== 'none');
+            
+            visibleRooms.sort((a, b) => {
+                switch (sortBy) {
+                    case 'roomNumber':
+                        return a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true });
+                    case 'roomType':
+                        return a.roomType.localeCompare(b.roomType);
+                    case 'status':
+                        return a.status.localeCompare(b.status);
+                    case 'rate':
+                        return a.rate - b.rate;
+                    case 'rateDesc':
+                        return b.rate - a.rate;
+                    case 'guestName':
+                        return a.guestName.localeCompare(b.guestName);
+                    default:
+                        return 0;
+                }
+            });
+            
+            // Reorder DOM elements
+            visibleRooms.forEach(room => {
+                roomGrid.appendChild(room.element);
+            });
+            
+            // Show results count
+            const filterResults = document.getElementById('filterResults');
+            const resultsCount = document.getElementById('resultsCount');
+            resultsCount.textContent = visibleCount;
+            
+            if (searchTerm || !selectedRoomTypes.includes('all') || !selectedStatuses.includes('all') || rateRange !== 'all') {
+                filterResults.style.display = 'block';
+            } else {
+                filterResults.style.display = 'none';
+            }
+        }
+        
+        function getSelectedOptions(selectId) {
+            const select = document.getElementById(selectId);
+            const selected = Array.from(select.selectedOptions).map(option => option.value);
+            return selected.length > 0 ? selected : ['all'];
+        }
 
         // Close dropdowns when clicking outside
         document.addEventListener('click', function(event) {

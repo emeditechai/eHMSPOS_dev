@@ -20,6 +20,7 @@ namespace HotelApp.Web.Models
         public string? BookingNumber { get; set; }
         public decimal? BalanceAmount { get; set; }
         public string? PrimaryGuestName { get; set; }
+        public int? GuestCount { get; set; }
         
         // Navigation property
         public RoomType? RoomType { get; set; }

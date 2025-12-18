@@ -202,6 +202,41 @@ body {
     gap: 15px;
 }
 
+/* Fullscreen Toggle Button */
+.fullscreen-toggle {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 10px 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    font-size: 16px;
+    margin-right: 5px;
+}
+
+.fullscreen-toggle:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.fullscreen-toggle:active {
+    transform: scale(0.95);
+}
+
+.fullscreen-toggle i {
+    transition: transform 0.3s ease;
+}
+
+.fullscreen-toggle:hover i {
+    transform: rotate(90deg);
+}
+
 .navbar-logout {
     background: none;
     border: none;
@@ -282,58 +317,101 @@ body {
 
 .card {
     background: white;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    padding: 24px;
     transition: transform 0.3s, box-shadow 0.3s;
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100px;
+    height: 100px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    transform: translate(30%, -30%);
 }
 
 .card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Individual card gradient backgrounds */
+.card:nth-child(1) {
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+}
+
+.card:nth-child(2) {
+    background: linear-gradient(135deg, #b91c1c 0%, #ef4444 100%);
+}
+
+.card:nth-child(3) {
+    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+}
+
+.card:nth-child(4) {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
 }
 
 .card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
 }
 
 .card-title {
-    font-size: 0.9rem;
-    color: var(--gray);
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.9);
     font-weight: 500;
+    letter-spacing: 0.3px;
 }
 
 .card-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
     color: white;
+    font-size: 1.3rem;
 }
 
 .card-value {
-    font-size: 1.8rem;
+    font-size: 2.2rem;
     font-weight: 700;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
+    color: white;
 }
 
 .card-change {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     display: flex;
     align-items: center;
+    gap: 4px;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.card-change i {
+    font-size: 0.75rem;
 }
 
 .positive {
-    color: var(--success);
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .negative {
-    color: var(--danger);
+    color: rgba(255, 255, 255, 0.9);
 }
 
 /* Charts Section */

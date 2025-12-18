@@ -29,7 +29,10 @@ public class RoomsController : BaseController
     public async Task<IActionResult> Dashboard()
     {
         var rooms = await _roomRepository.GetAllByBranchAsync(CurrentBranchID);
-        var floors = await _floorRepository.GetByBranchAsync(CurrentBranchID);
+        var allFloors = await _floorRepository.GetByBranchAsync(CurrentBranchID);
+        
+        // Filter floors to only include those that have rooms
+        var floorsWithRooms = allFloors.Where(f => rooms.Any(r => r.Floor == f.Id)).ToList();
         
         // Get current status counts
         var statusCounts = await _roomRepository.GetRoomStatusCountsAsync(CurrentBranchID);
@@ -64,9 +67,10 @@ public class RoomsController : BaseController
                 CheckOutDate = r.CheckOutDate,
                 BalanceAmount = r.BalanceAmount,
                 BookingNumber = r.BookingNumber,
-                PrimaryGuestName = r.PrimaryGuestName
+                PrimaryGuestName = r.PrimaryGuestName,
+                GuestCount = r.GuestCount
             }).ToList(),
-            Floors = floors.ToList(),
+            Floors = floorsWithRooms,
             RoomTypeAvailabilities = availability.Select(kvp => new RoomTypeAvailability
             {
                 RoomTypeId = kvp.Key,

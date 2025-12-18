@@ -45,13 +45,14 @@ namespace HotelApp.Web.Repositories
                        r.BranchID, r.IsActive, r.CreatedDate, r.LastModifiedDate,
                        f.FloorName,
                        rt.Id AS RoomType_Id, rt.TypeName, rt.Description, rt.BaseRate, rt.MaxOccupancy, rt.Amenities,
-                       b.CheckInDate, b.CheckOutDate, b.BookingNumber, b.BalanceAmount, b.PrimaryGuestName
+                       b.CheckInDate, b.CheckOutDate, b.BookingNumber, b.BalanceAmount, b.PrimaryGuestName, b.GuestCount
                 FROM Rooms r
                 INNER JOIN RoomTypes rt ON r.RoomTypeId = rt.Id
                 LEFT JOIN Floors f ON r.Floor = f.Id
                 LEFT JOIN (
                     SELECT br.RoomId, bk.CheckInDate, bk.CheckOutDate, bk.BookingNumber, bk.BalanceAmount,
                            CONCAT(bk.PrimaryGuestFirstName, ' ', bk.PrimaryGuestLastName) AS PrimaryGuestName,
+                           (SELECT COUNT(*) FROM BookingGuests bg WHERE bg.BookingId = bk.Id AND bg.IsActive = 1) AS GuestCount,
                            ROW_NUMBER() OVER (PARTITION BY br.RoomId ORDER BY bk.CheckInDate DESC) as rn
                     FROM BookingRooms br
                     INNER JOIN Bookings bk ON br.BookingId = bk.Id
@@ -66,25 +67,45 @@ namespace HotelApp.Web.Repositories
 
             var roomLookup = new Dictionary<int, Room>();
             
-            await _dbConnection.QueryAsync<Room, RoomType, DateTime?, DateTime?, string, decimal?, string, Room>(
-                sql,
-                (room, roomType, checkInDate, checkOutDate, bookingNumber, balanceAmount, primaryGuestName) =>
+            var rooms = await _dbConnection.QueryAsync<dynamic>(sql, new { BranchId = branchId });
+            
+            foreach (var row in rooms)
+            {
+                var room = new Room
                 {
-                    if (!roomLookup.TryGetValue(room.Id, out var existingRoom))
+                    Id = row.Id,
+                    RoomNumber = row.RoomNumber,
+                    RoomTypeId = row.RoomTypeId,
+                    Floor = row.Floor,
+                    Status = row.Status,
+                    Notes = row.Notes,
+                    BranchID = row.BranchID,
+                    IsActive = row.IsActive,
+                    CreatedDate = row.CreatedDate,
+                    LastModifiedDate = row.LastModifiedDate,
+                    FloorName = row.FloorName,
+                    CheckInDate = row.CheckInDate,
+                    CheckOutDate = row.CheckOutDate,
+                    BookingNumber = row.BookingNumber,
+                    BalanceAmount = row.BalanceAmount,
+                    PrimaryGuestName = row.PrimaryGuestName,
+                    GuestCount = row.GuestCount,
+                    RoomType = new RoomType
                     {
-                        room.RoomType = roomType;
-                        room.CheckInDate = checkInDate;
-                        room.CheckOutDate = checkOutDate;
-                        room.BookingNumber = bookingNumber;
-                        room.BalanceAmount = balanceAmount;
-                        room.PrimaryGuestName = primaryGuestName;
-                        roomLookup.Add(room.Id, room);
+                        Id = row.RoomType_Id,
+                        TypeName = row.TypeName,
+                        Description = row.Description,
+                        BaseRate = row.BaseRate,
+                        MaxOccupancy = row.MaxOccupancy,
+                        Amenities = row.Amenities
                     }
-                    return room;
-                },
-                new { BranchId = branchId },
-                splitOn: "RoomType_Id,CheckInDate,CheckOutDate,BookingNumber,BalanceAmount,PrimaryGuestName"
-            );
+                };
+                
+                if (!roomLookup.ContainsKey(room.Id))
+                {
+                    roomLookup.Add(room.Id, room);
+                }
+            }
 
             return roomLookup.Values;
         }

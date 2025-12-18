@@ -153,6 +153,9 @@
                     </div>
                 </div>
                 <div class="navbar-user">
+                    <button id="fullscreenToggle" class="fullscreen-toggle" title="Toggle Fullscreen">
+                        <i class="fas fa-expand"></i>
+                    </button>
                     <span style="margin-right: 15px; padding: 5px 10px; background: rgba(255,255,255,0.1); border-radius: 5px;">
                         <i class="fas fa-building"></i> @ViewBag.CurrentBranchName
                     </span>
@@ -265,6 +268,76 @@
                             });
                         }
                     });
+                });
+            }
+        });
+
+        // Fullscreen Toggle Functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const fullscreenToggle = document.getElementById('fullscreenToggle');
+            
+            if (fullscreenToggle) {
+                fullscreenToggle.addEventListener('click', function() {
+                    if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement && !document.msFullscreenElement) {
+                        // Enter fullscreen
+                        const elem = document.documentElement;
+                        if (elem.requestFullscreen) {
+                            elem.requestFullscreen();
+                        } else if (elem.webkitRequestFullscreen) { /* Safari */
+                            elem.webkitRequestFullscreen();
+                        } else if (elem.mozRequestFullScreen) { /* Firefox */
+                            elem.mozRequestFullScreen();
+                        } else if (elem.msRequestFullscreen) { /* IE/Edge */
+                            elem.msRequestFullscreen();
+                        }
+                    } else {
+                        // Exit fullscreen
+                        if (document.exitFullscreen) {
+                            document.exitFullscreen();
+                        } else if (document.webkitExitFullscreen) { /* Safari */
+                            document.webkitExitFullscreen();
+                        } else if (document.mozCancelFullScreen) { /* Firefox */
+                            document.mozCancelFullScreen();
+                        } else if (document.msExitFullscreen) { /* IE/Edge */
+                            document.msExitFullscreen();
+                        }
+                    }
+                });
+
+                // Update icon when fullscreen state changes
+                document.addEventListener('fullscreenchange', updateFullscreenIcon);
+                document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
+                document.addEventListener('mozfullscreenchange', updateFullscreenIcon);
+                document.addEventListener('MSFullscreenChange', updateFullscreenIcon);
+
+                function updateFullscreenIcon() {
+                    const icon = fullscreenToggle.querySelector('i');
+                    if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
+                        icon.classList.remove('fa-expand');
+                        icon.classList.add('fa-compress');
+                        fullscreenToggle.title = 'Exit Fullscreen (ESC)';
+                    } else {
+                        icon.classList.remove('fa-compress');
+                        icon.classList.add('fa-expand');
+                        fullscreenToggle.title = 'Enter Fullscreen';
+                    }
+                }
+                
+                // Handle ESC key to exit fullscreen
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27) {
+                        if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
+                            if (document.exitFullscreen) {
+                                document.exitFullscreen();
+                            } else if (document.webkitExitFullscreen) {
+                                document.webkitExitFullscreen();
+                            } else if (document.mozCancelFullScreen) {
+                                document.mozCancelFullScreen();
+                            } else if (document.msExitFullscreen) {
+                                document.msExitFullscreen();
+                            }
+                        }
+                    }
                 });
             }
         });
