@@ -482,7 +482,18 @@ public class RoomsController : BaseController
         }
 
         // Priority 2: Check for Weekend Rates
-        var dayOfWeek = date.ToString("dddd"); // Monday, Tuesday, etc.
+        // WeekendRates.DayOfWeek values are stored in English; avoid culture-specific day names.
+        var dayOfWeek = date.DayOfWeek switch
+        {
+            DayOfWeek.Monday => "Monday",
+            DayOfWeek.Tuesday => "Tuesday",
+            DayOfWeek.Wednesday => "Wednesday",
+            DayOfWeek.Thursday => "Thursday",
+            DayOfWeek.Friday => "Friday",
+            DayOfWeek.Saturday => "Saturday",
+            DayOfWeek.Sunday => "Sunday",
+            _ => ""
+        };
         foreach (var rate in roomTypeRates)
         {
             var weekendRatesTask = _rateMasterRepository.GetWeekendRatesByRateMasterIdAsync(rate.Id);

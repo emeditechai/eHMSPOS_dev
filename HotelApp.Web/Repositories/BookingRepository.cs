@@ -202,7 +202,20 @@ namespace HotelApp.Web.Repositories
             }
 
             // Priority 2: Check for Weekend Rates
-            var dayOfWeek = date.ToString("dddd"); // Monday, Tuesday, etc.
+            // IMPORTANT: WeekendRates.DayOfWeek is stored in English ("Saturday", ...).
+            // date.ToString("dddd") is culture-dependent and can produce non-English names.
+            // Use a stable English mapping to avoid missing weekend rates.
+            var dayOfWeek = date.DayOfWeek switch
+            {
+                DayOfWeek.Monday => "Monday",
+                DayOfWeek.Tuesday => "Tuesday",
+                DayOfWeek.Wednesday => "Wednesday",
+                DayOfWeek.Thursday => "Thursday",
+                DayOfWeek.Friday => "Friday",
+                DayOfWeek.Saturday => "Saturday",
+                DayOfWeek.Sunday => "Sunday",
+                _ => ""
+            };
             const string weekendSql = @"
                 SELECT TOP 1 BaseRate, ExtraPaxRate
                 FROM WeekendRates
@@ -938,20 +951,61 @@ namespace HotelApp.Web.Repositories
                         CGSTAmount = @CGSTAmount,
                         SGSTAmount = @SGSTAmount,
                         TotalAmount = @TotalAmount,
-                        BalanceAmount = @TotalAmount - ISNULL((SELECT SUM(Amount) FROM BookingPayments WHERE BookingId = Bookings.Id), 0),
+                        BalanceAmount = @TotalAmount - ISNULL((
+                            SELECT SUM(
+                                Amount
+                                + ISNULL(DiscountAmount, 0)
+                                + CASE WHEN ISNULL(IsRoundOffApplied, 0) = 1 THEN ISNULL(RoundOffAmount, 0) ELSE 0 END
+                            )
+                            FROM BookingPayments
+                            WHERE BookingId = Bookings.Id
+                        ), 0),
                         LastModifiedDate = GETDATE()
                     WHERE BookingNumber = @BookingNumber";
 
-                var rowsAffected = await _dbConnection.ExecuteAsync(sql, new
+                var rowsAffected = 0;
+                try
                 {
-                    BookingNumber = bookingNumber,
-                    RoomTypeId = newRoomTypeId,
-                    BaseAmount = baseAmount,
-                    TaxAmount = taxAmount,
-                    CGSTAmount = cgstAmount,
-                    SGSTAmount = sgstAmount,
-                    TotalAmount = totalAmount
-                }, transaction);
+                    rowsAffected = await _dbConnection.ExecuteAsync(sql, new
+                    {
+                        BookingNumber = bookingNumber,
+                        RoomTypeId = newRoomTypeId,
+                        BaseAmount = baseAmount,
+                        TaxAmount = taxAmount,
+                        CGSTAmount = cgstAmount,
+                        SGSTAmount = sgstAmount,
+                        TotalAmount = totalAmount
+                    }, transaction);
+                }
+                catch (Exception ex) when (
+                    ex.Message.Contains("Invalid column name", StringComparison.OrdinalIgnoreCase)
+                    || ex.Message.Contains("DiscountAmount", StringComparison.OrdinalIgnoreCase)
+                    || ex.Message.Contains("RoundOffAmount", StringComparison.OrdinalIgnoreCase)
+                    || ex.Message.Contains("IsRoundOffApplied", StringComparison.OrdinalIgnoreCase))
+                {
+                    const string legacySql = @"
+                        UPDATE Bookings
+                        SET RoomTypeId = @RoomTypeId,
+                            BaseAmount = @BaseAmount,
+                            TaxAmount = @TaxAmount,
+                            CGSTAmount = @CGSTAmount,
+                            SGSTAmount = @SGSTAmount,
+                            TotalAmount = @TotalAmount,
+                            BalanceAmount = @TotalAmount - ISNULL((SELECT SUM(Amount) FROM BookingPayments WHERE BookingId = Bookings.Id), 0),
+                            LastModifiedDate = GETDATE()
+                        WHERE BookingNumber = @BookingNumber";
+
+                    rowsAffected = await _dbConnection.ExecuteAsync(legacySql, new
+                    {
+                        BookingNumber = bookingNumber,
+                        RoomTypeId = newRoomTypeId,
+                        BaseAmount = baseAmount,
+                        TaxAmount = taxAmount,
+                        CGSTAmount = cgstAmount,
+                        SGSTAmount = sgstAmount,
+                        TotalAmount = totalAmount
+                    }, transaction);
+                }
 
                 if (rowsAffected == 0)
                 {
@@ -2148,14 +2202,30 @@ namespace HotelApp.Web.Repositories
 
                 // Insert payment
                 const string insertPaymentSql = @"
-                    INSERT INTO BookingPayments (BookingId, ReceiptNumber, Amount, PaymentMethod, PaymentReference, Status, PaidOn, Notes, CardType, CardLastFourDigits, BankId, ChequeDate, CreatedBy, IsAdvancePayment)
-                    VALUES (@BookingId, @ReceiptNumber, @Amount, @PaymentMethod, @PaymentReference, @Status, @PaidOn, @Notes, @CardType, @CardLastFourDigits, @BankId, @ChequeDate, @CreatedBy, @IsAdvancePayment)";
+                    INSERT INTO BookingPayments (
+                        BookingId, ReceiptNumber,
+                        Amount, DiscountAmount, DiscountPercent, RoundOffAmount, IsRoundOffApplied,
+                        PaymentMethod, PaymentReference, Status, PaidOn, Notes,
+                        CardType, CardLastFourDigits, BankId, ChequeDate,
+                        CreatedBy, IsAdvancePayment
+                    )
+                    VALUES (
+                        @BookingId, @ReceiptNumber,
+                        @Amount, @DiscountAmount, @DiscountPercent, @RoundOffAmount, @IsRoundOffApplied,
+                        @PaymentMethod, @PaymentReference, @Status, @PaidOn, @Notes,
+                        @CardType, @CardLastFourDigits, @BankId, @ChequeDate,
+                        @CreatedBy, @IsAdvancePayment
+                    )";
 
                 var paymentParams = new
                 {
                     payment.BookingId,
                     payment.ReceiptNumber,
                     payment.Amount,
+                    payment.DiscountAmount,
+                    payment.DiscountPercent,
+                    payment.RoundOffAmount,
+                    payment.IsRoundOffApplied,
                     payment.PaymentMethod,
                     payment.PaymentReference,
                     payment.Status,
@@ -2169,7 +2239,42 @@ namespace HotelApp.Web.Repositories
                     payment.IsAdvancePayment
                 };
 
-                await _dbConnection.ExecuteAsync(insertPaymentSql, paymentParams, transaction);
+                try
+                {
+                    await _dbConnection.ExecuteAsync(insertPaymentSql, paymentParams, transaction);
+                }
+                catch (Exception ex) when (
+                    ex.Message.Contains("Invalid column name", StringComparison.OrdinalIgnoreCase)
+                    || ex.Message.Contains("DiscountAmount", StringComparison.OrdinalIgnoreCase)
+                    || ex.Message.Contains("DiscountPercent", StringComparison.OrdinalIgnoreCase)
+                    || ex.Message.Contains("RoundOffAmount", StringComparison.OrdinalIgnoreCase)
+                    || ex.Message.Contains("IsRoundOffApplied", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Backward-compatible insert for DBs that haven't run the migration yet.
+                    const string legacyInsertPaymentSql = @"
+                        INSERT INTO BookingPayments (BookingId, ReceiptNumber, Amount, PaymentMethod, PaymentReference, Status, PaidOn, Notes, CardType, CardLastFourDigits, BankId, ChequeDate, CreatedBy, IsAdvancePayment)
+                        VALUES (@BookingId, @ReceiptNumber, @Amount, @PaymentMethod, @PaymentReference, @Status, @PaidOn, @Notes, @CardType, @CardLastFourDigits, @BankId, @ChequeDate, @CreatedBy, @IsAdvancePayment)";
+
+                    var legacyParams = new
+                    {
+                        payment.BookingId,
+                        payment.ReceiptNumber,
+                        payment.Amount,
+                        payment.PaymentMethod,
+                        payment.PaymentReference,
+                        payment.Status,
+                        payment.PaidOn,
+                        payment.Notes,
+                        payment.CardType,
+                        payment.CardLastFourDigits,
+                        payment.BankId,
+                        payment.ChequeDate,
+                        CreatedBy = performedBy,
+                        payment.IsAdvancePayment
+                    };
+
+                    await _dbConnection.ExecuteAsync(legacyInsertPaymentSql, legacyParams, transaction);
+                }
 
                 // Compute other charges grand total safely (may not exist on older DBs)
                 decimal otherChargesGrandTotal = 0m;
@@ -2194,13 +2299,19 @@ namespace HotelApp.Web.Repositories
                 }
 
                 // Update booking deposit and balance
+                // DepositAmount tracks actual money received (net).
+                // BalanceAmount must reduce by the total adjustment applied against dues: net + discount + round-off.
+                var discountApplied = payment.DiscountAmount;
+                var roundOffApplied = payment.IsRoundOffApplied ? payment.RoundOffAmount : 0m;
+                var appliedToBalance = payment.Amount + discountApplied + roundOffApplied;
+
                 const string updateBookingSql = @"
                     UPDATE Bookings 
-                    SET DepositAmount = DepositAmount + @Amount,
-                        BalanceAmount = BalanceAmount - @Amount,
+                    SET DepositAmount = DepositAmount + @NetAmount,
+                        BalanceAmount = BalanceAmount - @AppliedToBalance,
                         PaymentStatus = CASE 
-                            WHEN ((BalanceAmount - @Amount) + @OtherChargesGrandTotal) <= 0 THEN 'Paid'
-                            WHEN (DepositAmount + @Amount) > 0 THEN 'Partially Paid'
+                            WHEN ((BalanceAmount - @AppliedToBalance) + @OtherChargesGrandTotal) <= 0 THEN 'Paid'
+                            WHEN (DepositAmount + @NetAmount) > 0 THEN 'Partially Paid'
                             ELSE 'Pending'
                         END,
                         LastModifiedBy = @PerformedBy,
@@ -2209,8 +2320,9 @@ namespace HotelApp.Web.Repositories
 
                 await _dbConnection.ExecuteAsync(updateBookingSql, new 
                 { 
-                    BookingId = payment.BookingId, 
-                    Amount = payment.Amount,
+                    BookingId = payment.BookingId,
+                    NetAmount = payment.Amount,
+                    AppliedToBalance = appliedToBalance,
                     OtherChargesGrandTotal = otherChargesGrandTotal,
                     PerformedBy = performedBy
                 }, transaction);
@@ -2233,6 +2345,93 @@ namespace HotelApp.Web.Repositories
                         transaction
                     );
                 }
+
+                transaction.Commit();
+                return true;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+
+        public async Task<bool> RecalculateBookingFinancialsAsync(int bookingId, int performedBy)
+        {
+            if (_dbConnection.State != ConnectionState.Open)
+            {
+                _dbConnection.Open();
+            }
+
+            using var transaction = _dbConnection.BeginTransaction();
+            try
+            {
+                const string getBookingSql = @"SELECT Id, TotalAmount, DepositAmount, BalanceAmount FROM Bookings WHERE Id = @BookingId";
+                var booking = await _dbConnection.QueryFirstOrDefaultAsync<Booking>(getBookingSql, new { BookingId = bookingId }, transaction);
+                if (booking == null)
+                {
+                    transaction.Rollback();
+                    return false;
+                }
+
+                decimal appliedToBalance;
+                decimal depositAmount;
+
+                try
+                {
+                    const string paymentsSql = @"
+                        SELECT
+                            ISNULL(SUM(Amount), 0) AS DepositAmount,
+                            ISNULL(SUM(
+                                Amount
+                                + ISNULL(DiscountAmount, 0)
+                                + CASE WHEN ISNULL(IsRoundOffApplied, 0) = 1 THEN ISNULL(RoundOffAmount, 0) ELSE 0 END
+                            ), 0) AS AppliedToBalance
+                        FROM BookingPayments
+                        WHERE BookingId = @BookingId";
+
+                    var row = await _dbConnection.QueryFirstAsync<dynamic>(paymentsSql, new { BookingId = bookingId }, transaction);
+                    depositAmount = row.DepositAmount is decimal d1 ? d1 : Convert.ToDecimal(row.DepositAmount ?? 0m);
+                    appliedToBalance = row.AppliedToBalance is decimal d2 ? d2 : Convert.ToDecimal(row.AppliedToBalance ?? 0m);
+                }
+                catch (Exception ex) when (
+                    ex.Message.Contains("Invalid column name", StringComparison.OrdinalIgnoreCase)
+                    || ex.Message.Contains("DiscountAmount", StringComparison.OrdinalIgnoreCase)
+                    || ex.Message.Contains("RoundOffAmount", StringComparison.OrdinalIgnoreCase)
+                    || ex.Message.Contains("IsRoundOffApplied", StringComparison.OrdinalIgnoreCase))
+                {
+                    const string legacyPaymentsSql = @"
+                        SELECT ISNULL(SUM(Amount), 0)
+                        FROM BookingPayments
+                        WHERE BookingId = @BookingId";
+
+                    depositAmount = await _dbConnection.ExecuteScalarAsync<decimal>(legacyPaymentsSql, new { BookingId = bookingId }, transaction);
+                    appliedToBalance = depositAmount;
+                }
+
+                var expectedBalance = booking.TotalAmount - appliedToBalance;
+                var expectedDeposit = depositAmount;
+
+                const string updateSql = @"
+                    UPDATE Bookings
+                    SET DepositAmount = @DepositAmount,
+                        BalanceAmount = @BalanceAmount,
+                        PaymentStatus = CASE
+                            WHEN @BalanceAmount <= 0 THEN 'Paid'
+                            WHEN @DepositAmount > 0 THEN 'Partially Paid'
+                            ELSE 'Pending'
+                        END,
+                        LastModifiedBy = @PerformedBy,
+                        LastModifiedDate = GETDATE()
+                    WHERE Id = @BookingId";
+
+                await _dbConnection.ExecuteAsync(updateSql, new
+                {
+                    BookingId = bookingId,
+                    DepositAmount = expectedDeposit,
+                    BalanceAmount = expectedBalance,
+                    PerformedBy = performedBy
+                }, transaction);
 
                 transaction.Commit();
                 return true;

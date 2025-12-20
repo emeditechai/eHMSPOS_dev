@@ -37,6 +37,7 @@ builder.Services.AddScoped<ILocationRepository, LocationRepository>();
 builder.Services.AddScoped<IReportsRepository, ReportsRepository>();
 builder.Services.AddScoped<IOtherChargeRepository, OtherChargeRepository>();
 builder.Services.AddScoped<IBookingOtherChargeRepository, BookingOtherChargeRepository>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
 // Session configuration for BranchID storage
 builder.Services.AddDistributedMemoryCache();
@@ -56,6 +57,33 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.AccessDeniedPath = "/Account/Denied";
         options.Cookie.HttpOnly = true;
         options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+
+        // For JSON polling endpoints, avoid HTML redirects.
+        options.Events = new CookieAuthenticationEvents
+        {
+            OnRedirectToLogin = ctx =>
+            {
+                if (ctx.Request.Path.StartsWithSegments("/Notifications"))
+                {
+                    ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    return Task.CompletedTask;
+                }
+
+                ctx.Response.Redirect(ctx.RedirectUri);
+                return Task.CompletedTask;
+            },
+            OnRedirectToAccessDenied = ctx =>
+            {
+                if (ctx.Request.Path.StartsWithSegments("/Notifications"))
+                {
+                    ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    return Task.CompletedTask;
+                }
+
+                ctx.Response.Redirect(ctx.RedirectUri);
+                return Task.CompletedTask;
+            }
+        };
     });
 
 var app = builder.Build();

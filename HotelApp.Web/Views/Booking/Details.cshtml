@@ -833,7 +833,21 @@
             var adjustedSgstAmount = Model.SGSTAmount + ocSgstTotal;
             var adjustedTotalGstAmount = Model.TaxAmount + ocGstTotal;
             var adjustedGrandTotal = Model.TotalAmount + ocGrandTotal;
-            var adjustedBalanceAmount = Model.BalanceAmount + ocGrandTotal;
+
+            // Compute due from payments so payment-time discounts/round-off adjust the balance immediately.
+            // (Bookings.BalanceAmount can be stale for older rows.)
+            var paymentsForBalance = (ViewBag.Payments as IEnumerable<HotelApp.Web.Models.BookingPayment>)
+                ?? (Model.Payments ?? Enumerable.Empty<HotelApp.Web.Models.BookingPayment>());
+
+            var appliedToBalanceFromPayments = paymentsForBalance.Sum(p =>
+                p.Amount
+                + p.DiscountAmount
+                + (p.IsRoundOffApplied ? p.RoundOffAmount : 0m)
+            );
+
+            var paymentDiscountTotal = paymentsForBalance.Sum(p => p.DiscountAmount);
+
+            var adjustedBalanceAmount = adjustedGrandTotal - appliedToBalanceFromPayments;
 
             // Prefer night-wise breakdown (same as what user sees in details table)
             // to avoid incorrect stored DiscountAmount on older multi-night bookings.
@@ -872,6 +886,10 @@
         <div class="financial-item">
             <div class="financial-label">Discount</div>
             <div class="financial-amount">₹@(computedDiscountAmount.ToString("N2"))</div>
+        </div>
+        <div class="financial-item">
+            <div class="financial-label">Payment Discount</div>
+            <div class="financial-amount">₹@(paymentDiscountTotal.ToString("N2"))</div>
         </div>
         <div class="financial-item">
             <div class="financial-label">Other Charges</div>
@@ -1002,6 +1020,8 @@
                 <tr>
                     <th><i class="fas fa-calendar"></i> Date</th>
                     <th><i class="fas fa-rupee-sign"></i> Amount</th>
+                    <th><i class="fas fa-tags"></i> Discount</th>
+                    <th><i class="fas fa-coins"></i> Round Off</th>
                     <th><i class="fas fa-credit-card"></i> Method</th>
                     <th><i class="fas fa-check-circle"></i> Status</th>
                     <th><i class="fas fa-hashtag"></i> Reference</th>
@@ -1011,10 +1031,11 @@
             <tbody>
                 @foreach (var payment in payments)
                 {
+                    var grossAmount = payment.Amount - payment.RoundOffAmount + payment.DiscountAmount;
                     <tr>
                         <td>@payment.PaidOn.ToString("dd MMM yyyy, hh:mm tt")</td>
                         <td>
-                            <strong>₹@payment.Amount.ToString("N2")</strong>
+                            <strong title="Gross: ₹@grossAmount.ToString("N2")">₹@payment.Amount.ToString("N2")</strong>
                             @if (payment.IsAdvancePayment)
                             {
                                 <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 0.25rem; margin-left: 0.5rem;">
@@ -1022,6 +1043,8 @@
                                 </span>
                             }
                         </td>
+                        <td style="font-family: monospace;">₹@payment.DiscountAmount.ToString("N2")</td>
+                        <td style="font-family: monospace;">₹@payment.RoundOffAmount.ToString("N2")</td>
                         <td><span class="badge badge-info">@payment.PaymentMethod</span></td>
                         <td><span class="badge badge-success">@payment.Status</span></td>
                         <td style="font-family: monospace;">@(payment.PaymentReference ?? "-")</td>
@@ -1311,6 +1334,31 @@
             @Html.AntiForgeryToken()
             <input type="hidden" id="bookingNumber" name="bookingNumber" value="@Model.BookingNumber" />
             <input type="hidden" id="isAdvancePayment" name="isAdvancePayment" value="false" />
+            <input type="hidden" id="grossAmount" name="grossAmount" value="" />
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label for="discountType">Discount Type</label>
+                    <select id="discountType" name="discountType" class="form-control">
+                        <option value="None">None</option>
+                        <option value="Flat">Flat Amount (₹)</option>
+                        <option value="Percent">Discount (%)</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="discountValueGroup" style="flex: 1; display: none;">
+                    <label for="discountValue" id="discountValueLabel">Discount</label>
+                    <input type="number" id="discountValue" name="discountValue" step="0.01" min="0" class="form-control" placeholder="Enter discount" />
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: -6px;">
+                <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
+                    <input type="checkbox" id="applyRoundOff" name="applyRoundOff" checked />
+                    Apply Round Off (Nearest ₹)
+                </label>
+                <small class="text-muted" id="paymentTotalsHint"></small>
+            </div>
             
             <div class="form-group">
                 <label for="amount">Amount (₹) *</label>
@@ -2159,6 +2207,128 @@
 
 @section Scripts {
 <script>
+    let isProgrammaticAmountUpdate = false;
+
+    function round2(val) {
+        const n = Number(val);
+        if (!Number.isFinite(n)) return 0;
+        return Math.round((n + Number.EPSILON) * 100) / 100;
+    }
+
+    function getGrossAmount() {
+        const grossEl = document.getElementById('grossAmount');
+        const amountEl = document.getElementById('amount');
+        const gross = grossEl?.value ? parseFloat(grossEl.value) : NaN;
+        if (Number.isFinite(gross)) return gross;
+        const amt = parseFloat(amountEl?.value || '0');
+        return Number.isFinite(amt) ? amt : 0;
+    }
+
+    function setGrossAmount(value) {
+        const grossEl = document.getElementById('grossAmount');
+        if (grossEl) grossEl.value = round2(value).toFixed(2);
+    }
+
+    function applyNetToAmountField() {
+        const amountEl = document.getElementById('amount');
+        if (!amountEl) return;
+
+        const discountType = document.getElementById('discountType')?.value;
+        const applyRoundOff = document.getElementById('applyRoundOff')?.checked;
+        const shouldAutoFillNet = (discountType && discountType !== 'None') || !!applyRoundOff;
+        if (!shouldAutoFillNet) return;
+
+        const totals = computePaymentTotals();
+        isProgrammaticAmountUpdate = true;
+        amountEl.value = totals.netPayable.toFixed(2);
+        isProgrammaticAmountUpdate = false;
+    }
+
+    function computePaymentTotals() {
+        const amount = getGrossAmount();
+        const discountType = document.getElementById('discountType').value;
+        const discountValue = parseFloat(document.getElementById('discountValue').value || '0') || 0;
+        const applyRoundOff = document.getElementById('applyRoundOff').checked;
+
+        let discountAmount = 0;
+        let discountPercent = null;
+
+        if (discountType === 'Flat') {
+            discountAmount = round2(Math.max(0, discountValue));
+        } else if (discountType === 'Percent') {
+            const pct = Math.max(0, Math.min(100, discountValue));
+            discountPercent = round2(pct);
+            discountAmount = round2(amount * (pct / 100));
+        }
+
+        let net = round2(amount - discountAmount);
+        if (net < 0) {
+            net = 0;
+            discountAmount = round2(amount);
+        }
+
+        let roundOffAmount = 0;
+        if (applyRoundOff) {
+            // Industry-standard round-off: round final payable to nearest rupee.
+            // Store the delta so ledgers/balance stay consistent.
+            const rounded = Math.round(net);
+            roundOffAmount = round2(rounded - net);
+            net = round2(rounded);
+        }
+
+        return {
+            grossAmount: round2(amount),
+            discountAmount,
+            discountPercent,
+            roundOffAmount,
+            netPayable: net,
+            isRoundOffApplied: applyRoundOff
+        };
+    }
+
+    function updateDiscountUI() {
+        const discountType = document.getElementById('discountType').value;
+        const group = document.getElementById('discountValueGroup');
+        const label = document.getElementById('discountValueLabel');
+        const input = document.getElementById('discountValue');
+
+        if (discountType === 'None') {
+            group.style.display = 'none';
+            input.value = '';
+            input.removeAttribute('max');
+        } else {
+            group.style.display = 'block';
+            if (discountType === 'Flat') {
+                label.textContent = 'Discount Amount (₹)';
+                input.setAttribute('max', '999999999');
+            } else {
+                label.textContent = 'Discount (%)';
+                input.setAttribute('max', '100');
+            }
+        }
+
+        // Do NOT overwrite grossAmount here.
+        // The Amount field may already be auto-filled to NET (e.g., 0.00 for discount-only settlement),
+        // and overwriting gross with that would zero out discounts and keep Due unchanged.
+        updatePaymentHint();
+        applyNetToAmountField();
+    }
+
+    function updatePaymentHint() {
+        const hint = document.getElementById('paymentTotalsHint');
+        if (!hint) return;
+        const t = computePaymentTotals();
+
+        const parts = [];
+        if (t.discountAmount > 0) parts.push(`Discount: ₹${t.discountAmount.toFixed(2)}`);
+        if (t.isRoundOffApplied && t.roundOffAmount !== 0) {
+            const sign = t.roundOffAmount > 0 ? '+' : '-';
+            parts.push(`Round Off: ${sign}₹${Math.abs(t.roundOffAmount).toFixed(2)}`);
+        }
+        parts.push(`Net Payable: ₹${t.netPayable.toFixed(2)}`);
+        hint.textContent = parts.join(' | ');
+    }
+
     async function showPaymentModal(isAdvance = false) {
         const balanceAmount = @adjustedBalanceAmount;
         const modal = document.getElementById('paymentModal');
@@ -2180,23 +2350,36 @@
                     const minAdvanceAmount = (totalAmount * minPercentage / 100).toFixed(2);
                     
                     amountField.value = minAdvanceAmount;
+                    setGrossAmount(parseFloat(minAdvanceAmount) || 0);
                     amountField.setAttribute('min', minAdvanceAmount);
                     amountField.setAttribute('data-min-advance', minAdvanceAmount);
                 } else {
                     amountField.value = balanceAmount.toFixed(2);
+                    setGrossAmount(balanceAmount);
                 }
             } catch (error) {
                 console.error('Error fetching hotel settings:', error);
                 amountField.value = balanceAmount.toFixed(2);
+                setGrossAmount(balanceAmount);
             }
             
             isAdvanceField.value = 'true';
         } else {
             amountField.value = balanceAmount.toFixed(2);
+            setGrossAmount(balanceAmount);
             amountField.removeAttribute('min');
             amountField.removeAttribute('data-min-advance');
             isAdvanceField.value = 'false';
         }
+
+        // Reset discount/round-off defaults
+        const discountType = document.getElementById('discountType');
+        const discountValue = document.getElementById('discountValue');
+        const applyRoundOff = document.getElementById('applyRoundOff');
+        if (discountType) discountType.value = 'None';
+        if (discountValue) discountValue.value = '';
+        if (applyRoundOff) applyRoundOff.checked = true;
+        updateDiscountUI();
         
         amountField.focus();
     }
@@ -2241,12 +2424,43 @@
         // Test if SweetAlert2 is loaded
         console.log('SweetAlert2 loaded:', typeof Swal !== 'undefined');
         
+        // Discount and round-off UI behaviors
+        const discountTypeEl = document.getElementById('discountType');
+        const discountValueEl = document.getElementById('discountValue');
+        const amountEl = document.getElementById('amount');
+        const roundOffEl = document.getElementById('applyRoundOff');
+        if (discountTypeEl) discountTypeEl.addEventListener('change', updateDiscountUI);
+        if (discountValueEl) discountValueEl.addEventListener('input', () => {
+            updatePaymentHint();
+            applyNetToAmountField();
+        });
+
+        if (amountEl) {
+            amountEl.addEventListener('input', () => {
+                if (isProgrammaticAmountUpdate) return;
+                // Treat typed value as GROSS input.
+                const v = parseFloat(amountEl.value || '0') || 0;
+                setGrossAmount(v);
+                updatePaymentHint();
+            });
+            amountEl.addEventListener('blur', () => {
+                applyNetToAmountField();
+                updatePaymentHint();
+            });
+        }
+
+        if (roundOffEl) roundOffEl.addEventListener('change', () => {
+            updatePaymentHint();
+            applyNetToAmountField();
+        });
+
         document.getElementById('paymentForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const formData = new FormData(this);
             const paymentMethod = formData.get('paymentMethod');
-            const amount = parseFloat(formData.get('amount'));
+            // UI Amount field may show NET; always use hidden grossAmount for calculations.
+            const grossAmount = getGrossAmount();
             const isAdvance = formData.get('isAdvancePayment') === 'true';
             
             // Validate minimum advance amount if this is an advance payment
@@ -2254,7 +2468,7 @@
                 const amountField = document.getElementById('amount');
                 const minAdvance = parseFloat(amountField.getAttribute('data-min-advance'));
                 
-                if (minAdvance && amount < minAdvance) {
+                if (minAdvance && grossAmount < minAdvance) {
                     Swal.fire({
                         icon: 'warning',
                         title: 'Minimum Amount Required',
@@ -2267,12 +2481,22 @@
             
             const data = {
                 bookingNumber: formData.get('bookingNumber'),
-                amount: amount,
+                amount: grossAmount,
                 paymentMethod: paymentMethod,
                 paymentReference: formData.get('paymentReference'),
                 notes: formData.get('notes'),
                 isAdvancePayment: isAdvance
             };
+
+            // Compute discount + round-off totals and send to server
+            const totals = computePaymentTotals();
+            data.discountAmount = totals.discountAmount;
+            if (totals.discountPercent !== null) {
+                data.discountPercent = totals.discountPercent;
+            }
+            data.roundOffAmount = totals.roundOffAmount;
+            data.isRoundOffApplied = totals.isRoundOffApplied;
+            data.netAmount = totals.netPayable;
 
             // Add card-specific fields
             if (paymentMethod === 'Card') {
@@ -2301,9 +2525,12 @@
             // Show confirmation dialog before recording payment
             const result = await Swal.fire({
                 title: 'Confirm Payment',
-                html: `Are you sure you want to record this payment?<br><br>
-                       <strong>Amount:</strong> ₹${amount.toFixed(2)}<br>
-                       <strong>Method:</strong> ${paymentMethod}`,
+                  html: `Are you sure you want to record this payment?<br><br>
+                       <strong>Gross Amount:</strong> ₹${round2(grossAmount).toFixed(2)}<br>
+                      <strong>Discount:</strong> ₹${totals.discountAmount.toFixed(2)}${totals.discountPercent !== null ? ` (${totals.discountPercent.toFixed(2)}%)` : ''}<br>
+                      <strong>Round Off:</strong> ₹${totals.roundOffAmount.toFixed(2)}<br>
+                      <strong>Net Payable:</strong> ₹${totals.netPayable.toFixed(2)}<br>
+                      <strong>Method:</strong> ${paymentMethod}`,
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#667eea',

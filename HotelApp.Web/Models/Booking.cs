@@ -90,6 +90,11 @@ namespace HotelApp.Web.Models
         public int BookingId { get; set; }
         public string? ReceiptNumber { get; set; }
         public decimal Amount { get; set; }
+        // Payment-time adjustments
+        public decimal DiscountAmount { get; set; } = 0m;
+        public decimal? DiscountPercent { get; set; }
+        public decimal RoundOffAmount { get; set; } = 0m;
+        public bool IsRoundOffApplied { get; set; } = false;
         public string PaymentMethod { get; set; } = string.Empty;
         public string? PaymentReference { get; set; }
         public string Status { get; set; } = "Captured";

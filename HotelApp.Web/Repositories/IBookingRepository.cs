@@ -28,6 +28,7 @@ namespace HotelApp.Web.Repositories
         Task AddAuditLogAsync(int bookingId, string bookingNumber, string actionType, string description, string? oldValue = null, string? newValue = null, int? performedBy = null);
         Task<IEnumerable<BookingPayment>> GetPaymentsAsync(int bookingId);
         Task<bool> AddPaymentAsync(BookingPayment payment, int performedBy);
+        Task<bool> RecalculateBookingFinancialsAsync(int bookingId, int performedBy);
         Task<IEnumerable<string>> GetAssignedRoomNumbersAsync(int bookingId);
         Task<Booking?> GetLastBookingByGuestPhoneAsync(string phone);
         Task<bool> AddGuestToBookingAsync(BookingGuest guest, int branchId);

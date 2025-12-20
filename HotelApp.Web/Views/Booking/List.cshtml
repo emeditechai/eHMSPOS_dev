@@ -177,8 +177,17 @@
                                 }
                                 
                                 // Calculate payment status
-                                var balanceAmount = booking.TotalAmount - booking.DepositAmount;
-                                var paymentPercentage = booking.TotalAmount > 0 ? (booking.DepositAmount / booking.TotalAmount) * 100 : 0;
+                                // DepositAmount stores cash received (net). But a booking can be fully settled by
+                                // net + payment-time discount + round-off. Use payments when available.
+                                var paymentsForBalance = booking.Payments ?? Enumerable.Empty<HotelApp.Web.Models.BookingPayment>();
+                                var settledAmount = paymentsForBalance.Any()
+                                    ? paymentsForBalance.Sum(p => p.Amount + p.DiscountAmount + (p.IsRoundOffApplied ? p.RoundOffAmount : 0m))
+                                    : booking.DepositAmount;
+
+                                var balanceAmount = booking.TotalAmount - settledAmount;
+                                var paymentPercentage = booking.TotalAmount > 0
+                                    ? Math.Max(0, Math.Min(100, (settledAmount / booking.TotalAmount) * 100))
+                                    : 0;
                                 var paymentStatusClass = "";
                                 var paymentStatusIcon = "";
                                 var paymentStatusText = "";
@@ -189,7 +198,7 @@
                                     paymentStatusIcon = "fas fa-check-circle";
                                     paymentStatusText = "Fully Paid";
                                 }
-                                else if (booking.DepositAmount > 0)
+                                else if (settledAmount > 0)
                                 {
                                     paymentStatusClass = "payment-badge-partial";
                                     paymentStatusIcon = "fas fa-clock";

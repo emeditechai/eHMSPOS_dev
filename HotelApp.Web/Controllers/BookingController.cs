@@ -623,6 +623,21 @@ namespace HotelApp.Web.Controllers
                 return RedirectToAction(nameof(List));
             }
 
+            // Recalculate financials from payments so payment-time discounts/round-off are reflected in Due.
+            // This also fixes older bookings created before the balance logic was updated.
+            try
+            {
+                var currentUserId = GetCurrentUserId() ?? 0;
+                await _bookingRepository.RecalculateBookingFinancialsAsync(booking.Id, currentUserId);
+
+                // Reload booking so UI reflects the corrected values.
+                booking = await _bookingRepository.GetByBookingNumberAsync(bookingNumber) ?? booking;
+            }
+            catch
+            {
+                // Best-effort only; never block Details view.
+            }
+
             // Get audit log for this booking
             var auditLogs = await _bookingRepository.GetAuditLogAsync(booking.Id);
             ViewBag.AuditLogs = auditLogs;
@@ -1313,7 +1328,22 @@ namespace HotelApp.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddPayment(string bookingNumber, decimal amount, string paymentMethod, string? paymentReference, string? notes, string? cardType, string? cardLastFourDigits, int? bankId, DateTime? chequeDate, bool isAdvancePayment = false)
+        public async Task<IActionResult> AddPayment(
+            string bookingNumber,
+            decimal amount,
+            string paymentMethod,
+            string? paymentReference,
+            string? notes,
+            string? cardType,
+            string? cardLastFourDigits,
+            int? bankId,
+            DateTime? chequeDate,
+            bool isAdvancePayment = false,
+            decimal discountAmount = 0m,
+            decimal? discountPercent = null,
+            decimal roundOffAmount = 0m,
+            bool isRoundOffApplied = false,
+            decimal? netAmount = null)
         {
             if (string.IsNullOrWhiteSpace(bookingNumber))
             {
@@ -1323,6 +1353,21 @@ namespace HotelApp.Web.Controllers
             if (amount <= 0)
             {
                 return Json(new { success = false, message = "Payment amount must be greater than zero." });
+            }
+
+            if (discountAmount < 0)
+            {
+                return Json(new { success = false, message = "Discount amount cannot be negative." });
+            }
+
+            if (discountPercent is < 0 or > 100)
+            {
+                return Json(new { success = false, message = "Discount percent must be between 0 and 100." });
+            }
+
+            if (!isRoundOffApplied)
+            {
+                roundOffAmount = 0m;
             }
 
             var booking = await _bookingRepository.GetByBookingNumberAsync(bookingNumber);
@@ -1344,15 +1389,79 @@ namespace HotelApp.Web.Controllers
             }
             var effectiveBalanceAmount = booking.BalanceAmount + otherChargesGrandTotal;
 
-            if (amount > effectiveBalanceAmount)
+            // Compute net payable
+            // - Gross is `amount`
+            // - Discount reduces payable
+            // - RoundOff adjusts payable to nearest rupee when applied
+            var computedNet = amount;
+            if (discountPercent.HasValue && discountPercent.Value > 0)
             {
-                return Json(new { success = false, message = $"Payment amount cannot exceed balance amount of ₹{effectiveBalanceAmount:N2}." });
+                // If both percent and amount are supplied, percent wins.
+                discountAmount = Math.Round(amount * (discountPercent.Value / 100m), 2, MidpointRounding.AwayFromZero);
+            }
+            discountAmount = Math.Round(discountAmount, 2, MidpointRounding.AwayFromZero);
+            computedNet = Math.Round(amount - discountAmount, 2, MidpointRounding.AwayFromZero);
+            if (computedNet < 0)
+            {
+                computedNet = 0;
+                discountAmount = Math.Round(amount, 2, MidpointRounding.AwayFromZero);
+            }
+
+            if (isRoundOffApplied)
+            {
+                var rounded = Math.Round(computedNet, 0, MidpointRounding.AwayFromZero);
+                roundOffAmount = Math.Round(rounded - computedNet, 2, MidpointRounding.AwayFromZero);
+                computedNet = Math.Round(rounded, 2, MidpointRounding.AwayFromZero);
+            }
+            else
+            {
+                roundOffAmount = 0m;
+            }
+
+            if (netAmount.HasValue)
+            {
+                // Guard against client tampering; allow tiny floating variance.
+                var delta = Math.Abs(netAmount.Value - computedNet);
+                if (delta > 0.05m)
+                {
+                    return Json(new { success = false, message = "Net amount mismatch. Please retry." });
+                }
+            }
+
+            // Allow discount-only settlements (net payable becomes 0) for non-advance payments.
+            // Example: Balance due ₹198, user gives discount ₹198 and collects ₹0.
+            if (computedNet < 0)
+            {
+                return Json(new { success = false, message = "Net payable cannot be negative." });
+            }
+
+            if (computedNet == 0)
+            {
+                if (isAdvancePayment)
+                {
+                    return Json(new { success = false, message = "Advance payment cannot be zero." });
+                }
+
+                // Ensure this is truly a discount/write-off (not just blank inputs).
+                if (discountAmount <= 0)
+                {
+                    return Json(new { success = false, message = "Net payable is zero. Please provide a discount amount to settle." });
+                }
+            }
+
+            if (computedNet > effectiveBalanceAmount)
+            {
+                return Json(new { success = false, message = $"Net payable cannot exceed balance amount of ₹{effectiveBalanceAmount:N2}." });
             }
 
             var payment = new BookingPayment
             {
                 BookingId = booking.Id,
-                Amount = amount,
+                Amount = computedNet,
+                DiscountAmount = discountAmount,
+                DiscountPercent = discountPercent,
+                RoundOffAmount = roundOffAmount,
+                IsRoundOffApplied = isRoundOffApplied,
                 PaymentMethod = paymentMethod,
                 PaymentReference = paymentReference,
                 Status = "Captured",
@@ -1370,7 +1479,19 @@ namespace HotelApp.Web.Controllers
 
             if (success)
             {
-                return Json(new { success = true, message = $"Payment of ₹{amount:N2} recorded successfully." });
+                var parts = new List<string>
+                {
+                    $"Payment of ₹{computedNet:N2} recorded successfully."
+                };
+                if (discountAmount > 0)
+                {
+                    parts.Add($"Discount: ₹{discountAmount:N2}" + (discountPercent is > 0 ? $" ({discountPercent:N2}%)" : string.Empty));
+                }
+                if (isRoundOffApplied && roundOffAmount != 0)
+                {
+                    parts.Add($"Round off: ₹{roundOffAmount:N2}");
+                }
+                return Json(new { success = true, message = string.Join(" ", parts) });
             }
 
             return Json(new { success = false, message = "Failed to record payment. Please try again." });

@@ -39,14 +39,14 @@ body {
     align-items: center;
     justify-content: space-between;
     max-width: 100%;
-    padding: 0 20px;
+    padding: 0 12px;
 }
 
 .navbar-brand {
     display: flex;
     align-items: center;
-    padding: 15px 0;
-    font-size: 1.5rem;
+    padding: 10px 0;
+    font-size: 1.25rem;
     font-weight: 700;
     color: white;
     text-decoration: none;
@@ -54,6 +54,7 @@ body {
 
 .navbar-brand i {
     margin-right: 10px;
+    font-size: 1.25rem;
 }
 
 .navbar-brand span {
@@ -72,15 +73,15 @@ body {
 
 .menu-item,
 .navbar-menu .menu-item > a {
-    padding: 18px 20px;
+    padding: 12px 14px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     transition: all 0.3s;
     cursor: pointer;
     color: rgba(255, 255, 255, 0.85);
     text-decoration: none;
-    border-bottom: 3px solid transparent;
+    border-bottom: 2px solid transparent;
 }
 
 .menu-item:hover,
@@ -88,7 +89,7 @@ body {
 .navbar-menu .menu-item > a:hover,
 .navbar-menu .menu-item > a.active {
     background-color: rgba(255, 255, 255, 0.1);
-    border-bottom: 3px solid var(--accent);
+    border-bottom: 2px solid var(--accent);
     color: white;
 }
 
@@ -97,12 +98,13 @@ body {
 }
 
 .menu-item i {
-    margin-right: 8px;
-    font-size: 1.1rem;
+    margin-right: 0;
+    font-size: 1rem;
 }
 
 .menu-item span {
     font-weight: 500;
+    font-size: 0.95rem;
 }
 
 .menu-item.has-dropdown {
@@ -141,8 +143,8 @@ body {
 .dropdown-menu a {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 20px;
+    gap: 10px;
+    padding: 10px 16px;
     color: var(--dark);
     text-decoration: none;
     transition: all 0.3s;
@@ -199,30 +201,48 @@ body {
 .navbar-user {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 10px;
+}
+
+.navbar-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.navbar-user-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    white-space: nowrap;
 }
 
 /* Fullscreen Toggle Button */
 .fullscreen-toggle {
     background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     color: white;
-    padding: 10px 14px;
+    padding: 6px 10px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 8px;
+    border-radius: 6px;
     transition: all 0.3s ease;
-    font-size: 16px;
-    margin-right: 5px;
+    font-size: 14px;
+    margin-right: 0;
 }
 
 .fullscreen-toggle:hover {
     background: rgba(255, 255, 255, 0.2);
     border-color: rgba(255, 255, 255, 0.5);
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transform: scale(1.02);
 }
 
 .fullscreen-toggle:active {
@@ -233,30 +253,31 @@ body {
     transition: transform 0.3s ease;
 }
 
+/* Keep hover subtle in compact navbar */
 .fullscreen-toggle:hover i {
-    transform: rotate(90deg);
+    transform: none;
 }
 
 .navbar-logout {
     background: none;
     border: none;
     color: rgba(255, 255, 255, 0.85);
-    padding: 18px 20px;
+    padding: 12px 14px;
     cursor: pointer;
     display: flex;
     align-items: center;
     transition: all 0.3s;
-    border-bottom: 3px solid transparent;
+    border-bottom: 2px solid transparent;
 }
 
 .navbar-logout:hover {
     background-color: rgba(255, 255, 255, 0.1);
-    border-bottom: 3px solid var(--accent);
+    border-bottom: 2px solid var(--accent);
     color: white;
 }
 
 .navbar-logout i {
-    margin-right: 8px;
+    margin-right: 6px;
 }
 
 /* Main Content Styles */
@@ -546,12 +567,12 @@ body {
     }
     
     .menu-item {
-        padding: 18px 15px;
+        padding: 12px 12px;
     }
     
     .menu-item i {
         margin-right: 0;
-        font-size: 1.2rem;
+        font-size: 1.1rem;
     }
     
     .charts-section {
@@ -574,7 +595,7 @@ body {
     .navbar-user {
         width: 100%;
         justify-content: flex-end;
-        padding: 10px 0;
+        padding: 8px 0;
     }
     
     .dashboard-cards {

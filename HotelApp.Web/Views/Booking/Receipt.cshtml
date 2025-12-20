@@ -17,9 +17,17 @@
     var ocSgstTotal = bookingOtherCharges.Sum(x => x.SGSTAmount);
     var ocGrandTotal = ocAmountTotal + ocGstTotal;
 
-    // Header/summary totals (safe display-only adjustments)
+    // Header/summary totals
     var receiptAdjustedGrandTotal = Model.TotalAmount + ocGrandTotal;
-    var receiptAdjustedBalanceDue = Model.BalanceAmount + ocGrandTotal;
+
+    // Compute due from payments so payment-time discounts/round-off reduce balance correctly.
+    var appliedToBalanceFromPayments = payments?.Sum(p =>
+        p.Amount
+        + p.DiscountAmount
+        + (p.IsRoundOffApplied ? p.RoundOffAmount : 0m)
+    ) ?? 0m;
+
+    var receiptAdjustedBalanceDue = receiptAdjustedGrandTotal - appliedToBalanceFromPayments;
 }
 
 <!DOCTYPE html>
@@ -893,7 +901,7 @@
                 var adjustedSgstTotal = sgstTotal + ocSgstTotal;
                 var adjustedTaxTotal = taxTotal + ocGstTotal;
                 var adjustedTotalAmount = Math.Round(afterDiscountTotal + taxTotal + ocGrandTotal, 2, MidpointRounding.AwayFromZero);
-                var adjustedBalancePayable = Model.BalanceAmount + ocGrandTotal;
+                var adjustedBalancePayable = receiptAdjustedBalanceDue;
             }
 
             <!-- Stay Summary -->
@@ -1163,6 +1171,8 @@
                                 <th>Date & Time</th>
                                 <th>Method</th>
                                 <th>Reference</th>
+                                <th class="text-right">Discount</th>
+                                <th class="text-right">Round Off</th>
                                 <th class="text-right">Amount</th>
                             </tr>
                         </thead>
@@ -1182,13 +1192,15 @@
                                         }
                                     </td>
                                     <td>@(payment.PaymentReference ?? "-")</td>
+                                    <td class="text-right">₹ @payment.DiscountAmount.ToString("N2")</td>
+                                    <td class="text-right">₹ @payment.RoundOffAmount.ToString("N2")</td>
                                     <td class="text-right">₹ @payment.Amount.ToString("N2")</td>
                                 </tr>
                             }
                         </tbody>
                         <tfoot>
                             <tr style="font-weight: 600; background: #f8f9fa;">
-                                <td colspan="4" class="text-right" style="padding: 12px;">Total Paid:</td>
+                                <td colspan="6" class="text-right" style="padding: 12px;">Total Paid:</td>
                                 <td class="text-right" style="padding: 12px; color: #4caf50;">₹ @totalPaid.ToString("N2")</td>
                             </tr>
                         </tfoot>

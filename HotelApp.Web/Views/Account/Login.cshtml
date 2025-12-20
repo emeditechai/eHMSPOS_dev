@@ -47,18 +47,21 @@
                     }
                     
                     <div class="form-group">
-                        <label asp-for="Username">Email Address</label>
+                        <label asp-for="Username">User Name</label>
                         <div class="input-with-icon">
-                            <i class="fas fa-envelope"></i>
-                            <input asp-for="Username" type="text" placeholder="Enter your email" required>
+                            <i class="fas fa-user"></i>
+                            <input asp-for="Username" type="text" placeholder="Enter your user name" required>
                         </div>
                     </div>
                     
                     <div class="form-group">
                         <label asp-for="Password">Password</label>
-                        <div class="input-with-icon">
+                        <div class="input-with-icon has-right-icon">
                             <i class="fas fa-lock"></i>
-                            <input asp-for="Password" type="password" placeholder="Enter your password" required>
+                            <input asp-for="Password" id="password" type="password" placeholder="Enter your password" required>
+                            <button type="button" class="toggle-password" aria-label="Show password" aria-pressed="false">
+                                <i class="fas fa-eye"></i>
+                            </button>
                         </div>
                     </div>
                     
@@ -89,11 +92,32 @@
                     </div>
                 </div>
                 
-                <div class="signup-link">
-                    Don't have an account? <a href="#">Sign up now</a>
-                </div>
+                
             </div>
         </div>
     </div>
+
+    <script>
+        (function () {
+            const passwordInput = document.getElementById('password');
+            const toggleBtn = document.querySelector('.toggle-password');
+
+            if (!passwordInput || !toggleBtn) return;
+
+            toggleBtn.addEventListener('click', function () {
+                const isPassword = passwordInput.type === 'password';
+                passwordInput.type = isPassword ? 'text' : 'password';
+
+                const icon = toggleBtn.querySelector('i');
+                if (icon) {
+                    icon.classList.toggle('fa-eye', !isPassword);
+                    icon.classList.toggle('fa-eye-slash', isPassword);
+                }
+
+                toggleBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+                toggleBtn.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
+            });
+        })();
+    </script>
 </body>
 </html>
