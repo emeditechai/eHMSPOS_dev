@@ -57,7 +57,8 @@
         }
         
         .control-group input[type="date"],
-        .control-group input[type="number"] {
+        .control-group input[type="number"],
+        .control-group select {
             padding: 10px 14px;
             border: 2px solid rgba(255, 255, 255, 0.3);
             border-radius: 8px;
@@ -69,6 +70,12 @@
         }
         
         .control-group input:focus {
+            outline: none;
+            border-color: white;
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+        }
+
+        .control-group select:focus {
             outline: none;
             border-color: white;
             box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
@@ -681,6 +688,12 @@
                 <label><i class="fas fa-calendar"></i> End Date:</label>
                 <input type="date" id="endDate" value="@DateTime.Today.AddDays(6).ToString("yyyy-MM-dd")" />
             </div>
+            <div class="control-group">
+                <label><i class="fas fa-bed"></i> Room Type:</label>
+                <select id="roomTypeFilter" onchange="onRoomTypeFilterChanged()">
+                    <option value="all" selected>All</option>
+                </select>
+            </div>
             <button class="btn-load-calendar" onclick="loadCalendar()">
                 <i class="fas fa-sync-alt"></i>
                 Load Calendar
@@ -743,6 +756,7 @@
 @section Scripts {
     <script>
         let calendarData = {};
+        let lastRenderedDates = [];
         
         document.addEventListener('DOMContentLoaded', function () {
             const today = new Date().toISOString().split('T')[0];
@@ -779,6 +793,29 @@
             
             // Fetch availability data for each date in range
             fetchCalendarData(startDate, endDate);
+        }
+
+        function onRoomTypeFilterChanged() {
+            if (lastRenderedDates.length > 0 && Object.keys(calendarData).length > 0) {
+                renderCalendar(lastRenderedDates);
+            }
+        }
+
+        function updateRoomTypeFilterOptions(roomTypes) {
+            const select = document.getElementById('roomTypeFilter');
+            if (!select) return;
+
+            const current = select.value || 'all';
+            const options = ['<option value="all">All</option>'];
+
+            roomTypes.forEach(rt => {
+                options.push(`<option value="${rt.id}">${rt.name}</option>`);
+            });
+
+            select.innerHTML = options.join('');
+
+            const stillExists = current === 'all' || roomTypes.some(rt => String(rt.id) === String(current));
+            select.value = stillExists ? current : 'all';
         }
         
         function fetchCalendarData(startDate, endDate) {
@@ -817,6 +854,7 @@
         }
         
         function renderCalendar(dates) {
+            lastRenderedDates = Array.isArray(dates) ? dates.slice() : [];
             if (dates.length === 0 || Object.keys(calendarData).length === 0) {
                 document.getElementById('calendarBody').innerHTML = `
                     <tr><td colspan="100"><div class="empty-state">
@@ -873,12 +911,21 @@
                     }
                 });
             });
+
+            // Populate filter dropdown from available room types
+            const roomTypeList = Array.from(roomTypes.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            updateRoomTypeFilterOptions(roomTypeList);
+
+            const selectedRoomType = document.getElementById('roomTypeFilter')?.value || 'all';
+            const filteredRoomTypes = selectedRoomType === 'all'
+                ? roomTypeList
+                : roomTypeList.filter(rt => String(rt.id) === String(selectedRoomType));
             
             // Build fixed column with room types
             const fixedColumnBody = document.getElementById('fixedColumnBody');
             let fixedHtml = '';
             
-            roomTypes.forEach(roomType => {
+            filteredRoomTypes.forEach(roomType => {
                 fixedHtml += `
                     <div class="fixed-room-row">
                         <div class="room-type-name">${roomType.name}</div>
@@ -893,7 +940,7 @@
             const tbody = document.getElementById('calendarBody');
             let bodyHtml = '';
             
-            roomTypes.forEach(roomType => {
+            filteredRoomTypes.forEach(roomType => {
                 bodyHtml += '<tr>';
                 
                 dates.forEach(dateStr => {

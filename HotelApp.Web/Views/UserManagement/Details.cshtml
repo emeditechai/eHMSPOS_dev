@@ -3,13 +3,14 @@
     ViewData["Title"] = "User Details";
     var userBranches = ViewBag.UserBranches as IEnumerable<HotelApp.Web.Models.Branch> ?? Enumerable.Empty<HotelApp.Web.Models.Branch>();
     var userRoles = ViewBag.UserRoles as IEnumerable<HotelApp.Web.Models.Role> ?? Enumerable.Empty<HotelApp.Web.Models.Role>();
+    var displayName = Model.FullName ?? $"{Model.FirstName} {Model.LastName}";
 }
 
 <div class="page-header">
     <h2><i class="fas fa-info-circle"></i> User Details</h2>
     <div>
         <a asp-action="Edit" asp-route-id="@Model.Id" class="btn-create">
-            <i class="fas fa-edit"></i> Edit
+            <i class="fas fa-pen"></i> Edit
         </a>
         <a asp-action="Index" class="btn-cancel" style="margin-left: 10px;">
             <i class="fas fa-arrow-left"></i> Back to List
@@ -17,105 +18,84 @@
     </div>
 </div>
 
-<div class="details-container">
-    <div class="details-grid">
-        <div class="detail-item">
-            <label>Username:</label>
-            <div class="detail-value">
-                <strong>@Model.Username</strong>
-            </div>
+<div class="form-container form-readonly">
+    <div class="audit-info">
+        <div class="audit-item">
+            <span class="audit-label">Username</span>
+            <span class="audit-value">@Model.Username</span>
+            <span class="audit-subtext">@displayName</span>
         </div>
-        <div class="detail-item">
-            <label>Email:</label>
-            <div class="detail-value">@Model.Email</div>
+        <div class="audit-item">
+            <span class="audit-label">Status</span>
+            <span class="audit-value">
+                <span class="badge @(Model.IsActive ? "badge-available" : "badge-maintenance")">@(Model.IsActive ? "Active" : "Inactive")</span>
+            </span>
+            <span class="audit-subtext">Last login: @(Model.LastLoginDate.HasValue ? Model.LastLoginDate.Value.ToString("dd MMM yyyy hh:mm tt") : "Never")</span>
         </div>
+        <div class="audit-item">
+            <span class="audit-label">Created</span>
+            <span class="audit-value">@Model.CreatedDate.ToString("dd MMM yyyy hh:mm tt")</span>
+        </div>
+        <div class="audit-item">
+            <span class="audit-label">Last Modified</span>
+            <span class="audit-value">@(Model.LastModifiedDate != DateTime.MinValue ? Model.LastModifiedDate.ToString("dd MMM yyyy hh:mm tt") : "Never")</span>
+        </div>
+    </div>
 
-        <div class="detail-item">
-            <label>First Name:</label>
-            <div class="detail-value">@Model.FirstName</div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>First Name</label>
+            <input type="text" value="@Model.FirstName" readonly />
         </div>
-        <div class="detail-item">
-            <label>Last Name:</label>
-            <div class="detail-value">@Model.LastName</div>
+        <div class="form-group">
+            <label>Last Name</label>
+            <input type="text" value="@Model.LastName" readonly />
         </div>
+        <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" value="@displayName" readonly />
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="text" value="@Model.Email" readonly />
+        </div>
+    </div>
 
-        <div class="detail-item">
-            <label>Full Name:</label>
-            <div class="detail-value">@(Model.FullName ?? $"{Model.FirstName} {Model.LastName}")</div>
+    <div class="form-row">
+        <div class="form-group form-group-full">
+            <label>Assigned Roles</label>
+            @if (userRoles.Any())
+            {
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    @foreach (var role in userRoles)
+                    {
+                        <span class="badge badge-active"><i class="fas fa-user-tag"></i> @role.Name</span>
+                    }
+                </div>
+            }
+            else
+            {
+                <span class="badge badge-maintenance">No roles assigned</span>
+            }
         </div>
-        <div class="detail-item full-width">
-            <label>Assigned Roles:</label>
-            <div class="detail-value">
-                @if (userRoles.Any())
-                {
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 5px;">
-                        @foreach (var role in userRoles)
-                        {
-                            <span class="badge badge-active" style="font-size: 13px; padding: 6px 12px;">
-                                <i class="fas fa-user-tag"></i> @role.Name
-                            </span>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <span class="badge badge-maintenance">No roles assigned</span>
-                }
-            </div>
-        </div>
+    </div>
 
-        <div class="detail-item">
-            <label>Status:</label>
-            <div class="detail-value">
-                @if (Model.IsActive)
-                {
-                    <span class="badge badge-available">Active</span>
-                }
-                else
-                {
-                    <span class="badge badge-maintenance">Inactive</span>
-                }
-            </div>
-        </div>
-        <div class="detail-item">
-            <label>Last Login:</label>
-            <div class="detail-value">
-                <i class="fas fa-clock"></i> @(Model.LastLoginDate.HasValue ? Model.LastLoginDate.Value.ToString("dd MMM yyyy hh:mm tt") : "Never logged in")
-            </div>
-        </div>
-
-        <div class="detail-item full-width">
-            <label>Assigned Branches:</label>
-            <div class="detail-value">
-                @if (userBranches.Any())
-                {
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 5px;">
-                        @foreach (var branch in userBranches)
-                        {
-                            <span class="badge badge-available" style="font-size: 13px; padding: 6px 12px;">
-                                <i class="fas fa-building"></i> @branch.BranchName (@branch.BranchCode)
-                            </span>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <span class="badge badge-maintenance">No branches assigned</span>
-                }
-            </div>
-        </div>
-
-        <div class="detail-item">
-            <label>Created Date:</label>
-            <div class="detail-value">
-                <i class="fas fa-calendar"></i> @Model.CreatedDate.ToString("dd MMM yyyy hh:mm tt")
-            </div>
-        </div>
-        <div class="detail-item">
-            <label>Last Modified:</label>
-            <div class="detail-value">
-                <i class="fas fa-calendar-alt"></i> @(Model.LastModifiedDate != DateTime.MinValue ? Model.LastModifiedDate.ToString("dd MMM yyyy hh:mm tt") : "Never")
-            </div>
+    <div class="form-row">
+        <div class="form-group form-group-full">
+            <label>Assigned Branches</label>
+            @if (userBranches.Any())
+            {
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    @foreach (var branch in userBranches)
+                    {
+                        <span class="badge badge-cleaning"><i class="fas fa-building"></i> @branch.BranchName (@branch.BranchCode)</span>
+                    }
+                </div>
+            }
+            else
+            {
+                <span class="badge badge-maintenance">No branches assigned</span>
+            }
         </div>
     </div>
 </div>

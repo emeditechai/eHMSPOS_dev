@@ -4,73 +4,249 @@
     ViewData["Title"] = "Edit User";
 }
 
+@section Styles {
+    <style>
+        .user-master-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            padding: 30px 50px;
+            max-width: 95%;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .user-master-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            padding-bottom: 18px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .user-master-header h3 {
+            margin: 0;
+            color: var(--primary);
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .user-form-section {
+            margin-bottom: 26px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title i {
+            color: var(--primary);
+        }
+
+        .user-form-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px 22px;
+        }
+
+        @@media (max-width: 1400px) {
+            .user-form-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @@media (max-width: 768px) {
+            .user-master-container {
+                padding: 22px;
+                max-width: 100%;
+            }
+
+            .user-form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .user-form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-form-group label {
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .user-form-group input[type="text"],
+        .user-form-group input[type="email"],
+        .user-form-group input[type="password"] {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .user-form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(26, 42, 108, 0.1);
+        }
+
+        .user-form-group.checkbox {
+            flex-direction: row;
+            align-items: center;
+            gap: 10px;
+            padding-top: 28px;
+        }
+
+        .user-form-group.checkbox label {
+            margin: 0;
+        }
+
+        .selection-container {
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 18px;
+            background: linear-gradient(135deg, #f9f9f9 0%, #ffffff 100%);
+        }
+
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid #e8e8e8;
+            transition: all 0.2s;
+        }
+
+        .checkbox-item:hover {
+            border-color: var(--primary);
+            background: #f8f9ff;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(26, 42, 108, 0.1);
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 12px;
+            cursor: pointer;
+            accent-color: var(--primary);
+        }
+
+        .checkbox-item span {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .branch-code {
+            margin-left: auto;
+            font-size: 11px;
+            color: #666;
+            background: #f0f0f0;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+
+        .selection-scroll {
+            max-height: 280px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+    </style>
+}
+
 <div class="page-header">
     <h2><i class="fas fa-users-cog"></i> User Management</h2>
 </div>
 
-<div class="form-container">
-    <h3 style="margin-bottom:25px;color:var(--primary);">Edit User</h3>
+<div class="user-master-container">
+    <div class="user-master-header">
+        <h3><i class="fas fa-user-pen"></i> Edit User</h3>
+    </div>
     <form asp-action="Edit" method="post">
         @Html.AntiForgeryToken()
         <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
         
         <input type="hidden" asp-for="Id" />
         
-        <div class="form-row">
-            <div class="form-group">
+        <div class="user-form-section">
+            <div class="section-title"><i class="fas fa-info-circle"></i> Basic Information</div>
+            <div class="user-form-grid">
+            <div class="user-form-group">
                 <label asp-for="Username">Username <span class="text-danger">*</span></label>
                 <input asp-for="Username" type="text" required />
                 <span asp-validation-for="Username" class="text-danger"></span>
             </div>
-            <div class="form-group">
+            <div class="user-form-group">
                 <label asp-for="Email">Email <span class="text-danger">*</span></label>
                 <input asp-for="Email" type="email" required />
                 <span asp-validation-for="Email" class="text-danger"></span>
             </div>
-            <div class="form-group">
+            <div class="user-form-group">
                 <label asp-for="FirstName">First Name <span class="text-danger">*</span></label>
                 <input asp-for="FirstName" type="text" required />
                 <span asp-validation-for="FirstName" class="text-danger"></span>
             </div>
-            <div class="form-group">
+            <div class="user-form-group">
                 <label asp-for="LastName">Last Name <span class="text-danger">*</span></label>
                 <input asp-for="LastName" type="text" required />
                 <span asp-validation-for="LastName" class="text-danger"></span>
             </div>
+            </div>
         </div>
 
-        <div class="form-row">
-            <div class="form-group">
+        <div class="user-form-section">
+            <div class="section-title"><i class="fas fa-lock"></i> Password & Status</div>
+            <div class="user-form-grid">
+            <div class="user-form-group">
                 <label asp-for="Password">New Password</label>
                 <input asp-for="Password" type="password" placeholder="Leave blank to keep current password" />
                 <span asp-validation-for="Password" class="text-danger"></span>
                 <small style="color: #666; font-size: 11px;">Leave blank to keep existing password</small>
             </div>
-            <div class="form-group">
+            <div class="user-form-group">
                 <label asp-for="ConfirmPassword">Confirm Password</label>
                 <input asp-for="ConfirmPassword" type="password" placeholder="Re-enter new password" />
                 <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <label asp-for="IsActive">Is Active</label>
+            <div class="user-form-group checkbox">
                 <input asp-for="IsActive" type="checkbox" />
+                <label asp-for="IsActive">Is Active</label>
+            </div>
             </div>
         </div>
 
-        <div class="form-row">
-            <div class="form-group form-group-full">
-                <label>Assign Roles <span class="text-danger">*</span></label>
-                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: #f9f9f9;">
+        <div class="user-form-section">
+            <div class="section-title"><i class="fas fa-user-shield"></i> Assign Roles <span class="text-danger">*</span></div>
+            <div class="selection-container">
                     @if (Model.AvailableRoles.Any())
                     {
-                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
+                        <div class="checkbox-grid">
                             @foreach (var role in Model.AvailableRoles)
                             {
-                                <label style="display: flex; align-items: center; padding: 10px; background: white; border-radius: 5px; cursor: pointer; border: 1px solid #e0e0e0;">
+                                <label class="checkbox-item">
                                     <input type="checkbox" name="SelectedRoleIds" value="@role.Id" 
                                            @(Model.SelectedRoleIds.Contains(role.Id) ? "checked" : "")
-                                           style="margin-right: 10px;" />
-                                    <span style="font-weight: 500;">@role.Name</span>
+                                           />
+                                    <span>@role.Name</span>
                                 </label>
                             }
                         </div>
@@ -79,35 +255,34 @@
                     {
                         <p style="color: #999; text-align: center;">No roles available</p>
                     }
-                </div>
                 <span asp-validation-for="SelectedRoleIds" class="text-danger"></span>
             </div>
         </div>
 
-        <div class="form-row">
-            <div class="form-group form-group-full">
-                <label>Assign Branches <span class="text-danger">*</span></label>
-                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: #f9f9f9; max-height: 250px; overflow-y: auto;">
+        <div class="user-form-section">
+            <div class="section-title"><i class="fas fa-building"></i> Assign Branches <span class="text-danger">*</span></div>
+            <div class="selection-container">
                     @if (Model.AvailableBranches.Any())
                     {
-                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px;">
+                        <div class="selection-scroll">
+                            <div class="checkbox-grid">
                             @foreach (var branch in Model.AvailableBranches)
                             {
-                                <label style="display: flex; align-items: center; padding: 8px; background: white; border-radius: 5px; cursor: pointer; border: 1px solid #e0e0e0;">
+                                <label class="checkbox-item">
                                     <input type="checkbox" name="SelectedBranchIds" value="@branch.BranchID" 
                                            @(Model.SelectedBranchIds.Contains(branch.BranchID) ? "checked" : "")
-                                           style="margin-right: 8px;" />
-                                    <span style="font-weight: 500;">@branch.BranchName</span>
-                                    <span style="margin-left: auto; font-size: 11px; color: #666;">@branch.BranchCode</span>
+                                           />
+                                    <span>@branch.BranchName</span>
+                                    <span class="branch-code">@branch.BranchCode</span>
                                 </label>
                             }
+                        </div>
                         </div>
                     }
                     else
                     {
                         <p style="color: #999; text-align: center;">No branches available</p>
                     }
-                </div>
                 <span asp-validation-for="SelectedBranchIds" class="text-danger"></span>
             </div>
         </div>

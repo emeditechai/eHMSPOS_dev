@@ -1,0 +1,251 @@
+@model HotelApp.Web.ViewModels.DailyCollectionRegisterReportViewModel
+@{
+    ViewData["Title"] = "Daily Collection Register";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-cash-register"></i> Daily Collection Register</h2>
+</div>
+
+<div class="filters-container" style="margin-bottom: 18px;">
+    <form method="get" action="@Url.Action("DailyCollectionRegister", "Reports")" style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; justify-content: space-between;">
+        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;">
+            <div>
+                <label for="fromDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">From Date</label>
+                <input id="fromDate" name="fromDate" type="date" class="form-control" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+            </div>
+
+            <div>
+                <label for="toDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">To Date</label>
+                <input id="toDate" name="toDate" type="date" class="form-control" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:flex-end;">
+            <button class="btn-filter-apply" type="submit">
+                <i class="fas fa-filter"></i> Apply
+            </button>
+            <a class="btn-filter-clear" href="@Url.Action("DailyCollectionRegister", "Reports")">
+                <i class="fas fa-undo"></i> Reset
+            </a>
+        </div>
+    </form>
+</div>
+
+<div class="status-cards booking-status-cards" style="margin-bottom: 26px;">
+    <div class="status-card available">
+        <h3>Total Receipts</h3>
+        <div class="value">@Model.Summary.TotalReceipts</div>
+    </div>
+
+    <div class="status-card occupied">
+        <h3>Total Collected</h3>
+        <div class="value">₹@Model.Summary.TotalCollected.ToString("N0")</div>
+    </div>
+
+    <div class="status-card maintenance">
+        <h3>Total GST</h3>
+        <div class="value">₹@Model.Summary.TotalGST.ToString("N0")</div>
+    </div>
+
+    <div class="status-card cleaning">
+        <h3>Total Discount</h3>
+        <div class="value">₹@Model.Summary.TotalDiscount.ToString("N0")</div>
+    </div>
+</div>
+
+<div class="filters-container" style="margin-bottom: 18px;">
+    <div style="display:flex; gap:12px; flex-wrap: wrap; align-items:center; justify-content: space-between;">
+        <div>
+            <div style="font-weight:700; color:#1f2937;">Register</div>
+            <div class="subtext" style="margin-top:4px;">@Model.Rows.Count records • Round-off: ₹@Model.Summary.TotalRoundOff.ToString("N0")</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn-filter-apply" type="button" title="Export CSV" onclick="exportDailyCollectionToCsv()">
+                <i class="fas fa-file-export"></i> CSV
+            </button>
+            <button class="btn-filter-apply" type="button" title="Export Excel" onclick="exportDailyCollectionToExcel()">
+                <i class="fas fa-file-export"></i> Excel
+            </button>
+            <button class="btn-filter-apply" type="button" title="Export PDF" onclick="exportDailyCollectionToPdf()">
+                <i class="fas fa-file-export"></i> PDF
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="table-container" style="overflow: visible;">
+    <table class="data-table" id="dailyCollectionTable">
+        <thead>
+            <tr>
+                <th>Paid On</th>
+                <th>Receipt No</th>
+                <th>Booking No</th>
+                <th>Guest</th>
+                <th>Phone</th>
+                <th>Room Type</th>
+                <th>Method</th>
+                <th>Bank</th>
+                <th>Reference</th>
+                <th class="text-end">Amount</th>
+                <th class="text-end">Discount</th>
+                <th class="text-end">Round Off</th>
+                <th>Status</th>
+                <th>Created By</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var row in Model.Rows)
+        {
+            <tr>
+                <td>@row.PaidOn.ToString("dd MMM yyyy HH:mm")</td>
+                <td><strong>@(string.IsNullOrWhiteSpace(row.ReceiptNumber) ? "-" : row.ReceiptNumber)</strong></td>
+                <td>@(string.IsNullOrWhiteSpace(row.BookingNumber) ? "-" : row.BookingNumber)</td>
+                <td>@(string.IsNullOrWhiteSpace(row.GuestName) ? "-" : row.GuestName)</td>
+                <td>@(string.IsNullOrWhiteSpace(row.GuestPhone) ? "-" : row.GuestPhone)</td>
+                <td>@(string.IsNullOrWhiteSpace(row.RoomType) ? "-" : row.RoomType)</td>
+                <td>@(string.IsNullOrWhiteSpace(row.PaymentMethod) ? "-" : row.PaymentMethod)</td>
+                <td>@(string.IsNullOrWhiteSpace(row.BankName) ? "-" : row.BankName)</td>
+                <td>@(string.IsNullOrWhiteSpace(row.PaymentReference) ? "-" : row.PaymentReference)</td>
+                <td class="text-end">₹@row.ReceiptAmount.ToString("N2")</td>
+                <td class="text-end">₹@row.DiscountAmount.ToString("N2")</td>
+                <td class="text-end">@((row.IsRoundOffApplied ? "₹" + row.RoundOffAmount.ToString("N2") : "-") )</td>
+                <td>@(string.IsNullOrWhiteSpace(row.Status) ? "-" : row.Status)</td>
+                <td>@(string.IsNullOrWhiteSpace(row.CreatedBy) ? "-" : row.CreatedBy)</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        const getExportRows = () => {
+            const table = document.getElementById('dailyCollectionTable');
+            const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
+            return bodyRows.map(tr => {
+                const tds = Array.from(tr.querySelectorAll('td'));
+                return {
+                    paidOn: (tds[0]?.innerText || '').trim(),
+                    receiptNo: (tds[1]?.innerText || '').trim(),
+                    bookingNo: (tds[2]?.innerText || '').trim(),
+                    guest: (tds[3]?.innerText || '').trim(),
+                    phone: (tds[4]?.innerText || '').trim(),
+                    roomType: (tds[5]?.innerText || '').trim(),
+                    method: (tds[6]?.innerText || '').trim(),
+                    bank: (tds[7]?.innerText || '').trim(),
+                    reference: (tds[8]?.innerText || '').trim(),
+                    amount: (tds[9]?.innerText || '').trim(),
+                    discount: (tds[10]?.innerText || '').trim(),
+                    roundOff: (tds[11]?.innerText || '').trim(),
+                    status: (tds[12]?.innerText || '').trim(),
+                    createdBy: (tds[13]?.innerText || '').trim(),
+                };
+            });
+        };
+
+        const downloadBlob = (blob, filename) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 500);
+        };
+
+        const exportDailyCollectionToCsv = () => {
+            const rows = getExportRows();
+            const header = [
+                'Paid On','Receipt No','Booking No','Guest','Phone','Room Type','Method','Bank','Reference','Amount','Discount','Round Off','Status','Created By'
+            ];
+
+            const escape = (v) => {
+                const s = String(v ?? '');
+                if (/[\n\r,\"]/g.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+                return s;
+            };
+
+            const lines = [header.map(escape).join(',')];
+            rows.forEach(r => {
+                lines.push([
+                    r.paidOn, r.receiptNo, r.bookingNo, r.guest, r.phone, r.roomType, r.method, r.bank, r.reference,
+                    r.amount, r.discount, r.roundOff, r.status, r.createdBy
+                ].map(escape).join(','));
+            });
+
+            const csv = '\uFEFF' + lines.join('\n');
+            const from = document.getElementById('fromDate').value;
+            const to = document.getElementById('toDate').value;
+            downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `DailyCollectionRegister_${from}_${to}.csv`);
+        };
+
+        const exportDailyCollectionToExcel = () => {
+            const rows = getExportRows();
+            const escHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+            let html = '<table border="1">';
+            html += '<tr>' + [
+                'Paid On','Receipt No','Booking No','Guest','Phone','Room Type','Method','Bank','Reference','Amount','Discount','Round Off','Status','Created By'
+            ].map(h => `<th>${escHtml(h)}</th>`).join('') + '</tr>';
+
+            rows.forEach(r => {
+                html += '<tr>' + [
+                    r.paidOn, r.receiptNo, r.bookingNo, r.guest, r.phone, r.roomType, r.method, r.bank, r.reference,
+                    r.amount, r.discount, r.roundOff, r.status, r.createdBy
+                ].map(v => `<td>${escHtml(v)}</td>`).join('') + '</tr>';
+            });
+
+            html += '</table>';
+            const content = `<!doctype html><html><head><meta charset="utf-8"></head><body>${html}</body></html>`;
+
+            const from = document.getElementById('fromDate').value;
+            const to = document.getElementById('toDate').value;
+            downloadBlob(new Blob([content], { type: 'application/vnd.ms-excel;charset=utf-8;' }), `DailyCollectionRegister_${from}_${to}.xls`);
+        };
+
+        const exportDailyCollectionToPdf = () => {
+            const rows = getExportRows();
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                alert('PDF export library failed to load. Please refresh and try again.');
+                return;
+            }
+
+            const jsPDF = window.jspdf.jsPDF;
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+            const from = document.getElementById('fromDate').value;
+            const to = document.getElementById('toDate').value;
+
+            doc.setFontSize(14);
+            doc.text(`Daily Collection Register (${from} to ${to})`, 40, 40);
+
+            const autoTableFn = doc.autoTable || (jsPDF.API && jsPDF.API.autoTable);
+            if (!autoTableFn) {
+                alert('PDF table plugin failed to load. Please refresh and try again.');
+                return;
+            }
+
+            (doc.autoTable || autoTableFn).call(doc, {
+                startY: 60,
+                head: [[
+                    'Paid On','Receipt No','Booking No','Guest','Phone','Room Type','Method','Bank','Reference','Amount','Discount','Round Off','Status','Created By'
+                ]],
+                body: rows.map(r => [
+                    r.paidOn, r.receiptNo, r.bookingNo, r.guest, r.phone, r.roomType, r.method, r.bank, r.reference,
+                    r.amount, r.discount, r.roundOff, r.status, r.createdBy
+                ]),
+                styles: { fontSize: 8 },
+                headStyles: { fillColor: [15, 23, 42] }
+            });
+
+            doc.save(`DailyCollectionRegister_${from}_${to}.pdf`);
+        };
+    </script>
+}

@@ -7,92 +7,81 @@
 <div class="page-header">
     <h2><i class="fas fa-info-circle"></i> Branch Details</h2>
     <div>
-        <a asp-action="Edit" asp-route-id="@Model.BranchID" class="btn-primary">
-            <i class="fas fa-edit"></i> Edit
+        <a asp-action="Edit" asp-route-id="@Model.BranchID" class="btn-create">
+            <i class="fas fa-pen"></i> Edit
         </a>
-        <a asp-action="Index" class="btn-secondary">
+        <a asp-action="Index" class="btn-cancel" style="margin-left: 10px;">
             <i class="fas fa-arrow-left"></i> Back to List
         </a>
     </div>
 </div>
 
-<div class="details-container">
-    <div class="details-grid">
-        <div class="detail-item">
-            <label>Branch Code:</label>
-            <div class="detail-value">
-                <strong class="badge-code">@Model.BranchCode</strong>
-            </div>
+<div class="form-container form-readonly">
+    <div class="audit-info">
+        <div class="audit-item">
+            <span class="audit-label">Branch Code</span>
+            <span class="audit-value">@Model.BranchCode</span>
+            <span class="audit-subtext">@Model.BranchName</span>
         </div>
-        <div class="detail-item">
-            <label>Branch Name:</label>
-            <div class="detail-value">@Model.BranchName</div>
+        <div class="audit-item">
+            <span class="audit-label">Status</span>
+            <span class="audit-value">
+                <span class="badge @(Model.IsActive ? "badge-available" : "badge-maintenance")">@(Model.IsActive ? "Active" : "Inactive")</span>
+            </span>
+            <span class="audit-subtext">Type: <span class="badge @(Model.IsHOBranch ? "badge-active" : "badge-cleaning")">@(Model.IsHOBranch ? "HO" : "Branch")</span></span>
         </div>
+        <div class="audit-item">
+            <span class="audit-label">Created</span>
+            <span class="audit-value">@Model.CreatedDate.ToString("dd MMM yyyy hh:mm tt")</span>
+        </div>
+        <div class="audit-item">
+            <span class="audit-label">Last Modified</span>
+            <span class="audit-value">@(Model.ModifiedDate.HasValue ? Model.ModifiedDate.Value.ToString("dd MMM yyyy hh:mm tt") : "Never")</span>
+        </div>
+    </div>
 
-        <div class="detail-item">
-            <label>Country:</label>
-            <div class="detail-value">@Model.Country</div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Branch Name</label>
+            <input type="text" value="@Model.BranchName" readonly />
         </div>
-        <div class="detail-item">
-            <label>State:</label>
-            <div class="detail-value">@Model.State</div>
+        <div class="form-group">
+            <label>Branch Code</label>
+            <input type="text" value="@Model.BranchCode" readonly />
         </div>
+        <div class="form-group">
+            <label>Country</label>
+            <input type="text" value="@Model.Country" readonly />
+        </div>
+        <div class="form-group">
+            <label>State</label>
+            <input type="text" value="@Model.State" readonly />
+        </div>
+    </div>
 
-        <div class="detail-item">
-            <label>City:</label>
-            <div class="detail-value">@Model.City</div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>City</label>
+            <input type="text" value="@Model.City" readonly />
         </div>
-        <div class="detail-item">
-            <label>Pincode:</label>
-            <div class="detail-value">@Model.Pincode</div>
+        <div class="form-group">
+            <label>Pincode</label>
+            <input type="text" value="@Model.Pincode" readonly />
         </div>
+        <div class="form-group">
+            <label>Is Head Office</label>
+            <input type="text" value="@(Model.IsHOBranch ? "Yes" : "No")" readonly />
+        </div>
+        <div class="form-group">
+            <label>Is Active</label>
+            <input type="text" value="@(Model.IsActive ? "Yes" : "No")" readonly />
+        </div>
+    </div>
 
-        <div class="detail-item full-width">
-            <label>Address:</label>
-            <div class="detail-value">@Model.Address</div>
+    <div class="form-row">
+        <div class="form-group form-group-full">
+            <label>Address</label>
+            <textarea readonly>@Model.Address</textarea>
         </div>
-
-        <div class="detail-item">
-            <label>Is Head Office:</label>
-            <div class="detail-value">
-                @if (Model.IsHOBranch)
-                {
-                    <span class="status-badge status-primary">Yes</span>
-                }
-                else
-                {
-                    <span class="status-badge status-info">No</span>
-                }
-            </div>
-        </div>
-        <div class="detail-item">
-            <label>Status:</label>
-            <div class="detail-value">
-                @if (Model.IsActive)
-                {
-                    <span class="status-badge status-available">Active</span>
-                }
-                else
-                {
-                    <span class="status-badge status-maintenance">Inactive</span>
-                }
-            </div>
-        </div>
-
-        <div class="detail-item">
-            <label>Created Date:</label>
-            <div class="detail-value">
-                <i class="fas fa-calendar"></i> @Model.CreatedDate.ToString("dd MMM yyyy hh:mm tt")
-            </div>
-        </div>
-        @if (Model.ModifiedDate.HasValue)
-        {
-            <div class="detail-item">
-                <label>Last Modified Date:</label>
-                <div class="detail-value">
-                    <i class="fas fa-calendar-alt"></i> @Model.ModifiedDate.Value.ToString("dd MMM yyyy hh:mm tt")
-                </div>
-            </div>
-        }
     </div>
 </div>

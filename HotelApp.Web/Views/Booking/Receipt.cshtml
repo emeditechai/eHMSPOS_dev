@@ -386,6 +386,18 @@
             color: #7b1fa2;
         }
 
+        .receipt-status {
+            font-weight: 700;
+        }
+
+        .receipt-status.paid {
+            color: #4caf50;
+        }
+
+        .receipt-status.due {
+            color: #dc2626;
+        }
+
         .assigned-rooms-section {
             display: inline-block;
             margin: 8px 0;
@@ -713,7 +725,7 @@
                     <div class="subtitle">@(isFinalBill ? "Final Bill" : "Booking Receipt")</div>
                     <div class="meta-row"><span class="label">Booking No.</span> <span class="mono"><strong>@Model.BookingNumber</strong></span></div>
                     <div class="meta-row"><span class="label">Issue</span> <span class="mono">@receiptIssueDate.ToString("dd MMM yyyy hh:mm tt")</span></div>
-                    <div class="meta-row"><span class="label">Status</span> <span class="mono">@(receiptAdjustedBalanceDue <= 0 ? "Paid" : "Due")</span></div>
+                    <div class="meta-row"><span class="label">Status</span> <span class="mono receipt-status @(receiptAdjustedBalanceDue <= 0 ? "paid" : "due")">@(receiptAdjustedBalanceDue <= 0 ? "Paid" : "Due")</span></div>
                 </div>
             </div>
 

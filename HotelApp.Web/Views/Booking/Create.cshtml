@@ -16,6 +16,68 @@
     min-height: calc(100vh - 80px);
 }
 
+.booking-steps {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 10px 0 20px 0;
+}
+
+.booking-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #4a5568;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s;
+}
+
+.booking-step:hover {
+    border-color: #cbd5e0;
+    background: #f7fafc;
+}
+
+.booking-step.active {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
+}
+
+.booking-step.completed {
+    border-color: #86efac;
+    background: #f0fdf4;
+    color: #065f46;
+}
+
+.booking-step .step-index {
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: #edf2f7;
+    color: #4a5568;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.booking-step.active .step-index {
+    background: rgba(102, 126, 234, 0.15);
+    color: #4a5568;
+}
+
+.booking-step.completed .step-index {
+    background: #86efac;
+    color: #065f46;
+}
+
 .booking-cards-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -92,6 +154,79 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 15px;
+}
+
+.form-row-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 15px;
+}
+
+.booking-card.has-errors {
+    border: 1px solid #fecaca;
+}
+
+.booking-card.has-errors .card-header {
+    border-bottom-color: #fecaca;
+}
+
+.optional-details {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #e2e8f0;
+}
+
+.optional-details summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #4a5568;
+    font-size: 13px;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.optional-details summary::-webkit-details-marker {
+    display: none;
+}
+
+.optional-details summary .chev {
+    transition: transform 0.2s;
+}
+
+.optional-details[open] summary .chev {
+    transform: rotate(90deg);
+}
+
+.number-stepper {
+    display: grid;
+    grid-template-columns: 38px 1fr 38px;
+    gap: 8px;
+    align-items: center;
+}
+
+.stepper-btn {
+    height: 38px;
+    border: 1px solid #cbd5e0;
+    border-radius: 8px;
+    background: #f7fafc;
+    color: #4a5568;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.stepper-btn:hover {
+    background: #edf2f7;
+    border-color: #a0aec0;
+}
+
+@@media (min-width: 1100px) {
+    .booking-card.sticky-card {
+        position: sticky;
+        top: 90px;
+        align-self: start;
+    }
 }
 
 .quote-summary-card {
@@ -265,13 +400,32 @@
             <i class="fas fa-arrow-left"></i> Back to List
         </a>
     </div>
+
+    <div class="booking-steps" id="bookingSteps" aria-label="Booking steps">
+        <div class="booking-step active" data-step="1" data-target="#guestDetailsCard" role="button" tabindex="0">
+            <span class="step-index">1</span>
+            <span>Guest</span>
+        </div>
+        <div class="booking-step" data-step="2" data-target="#stayDetailsCard" role="button" tabindex="0">
+            <span class="step-index">2</span>
+            <span>Stay</span>
+        </div>
+        <div class="booking-step" data-step="3" data-target="#otherInfoCard" role="button" tabindex="0">
+            <span class="step-index">3</span>
+            <span>Other</span>
+        </div>
+        <div class="booking-step" data-step="4" data-target="#createActions" role="button" tabindex="0">
+            <span class="step-index">4</span>
+            <span>Review & Create</span>
+        </div>
+    </div>
     <form asp-action="Create" method="post" id="bookingForm">
         @Html.AntiForgeryToken()
         <div asp-validation-summary="ModelOnly" class="text-danger" style="background: #fed7d7; padding: 15px; border-radius: 8px; margin-bottom: 20px;"></div>
 
         <div class="booking-cards-grid">
             <!-- Guest Details Card - First -->
-            <div class="booking-card">
+            <div class="booking-card" id="guestDetailsCard">
                 <div class="card-header">
                     <i class="fas fa-user-circle"></i>
                     <h3>Guest Details</h3>
@@ -296,7 +450,7 @@
                     </div>
                 </div>
 
-                <div class="form-row-inline">
+                <div class="form-row-3">
                     <div class="form-field">
                         <label asp-for="PrimaryGuestFirstName">First Name <span style="color: #e53e3e;">*</span></label>
                         <input asp-for="PrimaryGuestFirstName" id="guestFirstName" placeholder="First name" />
@@ -337,21 +491,28 @@
                     <span asp-validation-for="PrimaryGuestEmail" class="text-danger"></span>
                 </div>
 
-                <div class="form-field">
-                    <label asp-for="LoyaltyId">Loyalty ID</label>
-                    <input asp-for="LoyaltyId" id="guestLoyalty" placeholder="Optional loyalty number" />
-                    <span asp-validation-for="LoyaltyId" class="text-danger"></span>
-                </div>
+                <details class="optional-details">
+                    <summary>
+                        <i class="fas fa-chevron-right chev"></i>
+                        Optional details
+                    </summary>
 
-                <div class="form-field">
-                    <label asp-for="SpecialRequests">Special Requests</label>
-                    <textarea asp-for="SpecialRequests" rows="2" placeholder="Any special requirements..."></textarea>
-                    <span asp-validation-for="SpecialRequests" class="text-danger"></span>
-                </div>
+                    <div class="form-field" style="margin-top: 14px;">
+                        <label asp-for="LoyaltyId">Loyalty ID</label>
+                        <input asp-for="LoyaltyId" id="guestLoyalty" placeholder="Optional loyalty number" />
+                        <span asp-validation-for="LoyaltyId" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-field">
+                        <label asp-for="SpecialRequests">Special Requests</label>
+                        <textarea asp-for="SpecialRequests" rows="2" placeholder="Any special requirements..."></textarea>
+                        <span asp-validation-for="SpecialRequests" class="text-danger"></span>
+                    </div>
+                </details>
             </div>
 
             <!-- Stay Details Card -->
-            <div class="booking-card">
+            <div class="booking-card" id="stayDetailsCard">
                 <div class="card-header">
                     <i class="fas fa-bed"></i>
                     <h3>Stay Details</h3>
@@ -386,7 +547,11 @@
                     </div>
                     <div class="form-field">
                         <label asp-for="RequiredRooms">Required Rooms <span style="color: #e53e3e;">*</span></label>
-                        <input asp-for="RequiredRooms" type="number" min="1" max="50" />
+                        <div class="number-stepper" data-stepper>
+                            <button type="button" class="stepper-btn step-down" aria-label="Decrease required rooms">-</button>
+                            <input asp-for="RequiredRooms" type="number" min="1" max="50" />
+                            <button type="button" class="stepper-btn step-up" aria-label="Increase required rooms">+</button>
+                        </div>
                         <span asp-validation-for="RequiredRooms" class="text-danger"></span>
                     </div>
                 </div>
@@ -394,12 +559,20 @@
                 <div class="form-row-inline">
                     <div class="form-field">
                         <label asp-for="Adults">Adults <span style="color: #e53e3e;">*</span></label>
-                        <input asp-for="Adults" type="number" min="1" max="10" />
+                        <div class="number-stepper" data-stepper>
+                            <button type="button" class="stepper-btn step-down" aria-label="Decrease adults">-</button>
+                            <input asp-for="Adults" type="number" min="1" max="10" />
+                            <button type="button" class="stepper-btn step-up" aria-label="Increase adults">+</button>
+                        </div>
                         <span asp-validation-for="Adults" class="text-danger"></span>
                     </div>
                     <div class="form-field">
                         <label asp-for="Children">Children</label>
-                        <input asp-for="Children" type="number" min="0" max="10" />
+                        <div class="number-stepper" data-stepper>
+                            <button type="button" class="stepper-btn step-down" aria-label="Decrease children">-</button>
+                            <input asp-for="Children" type="number" min="0" max="10" />
+                            <button type="button" class="stepper-btn step-up" aria-label="Increase children">+</button>
+                        </div>
                         <span asp-validation-for="Children" class="text-danger"></span>
                     </div>
                 </div>
@@ -440,7 +613,7 @@
             </div>
 
             <!-- Other Info Card -->
-            <div class="booking-card">
+            <div class="booking-card sticky-card" id="otherInfoCard">
                 <div class="card-header">
                     <i class="fas fa-address-card"></i>
                     <h3>Other Info</h3>
@@ -470,17 +643,24 @@
                     <span asp-validation-for="CityId" class="text-danger"></span>
                 </div>
 
-                <div class="form-field">
-                    <label asp-for="AddressLine">Address</label>
-                    <input asp-for="AddressLine" type="text" placeholder="Enter full address" />
-                    <span asp-validation-for="AddressLine" class="text-danger"></span>
-                </div>
+                <details class="optional-details">
+                    <summary>
+                        <i class="fas fa-chevron-right chev"></i>
+                        Optional address
+                    </summary>
 
-                <div class="form-field">
-                    <label asp-for="Pincode">Pincode</label>
-                    <input asp-for="Pincode" type="text" placeholder="Enter pincode" maxlength="20" />
-                    <span asp-validation-for="Pincode" class="text-danger"></span>
-                </div>
+                    <div class="form-field" style="margin-top: 14px;">
+                        <label asp-for="AddressLine">Address</label>
+                        <input asp-for="AddressLine" type="text" placeholder="Enter full address" />
+                        <span asp-validation-for="AddressLine" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-field">
+                        <label asp-for="Pincode">Pincode</label>
+                        <input asp-for="Pincode" type="text" placeholder="Enter pincode" maxlength="20" />
+                        <span asp-validation-for="Pincode" class="text-danger"></span>
+                    </div>
+                </details>
 
                 <div class="form-field" style="margin-top: 20px; padding: 15px; background: #f7fafc; border-radius: 6px;">
                     <label style="display: flex; align-items: center; cursor: pointer; user-select: none;">
@@ -523,7 +703,7 @@
             </div>
         </div>
 
-        <div class="action-buttons">
+        <div class="action-buttons" id="createActions">
             <button type="submit" class="btn-primary-booking">
                 <i class="fas fa-save"></i> Create Booking
             </button>
@@ -538,8 +718,126 @@
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
         $(document).ready(function() {
+            const hasModelStateErrors = @((ViewData.ModelState.ErrorCount > 0).ToString().ToLowerInvariant());
             let typingTimer;
             const doneTypingInterval = 800; // 800ms after user stops typing
+
+            function scrollToTarget(selector) {
+                const $target = $(selector);
+                if (!$target.length) return;
+                const top = Math.max(0, $target.offset().top - 90);
+                window.scrollTo({ top: top, behavior: 'smooth' });
+            }
+
+            $('#bookingSteps').on('click keydown', '.booking-step', function(e) {
+                if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                const target = $(this).data('target');
+                if (target) scrollToTarget(target);
+            });
+
+            function setActiveStep(stepNumber) {
+                $('.booking-step').removeClass('active');
+                $('.booking-step[data-step="' + stepNumber + '"]').addClass('active');
+            }
+
+            function setStepCompleted(stepNumber, completed) {
+                const $step = $('.booking-step[data-step="' + stepNumber + '"]');
+                $step.toggleClass('completed', !!completed);
+            }
+
+            function isFilled(selector) {
+                const $el = $(selector);
+                if (!$el.length) return false;
+                const v = ($el.val() ?? '').toString().trim();
+                return v.length > 0;
+            }
+
+            function updateSteps() {
+                const guestOk = isFilled('#guestPhone') && isFilled('#guestFirstName') && isFilled('#guestLastName');
+                const stayOk = isFilled('#CheckInDate') && isFilled('#CheckOutDate') && isFilled('#RoomTypeId') && isFilled('#RequiredRooms') && isFilled('#Adults') && isFilled('#CustomerType') && isFilled('#Source') && isFilled('#Channel');
+
+                setStepCompleted(1, guestOk);
+                setStepCompleted(2, stayOk);
+                setStepCompleted(3, true);
+                setStepCompleted(4, guestOk && stayOk);
+
+                if (!guestOk) setActiveStep(1);
+                else if (!stayOk) setActiveStep(2);
+                else setActiveStep(3);
+            }
+
+            $('#bookingForm').on('input change', 'input, select, textarea', function() {
+                updateSteps();
+            });
+
+            // Enter key moves to next field (prevents accidental submit)
+            $('#bookingForm').on('keydown', 'input, select', function(e) {
+                if (e.key !== 'Enter') return;
+                if ($(e.target).is('textarea')) return;
+
+                const id = $(e.target).attr('id') || '';
+                const isAutocomplete = id === 'countryAutocomplete' || id === 'stateAutocomplete' || id === 'cityAutocomplete';
+                const hasActiveDropdown = isAutocomplete && $('#'+id.replace('Autocomplete','Results')).hasClass('active');
+                if (hasActiveDropdown) return; // allow autocomplete handler
+
+                e.preventDefault();
+                const $focusables = $('#bookingForm').find('input, select, textarea, button, a').filter(':visible:not([disabled])');
+                const idx = $focusables.index(e.target);
+                if (idx >= 0 && idx < $focusables.length - 1) {
+                    $focusables.eq(idx + 1).focus();
+                }
+            });
+
+            // Number steppers
+            $(document).on('click', '.number-stepper .stepper-btn', function() {
+                const $wrap = $(this).closest('.number-stepper');
+                const $input = $wrap.find('input[type="number"]');
+                if (!$input.length) return;
+
+                const minAttr = $input.attr('min');
+                const maxAttr = $input.attr('max');
+                const stepAttr = $input.attr('step');
+                const step = stepAttr ? parseFloat(stepAttr) : 1;
+                const min = minAttr ? parseFloat(minAttr) : null;
+                const max = maxAttr ? parseFloat(maxAttr) : null;
+
+                let value = parseFloat(($input.val() ?? '').toString());
+                if (Number.isNaN(value)) value = min !== null ? min : 0;
+
+                if ($(this).hasClass('step-up')) value += step;
+                if ($(this).hasClass('step-down')) value -= step;
+
+                if (min !== null) value = Math.max(min, value);
+                if (max !== null) value = Math.min(max, value);
+
+                $input.val(value).trigger('input').trigger('change');
+            });
+
+            // Persist last-used dropdown selections (client-only)
+            const lsKeys = {
+                customerType: 'hotelapp.createBooking.customerType',
+                source: 'hotelapp.createBooking.source',
+                channel: 'hotelapp.createBooking.channel'
+            };
+
+            function trySetSelectValue(selectId, value) {
+                if (!value) return;
+                const $sel = $(selectId);
+                if (!$sel.length) return;
+                const has = $sel.find('option').filter(function(){ return $(this).val() === value; }).length > 0;
+                if (has) $sel.val(value).trigger('change');
+            }
+
+            if (!hasModelStateErrors) {
+                trySetSelectValue('#CustomerType', localStorage.getItem(lsKeys.customerType));
+                trySetSelectValue('#Source', localStorage.getItem(lsKeys.source));
+                trySetSelectValue('#Channel', localStorage.getItem(lsKeys.channel));
+            }
+
+            $('#CustomerType').on('change', function(){ localStorage.setItem(lsKeys.customerType, $(this).val()); });
+            $('#Source').on('change', function(){ localStorage.setItem(lsKeys.source, $(this).val()); });
+            $('#Channel').on('change', function(){ localStorage.setItem(lsKeys.channel, $(this).val()); });
 
             // Function to fetch and display room type rate
             function updateRoomTypeRate() {
@@ -861,6 +1159,25 @@
 
                     if (query.length === 0) {
                         $hidden.val('');
+
+                        // Reset dependent fields when parent is cleared
+                        if (inputId === 'countryAutocomplete') {
+                            selectedCountryId = null;
+                            $('#stateAutocomplete').val('').prop('disabled', true).attr('placeholder', 'Select country first...');
+                            $('#cityAutocomplete').val('').prop('disabled', true).attr('placeholder', 'Select state first...');
+                            $('#stateDropdown').val('');
+                            $('#cityDropdown').val('');
+                            statesData = [];
+                            citiesData = [];
+                        }
+
+                        if (inputId === 'stateAutocomplete') {
+                            selectedStateId = null;
+                            $('#cityAutocomplete').val('').prop('disabled', true).attr('placeholder', 'Select state first...');
+                            $('#cityDropdown').val('');
+                            citiesData = [];
+                        }
+
                         return;
                     }
 
@@ -939,6 +1256,35 @@
                     }
                 });
             }
+
+            // Card-level error highlighting on submit
+            $('#bookingForm').on('submit', function(e) {
+                $('.booking-card').removeClass('has-errors');
+
+                const validator = $(this).data('validator');
+                if (validator && !$(this).valid()) {
+                    // Add error styles to cards containing invalid fields
+                    $('.input-validation-error').each(function() {
+                        $(this).closest('.booking-card').addClass('has-errors');
+                    });
+
+                    const $firstInvalid = $('.input-validation-error:visible').first();
+                    if ($firstInvalid.length) {
+                        const top = Math.max(0, $firstInvalid.offset().top - 120);
+                        window.scrollTo({ top: top, behavior: 'smooth' });
+                        $firstInvalid.focus();
+                    }
+
+                    updateSteps();
+                    e.preventDefault();
+                    return false;
+                }
+
+                return true;
+            });
+
+            // Initialize step state
+            updateSteps();
         });
     </script>
 }

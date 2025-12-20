@@ -9,10 +9,12 @@ namespace HotelApp.Web.Controllers;
 public sealed class ReportsController : Controller
 {
     private readonly IReportsRepository _reportsRepository;
+    private readonly IHotelSettingsRepository _hotelSettingsRepository;
 
-    public ReportsController(IReportsRepository reportsRepository)
+    public ReportsController(IReportsRepository reportsRepository, IHotelSettingsRepository hotelSettingsRepository)
     {
         _reportsRepository = reportsRepository;
+        _hotelSettingsRepository = hotelSettingsRepository;
     }
 
     [HttpGet]
@@ -79,6 +81,65 @@ public sealed class ReportsController : Controller
         };
 
         ViewData["Title"] = "Room Price Details";
+        return View(vm);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> DailyCollectionRegister(DateOnly? fromDate, DateOnly? toDate)
+    {
+        var branchId = HttpContext.Session.GetInt32("BranchID") ?? 1;
+
+        var effectiveFrom = fromDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var effectiveTo = toDate ?? effectiveFrom;
+
+        if (effectiveTo < effectiveFrom)
+        {
+            (effectiveFrom, effectiveTo) = (effectiveTo, effectiveFrom);
+        }
+
+        var data = await _reportsRepository.GetDailyCollectionRegisterAsync(branchId, effectiveFrom, effectiveTo);
+
+        var vm = new DailyCollectionRegisterReportViewModel
+        {
+            FromDate = effectiveFrom,
+            ToDate = effectiveTo,
+            Summary = data.Summary,
+            DailyTotals = data.DailyTotals,
+            Rows = data.Rows
+        };
+
+        ViewData["Title"] = "Daily Collection Register";
+        return View(vm);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GstReport(DateOnly? fromDate, DateOnly? toDate)
+    {
+        var branchId = HttpContext.Session.GetInt32("BranchID") ?? 1;
+
+        var effectiveFrom = fromDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var effectiveTo = toDate ?? effectiveFrom;
+
+        if (effectiveTo < effectiveFrom)
+        {
+            (effectiveFrom, effectiveTo) = (effectiveTo, effectiveFrom);
+        }
+
+        var hotel = await _hotelSettingsRepository.GetByBranchAsync(branchId);
+        var data = await _reportsRepository.GetGstReportAsync(branchId, effectiveFrom, effectiveTo);
+
+        var vm = new GstReportViewModel
+        {
+            FromDate = effectiveFrom,
+            ToDate = effectiveTo,
+            HotelName = hotel?.HotelName ?? string.Empty,
+            HotelAddress = hotel?.Address ?? string.Empty,
+            GSTCode = hotel?.GSTCode,
+            Summary = data.Summary,
+            Rows = data.Rows
+        };
+
+        ViewData["Title"] = "GST Report";
         return View(vm);
     }
 }

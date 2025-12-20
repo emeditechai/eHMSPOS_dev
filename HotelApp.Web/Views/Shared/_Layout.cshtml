@@ -114,6 +114,18 @@
                                 <span>Room Price Details</span>
                                 <i class="fas fa-arrow-right dropdown-arrow"></i>
                             </a>
+
+                            <a asp-controller="Reports" asp-action="DailyCollectionRegister" class="@(controller == "Reports" && action == "DailyCollectionRegister" ? "active" : string.Empty)">
+                                <i class="fas fa-cash-register"></i>
+                                <span>Daily Collection Register</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+
+                            <a asp-controller="Reports" asp-action="GstReport" class="@(controller == "Reports" && action == "GstReport" ? "active" : string.Empty)">
+                                <i class="fas fa-file-invoice"></i>
+                                <span>GST Report</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
                         </div>
                     </div>
                     <div class="menu-item has-dropdown @(controller == "BranchMaster" || controller == "UserManagement" || controller == "HotelSettings" ? "active" : string.Empty)">
