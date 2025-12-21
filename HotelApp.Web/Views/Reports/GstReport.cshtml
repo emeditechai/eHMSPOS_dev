@@ -71,7 +71,19 @@
     <div style="display:flex; gap:12px; flex-wrap: wrap; align-items:center; justify-content: space-between;">
         <div>
             <div style="font-weight:700; color:#1f2937;">GST Register</div>
-            <div class="subtext" style="margin-top:4px;">CGST: ₹@Model.Summary.TotalCGST.ToString("N0") • SGST: ₹@Model.Summary.TotalSGST.ToString("N0")</div>
+            <div class="subtext" style="margin-top:4px;">@Model.Rows.Count records • CGST: ₹@Model.Summary.TotalCGST.ToString("N0") • SGST: ₹@Model.Summary.TotalSGST.ToString("N0")</div>
+        </div>
+
+        <div style="display:flex; gap:10px;">
+            <button class="btn-filter-apply" type="button" title="Export CSV" onclick="exportGstToCsv()">
+                <i class="fas fa-file-export"></i> CSV
+            </button>
+            <button class="btn-filter-apply" type="button" title="Export Excel" onclick="exportGstToExcel()">
+                <i class="fas fa-file-export"></i> Excel
+            </button>
+            <button class="btn-filter-apply" type="button" title="Export PDF" onclick="exportGstToPdf()">
+                <i class="fas fa-file-export"></i> PDF
+            </button>
         </div>
     </div>
 </div>
@@ -115,3 +127,128 @@
         </tbody>
     </table>
 </div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        const getGstExportRows = () => {
+            const table = document.getElementById('gstReportTable');
+            const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
+            return bodyRows.map(tr => {
+                const tds = Array.from(tr.querySelectorAll('td'));
+                return {
+                    paymentDate: (tds[0]?.innerText || '').trim(),
+                    bookingNo: (tds[1]?.innerText || '').trim(),
+                    guest: (tds[2]?.innerText || '').trim(),
+                    roomType: (tds[3]?.innerText || '').trim(),
+                    taxableValue: (tds[4]?.innerText || '').trim(),
+                    cgst: (tds[5]?.innerText || '').trim(),
+                    sgst: (tds[6]?.innerText || '').trim(),
+                    gst: (tds[7]?.innerText || '').trim(),
+                    paidAmount: (tds[8]?.innerText || '').trim(),
+                    bookingStatus: (tds[9]?.innerText || '').trim(),
+                    paymentStatus: (tds[10]?.innerText || '').trim(),
+                    createdBy: (tds[11]?.innerText || '').trim(),
+                };
+            });
+        };
+
+        const downloadBlob = (blob, filename) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 500);
+        };
+
+        const exportGstToCsv = () => {
+            const rows = getGstExportRows();
+            const header = [
+                'Payment Date','Booking No','Guest','Room Type','Taxable Value','CGST','SGST','GST','Paid Amount','Booking Status','Payment Status','Created By'
+            ];
+
+            const escape = (v) => {
+                const s = String(v ?? '');
+                if (/[\n\r,\"]/g.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+                return s;
+            };
+
+            const lines = [header.map(escape).join(',')];
+            rows.forEach(r => {
+                lines.push([
+                    r.paymentDate, r.bookingNo, r.guest, r.roomType, r.taxableValue, r.cgst, r.sgst, r.gst,
+                    r.paidAmount, r.bookingStatus, r.paymentStatus, r.createdBy
+                ].map(escape).join(','));
+            });
+
+            const from = document.getElementById('fromDate')?.value || '';
+            const to = document.getElementById('toDate')?.value || '';
+            const csv = '\uFEFF' + lines.join('\n');
+            downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `GSTReport_${from}_${to}.csv`);
+        };
+
+        const exportGstToExcel = () => {
+            const rows = getGstExportRows();
+            const escHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+            let html = '<table border="1">';
+            html += '<tr>' + [
+                'Payment Date','Booking No','Guest','Room Type','Taxable Value','CGST','SGST','GST','Paid Amount','Booking Status','Payment Status','Created By'
+            ].map(h => `<th>${escHtml(h)}</th>`).join('') + '</tr>';
+
+            rows.forEach(r => {
+                html += '<tr>' + [
+                    r.paymentDate, r.bookingNo, r.guest, r.roomType, r.taxableValue, r.cgst, r.sgst, r.gst,
+                    r.paidAmount, r.bookingStatus, r.paymentStatus, r.createdBy
+                ].map(v => `<td>${escHtml(v)}</td>`).join('') + '</tr>';
+            });
+
+            html += '</table>';
+            const content = `<!doctype html><html><head><meta charset="utf-8"></head><body>${html}</body></html>`;
+            const from = document.getElementById('fromDate')?.value || '';
+            const to = document.getElementById('toDate')?.value || '';
+            downloadBlob(new Blob([content], { type: 'application/vnd.ms-excel;charset=utf-8;' }), `GSTReport_${from}_${to}.xls`);
+        };
+
+        const exportGstToPdf = () => {
+            const rows = getGstExportRows();
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                alert('PDF export library failed to load. Please refresh and try again.');
+                return;
+            }
+
+            const jsPDF = window.jspdf.jsPDF;
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+            const from = document.getElementById('fromDate')?.value || '';
+            const to = document.getElementById('toDate')?.value || '';
+
+            doc.setFontSize(14);
+            doc.text(`GST Report (${from} to ${to})`, 40, 40);
+
+            const autoTableFn = doc.autoTable || (jsPDF.API && jsPDF.API.autoTable);
+            if (!autoTableFn) {
+                alert('PDF table plugin failed to load. Please refresh and try again.');
+                return;
+            }
+
+            (doc.autoTable || autoTableFn).call(doc, {
+                startY: 60,
+                head: [[
+                    'Payment Date','Booking No','Guest','Room Type','Taxable Value','CGST','SGST','GST','Paid Amount','Booking Status','Payment Status','Created By'
+                ]],
+                body: rows.map(r => [
+                    r.paymentDate, r.bookingNo, r.guest, r.roomType, r.taxableValue, r.cgst, r.sgst, r.gst,
+                    r.paidAmount, r.bookingStatus, r.paymentStatus, r.createdBy
+                ]),
+                styles: { fontSize: 8 },
+                headStyles: { fillColor: [15, 23, 42] }
+            });
+
+            doc.save(`GSTReport_${from}_${to}.pdf`);
+        };
+    </script>
+}
