@@ -1,7 +1,7 @@
 -- =============================================
 -- Checked-in + Occupied Rooms Stored Procedure
 -- Description: Returns current occupied rooms with checked-in guest contact details
--- Columns: BookingID, BookingNo, RoomID, RoomNo, GuestName, GuestPhone, GuestEmailID
+-- Columns: BookingID, BookingNo, BranchID, RoomID, RoomNo, GuestName, GuestPhone, GuestEmailID, PlannedCheckoutDate
 -- =============================================
 
 USE HMS_dev;
@@ -22,6 +22,7 @@ BEGIN
     SELECT
         b.Id AS BookingID,
         b.BookingNumber AS BookingNo,
+        b.BranchID AS BranchID,
         r.Id AS RoomID,
         r.RoomNumber AS RoomNo,
         COALESCE(
@@ -29,7 +30,8 @@ BEGIN
             NULLIF(LTRIM(RTRIM(CONCAT(b.PrimaryGuestFirstName, ' ', b.PrimaryGuestLastName))), '')
         ) AS GuestName,
         COALESCE(bgPick.Phone, b.PrimaryGuestPhone) AS GuestPhone,
-        COALESCE(bgPick.Email, b.PrimaryGuestEmail) AS GuestEmailID
+        COALESCE(bgPick.Email, b.PrimaryGuestEmail) AS GuestEmailID,
+        b.CheckOutDate AS PlannedCheckoutDate
     FROM [HMS_dev].[dbo].[Bookings] b
     OUTER APPLY (
         SELECT TOP (1)
