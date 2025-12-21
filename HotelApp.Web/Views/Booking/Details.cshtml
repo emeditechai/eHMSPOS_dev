@@ -829,10 +829,26 @@
             var ocSgstTotal = bookingOtherCharges.Sum(x => x.SGSTAmount);
             var ocGrandTotal = ocAmountTotal + ocGstTotal;
 
-            var adjustedCgstAmount = Model.CGSTAmount + ocCgstTotal;
-            var adjustedSgstAmount = Model.SGSTAmount + ocSgstTotal;
-            var adjustedTotalGstAmount = Model.TaxAmount + ocGstTotal;
-            var adjustedGrandTotal = Model.TotalAmount + ocGrandTotal;
+            // Room Service totals (pending settlement)
+            var roomServiceLines = ViewBag.RoomServiceLines as IEnumerable<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>
+                ?? Enumerable.Empty<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>();
+
+            var rsNetTotal = roomServiceLines.Sum(x => x.NetAmount);
+            var rsGstTotal = roomServiceLines
+                .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
+                .Sum(g => g.First().GSTAmount);
+            var rsCgstTotal = roomServiceLines
+                .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
+                .Sum(g => g.First().CGSTAmount);
+            var rsSgstTotal = roomServiceLines
+                .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
+                .Sum(g => g.First().SGSTAmount);
+            var rsGrandTotal = rsNetTotal + rsGstTotal;
+
+            var adjustedCgstAmount = Model.CGSTAmount + ocCgstTotal + rsCgstTotal;
+            var adjustedSgstAmount = Model.SGSTAmount + ocSgstTotal + rsSgstTotal;
+            var adjustedTotalGstAmount = Model.TaxAmount + ocGstTotal + rsGstTotal;
+            var adjustedGrandTotal = Model.TotalAmount + ocGrandTotal + rsGrandTotal;
 
             // Compute due from payments so payment-time discounts/round-off adjust the balance immediately.
             // (Bookings.BalanceAmount can be stale for older rows.)
@@ -894,6 +910,10 @@
         <div class="financial-item">
             <div class="financial-label">Other Charges</div>
             <div class="financial-amount">₹@ocGrandTotal.ToString("N2")</div>
+        </div>
+        <div class="financial-item">
+            <div class="financial-label">Room Services</div>
+            <div class="financial-amount">₹@rsGrandTotal.ToString("N2")</div>
         </div>
         <div class="financial-item financial-grand-total">
             <div class="financial-label">Grand Total</div>
@@ -1151,6 +1171,113 @@
         <p style="color: #6b7280; text-align: center; padding: 2rem 0;">
             <i class="fas fa-info-circle" style="font-size: 2rem; opacity: 0.3; margin-bottom: 0.5rem;"></i><br>
             No other charges recorded for this booking.
+        </p>
+    }
+</div>
+
+<div class="section-card">
+    <div class="section-header">
+        <div class="section-icon">
+            <i class="fas fa-concierge-bell"></i>
+        </div>
+        <h3 class="section-title">Room Service</h3>
+    </div>
+    @{
+        var roomServiceLinesSection = ViewBag.RoomServiceLines as IEnumerable<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>
+            ?? Enumerable.Empty<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>();
+
+        var rsNetTotalSection = roomServiceLinesSection.Sum(x => x.NetAmount);
+        var rsGstTotalSection = roomServiceLinesSection
+            .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
+            .Sum(g => g.First().GSTAmount);
+        var rsCgstTotalSection = roomServiceLinesSection
+            .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
+            .Sum(g => g.First().CGSTAmount);
+        var rsSgstTotalSection = roomServiceLinesSection
+            .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
+            .Sum(g => g.First().SGSTAmount);
+
+        var rsGrandTotalSection = rsNetTotalSection + rsGstTotalSection;
+    }
+
+    @if (roomServiceLinesSection.Any())
+    {
+        <table class="modern-table">
+            <thead>
+                <tr>
+                    <th><i class="fas fa-calendar"></i> Order Date</th>
+                    <th><i class="fas fa-hashtag"></i> OrderNo</th>
+                    <th><i class="fas fa-utensils"></i> MenuItem</th>
+                    <th style="text-align:right;"><i class="fas fa-rupee-sign"></i> Price</th>
+                    <th style="text-align:right;"><i class="fas fa-sort-numeric-up"></i> Qty</th>
+                    <th style="text-align:right;"><i class="fas fa-rupee-sign"></i> NetAmount</th>
+                    <th style="text-align:right;"><i class="fas fa-receipt"></i> CGST Amount</th>
+                    <th style="text-align:right;"><i class="fas fa-receipt"></i> SGST Amount</th>
+                    <th style="text-align:right;"><i class="fas fa-receipt"></i> GST Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{
+                    var orderGroups = roomServiceLinesSection
+                        .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
+                        .Select(g => new
+                        {
+                            Key = g.Key,
+                            Rows = g.OrderByDescending(x => x.OrderDate).ThenBy(x => x.MenuItem).ToList(),
+                            OrderDate = g.Max(x => x.OrderDate),
+                            OrderNo = g.First().OrderNo,
+                            CGST = g.First().CGSTAmount,
+                            SGST = g.First().SGSTAmount,
+                            GST = g.First().GSTAmount
+                        })
+                        .OrderByDescending(g => g.OrderDate)
+                        .ThenByDescending(g => g.OrderNo)
+                        .ToList();
+                }
+
+                @foreach (var og in orderGroups)
+                {
+                    var rowspan = og.Rows.Count;
+                    for (var i = 0; i < og.Rows.Count; i++)
+                    {
+                        var line = og.Rows[i];
+                        var isFirst = i == 0;
+                        <tr>
+                            @if (isFirst)
+                            {
+                                <td style="vertical-align: top; padding-top: 18px;" rowspan="@rowspan">@og.OrderDate.ToString("dd MMM yyyy, hh:mm tt")</td>
+                                <td style="font-family: monospace; vertical-align: top; padding-top: 18px;" rowspan="@rowspan"><strong>@og.OrderNo</strong></td>
+                            }
+                            <td>@line.MenuItem</td>
+                            <td style="text-align:right;"><strong>₹@line.Price.ToString("N2")</strong></td>
+                            <td style="text-align:right;">@line.Qty</td>
+                            <td style="text-align:right;"><strong>₹@line.NetAmount.ToString("N2")</strong></td>
+                            @if (isFirst)
+                            {
+                                <td style="text-align:right; vertical-align: top; padding-top: 18px;" rowspan="@rowspan"><strong>₹@og.CGST.ToString("N2")</strong></td>
+                                <td style="text-align:right; vertical-align: top; padding-top: 18px;" rowspan="@rowspan"><strong>₹@og.SGST.ToString("N2")</strong></td>
+                                <td style="text-align:right; vertical-align: top; padding-top: 18px;" rowspan="@rowspan"><strong>₹@og.GST.ToString("N2")</strong></td>
+                            }
+                        </tr>
+                    }
+                }
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="5" style="text-align:right; font-weight:700;">Totals</td>
+                    <td style="text-align:right; font-weight:700;">₹@rsNetTotalSection.ToString("N2")</td>
+                    <td style="text-align:right; font-weight:700;">₹@rsCgstTotalSection.ToString("N2")</td>
+                    <td style="text-align:right; font-weight:700;">₹@rsSgstTotalSection.ToString("N2")</td>
+                    <td style="text-align:right; font-weight:800;">₹@rsGstTotalSection.ToString("N2")</td>
+                </tr>
+            </tfoot>
+        </table>
+    }
+    else
+    {
+        <p style="color: #6b7280; text-align: center; padding: 2rem 0;">
+            <i class="fas fa-info-circle" style="font-size: 2rem; opacity: 0.3; margin-bottom: 0.5rem;"></i><br>
+            No room service orders pending settlement for this booking.
         </p>
     }
 </div>

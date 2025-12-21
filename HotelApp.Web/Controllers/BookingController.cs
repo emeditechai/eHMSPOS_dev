@@ -31,6 +31,7 @@ namespace HotelApp.Web.Controllers
         private readonly ILocationRepository _locationRepository;
         private readonly IOtherChargeRepository _otherChargeRepository;
         private readonly IBookingOtherChargeRepository _bookingOtherChargeRepository;
+        private readonly IRoomServiceRepository _roomServiceRepository;
 
         public BookingController(
             IBookingRepository bookingRepository,
@@ -40,7 +41,8 @@ namespace HotelApp.Web.Controllers
             IHotelSettingsRepository hotelSettingsRepository,
             ILocationRepository locationRepository,
             IOtherChargeRepository otherChargeRepository,
-            IBookingOtherChargeRepository bookingOtherChargeRepository)
+            IBookingOtherChargeRepository bookingOtherChargeRepository,
+            IRoomServiceRepository roomServiceRepository)
         {
             _bookingRepository = bookingRepository;
             _roomRepository = roomRepository;
@@ -50,6 +52,7 @@ namespace HotelApp.Web.Controllers
             _locationRepository = locationRepository;
             _otherChargeRepository = otherChargeRepository;
             _bookingOtherChargeRepository = bookingOtherChargeRepository;
+            _roomServiceRepository = roomServiceRepository;
         }
 
         [HttpGet]
@@ -650,6 +653,37 @@ namespace HotelApp.Web.Controllers
             var otherCharges = await _bookingOtherChargeRepository.GetDetailsByBookingIdAsync(booking.Id);
             ViewBag.BookingOtherCharges = otherCharges;
 
+            // Get pending room service settlement details (best-effort only)
+            try
+            {
+                var roomIds = new HashSet<int>();
+                if (booking.RoomId.HasValue && booking.RoomId.Value > 0)
+                {
+                    roomIds.Add(booking.RoomId.Value);
+                }
+
+                var assignedRoomIds = await _bookingRepository.GetAssignedRoomIdsAsync(bookingNumber);
+                foreach (var rid in assignedRoomIds)
+                {
+                    if (rid > 0)
+                    {
+                        roomIds.Add(rid);
+                    }
+                }
+
+                var roomServiceLines = await _roomServiceRepository.GetPendingSettlementLinesAsync(
+                    booking.Id,
+                    roomIds,
+                    CurrentBranchID
+                );
+
+                ViewBag.RoomServiceLines = roomServiceLines;
+            }
+            catch
+            {
+                ViewBag.RoomServiceLines = Array.Empty<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>();
+            }
+
             // Get all banks for payment modal
             var banks = await _bankRepository.GetAllActiveAsync();
             ViewBag.Banks = banks;
@@ -692,6 +726,37 @@ namespace HotelApp.Web.Controllers
             // Get other charges for this booking (for receipt display + totals)
             var otherCharges = await _bookingOtherChargeRepository.GetDetailsByBookingIdAsync(booking.Id);
             ViewBag.BookingOtherCharges = otherCharges;
+
+            // Get pending room service settlement details (best-effort only)
+            try
+            {
+                var roomIds = new HashSet<int>();
+                if (booking.RoomId.HasValue && booking.RoomId.Value > 0)
+                {
+                    roomIds.Add(booking.RoomId.Value);
+                }
+
+                var assignedRoomIds = await _bookingRepository.GetAssignedRoomIdsAsync(bookingNumber);
+                foreach (var rid in assignedRoomIds)
+                {
+                    if (rid > 0)
+                    {
+                        roomIds.Add(rid);
+                    }
+                }
+
+                var roomServiceLines = await _roomServiceRepository.GetPendingSettlementLinesAsync(
+                    booking.Id,
+                    roomIds,
+                    CurrentBranchID
+                );
+
+                ViewBag.RoomServiceLines = roomServiceLines;
+            }
+            catch
+            {
+                ViewBag.RoomServiceLines = Array.Empty<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>();
+            }
 
             // Get assigned room numbers
             var assignedRooms = await _bookingRepository.GetAssignedRoomNumbersAsync(booking.Id);
@@ -1387,7 +1452,36 @@ namespace HotelApp.Web.Controllers
                 // Best-effort only: if other charges table isn't present, treat it as 0.
                 otherChargesGrandTotal = 0m;
             }
-            var effectiveBalanceAmount = booking.BalanceAmount + otherChargesGrandTotal;
+
+            decimal roomServiceGrandTotal = 0m;
+            try
+            {
+                var roomIds = new HashSet<int>();
+                if (booking.RoomId.HasValue && booking.RoomId.Value > 0)
+                {
+                    roomIds.Add(booking.RoomId.Value);
+                }
+                var assignedRoomIds = await _bookingRepository.GetAssignedRoomIdsAsync(bookingNumber);
+                foreach (var rid in assignedRoomIds)
+                {
+                    if (rid > 0)
+                    {
+                        roomIds.Add(rid);
+                    }
+                }
+
+                roomServiceGrandTotal = await _roomServiceRepository.GetPendingSettlementGrandTotalAsync(
+                    booking.Id,
+                    roomIds,
+                    CurrentBranchID
+                );
+            }
+            catch
+            {
+                roomServiceGrandTotal = 0m;
+            }
+
+            var effectiveBalanceAmount = booking.BalanceAmount + otherChargesGrandTotal + roomServiceGrandTotal;
 
             // Compute net payable
             // - Gross is `amount`

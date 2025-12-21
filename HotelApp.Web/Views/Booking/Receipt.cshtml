@@ -7,6 +7,21 @@
     var totalPaid = payments?.Sum(p => p.Amount) ?? 0;
     var receiptIssueDate = DateTime.Now;
 
+    // Room Service (for receipt display + totals)
+    var roomServiceLines = ViewBag.RoomServiceLines as IEnumerable<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>
+        ?? Enumerable.Empty<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>();
+    var roomServiceLinesList = roomServiceLines.ToList();
+    var hasRoomServices = roomServiceLinesList.Any();
+    var rsNetTotal = roomServiceLinesList.Sum(x => x.NetAmount);
+    var rsOrders = roomServiceLinesList
+        .GroupBy(x => x.OrderId)
+        .Select(g => g.First())
+        .ToList();
+    var rsGstTotal = rsOrders.Sum(x => x.GSTAmount);
+    var rsCgstTotal = rsOrders.Sum(x => x.CGSTAmount);
+    var rsSgstTotal = rsOrders.Sum(x => x.SGSTAmount);
+    var rsGrandTotal = rsNetTotal + rsGstTotal;
+
     // Other Charges (for receipt display + totals)
     var bookingOtherCharges = ViewBag.BookingOtherCharges as IEnumerable<HotelApp.Web.Repositories.BookingOtherChargeDetailRow>
         ?? Enumerable.Empty<HotelApp.Web.Repositories.BookingOtherChargeDetailRow>();
@@ -18,7 +33,7 @@
     var ocGrandTotal = ocAmountTotal + ocGstTotal;
 
     // Header/summary totals
-    var receiptAdjustedGrandTotal = Model.TotalAmount + ocGrandTotal;
+    var receiptAdjustedGrandTotal = Model.TotalAmount + ocGrandTotal + rsGrandTotal;
 
     // Compute due from payments so payment-time discounts/round-off reduce balance correctly.
     var appliedToBalanceFromPayments = payments?.Sum(p =>
@@ -909,10 +924,10 @@
                 var preDiscountTotal = afterDiscountTotal + discountAmount;
 
                 // Receipt-level adjusted totals (display-only)
-                var adjustedCgstTotal = cgstTotal + ocCgstTotal;
-                var adjustedSgstTotal = sgstTotal + ocSgstTotal;
-                var adjustedTaxTotal = taxTotal + ocGstTotal;
-                var adjustedTotalAmount = Math.Round(afterDiscountTotal + taxTotal + ocGrandTotal, 2, MidpointRounding.AwayFromZero);
+                var adjustedCgstTotal = cgstTotal + ocCgstTotal + rsCgstTotal;
+                var adjustedSgstTotal = sgstTotal + ocSgstTotal + rsSgstTotal;
+                var adjustedTaxTotal = taxTotal + ocGstTotal + rsGstTotal;
+                var adjustedTotalAmount = Math.Round(afterDiscountTotal + taxTotal + ocGrandTotal + rsGrandTotal, 2, MidpointRounding.AwayFromZero);
                 var adjustedBalancePayable = receiptAdjustedBalanceDue;
             }
 
@@ -1110,6 +1125,81 @@
                     </table>
                 }
 
+                @if (hasRoomServices)
+                {
+                    <h2 class="section-title" style="margin-top: 22px;">Room Service</h2>
+                    <table class="detail-table">
+                        <thead>
+                            <tr>
+                                <th>Order Date</th>
+                                <th>Order No</th>
+                                <th>Menu Item</th>
+                                <th class="text-right">Price</th>
+                                <th class="text-right">Qty</th>
+                                <th class="text-right">Net Amount</th>
+                                <th class="text-right">CGST</th>
+                                <th class="text-right">SGST</th>
+                                <th class="text-right">GST</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                var orderGroups = roomServiceLinesList
+                                    .OrderBy(x => x.OrderDate)
+                                    .ThenBy(x => x.OrderNo)
+                                    .ThenBy(x => x.MenuItem)
+                                    .GroupBy(x => x.OrderId)
+                                    .Select(g => new
+                                    {
+                                        OrderId = g.Key,
+                                        OrderDate = g.First().OrderDate,
+                                        OrderNo = g.First().OrderNo,
+                                        CGST = g.First().CGSTAmount,
+                                        SGST = g.First().SGSTAmount,
+                                        GST = g.First().GSTAmount,
+                                        Rows = g.ToList()
+                                    })
+                                    .ToList();
+
+                                foreach (var og in orderGroups)
+                                {
+                                    var rowspan = og.Rows.Count;
+                                    for (var i = 0; i < og.Rows.Count; i++)
+                                    {
+                                        var line = og.Rows[i];
+                                        var isFirst = i == 0;
+                                        <tr>
+                                            @if (isFirst)
+                                            {
+                                                <td style="vertical-align: top; padding-top: 18px;" rowspan="@rowspan">@og.OrderDate.ToString("dd MMM yyyy, hh:mm tt")</td>
+                                                <td style="font-family: monospace; vertical-align: top; padding-top: 18px;" rowspan="@rowspan"><strong>@og.OrderNo</strong></td>
+                                            }
+                                            <td>@line.MenuItem</td>
+                                            <td class="text-right mono">₹ @line.Price.ToString("N2")</td>
+                                            <td class="text-right mono">@line.Qty</td>
+                                            <td class="text-right mono">₹ @line.NetAmount.ToString("N2")</td>
+                                            @if (isFirst)
+                                            {
+                                                <td class="text-right mono" style="vertical-align: top; padding-top: 18px;" rowspan="@rowspan">₹ @og.CGST.ToString("N2")</td>
+                                                <td class="text-right mono" style="vertical-align: top; padding-top: 18px;" rowspan="@rowspan">₹ @og.SGST.ToString("N2")</td>
+                                                <td class="text-right mono" style="vertical-align: top; padding-top: 18px;" rowspan="@rowspan">₹ @og.GST.ToString("N2")</td>
+                                            }
+                                        </tr>
+                                    }
+                                }
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr style="font-weight: 600; background: #f8f9fa;">
+                                <td colspan="6" class="text-right" style="padding: 12px;">Total Room Service:</td>
+                                <td class="text-right mono" style="padding: 12px;">₹ @rsCgstTotal.ToString("N2")</td>
+                                <td class="text-right mono" style="padding: 12px;">₹ @rsSgstTotal.ToString("N2")</td>
+                                <td class="text-right mono" style="padding: 12px;">₹ @rsGrandTotal.ToString("N2")</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                }
+
                 <!-- Totals -->
                 <div class="totals-section">
                     <div class="total-row">
@@ -1154,6 +1244,13 @@
                         <div class="total-row">
                             <span class="total-label">Other Charges (incl. GST)</span>
                             <span class="total-value mono">₹ @(ocGrandTotal.ToString("N2"))</span>
+                        </div>
+                    }
+                    @if (hasRoomServices)
+                    {
+                        <div class="total-row">
+                            <span class="total-label">Room Service (incl. GST)</span>
+                            <span class="total-value mono">₹ @(rsGrandTotal.ToString("N2"))</span>
                         </div>
                     }
                     <div class="total-row highlight">

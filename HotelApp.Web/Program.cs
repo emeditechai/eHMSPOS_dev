@@ -37,6 +37,7 @@ builder.Services.AddScoped<ILocationRepository, LocationRepository>();
 builder.Services.AddScoped<IReportsRepository, ReportsRepository>();
 builder.Services.AddScoped<IOtherChargeRepository, OtherChargeRepository>();
 builder.Services.AddScoped<IBookingOtherChargeRepository, BookingOtherChargeRepository>();
+builder.Services.AddScoped<IRoomServiceRepository, RoomServiceRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
 // Session configuration for BranchID storage
