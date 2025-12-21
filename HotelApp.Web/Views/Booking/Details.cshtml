@@ -12,6 +12,10 @@
     };
 }
 
+<form id="roomServiceSyncForm" method="post" action="@Url.Action("SyncRoomService", "Booking")" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
 <style>
     .booking-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -638,15 +642,49 @@
     }
 </style>
 
+@{
+    // Watermark logic must use the same computed balance due shown in Financial Summary.
+    // (Model.PaymentStatus can be stale/incorrect when there are extra charges or pending room service.)
+    var watermarkBookingOtherCharges = ViewBag.BookingOtherCharges as IEnumerable<HotelApp.Web.Repositories.BookingOtherChargeDetailRow>
+        ?? Enumerable.Empty<HotelApp.Web.Repositories.BookingOtherChargeDetailRow>();
+
+    var watermarkOcAmountTotal = watermarkBookingOtherCharges.Sum(x => x.Rate * (x.Qty <= 0 ? 1 : x.Qty));
+    var watermarkOcGstTotal = watermarkBookingOtherCharges.Sum(x => x.GSTAmount);
+    var watermarkOcGrandTotal = watermarkOcAmountTotal + watermarkOcGstTotal;
+
+    var watermarkRoomServiceLines = ViewBag.RoomServiceLines as IEnumerable<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>
+        ?? Enumerable.Empty<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>();
+
+    var watermarkRsNetTotal = watermarkRoomServiceLines.Sum(x => x.NetAmount);
+    var watermarkRsGstTotal = watermarkRoomServiceLines
+        .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
+        .Sum(g => g.First().GSTAmount);
+    var watermarkRsGrandTotal = watermarkRsNetTotal + watermarkRsGstTotal;
+
+    var watermarkPayments = (ViewBag.Payments as IEnumerable<HotelApp.Web.Models.BookingPayment>)
+        ?? (Model.Payments ?? Enumerable.Empty<HotelApp.Web.Models.BookingPayment>());
+
+    var watermarkAppliedToBalanceFromPayments = watermarkPayments.Sum(p =>
+        p.Amount
+        + p.DiscountAmount
+        + (p.IsRoundOffApplied ? p.RoundOffAmount : 0m)
+    );
+
+    var watermarkAdjustedGrandTotal = Model.TotalAmount + watermarkOcGrandTotal + watermarkRsGrandTotal;
+    var watermarkBalanceDue = watermarkAdjustedGrandTotal - watermarkAppliedToBalanceFromPayments;
+    var showPaidWatermark = watermarkBalanceDue <= 0;
+    var showCheckedOutWatermark = Model.ActualCheckOutDate.HasValue;
+}
+
 @* Watermarks for Checked Out and Fully Paid bookings *@
-@if (Model.ActualCheckOutDate.HasValue || Model.PaymentStatus == "Paid")
+@if (showCheckedOutWatermark || showPaidWatermark)
 {
     <div class="watermark-container">
-        @if (Model.ActualCheckOutDate.HasValue)
+        @if (showCheckedOutWatermark)
         {
             <div class="watermark checked-out">CHECKED OUT</div>
         }
-        @if (Model.PaymentStatus == "Paid")
+        @if (showPaidWatermark)
         {
             <div class="watermark paid">PAID</div>
         }
@@ -896,6 +934,18 @@
             <div class="financial-amount">₹@adjustedSgstAmount.ToString("N2")</div>
         </div>
         <div class="financial-item">
+            <div class="financial-label">Stay GST</div>
+            <div class="financial-amount">₹@Model.TaxAmount.ToString("N2")</div>
+        </div>
+        <div class="financial-item">
+            <div class="financial-label">Other Charges GST</div>
+            <div class="financial-amount">₹@ocGstTotal.ToString("N2")</div>
+        </div>
+        <div class="financial-item">
+            <div class="financial-label">Room Services GST</div>
+            <div class="financial-amount">₹@rsGstTotal.ToString("N2")</div>
+        </div>
+        <div class="financial-item">
             <div class="financial-label">Total GST</div>
             <div class="financial-amount">₹@adjustedTotalGstAmount.ToString("N2")</div>
         </div>
@@ -1016,6 +1066,89 @@
         <p style="color: #6b7280; text-align: center; padding: 2rem 0;">No additional guests recorded for this booking.</p>
     }
 </div>
+
+<script>
+    async function syncRoomService(bookingId) {
+        try {
+            const form = document.getElementById('roomServiceSyncForm');
+            const tokenInput = form ? form.querySelector('input[name="__RequestVerificationToken"]') : null;
+            const token = tokenInput ? tokenInput.value : null;
+
+            if (!token) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Sync Error',
+                    text: 'Security token missing. Please refresh the page and try again.',
+                    confirmButtonColor: '#667eea'
+                });
+                return;
+            }
+
+            const result = await Swal.fire({
+                title: 'Sync Room Service?',
+                text: 'This will refresh room service data for this booking.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#667eea',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, Sync',
+                cancelButtonText: 'Cancel'
+            });
+
+            if (!result.isConfirmed) {
+                return;
+            }
+
+            const response = await fetch('@Url.Action("SyncRoomService", "Booking")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'RequestVerificationToken': token
+                },
+                body: new URLSearchParams({
+                    bookingId: bookingId,
+                    __RequestVerificationToken: token
+                })
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`HTTP ${response.status} ${response.statusText}: ${errText}`);
+            }
+            if (!contentType.includes('application/json')) {
+                const errText = await response.text();
+                throw new Error(`Unexpected response type: ${contentType}. ${errText}`);
+            }
+
+            const apiResult = await response.json();
+            if (apiResult.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Synced',
+                    text: apiResult.message,
+                    confirmButtonColor: '#667eea',
+                    timer: 1200,
+                    timerProgressBar: true
+                }).then(() => location.reload());
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Sync Failed',
+                    text: apiResult.message,
+                    confirmButtonColor: '#667eea'
+                });
+            }
+        } catch (e) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Sync Failed',
+                text: e?.message || 'Unexpected error',
+                confirmButtonColor: '#667eea'
+            });
+        }
+    }
+</script>
 
 <div class="section-card">
     <div class="section-header">
@@ -1181,6 +1314,9 @@
             <i class="fas fa-concierge-bell"></i>
         </div>
         <h3 class="section-title">Room Service</h3>
+        <button type="button" class="btn btn-outline-primary" onclick="syncRoomService(@Model.Id)" style="margin-left: auto;">
+            <i class="fas fa-sync-alt"></i> Sync
+        </button>
     </div>
     @{
         var roomServiceLinesSection = ViewBag.RoomServiceLines as IEnumerable<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>
@@ -2671,8 +2807,20 @@
                 return;
             }
 
-            // Get anti-forgery token
-            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+            // Get anti-forgery token from THIS form (page has multiple forms)
+            const token = formData.get('__RequestVerificationToken');
+            if (!token) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Payment Error',
+                    text: 'Security token missing. Please refresh the page and try again.',
+                    confirmButtonColor: '#667eea'
+                });
+                return;
+            }
+
+            // Include token in form body for ValidateAntiForgeryToken
+            data.__RequestVerificationToken = token;
 
             try {
                 const response = await fetch('@Url.Action("AddPayment", "Booking")', {
@@ -2683,6 +2831,19 @@
                     },
                     body: new URLSearchParams(data)
                 });
+
+                const contentType = response.headers.get('content-type') || '';
+                if (!response.ok)
+                {
+                    const errText = await response.text();
+                    throw new Error(`HTTP ${response.status} ${response.statusText}: ${errText}`);
+                }
+
+                if (!contentType.includes('application/json'))
+                {
+                    const errText = await response.text();
+                    throw new Error(`Unexpected response type: ${contentType}. ${errText}`);
+                }
 
                 const apiResult = await response.json();
 
@@ -2709,7 +2870,7 @@
                 Swal.fire({
                     icon: 'error',
                     title: 'Payment Error',
-                    text: 'An error occurred while recording payment. Please try again.',
+                    text: (error && error.message) ? error.message : 'An error occurred while recording payment. Please try again.',
                     confirmButtonColor: '#667eea'
                 });
                 console.error('Payment error:', error);

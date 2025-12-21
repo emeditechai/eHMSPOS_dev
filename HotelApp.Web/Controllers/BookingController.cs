@@ -671,7 +671,7 @@ namespace HotelApp.Web.Controllers
                     }
                 }
 
-                var roomServiceLines = await _roomServiceRepository.GetPendingSettlementLinesAsync(
+                var roomServiceLines = await _roomServiceRepository.GetRoomServiceLinesAsync(
                     booking.Id,
                     roomIds,
                     CurrentBranchID
@@ -745,7 +745,7 @@ namespace HotelApp.Web.Controllers
                     }
                 }
 
-                var roomServiceLines = await _roomServiceRepository.GetPendingSettlementLinesAsync(
+                var roomServiceLines = await _roomServiceRepository.GetRoomServiceLinesAsync(
                     booking.Id,
                     roomIds,
                     CurrentBranchID
@@ -791,6 +791,84 @@ namespace HotelApp.Web.Controllers
             }
 
             return View(booking);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SyncRoomService(int bookingId, int? roomId)
+        {
+            if (bookingId <= 0)
+            {
+                return Json(new { success = false, message = "Invalid booking." });
+            }
+
+            try
+            {
+                // Resolve booking + room(s) in scope
+                // We accept optional roomId; when omitted we sync all assigned rooms for this booking.
+                using var connection = new Microsoft.Data.SqlClient.SqlConnection(_bookingRepository.ConnectionString);
+                await connection.OpenAsync();
+
+                const string bookingSql = @"SELECT BookingNumber, RoomId FROM Bookings WHERE Id = @Id";
+                using var cmd = new Microsoft.Data.SqlClient.SqlCommand(bookingSql, connection);
+                cmd.Parameters.AddWithValue("@Id", bookingId);
+
+                string? bookingNumber = null;
+                int? primaryRoomId = null;
+
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        bookingNumber = reader.IsDBNull(0) ? null : reader.GetString(0);
+                        primaryRoomId = reader.IsDBNull(1) ? null : reader.GetInt32(1);
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(bookingNumber))
+                {
+                    return Json(new { success = false, message = "Booking not found." });
+                }
+
+                var roomIds = new HashSet<int>();
+                if (roomId.HasValue && roomId.Value > 0)
+                {
+                    roomIds.Add(roomId.Value);
+                }
+                else
+                {
+                    if (primaryRoomId.HasValue && primaryRoomId.Value > 0)
+                    {
+                        roomIds.Add(primaryRoomId.Value);
+                    }
+
+                    var assignedRoomIds = await _bookingRepository.GetAssignedRoomIdsAsync(bookingNumber);
+                    foreach (var rid in assignedRoomIds)
+                    {
+                        if (rid > 0)
+                        {
+                            roomIds.Add(rid);
+                        }
+                    }
+                }
+
+                if (roomIds.Count == 0)
+                {
+                    return Json(new { success = false, message = "No room assigned to this booking." });
+                }
+
+                var inserted = await _roomServiceRepository.SyncRoomServiceLinesAsync(
+                    bookingId,
+                    roomIds,
+                    CurrentBranchID
+                );
+
+                return Json(new { success = true, message = "Room service synced successfully.", inserted });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Room service sync failed: {ex.Message}" });
+            }
         }
 
         [HttpGet]

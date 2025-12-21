@@ -12,6 +12,18 @@ namespace HotelApp.Web.Repositories
             int branchId
         );
 
+        Task<IReadOnlyList<RoomServiceSettlementLineRow>> GetRoomServiceLinesAsync(
+            int bookingId,
+            IEnumerable<int> roomIds,
+            int branchId
+        );
+
+        Task<int> SyncRoomServiceLinesAsync(
+            int bookingId,
+            IEnumerable<int> roomIds,
+            int branchId
+        );
+
         Task<decimal> GetPendingSettlementGrandTotalAsync(
             int bookingId,
             IEnumerable<int> roomIds,

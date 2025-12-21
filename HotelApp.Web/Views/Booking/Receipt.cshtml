@@ -459,6 +459,18 @@
             font-size: 14px;
         }
 
+        .total-row.stack {
+            display: block;
+            padding: 6px 0;
+        }
+
+        .total-row.stack .total-value {
+            display: block;
+            width: 100%;
+            text-align: right;
+            margin-top: 2px;
+        }
+
         .total-row.highlight {
             font-size: 16px;
             font-weight: 700;
@@ -497,7 +509,7 @@
 
         .detail-table th {
             background: #f8f9fa;
-            padding: 10px;
+            padding: 9px 10px;
             text-align: left;
             font-size: 12px;
             color: #666;
@@ -508,9 +520,21 @@
         }
 
         .detail-table td {
-            padding: 12px 10px;
+            padding: 9px 10px;
             font-size: 14px;
             border-bottom: 1px solid #f0f0f0;
+        }
+
+        .detail-table tbody tr:nth-child(even) td {
+            background: #fbfbfb;
+        }
+
+        .detail-table .mono {
+            white-space: nowrap;
+        }
+
+        .detail-table tfoot td {
+            padding: 10px 10px !important;
         }
 
         .detail-table tr:last-child td {
@@ -523,6 +547,41 @@
 
         .text-center {
             text-align: center;
+        }
+
+        /* Room Service table: fixed layout + stable numeric columns */
+        .room-service-table {
+            table-layout: fixed;
+        }
+
+        .room-service-table th:nth-child(1),
+        .room-service-table td:nth-child(1) { width: 14%; }
+        .room-service-table th:nth-child(2),
+        .room-service-table td:nth-child(2) { width: 14%; }
+        .room-service-table th:nth-child(3),
+        .room-service-table td:nth-child(3) { width: 20%; }
+        .room-service-table th:nth-child(4),
+        .room-service-table td:nth-child(4) { width: 8%; }
+        .room-service-table th:nth-child(5),
+        .room-service-table td:nth-child(5) { width: 6%; }
+        .room-service-table th:nth-child(6),
+        .room-service-table td:nth-child(6) { width: 12%; }
+        .room-service-table th:nth-child(7),
+        .room-service-table td:nth-child(7) { width: 8%; }
+        .room-service-table th:nth-child(8),
+        .room-service-table td:nth-child(8) { width: 8%; }
+        .room-service-table th:nth-child(9),
+        .room-service-table td:nth-child(9) { width: 10%; }
+
+        .room-service-table td,
+        .room-service-table th {
+            vertical-align: top;
+            word-break: break-word;
+        }
+
+        .room-service-table td.text-right,
+        .room-service-table th.text-right {
+            white-space: nowrap;
         }
 
         .payment-summary {
@@ -660,6 +719,27 @@
                 margin: 0;
                 page-break-after: avoid;
             }
+
+            .totals-section,
+            .summary-card {
+                background: transparent !important;
+            }
+
+            .plan-details,
+            .payment-summary,
+            .totals-section,
+            .summary-grid,
+            .receipt-header,
+            .contact-info {
+                page-break-inside: avoid;
+            }
+
+            table,
+            tr,
+            td,
+            th {
+                page-break-inside: avoid;
+            }
             
             .receipt-content {
                 padding: 10mm 15mm;
@@ -670,9 +750,6 @@
             .hotel-logo {
                 max-width: 100px;
                 max-height: 100px;
-            }
-            @@page {
-                margin: 0.5cm;
             }
         }
     </style>
@@ -1128,7 +1205,7 @@
                 @if (hasRoomServices)
                 {
                     <h2 class="section-title" style="margin-top: 22px;">Room Service</h2>
-                    <table class="detail-table">
+                    <table class="detail-table room-service-table">
                         <thead>
                             <tr>
                                 <th>Order Date</th>
@@ -1191,10 +1268,11 @@
                         </tbody>
                         <tfoot>
                             <tr style="font-weight: 600; background: #f8f9fa;">
-                                <td colspan="6" class="text-right" style="padding: 12px;">Total Room Service:</td>
+                                <td colspan="5" class="text-right" style="padding: 12px;">Total Room Service:</td>
+                                <td class="text-right mono" style="padding: 12px;">₹ @rsNetTotal.ToString("N2")</td>
                                 <td class="text-right mono" style="padding: 12px;">₹ @rsCgstTotal.ToString("N2")</td>
                                 <td class="text-right mono" style="padding: 12px;">₹ @rsSgstTotal.ToString("N2")</td>
-                                <td class="text-right mono" style="padding: 12px;">₹ @rsGrandTotal.ToString("N2")</td>
+                                <td class="text-right mono" style="padding: 12px;">₹ @rsGstTotal.ToString("N2")</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -1202,18 +1280,18 @@
 
                 <!-- Totals -->
                 <div class="totals-section">
-                    <div class="total-row">
+                    <div class="total-row stack">
                         <span class="total-label">Room&nbsp;Total&nbsp;(Before&nbsp;Discount)</span>
                         <span class="total-value mono">₹ @(preDiscountTotal.ToString("N2"))</span>
                     </div>
                     @if (discountAmount > 0)
                     {
                         var discountedAmount = afterDiscountTotal;
-                        <div class="total-row">
+                        <div class="total-row stack">
                             <span class="total-label">Discount&nbsp;Applied</span>
                             <span class="total-value mono" style="color: #e74c3c;">- ₹ @discountAmount.ToString("N2")</span>
                         </div>
-                        <div class="total-row" style="font-weight: 600;">
+                        <div class="total-row stack" style="font-weight: 600;">
                             <span class="total-label">Subtotal&nbsp;(After&nbsp;Discount)</span>
                             <span class="total-value mono">₹ @discountedAmount.ToString("N2")</span>
                         </div>
@@ -1221,7 +1299,7 @@
                     else
                     {
                         var discountedAmount = afterDiscountTotal;
-                        <div class="total-row" style="font-weight: 600;">
+                        <div class="total-row stack" style="font-weight: 600;">
                             <span class="total-label">Subtotal</span>
                             <span class="total-value mono">₹ @discountedAmount.ToString("N2")</span>
                         </div>
@@ -1231,37 +1309,49 @@
                         var cgstPercentage = ViewBag.CGSTPercentage != null ? (decimal)ViewBag.CGSTPercentage : 6m;
                         var sgstPercentage = ViewBag.SGSTPercentage != null ? (decimal)ViewBag.SGSTPercentage : 6m;
                     }
-                    <div class="total-row">
-                        <span class="total-label">CGST @@ @cgstPercentage.ToString("0.##")%</span>
-                        <span class="total-value mono">₹ @(adjustedCgstTotal.ToString("N2"))</span>
+                    <div class="total-row stack">
+                        <span class="total-label">Stay CGST @@ @cgstPercentage.ToString("0.##")%</span>
+                        <span class="total-value mono">₹ @(cgstTotal.ToString("N2"))</span>
                     </div>
-                    <div class="total-row">
-                        <span class="total-label">SGST @@ @sgstPercentage.ToString("0.##")%</span>
-                        <span class="total-value mono">₹ @(adjustedSgstTotal.ToString("N2"))</span>
+                    <div class="total-row stack">
+                        <span class="total-label">Stay SGST @@ @sgstPercentage.ToString("0.##")%</span>
+                        <span class="total-value mono">₹ @(sgstTotal.ToString("N2"))</span>
+                    </div>
+                    <div class="total-row stack">
+                        <span class="total-label">Total GST (Stay)</span>
+                        <span class="total-value mono">₹ @(taxTotal.ToString("N2"))</span>
                     </div>
                     @if (hasOtherCharges)
                     {
-                        <div class="total-row">
+                        <div class="total-row stack">
+                            <span class="total-label">Other Charges GST</span>
+                            <span class="total-value mono">₹ @(ocGstTotal.ToString("N2"))</span>
+                        </div>
+                        <div class="total-row stack">
                             <span class="total-label">Other Charges (incl. GST)</span>
                             <span class="total-value mono">₹ @(ocGrandTotal.ToString("N2"))</span>
                         </div>
                     }
                     @if (hasRoomServices)
                     {
-                        <div class="total-row">
+                        <div class="total-row stack">
+                            <span class="total-label">Room Service GST</span>
+                            <span class="total-value mono">₹ @(rsGstTotal.ToString("N2"))</span>
+                        </div>
+                        <div class="total-row stack">
                             <span class="total-label">Room Service (incl. GST)</span>
                             <span class="total-value mono">₹ @(rsGrandTotal.ToString("N2"))</span>
                         </div>
                     }
-                    <div class="total-row highlight">
+                    <div class="total-row highlight stack">
                         <span class="total-label">Total Amount</span>
                         <span class="total-value mono">₹ @(adjustedTotalAmount.ToString("N2"))</span>
                     </div>
-                    <div class="total-row">
+                    <div class="total-row stack">
                         <span class="total-label">Payments</span>
                         <span class="total-value mono" style="color: #4caf50;">₹ @(totalPaid.ToString("N2"))</span>
                     </div>
-                    <div class="total-row highlight" style="color: #f5576c;">
+                    <div class="total-row highlight stack" style="color: #f5576c;">
                         <span class="total-label">Balance Payable</span>
                         <span class="total-value mono">₹ @(adjustedBalancePayable.ToString("N2"))</span>
                     </div>
