@@ -1,0 +1,426 @@
+@model HotelApp.Web.Models.Booking
+@{
+    ViewData["Title"] = $"Room Service Detail - {Model.BookingNumber}";
+    Layout = null;
+
+    var hotelSettings = ViewBag.HotelSettings as HotelApp.Web.Models.HotelSettings;
+    var receiptIssueDate = DateTime.Now;
+
+    var roomServiceLines = ViewBag.RoomServiceLines as IEnumerable<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>
+        ?? Enumerable.Empty<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>();
+    var roomServiceLinesList = roomServiceLines.ToList();
+    var hasRoomServices = roomServiceLinesList.Any();
+
+    var rsNetTotal = roomServiceLinesList.Sum(x => x.NetAmount);
+    var rsOrders = roomServiceLinesList
+        .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
+        .Select(g => g.First())
+        .ToList();
+    var rsGstTotal = rsOrders.Sum(x => x.GSTAmount);
+    var rsCgstTotal = rsOrders.Sum(x => x.CGSTAmount);
+    var rsSgstTotal = rsOrders.Sum(x => x.SGSTAmount);
+    var rsGrandTotal = rsNetTotal + rsGstTotal;
+
+    var assignedRooms = ViewBag.AssignedRooms as IEnumerable<string> ?? Enumerable.Empty<string>();
+    var assignedRoomsText = assignedRooms.Any() ? string.Join(", ", assignedRooms) : "-";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"]</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            color: #333;
+        }
+        .mono { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+        .subtle { color: #6b7280; }
+
+        .receipt-container {
+            max-width: 210mm;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            min-height: 297mm;
+        }
+        .receipt-content { padding: 15mm 20mm; }
+
+        .receipt-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 25px;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 22px;
+        }
+        .hotel-logo-section { flex-shrink: 0; margin-right: 20px; }
+        .hotel-logo { max-width: 120px; max-height: 120px; object-fit: contain; }
+        .hotel-info-section { flex: 1; text-align: center; }
+        .hotel-name {
+            font-size: 32px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 5px;
+            letter-spacing: -0.5px;
+        }
+        .hotel-details {
+            font-size: 12px;
+            color: #555;
+            line-height: 1.8;
+            margin-top: 10px;
+        }
+        .hotel-details p { margin: 3px 0; }
+        .hotel-details .detail-label { font-weight: 600; color: #333; }
+
+        .receipt-meta { flex-shrink: 0; text-align: right; min-width: 220px; }
+        .receipt-meta .title {
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1.8px;
+            color: #111827;
+            text-transform: uppercase;
+        }
+        .receipt-meta .subtitle { font-size: 11px; margin-top: 6px; color: #6b7280; }
+        .receipt-meta .meta-row { margin-top: 8px; font-size: 12px; color: #374151; }
+        .receipt-meta .meta-row .label { color: #6b7280; margin-right: 6px; }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 18px;
+            margin-bottom: 18px;
+            padding-bottom: 18px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .summary-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 14px 14px;
+            background: #fff;
+        }
+        .section-title.small {
+            font-size: 13px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #111827;
+            margin-bottom: 10px;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 8px;
+            font-size: 13px;
+        }
+        .summary-row:first-child { margin-top: 0; }
+        .summary-row .label { color: #6b7280; }
+        .summary-row .value { font-weight: 600; color: #111827; }
+        .summary-row.total .value { color: #4f46e5; font-size: 15px; }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #111827;
+            margin-top: 8px;
+            margin-bottom: 10px;
+        }
+
+        table.detail-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+            table-layout: fixed;
+            max-width: 100%;
+        }
+        .detail-table th {
+            background: #f3f4f6;
+            padding: 10px 8px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #374151;
+            border-bottom: 1px solid #e5e7eb;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .detail-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 13px;
+            vertical-align: top;
+        }
+        .detail-table tr:last-child td { border-bottom: none; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+
+        /* Room Service table: percentage widths to always fit the page (sum = 100%) */
+        .room-service-table th:nth-child(1),
+        .room-service-table td:nth-child(1) { width: 18%; }
+        .room-service-table th:nth-child(2),
+        .room-service-table td:nth-child(2) { width: 14%; }
+        .room-service-table th:nth-child(3),
+        .room-service-table td:nth-child(3) { width: 24%; }
+        .room-service-table th:nth-child(4),
+        .room-service-table td:nth-child(4) { width: 9%; }
+        .room-service-table th:nth-child(5),
+        .room-service-table td:nth-child(5) { width: 5%; }
+        .room-service-table th:nth-child(6),
+        .room-service-table td:nth-child(6) { width: 12%; }
+        .room-service-table th:nth-child(7),
+        .room-service-table td:nth-child(7) { width: 6%; }
+        .room-service-table th:nth-child(8),
+        .room-service-table td:nth-child(8) { width: 6%; }
+        .room-service-table th:nth-child(9),
+        .room-service-table td:nth-child(9) { width: 6%; }
+
+        /* Menu Item should wrap by words, not letters */
+        .room-service-table th:nth-child(3) { white-space: normal; }
+        .room-service-table td:nth-child(3) {
+            white-space: normal;
+            word-break: normal;
+            overflow-wrap: anywhere;
+        }
+
+        /* Numeric columns should stay compact */
+        .room-service-table td:nth-child(4),
+        .room-service-table td:nth-child(6),
+        .room-service-table td:nth-child(7),
+        .room-service-table td:nth-child(8),
+        .room-service-table td:nth-child(9) { white-space: nowrap; }
+
+        .print-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 8px 20px rgba(79,70,229,0.25);
+        }
+        .print-button:hover { background: #4338ca; }
+
+        /* Print layout: force A4 */
+        @@page {
+            size: A4 landscape;
+            margin: 10mm 12mm;
+        }
+
+        /* Keep tables readable in print */
+        table { page-break-inside: auto; }
+        thead { display: table-header-group; }
+        tfoot { display: table-footer-group; }
+        tr { page-break-inside: avoid; page-break-after: auto; }
+
+        @@media print {
+            html, body {
+                background: white;
+                padding: 0;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .receipt-container {
+                box-shadow: none;
+                min-height: auto;
+                max-width: 100%;
+            }
+            .receipt-content { padding: 0; }
+            .print-button { display: none; }
+            .hotel-logo { max-width: 100px; max-height: 100px; }
+
+            /* Prevent last-column clipping (border-radius + overflow can cut text) */
+            .detail-table { overflow: visible; border-radius: 0; }
+
+            .detail-table th {
+                font-size: 11px;
+                padding: 7px 6px;
+                overflow: visible;
+                text-overflow: clip;
+            }
+            .detail-table td { font-size: 12px; padding: 7px 6px; }
+
+            /* Ensure long values wrap instead of pushing columns out */
+            .room-service-table td:nth-child(1),
+            .room-service-table td:nth-child(2) {
+                overflow-wrap: anywhere;
+                word-break: normal;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt-container">
+        <div class="receipt-content">
+            <div class="receipt-header">
+                @if (hotelSettings != null && !string.IsNullOrEmpty(hotelSettings.LogoPath))
+                {
+                    <div class="hotel-logo-section">
+                        <img src="@hotelSettings.LogoPath" alt="Hotel Logo" class="hotel-logo" />
+                    </div>
+                }
+                <div class="hotel-info-section">
+                    <h1 class="hotel-name">@(hotelSettings?.HotelName ?? "Hotel Management System")</h1>
+                    @if (hotelSettings != null)
+                    {
+                        <div class="hotel-details">
+                            @if (!string.IsNullOrEmpty(hotelSettings.Address))
+                            {
+                                <p>@hotelSettings.Address</p>
+                            }
+                            <p>
+                                @if (!string.IsNullOrEmpty(hotelSettings.ContactNumber1))
+                                {
+                                    <span><span class="detail-label">Phone:</span> @hotelSettings.ContactNumber1</span>
+                                }
+                                @if (!string.IsNullOrEmpty(hotelSettings.ContactNumber2))
+                                {
+                                    <span> / @hotelSettings.ContactNumber2</span>
+                                }
+                            </p>
+                            @if (!string.IsNullOrEmpty(hotelSettings.EmailAddress))
+                            {
+                                <p><span class="detail-label">Email:</span> @hotelSettings.EmailAddress</p>
+                            }
+                            @if (!string.IsNullOrEmpty(hotelSettings.Website))
+                            {
+                                <p><span class="detail-label">Website:</span> @hotelSettings.Website</p>
+                            }
+                            @if (!string.IsNullOrEmpty(hotelSettings.GSTCode))
+                            {
+                                <p><span class="detail-label">GSTIN:</span> @hotelSettings.GSTCode</p>
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="receipt-meta">
+                    <div class="title">Room Service</div>
+                    <div class="subtitle">Room Service Details</div>
+                    <div class="meta-row"><span class="label">Booking No.</span> <span class="mono"><strong>@Model.BookingNumber</strong></span></div>
+                    <div class="meta-row"><span class="label">Issue</span> <span class="mono">@receiptIssueDate.ToString("dd MMM yyyy hh:mm tt")</span></div>
+                </div>
+            </div>
+
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="section-title small">Booking Details</div>
+                    <div class="summary-row"><span class="label">Booking No.</span><span class="value mono">@Model.BookingNumber</span></div>
+                    <div class="summary-row"><span class="label">Guest</span><span class="value">@Model.PrimaryGuestFirstName @Model.PrimaryGuestLastName</span></div>
+                    <div class="summary-row"><span class="label">Rooms</span><span class="value mono">@assignedRoomsText</span></div>
+                </div>
+                <div class="summary-card">
+                    <div class="section-title small">Room Service Amount</div>
+                    <div class="summary-row"><span class="label">Net Total</span><span class="value mono">₹ @rsNetTotal.ToString("N2")</span></div>
+                    <div class="summary-row"><span class="label">GST Total</span><span class="value mono">₹ @rsGstTotal.ToString("N2")</span></div>
+                    <div class="summary-row total"><span class="label">Grand Total</span><span class="value mono">₹ @rsGrandTotal.ToString("N2")</span></div>
+                </div>
+            </div>
+
+            <h2 class="section-title">Room Service</h2>
+
+            @if (hasRoomServices)
+            {
+                <table class="detail-table room-service-table">
+                    <thead>
+                        <tr>
+                            <th>Order Date</th>
+                            <th>Order No</th>
+                            <th>Menu Item</th>
+                            <th class="text-right">Price</th>
+                            <th class="text-right">Qty</th>
+                            <th class="text-right">Net Amount</th>
+                            <th class="text-right">CGST</th>
+                            <th class="text-right">SGST</th>
+                            <th class="text-right">GST</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            var orderGroups = roomServiceLinesList
+                                .OrderBy(x => x.OrderDate)
+                                .ThenBy(x => x.OrderNo)
+                                .ThenBy(x => x.MenuItem)
+                                .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
+                                .Select(g => new
+                                {
+                                    Key = g.Key,
+                                    OrderDate = g.First().OrderDate,
+                                    OrderNo = g.First().OrderNo,
+                                    CGST = g.First().CGSTAmount,
+                                    SGST = g.First().SGSTAmount,
+                                    GST = g.First().GSTAmount,
+                                    Rows = g.ToList()
+                                })
+                                .ToList();
+
+                            foreach (var og in orderGroups)
+                            {
+                                var rowspan = og.Rows.Count;
+                                for (var i = 0; i < og.Rows.Count; i++)
+                                {
+                                    var line = og.Rows[i];
+                                    var isFirst = i == 0;
+                                    <tr>
+                                        @if (isFirst)
+                                        {
+                                            <td style="vertical-align: top; padding-top: 18px;" rowspan="@rowspan">@og.OrderDate.ToString("dd MMM yyyy, hh:mm tt")</td>
+                                            <td style="font-family: monospace; vertical-align: top; padding-top: 18px;" rowspan="@rowspan"><strong>@og.OrderNo</strong></td>
+                                        }
+                                        <td>@line.MenuItem</td>
+                                        <td class="text-right mono">₹ @line.Price.ToString("N2")</td>
+                                        <td class="text-right mono">@line.Qty</td>
+                                        <td class="text-right mono">₹ @line.NetAmount.ToString("N2")</td>
+                                        @if (isFirst)
+                                        {
+                                            <td class="text-right mono" style="vertical-align: top; padding-top: 18px;" rowspan="@rowspan">₹ @og.CGST.ToString("N2")</td>
+                                            <td class="text-right mono" style="vertical-align: top; padding-top: 18px;" rowspan="@rowspan">₹ @og.SGST.ToString("N2")</td>
+                                            <td class="text-right mono" style="vertical-align: top; padding-top: 18px;" rowspan="@rowspan">₹ @og.GST.ToString("N2")</td>
+                                        }
+                                    </tr>
+                                }
+                            }
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr style="font-weight: 600; background: #f8f9fa;">
+                            <td colspan="5" class="text-right" style="padding: 12px;">Total Room Service:</td>
+                            <td class="text-right mono" style="padding: 12px;">₹ @rsNetTotal.ToString("N2")</td>
+                            <td class="text-right mono" style="padding: 12px;">₹ @rsCgstTotal.ToString("N2")</td>
+                            <td class="text-right mono" style="padding: 12px;">₹ @rsSgstTotal.ToString("N2")</td>
+                            <td class="text-right mono" style="padding: 12px;">₹ @rsGstTotal.ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            }
+            else
+            {
+                <div class="subtle" style="padding: 16px 0;">No room service orders for this booking.</div>
+            }
+        </div>
+    </div>
+
+    <button class="print-button" onclick="window.print()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+            <rect x="6" y="14" width="12" height="8"/>
+        </svg>
+        Print Detail
+    </button>
+</body>
+</html>

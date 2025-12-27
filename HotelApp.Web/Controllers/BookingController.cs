@@ -32,6 +32,7 @@ namespace HotelApp.Web.Controllers
         private readonly IOtherChargeRepository _otherChargeRepository;
         private readonly IBookingOtherChargeRepository _bookingOtherChargeRepository;
         private readonly IRoomServiceRepository _roomServiceRepository;
+        private readonly IBillingHeadRepository _billingHeadRepository;
 
         public BookingController(
             IBookingRepository bookingRepository,
@@ -42,7 +43,8 @@ namespace HotelApp.Web.Controllers
             ILocationRepository locationRepository,
             IOtherChargeRepository otherChargeRepository,
             IBookingOtherChargeRepository bookingOtherChargeRepository,
-            IRoomServiceRepository roomServiceRepository)
+            IRoomServiceRepository roomServiceRepository,
+            IBillingHeadRepository billingHeadRepository)
         {
             _bookingRepository = bookingRepository;
             _roomRepository = roomRepository;
@@ -53,6 +55,7 @@ namespace HotelApp.Web.Controllers
             _otherChargeRepository = otherChargeRepository;
             _bookingOtherChargeRepository = bookingOtherChargeRepository;
             _roomServiceRepository = roomServiceRepository;
+            _billingHeadRepository = billingHeadRepository;
         }
 
         [HttpGet]
@@ -649,6 +652,16 @@ namespace HotelApp.Web.Controllers
             var payments = await _bookingRepository.GetPaymentsAsync(booking.Id);
             ViewBag.Payments = payments;
 
+            // Billing Heads (best-effort only; used for Financial Summary head-wise amounts)
+            try
+            {
+                ViewBag.BillingHeads = await _billingHeadRepository.GetActiveAsync();
+            }
+            catch
+            {
+                ViewBag.BillingHeads = Array.Empty<BillingHead>();
+            }
+
             // Get other charges for this booking
             var otherCharges = await _bookingOtherChargeRepository.GetDetailsByBookingIdAsync(booking.Id);
             ViewBag.BookingOtherCharges = otherCharges;
@@ -791,6 +804,60 @@ namespace HotelApp.Web.Controllers
             }
 
             return View(booking);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> RoomServiceReceipt(string bookingNumber)
+        {
+            if (string.IsNullOrWhiteSpace(bookingNumber))
+            {
+                return RedirectToAction(nameof(List));
+            }
+
+            var booking = await _bookingRepository.GetByBookingNumberAsync(bookingNumber);
+            if (booking == null)
+            {
+                TempData["ErrorMessage"] = "Booking not found.";
+                return RedirectToAction(nameof(List));
+            }
+
+            var hotelSettings = await _hotelSettingsRepository.GetByBranchAsync(CurrentBranchID);
+            ViewBag.HotelSettings = hotelSettings;
+
+            try
+            {
+                var roomIds = new HashSet<int>();
+                if (booking.RoomId.HasValue && booking.RoomId.Value > 0)
+                {
+                    roomIds.Add(booking.RoomId.Value);
+                }
+
+                var assignedRoomIds = await _bookingRepository.GetAssignedRoomIdsAsync(bookingNumber);
+                foreach (var rid in assignedRoomIds)
+                {
+                    if (rid > 0)
+                    {
+                        roomIds.Add(rid);
+                    }
+                }
+
+                var roomServiceLines = await _roomServiceRepository.GetRoomServiceLinesAsync(
+                    booking.Id,
+                    roomIds,
+                    CurrentBranchID
+                );
+
+                ViewBag.RoomServiceLines = roomServiceLines;
+            }
+            catch
+            {
+                ViewBag.RoomServiceLines = Array.Empty<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>();
+            }
+
+            var assignedRooms = await _bookingRepository.GetAssignedRoomNumbersAsync(booking.Id);
+            ViewBag.AssignedRooms = assignedRooms;
+
+            return View("RoomServiceReceipt", booking);
         }
 
         [HttpPost]
@@ -1705,9 +1772,17 @@ namespace HotelApp.Web.Controllers
                 }
             }
 
-            if (computedNet > effectiveBalanceAmount)
+            // When round-off is applied, net payable is rounded to a whole rupee.
+            // This can be up to the next rupee above the current (paise) balance.
+            var maxNetAllowed = effectiveBalanceAmount;
+            if (isRoundOffApplied)
             {
-                return Json(new { success = false, message = $"Net payable cannot exceed balance amount of ₹{effectiveBalanceAmount:N2}." });
+                maxNetAllowed = Math.Ceiling(effectiveBalanceAmount);
+            }
+
+            if (computedNet > maxNetAllowed)
+            {
+                return Json(new { success = false, message = $"Net payable cannot exceed balance amount of ₹{maxNetAllowed:N2}." });
             }
 
             var payment = new BookingPayment

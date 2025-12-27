@@ -163,6 +163,47 @@
         background: rgba(255, 255, 255, 0.2);
         border: 2px solid rgba(255, 255, 255, 0.3);
     }
+
+    .billing-headwise {
+        margin-top: 1rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.18);
+    }
+    .billing-headwise-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        opacity: 0.95;
+        margin-bottom: 0.5rem;
+        letter-spacing: 0.01em;
+    }
+    .billing-headwise-rows {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .billing-headwise-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.65rem 0.85rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .billing-headwise-row:last-child {
+        border-bottom: none;
+    }
+    .billing-headwise-name {
+        font-size: 0.9rem;
+        font-weight: 600;
+        opacity: 0.95;
+        text-align: left;
+    }
+    .billing-headwise-amount {
+        font-size: 0.95rem;
+        font-weight: 800;
+        text-align: right;
+        white-space: nowrap;
+    }
     
     .section-card {
         background: white;
@@ -883,6 +924,32 @@
                 .Sum(g => g.First().SGSTAmount);
             var rsGrandTotal = rsNetTotal + rsGstTotal;
 
+            // Billing head definitions (from BillingsHeads table; best-effort)
+            var billingHeads = ViewBag.BillingHeads as IEnumerable<BillingHead>
+                ?? Enumerable.Empty<BillingHead>();
+
+            var billingHeadRows = billingHeads
+                .Select(h => new
+                {
+                    Head = h,
+                    Code = (h.Code ?? string.Empty).Trim().ToUpperInvariant()
+                })
+                .Select(x => new
+                {
+                    x.Head,
+                    Amount = x.Code switch
+                    {
+                        "S" => (decimal?)Model.TotalAmount,
+                        "R" => (decimal?)rsGrandTotal,
+                        "O" => (decimal?)ocGrandTotal,
+                        _ => null
+                    }
+                })
+                .Where(x => x.Amount.HasValue)
+                .OrderBy(x => x.Head.Id)
+                .ThenBy(x => x.Head.Code)
+                .ToList();
+
             var adjustedCgstAmount = Model.CGSTAmount + ocCgstTotal + rsCgstTotal;
             var adjustedSgstAmount = Model.SGSTAmount + ocSgstTotal + rsSgstTotal;
             var adjustedTotalGstAmount = Model.TaxAmount + ocGstTotal + rsGstTotal;
@@ -925,6 +992,7 @@
                 }
             }
         }
+
         <div class="financial-item">
             <div class="financial-label">CGST @cgstPercentage.ToString("0.##")%</div>
             <div class="financial-amount">₹@adjustedCgstAmount.ToString("N2")</div>
@@ -978,6 +1046,22 @@
             <div class="financial-amount">₹@adjustedBalanceAmount.ToString("N2")</div>
         </div>
     </div>
+
+    @if (billingHeadRows.Count > 0)
+    {
+        <div class="billing-headwise">
+            <div class="billing-headwise-title">Billing Head wise Amount</div>
+            <div class="billing-headwise-rows">
+                @foreach (var row in billingHeadRows)
+                {
+                    <div class="billing-headwise-row">
+                        <div class="billing-headwise-name">@row.Head.Name</div>
+                        <div class="billing-headwise-amount">₹@row.Amount!.Value.ToString("N2")</div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
 </div>
 
 <div class="section-card">
@@ -1314,9 +1398,14 @@
             <i class="fas fa-concierge-bell"></i>
         </div>
         <h3 class="section-title">Room Service</h3>
-        <button type="button" class="btn btn-outline-primary" onclick="syncRoomService(@Model.Id)" style="margin-left: auto;">
-            <i class="fas fa-sync-alt"></i> Sync
-        </button>
+        <div style="margin-left: auto; display: flex; gap: 0.5rem; align-items: center;">
+            <a asp-action="RoomServiceReceipt" asp-route-bookingNumber="@Model.BookingNumber" class="btn btn-outline-secondary" target="_blank" title="Print Detail" aria-label="Print Detail">
+                <i class="fas fa-print"></i>
+            </a>
+            <button type="button" class="btn btn-outline-primary" onclick="syncRoomService(@Model.Id)">
+                <i class="fas fa-sync-alt"></i> Sync
+            </button>
+        </div>
     </div>
     @{
         var roomServiceLinesSection = ViewBag.RoomServiceLines as IEnumerable<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>
@@ -2478,10 +2567,40 @@
 <script>
     let isProgrammaticAmountUpdate = false;
 
+    function toPaise(val) {
+        const n = Number(val);
+        if (!Number.isFinite(n)) return 0;
+        return Math.round((n + Number.EPSILON) * 100);
+    }
+
+    function fromPaise(paise) {
+        const n = Number(paise);
+        if (!Number.isFinite(n)) return 0;
+        return n / 100;
+    }
+
     function round2(val) {
         const n = Number(val);
         if (!Number.isFinite(n)) return 0;
         return Math.round((n + Number.EPSILON) * 100) / 100;
+    }
+
+    function updateAmountMaxConstraint() {
+        const amountEl = document.getElementById('amount');
+        if (!amountEl) return;
+
+        const applyRoundOff = document.getElementById('applyRoundOff')?.checked;
+
+        const baseMaxStr = amountEl.getAttribute('data-base-max') || amountEl.getAttribute('max') || '0';
+        const baseMaxPaise = toPaise(baseMaxStr);
+
+        // If round-off is applied, user may need to pay up to the next rupee.
+        // Example: balance 5939.50 => rounded payable 5940.00.
+        const maxPaise = applyRoundOff
+            ? (Math.ceil(baseMaxPaise / 100) * 100)
+            : baseMaxPaise;
+
+        amountEl.setAttribute('max', fromPaise(maxPaise).toFixed(2));
     }
 
     function getGrossAmount() {
@@ -2519,38 +2638,43 @@
         const discountValue = parseFloat(document.getElementById('discountValue').value || '0') || 0;
         const applyRoundOff = document.getElementById('applyRoundOff').checked;
 
+        const grossPaise = toPaise(amount);
         let discountAmount = 0;
         let discountPercent = null;
+        let discountPaise = 0;
 
         if (discountType === 'Flat') {
-            discountAmount = round2(Math.max(0, discountValue));
+            discountPaise = Math.max(0, toPaise(discountValue));
         } else if (discountType === 'Percent') {
             const pct = Math.max(0, Math.min(100, discountValue));
             discountPercent = round2(pct);
-            discountAmount = round2(amount * (pct / 100));
+            discountPaise = Math.max(0, Math.round(grossPaise * (pct / 100)));
         }
 
-        let net = round2(amount - discountAmount);
-        if (net < 0) {
-            net = 0;
-            discountAmount = round2(amount);
+        let netPaise = grossPaise - discountPaise;
+        if (netPaise < 0) {
+            netPaise = 0;
+            discountPaise = grossPaise;
         }
 
-        let roundOffAmount = 0;
+        let roundOffPaise = 0;
         if (applyRoundOff) {
-            // Industry-standard round-off: round final payable to nearest rupee.
-            // Store the delta so ledgers/balance stay consistent.
-            const rounded = Math.round(net);
-            roundOffAmount = round2(rounded - net);
-            net = round2(rounded);
+            // Round to nearest rupee (100 paise)
+            const roundedPaise = Math.round(netPaise / 100) * 100;
+            roundOffPaise = roundedPaise - netPaise;
+            netPaise = roundedPaise;
         }
+
+        discountAmount = fromPaise(discountPaise);
+        const roundOffAmount = fromPaise(roundOffPaise);
+        const net = fromPaise(netPaise);
 
         return {
-            grossAmount: round2(amount),
-            discountAmount,
+            grossAmount: fromPaise(grossPaise),
+            discountAmount: round2(discountAmount),
             discountPercent,
-            roundOffAmount,
-            netPayable: net,
+            roundOffAmount: round2(roundOffAmount),
+            netPayable: round2(net),
             isRoundOffApplied: applyRoundOff
         };
     }
@@ -2580,6 +2704,7 @@
         // The Amount field may already be auto-filled to NET (e.g., 0.00 for discount-only settlement),
         // and overwriting gross with that would zero out discounts and keep Due unchanged.
         updatePaymentHint();
+        updateAmountMaxConstraint();
         applyNetToAmountField();
     }
 
@@ -2596,6 +2721,9 @@
         }
         parts.push(`Net Payable: ₹${t.netPayable.toFixed(2)}`);
         hint.textContent = parts.join(' | ');
+
+        // Keep HTML validation constraints in sync with computed totals.
+        updateAmountMaxConstraint();
     }
 
     async function showPaymentModal(isAdvance = false) {
@@ -2641,6 +2769,10 @@
             isAdvanceField.value = 'false';
         }
 
+        // Base max is the outstanding balance; round-off may push payable to next rupee.
+        amountField.setAttribute('data-base-max', balanceAmount.toFixed(2));
+        amountField.setAttribute('max', balanceAmount.toFixed(2));
+
         // Reset discount/round-off defaults
         const discountType = document.getElementById('discountType');
         const discountValue = document.getElementById('discountValue');
@@ -2649,6 +2781,9 @@
         if (discountValue) discountValue.value = '';
         if (applyRoundOff) applyRoundOff.checked = true;
         updateDiscountUI();
+
+        // Ensure constraints are correct for the default round-off state.
+        updateAmountMaxConstraint();
         
         amountField.focus();
     }
