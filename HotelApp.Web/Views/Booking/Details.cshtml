@@ -1028,7 +1028,7 @@
                             <span class="guest-type-badge">@guest.GuestType</span>
                         }
                         <div style="margin-left: 0.5rem; display: flex; gap: 0.5rem; align-items: center;">
-                            <button type="button" class="modern-icon-btn modern-icon-view" onclick="showViewGuestModal(@guest.Id, '@Html.Raw(guest.FullName?.Replace("'", "\\'"))', '@guest.Email', '@guest.Phone', '@guest.GuestType', '@guest.RelationshipToPrimary', @(guest.Age?.ToString() ?? "null"), '@(guest.DateOfBirth?.ToString("yyyy-MM-dd") ?? "")', '@guest.Gender', '@guest.IdentityType', '@guest.IdentityNumber', '@guest.Country', '@guest.State', '@guest.City', '@guest.Address', '@guest.Pincode', '@guest.DocumentPath')" title="View Guest Details">
+                            <button type="button" class="modern-icon-btn modern-icon-view" onclick="showViewGuestModal(@guest.Id, @guest.GuestId, '@Html.Raw(guest.FullName?.Replace("'", "\\'"))', '@guest.Email', '@guest.Phone', '@guest.GuestType', '@guest.RelationshipToPrimary', @(guest.Age?.ToString() ?? "null"), '@(guest.DateOfBirth?.ToString("yyyy-MM-dd") ?? "")', '@guest.Gender', '@guest.IdentityType', '@guest.IdentityNumber', '@guest.Country', '@guest.State', '@guest.City', '@guest.Address', '@guest.Pincode', '@guest.DocumentPath')" title="View Guest Details">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" style="width: 20px; height: 20px;">
                                     <path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM144 256a144 144 0 1 1 288 0 144 144 0 1 1 -288 0zm144-64c0 35.3-28.7 64-64 64c-7.1 0-13.9-1.2-20.3-3.3c-5.5-1.8-11.9 1.6-11.7 7.4c.3 6.9 1.3 13.8 3.2 20.7c13.7 51.2 66.4 81.6 117.6 67.9s81.6-66.4 67.9-117.6c-11.1-41.5-47.8-69.4-88.6-71.1c-5.8-.2-9.2 6.1-7.4 11.7c2.1 6.4 3.3 13.2 3.3 20.3z"/>
                                 </svg>
@@ -2084,6 +2084,12 @@
                     <i class="fas fa-user"></i> Personal Information
                 </div>
                 <div class="detail-grid-view">
+                    <div class="detail-item-view full-width-view" id="viewPhotoSection" style="display:none;">
+                        <div class="detail-label-view"><i class="fas fa-camera"></i> Photo</div>
+                        <div class="detail-value-view">
+                            <img id="viewGuestPhotoImg" alt="Guest Photo" style="max-width: 100%; max-height: 320px; border-radius: 10px; object-fit: contain; display:block;" />
+                        </div>
+                    </div>
                     <div class="detail-item-view">
                         <div class="detail-label-view"><i class="fas fa-signature"></i> Full Name</div>
                         <div class="detail-value-view" id="viewFullName">-</div>
@@ -3067,9 +3073,30 @@
     };
 
     // View Guest Modal Functions
-    window.showViewGuestModal = function(guestId, fullName, email, phone, guestType, relationship, age, dob, gender, identityType, identityNumber, country, state, city, address, pincode, documentPath) {
+    window.showViewGuestModal = function(bookingGuestId, masterGuestId, fullName, email, phone, guestType, relationship, age, dob, gender, identityType, identityNumber, country, state, city, address, pincode, documentPath) {
         const modal = document.getElementById('viewGuestModal');
         if (modal) {
+            // Photo
+            const photoSection = document.getElementById('viewPhotoSection');
+            const photoImg = document.getElementById('viewGuestPhotoImg');
+            if (photoSection && photoImg && masterGuestId) {
+                photoSection.style.display = 'none';
+                photoImg.removeAttribute('src');
+
+                photoImg.onload = function() {
+                    photoSection.style.display = 'block';
+                };
+                photoImg.onerror = function() {
+                    photoSection.style.display = 'none';
+                };
+
+                // Cache-bust to show newly captured photo immediately
+                photoImg.src = '@Url.Action("Photo", "Guest")' + '?id=' + encodeURIComponent(masterGuestId) + '&v=' + Date.now();
+            } else if (photoSection && photoImg) {
+                photoSection.style.display = 'none';
+                photoImg.removeAttribute('src');
+            }
+
             // Personal Information
             document.getElementById('viewFullName').textContent = fullName || '-';
             document.getElementById('viewGuestType').textContent = guestType || '-';

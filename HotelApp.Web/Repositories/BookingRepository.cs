@@ -536,6 +536,8 @@ namespace HotelApp.Web.Repositories
                             CountryId = @CountryId,
                             StateId = @StateId,
                             CityId = @CityId,
+                            Photo = COALESCE(@Photo, Photo),
+                            PhotoContentType = COALESCE(@PhotoContentType, PhotoContentType),
                             BranchID = @BranchID,
                             LastModifiedDate = GETDATE()
                         WHERE Id = @Id";
@@ -558,6 +560,8 @@ namespace HotelApp.Web.Repositories
                         CountryId = bookingGuest.CountryId,
                         StateId = bookingGuest.StateId,
                         CityId = bookingGuest.CityId,
+                        Photo = bookingGuest.Photo,
+                        PhotoContentType = bookingGuest.PhotoContentType,
                         BranchID = booking.BranchID
                     }, transaction);
                     
@@ -577,11 +581,13 @@ namespace HotelApp.Web.Repositories
                         INSERT INTO Guests (
                             FirstName, LastName, Email, Phone, Gender, DateOfBirth, Age, GuestType, ParentGuestId,
                             Address, City, State, Country, Pincode, CountryId, StateId, CityId,
+                            Photo, PhotoContentType,
                             BranchID, IsActive, CreatedDate, LastModifiedDate
                         )
                         VALUES (
                             @FirstName, @LastName, @Email, @Phone, @Gender, @DateOfBirth, @Age, @GuestType, @ParentGuestId,
                             @Address, @City, @State, @Country, @Pincode, @CountryId, @StateId, @CityId,
+                            @Photo, @PhotoContentType,
                             @BranchID, 1, GETDATE(), GETDATE()
                         );
                         SELECT CAST(SCOPE_IDENTITY() as int);";
@@ -605,6 +611,8 @@ namespace HotelApp.Web.Repositories
                         CountryId = bookingGuest.CountryId,
                         StateId = bookingGuest.StateId,
                         CityId = bookingGuest.CityId,
+                        Photo = bookingGuest.Photo,
+                        PhotoContentType = bookingGuest.PhotoContentType,
                         BranchID = booking.BranchID
                     }, transaction);
                     

@@ -955,9 +955,24 @@ namespace HotelApp.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [RequestSizeLimit(10_000_000)]
         public async Task<IActionResult> Create(BookingCreateViewModel model)
         {
             await PopulateLookupsAsync(model);
+            byte[]? primaryGuestPhotoBytes = null;
+            string? primaryGuestPhotoContentType = null;
+            if (!string.IsNullOrWhiteSpace(model.PrimaryGuestPhotoBase64))
+            {
+                if (!TryDecodeBase64Image(
+                    model.PrimaryGuestPhotoBase64,
+                    model.PrimaryGuestPhotoContentType,
+                    out primaryGuestPhotoBytes,
+                    out primaryGuestPhotoContentType,
+                    out var photoError))
+                {
+                    ModelState.AddModelError(nameof(model.PrimaryGuestPhotoBase64), photoError);
+                }
+            }
 
             var primaryGuestEmail = string.IsNullOrWhiteSpace(model.PrimaryGuestEmail)
                 ? null
@@ -1113,7 +1128,9 @@ namespace HotelApp.Web.Controllers
                     Country = model.CountryId.HasValue ? country?.Name : null,
                     State = model.StateId.HasValue ? state?.Name : null,
                     City = model.CityId.HasValue ? city?.Name : null,
-                    Pincode = model.Pincode
+                    Pincode = model.Pincode,
+                    Photo = primaryGuestPhotoBytes,
+                    PhotoContentType = primaryGuestPhotoContentType
                 }
             };
 
@@ -1130,6 +1147,73 @@ namespace HotelApp.Web.Controllers
             TempData["BookingAmount"] = quote.GrandTotal.ToString("N2");
             TempData["ShowAdvancePaymentModal"] = model.CollectAdvancePayment ? "true" : "false";
             return RedirectToAction(nameof(Details), new { bookingNumber = result.BookingNumber });
+        }
+
+        private static bool TryDecodeBase64Image(
+            string base64OrDataUrl,
+            string? contentTypeFromClient,
+            out byte[]? bytes,
+            out string? contentType,
+            out string error)
+        {
+            bytes = null;
+            contentType = null;
+            error = string.Empty;
+
+            var input = base64OrDataUrl.Trim();
+
+            // Accept both plain base64 and data URLs.
+            if (input.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            {
+                var commaIndex = input.IndexOf(',');
+                if (commaIndex <= 0 || commaIndex >= input.Length - 1)
+                {
+                    error = "Invalid image data.";
+                    return false;
+                }
+
+                var header = input.Substring(5, commaIndex - 5); // after 'data:'
+                var semicolonIndex = header.IndexOf(';');
+                contentType = semicolonIndex > 0 ? header.Substring(0, semicolonIndex) : header;
+                input = input[(commaIndex + 1)..];
+            }
+
+            // Prefer explicit client content type, but keep safe.
+            contentType ??= string.IsNullOrWhiteSpace(contentTypeFromClient) ? null : contentTypeFromClient.Trim();
+
+            if (!string.IsNullOrWhiteSpace(contentType))
+            {
+                var allowed = contentType.Equals("image/jpeg", StringComparison.OrdinalIgnoreCase)
+                           || contentType.Equals("image/png", StringComparison.OrdinalIgnoreCase);
+                if (!allowed)
+                {
+                    error = "Only JPEG and PNG images are allowed.";
+                    return false;
+                }
+            }
+
+            try
+            {
+                bytes = Convert.FromBase64String(input);
+            }
+            catch
+            {
+                error = "Invalid image data.";
+                return false;
+            }
+
+            // Guardrail: 2MB max stored image.
+            if (bytes.Length > 2 * 1024 * 1024)
+            {
+                error = "Captured image is too large (max 2MB).";
+                bytes = null;
+                contentType = null;
+                return false;
+            }
+
+            // Default content type if not provided.
+            contentType ??= "image/jpeg";
+            return true;
         }
 
         private static IEnumerable<BookingRoomNight> BuildRoomNightBreakdown(DateTime checkIn, DateTime checkOut, int roomId, decimal totalRoomRate, decimal totalTax, decimal totalCGST, decimal totalSGST, int nights)

@@ -77,6 +77,11 @@ namespace HotelApp.Web.Models
         public int? StateId { get; set; }
         public int? CityId { get; set; }
         public string? Gender { get; set; }
+
+        // Optional: captured via webcam on booking creation; persisted on Guests table for primary guest.
+        public byte[]? Photo { get; set; }
+        public string? PhotoContentType { get; set; }
+
         public DateTime CreatedDate { get; set; }
         public int? CreatedBy { get; set; }
         public bool IsActive { get; set; } = true;

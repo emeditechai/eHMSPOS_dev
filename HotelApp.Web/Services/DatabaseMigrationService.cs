@@ -28,6 +28,9 @@ namespace HotelApp.Web.Services
                 // Migration 26: Add Gender Column
                 await AddGenderColumnAsync();
 
+                // Migration 53: Add Guest Photo Columns
+                await AddGuestPhotoColumnsAsync();
+
                 _logger.LogInformation("All database migrations completed successfully.");
             }
             catch (Exception ex)
@@ -74,6 +77,45 @@ namespace HotelApp.Web.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error adding Gender column");
+                throw;
+            }
+        }
+
+        private async Task AddGuestPhotoColumnsAsync()
+        {
+            try
+            {
+                var photoExists = await _db.QueryFirstOrDefaultAsync<int>(
+                    @"SELECT COUNT(*) FROM sys.columns 
+                      WHERE object_id = OBJECT_ID(N'[dbo].[Guests]') AND name = 'Photo'");
+
+                if (photoExists == 0)
+                {
+                    await _db.ExecuteAsync("ALTER TABLE [dbo].[Guests] ADD [Photo] VARBINARY(MAX) NULL");
+                    _logger.LogInformation("✓ Photo column added to Guests table");
+                }
+                else
+                {
+                    _logger.LogInformation("✓ Photo column already exists in Guests table");
+                }
+
+                var photoContentTypeExists = await _db.QueryFirstOrDefaultAsync<int>(
+                    @"SELECT COUNT(*) FROM sys.columns 
+                      WHERE object_id = OBJECT_ID(N'[dbo].[Guests]') AND name = 'PhotoContentType'");
+
+                if (photoContentTypeExists == 0)
+                {
+                    await _db.ExecuteAsync("ALTER TABLE [dbo].[Guests] ADD [PhotoContentType] NVARCHAR(100) NULL");
+                    _logger.LogInformation("✓ PhotoContentType column added to Guests table");
+                }
+                else
+                {
+                    _logger.LogInformation("✓ PhotoContentType column already exists in Guests table");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding guest photo columns");
                 throw;
             }
         }

@@ -391,6 +391,65 @@
     color: #2d3748;
     font-weight: 700;
 }
+
+.guest-photo-capture {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.guest-photo-preview {
+    width: 100%;
+    border: 1px solid #cbd5e0;
+    border-radius: 8px;
+    background: #f7fafc;
+    overflow: hidden;
+}
+
+.guest-photo-preview video,
+.guest-photo-preview img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.guest-photo-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.guest-photo-actions .camera-btn {
+    border: 1px solid #cbd5e0;
+    background: white;
+    color: #2d3748;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.guest-photo-actions .camera-btn.primary {
+    background: #667eea;
+    border-color: #667eea;
+    color: white;
+}
+
+.guest-photo-actions .camera-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.guest-photo-hint {
+    font-size: 12px;
+    color: #718096;
+}
+
+.guest-photo-error {
+    font-size: 12px;
+    color: #e53e3e;
+}
 </style>
 
 <div class="booking-dashboard">
@@ -489,6 +548,36 @@
                     <label asp-for="PrimaryGuestEmail">Email Address</label>
                     <input asp-for="PrimaryGuestEmail" type="email" id="guestEmail" placeholder="guest@example.com" />
                     <span asp-validation-for="PrimaryGuestEmail" class="text-danger"></span>
+                </div>
+
+                <div class="form-field">
+                    <label>Guest Photo</label>
+                    <div class="guest-photo-capture">
+                        <div class="guest-photo-preview">
+                            <video id="primaryGuestCamera" playsinline autoplay muted style="display:none;"></video>
+                            <img id="primaryGuestPhotoPreview" alt="Captured guest photo preview" style="display:none;" />
+                        </div>
+                        <div class="guest-photo-actions">
+                            <button type="button" class="camera-btn" id="primaryGuestStartCamera">
+                                <i class="fas fa-camera"></i> Start Camera
+                            </button>
+                            <button type="button" class="camera-btn primary" id="primaryGuestCapture" disabled>
+                                <i class="fas fa-circle"></i> Capture
+                            </button>
+                            <button type="button" class="camera-btn" id="primaryGuestRetake" style="display:none;">
+                                <i class="fas fa-redo"></i> Retake
+                            </button>
+                            <button type="button" class="camera-btn" id="primaryGuestRemove" style="display:none;">
+                                <i class="fas fa-trash"></i> Remove
+                            </button>
+                        </div>
+                        <div class="guest-photo-hint">Uses your device camera. Captured photo will be saved for the primary guest.</div>
+                        <div class="guest-photo-error" id="primaryGuestCameraError" style="display:none;"></div>
+                    </div>
+
+                    <input asp-for="PrimaryGuestPhotoBase64" type="hidden" id="primaryGuestPhotoBase64" />
+                    <input asp-for="PrimaryGuestPhotoContentType" type="hidden" id="primaryGuestPhotoContentType" />
+                    <span asp-validation-for="PrimaryGuestPhotoBase64" class="text-danger"></span>
                 </div>
 
                 <details class="optional-details">
@@ -721,6 +810,139 @@
             const hasModelStateErrors = @((ViewData.ModelState.ErrorCount > 0).ToString().ToLowerInvariant());
             let typingTimer;
             const doneTypingInterval = 800; // 800ms after user stops typing
+
+            // Webcam capture for primary guest
+            let primaryGuestStream = null;
+
+            const $cameraVideo = $('#primaryGuestCamera');
+            const $photoPreview = $('#primaryGuestPhotoPreview');
+            const $startBtn = $('#primaryGuestStartCamera');
+            const $captureBtn = $('#primaryGuestCapture');
+            const $retakeBtn = $('#primaryGuestRetake');
+            const $removeBtn = $('#primaryGuestRemove');
+            const $err = $('#primaryGuestCameraError');
+            const $base64 = $('#primaryGuestPhotoBase64');
+            const $ctype = $('#primaryGuestPhotoContentType');
+
+            function setCameraError(message) {
+                if (!message) {
+                    $err.hide().text('');
+                } else {
+                    $err.show().text(message);
+                }
+            }
+
+            function stopPrimaryGuestCamera() {
+                try {
+                    const videoEl = $cameraVideo.get(0);
+                    if (videoEl) videoEl.srcObject = null;
+                } catch {}
+
+                if (primaryGuestStream) {
+                    primaryGuestStream.getTracks().forEach(t => t.stop());
+                    primaryGuestStream = null;
+                }
+
+                $cameraVideo.hide();
+                $captureBtn.prop('disabled', true);
+            }
+
+            async function startPrimaryGuestCamera() {
+                setCameraError('');
+                stopPrimaryGuestCamera();
+
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    setCameraError('Camera is not supported in this browser.');
+                    return;
+                }
+
+                try {
+                    primaryGuestStream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: 'user',
+                            width: { ideal: 640 },
+                            height: { ideal: 480 }
+                        },
+                        audio: false
+                    });
+
+                    const videoEl = $cameraVideo.get(0);
+                    videoEl.srcObject = primaryGuestStream;
+                    await videoEl.play();
+
+                    $cameraVideo.show();
+                    $photoPreview.hide();
+                    $captureBtn.prop('disabled', false);
+                } catch (e) {
+                    setCameraError('Unable to access camera. Please allow camera permission.');
+                    stopPrimaryGuestCamera();
+                }
+            }
+
+            function setCapturedPhoto(dataUrl, contentType) {
+                const commaIndex = dataUrl.indexOf(',');
+                const rawBase64 = commaIndex >= 0 ? dataUrl.substring(commaIndex + 1) : '';
+                $base64.val(rawBase64);
+                $ctype.val(contentType);
+
+                $photoPreview.attr('src', dataUrl).show();
+                $cameraVideo.hide();
+                $retakeBtn.show();
+                $removeBtn.show();
+                $captureBtn.prop('disabled', true);
+            }
+
+            function clearCapturedPhoto() {
+                $base64.val('');
+                $ctype.val('');
+                $photoPreview.attr('src', '').hide();
+                $retakeBtn.hide();
+                $removeBtn.hide();
+                setCameraError('');
+            }
+
+            $startBtn.on('click', async function() {
+                await startPrimaryGuestCamera();
+            });
+
+            $captureBtn.on('click', function() {
+                setCameraError('');
+                const videoEl = $cameraVideo.get(0);
+                if (!videoEl || videoEl.readyState < 2) {
+                    setCameraError('Camera not ready yet.');
+                    return;
+                }
+
+                const w = videoEl.videoWidth || 640;
+                const h = videoEl.videoHeight || 480;
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(videoEl, 0, 0, w, h);
+
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                setCapturedPhoto(dataUrl, 'image/jpeg');
+                stopPrimaryGuestCamera();
+            });
+
+            $retakeBtn.on('click', async function() {
+                clearCapturedPhoto();
+                await startPrimaryGuestCamera();
+            });
+
+            $removeBtn.on('click', function() {
+                clearCapturedPhoto();
+                stopPrimaryGuestCamera();
+            });
+
+            // Cleanup on navigation/submit
+            $('#bookingForm').on('submit', function() {
+                stopPrimaryGuestCamera();
+            });
+            window.addEventListener('beforeunload', function() {
+                stopPrimaryGuestCamera();
+            });
 
             function scrollToTarget(selector) {
                 const $target = $(selector);

@@ -258,6 +258,34 @@ namespace HotelApp.Web.Controllers
             return View(guest);
         }
 
+        [HttpGet]
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public async Task<IActionResult> Photo(int id)
+        {
+            var guest = await _guestRepository.GetByIdAsync(id);
+            if (guest == null)
+            {
+                return NotFound();
+            }
+
+            // Avoid leaking cross-branch data.
+            if (guest.BranchID != CurrentBranchID)
+            {
+                return NotFound();
+            }
+
+            if (guest.Photo == null || guest.Photo.Length == 0)
+            {
+                return NotFound();
+            }
+
+            var contentType = string.IsNullOrWhiteSpace(guest.PhotoContentType)
+                ? "image/jpeg"
+                : guest.PhotoContentType;
+
+            return File(guest.Photo, contentType);
+        }
+
         public async Task<IActionResult> Search(string searchTerm)
         {
             if (string.IsNullOrWhiteSpace(searchTerm))

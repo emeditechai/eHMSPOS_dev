@@ -54,6 +54,13 @@ namespace HotelApp.Web.ViewModels
     [StringLength(20)]
     public string? Gender { get; set; }
 
+        // Base64 payload (no data URL prefix) captured from integrated webcam.
+        // Stored to DB for primary guest during booking creation.
+        public string? PrimaryGuestPhotoBase64 { get; set; }
+
+        // Typically "image/jpeg".
+        public string? PrimaryGuestPhotoContentType { get; set; }
+
         [DataType(DataType.Date)]
         [Display(Name = "Date of Birth")]
         public DateTime? DateOfBirth { get; set; }
