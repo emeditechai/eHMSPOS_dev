@@ -137,17 +137,34 @@
         padding: 1.5rem;
         margin-bottom: 2rem;
     }
-    .financial-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        gap: 1rem;
+    .financial-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
         margin-top: 1rem;
+    }
+    .financial-row {
+        display: grid;
+        grid-template-columns: 160px 1fr;
+        gap: 0.85rem;
+        align-items: center;
+    }
+    .financial-row-title {
+        font-size: 0.95rem;
+        font-weight: 800;
+        opacity: 0.95;
+        letter-spacing: 0.01em;
+    }
+    .financial-row-items {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(160px, 1fr));
+        gap: 0.85rem;
     }
     .financial-item {
         background: rgba(255, 255, 255, 0.1);
         backdrop-filter: blur(10px);
         border-radius: 8px;
-        padding: 1rem;
+        padding: 0.85rem;
         text-align: center;
     }
     .financial-label {
@@ -156,12 +173,30 @@
         margin-bottom: 0.4rem;
     }
     .financial-amount {
-        font-size: 1.4rem;
+        font-size: 1.25rem;
         font-weight: 700;
     }
     .financial-grand-total {
         background: rgba(255, 255, 255, 0.2);
         border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+    .financial-highlight-deposit {
+        background: rgba(255, 255, 255, 0.16);
+        border: 2px solid rgba(255, 255, 255, 0.35);
+    }
+    .financial-highlight-due {
+        background: rgba(255, 255, 255, 0.26);
+        border: 2px solid rgba(255, 255, 255, 0.45);
+    }
+
+    @@media (max-width: 900px) {
+        .financial-row {
+            grid-template-columns: 1fr;
+            align-items: stretch;
+        }
+        .financial-row-items {
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        }
     }
 
     .billing-headwise {
@@ -888,11 +923,7 @@
     <h2 style="margin: 0 0 0.25rem 0; font-size: 1.3rem;">💰 Financial Summary</h2>
     <p style="opacity: 0.9; margin: 0 0 1rem 0; font-size: 0.9rem;">Complete breakdown of charges and payments</p>
     
-    <div class="financial-grid">
-        <div class="financial-item">
-            <div class="financial-label">Room Total</div>
-            <div class="financial-amount">₹@Model.BaseAmount.ToString("N2")</div>
-        </div>
+    <div class="financial-rows">
         @{
             // Use actual tax percentages from RateMaster instead of recalculating from amounts
             var cgstPercentage = ViewBag.CGSTPercentage != null ? (decimal)ViewBag.CGSTPercentage : 6m;
@@ -946,8 +977,14 @@
                     }
                 })
                 .Where(x => x.Amount.HasValue)
-                .OrderBy(x => x.Head.Id)
-                .ThenBy(x => x.Head.Code)
+                .OrderBy(x => (x.Head.Code ?? string.Empty).Trim().ToUpperInvariant() switch
+                {
+                    "S" => 0,
+                    "O" => 1,
+                    "R" => 2,
+                    _ => 99
+                })
+                .ThenBy(x => x.Head.Name)
                 .ToList();
 
             var adjustedCgstAmount = Model.CGSTAmount + ocCgstTotal + rsCgstTotal;
@@ -993,75 +1030,79 @@
             }
         }
 
-        <div class="financial-item">
-            <div class="financial-label">CGST @cgstPercentage.ToString("0.##")%</div>
-            <div class="financial-amount">₹@adjustedCgstAmount.ToString("N2")</div>
+        <div class="financial-row">
+            <div class="financial-row-title">Stay Charges</div>
+            <div class="financial-row-items">
+                <div class="financial-item">
+                    <div class="financial-label">Room Total</div>
+                    <div class="financial-amount">₹@Model.BaseAmount.ToString("N2")</div>
+                </div>
+                <div class="financial-item">
+                    <div class="financial-label">Stay GST Amount</div>
+                    <div class="financial-amount">₹@Model.TaxAmount.ToString("N2")</div>
+                </div>
+                <div class="financial-item">
+                    <div class="financial-label">Stay Total (Incl. GST)</div>
+                    <div class="financial-amount">₹@Model.TotalAmount.ToString("N2")</div>
+                </div>
+            </div>
         </div>
-        <div class="financial-item">
-            <div class="financial-label">SGST @sgstPercentage.ToString("0.##")%</div>
-            <div class="financial-amount">₹@adjustedSgstAmount.ToString("N2")</div>
+
+        <div class="financial-row">
+            <div class="financial-row-title">Other Charges</div>
+            <div class="financial-row-items">
+                <div class="financial-item">
+                    <div class="financial-label">Other Charges Total Amount</div>
+                    <div class="financial-amount">₹@ocAmountTotal.ToString("N2")</div>
+                </div>
+                <div class="financial-item">
+                    <div class="financial-label">Total GST Amount</div>
+                    <div class="financial-amount">₹@ocGstTotal.ToString("N2")</div>
+                </div>
+                <div class="financial-item">
+                    <div class="financial-label">Total Other Charges (Incl. GST)</div>
+                    <div class="financial-amount">₹@ocGrandTotal.ToString("N2")</div>
+                </div>
+            </div>
         </div>
-        <div class="financial-item">
-            <div class="financial-label">Stay GST</div>
-            <div class="financial-amount">₹@Model.TaxAmount.ToString("N2")</div>
+
+        <div class="financial-row">
+            <div class="financial-row-title">Room Services</div>
+            <div class="financial-row-items">
+                <div class="financial-item">
+                    <div class="financial-label">Total Amount</div>
+                    <div class="financial-amount">₹@rsNetTotal.ToString("N2")</div>
+                </div>
+                <div class="financial-item">
+                    <div class="financial-label">Total GST Amount</div>
+                    <div class="financial-amount">₹@rsGstTotal.ToString("N2")</div>
+                </div>
+                <div class="financial-item">
+                    <div class="financial-label">Total (Incl. GST)</div>
+                    <div class="financial-amount">₹@rsGrandTotal.ToString("N2")</div>
+                </div>
+            </div>
         </div>
-        <div class="financial-item">
-            <div class="financial-label">Other Charges GST</div>
-            <div class="financial-amount">₹@ocGstTotal.ToString("N2")</div>
-        </div>
-        <div class="financial-item">
-            <div class="financial-label">Room Services GST</div>
-            <div class="financial-amount">₹@rsGstTotal.ToString("N2")</div>
-        </div>
-        <div class="financial-item">
-            <div class="financial-label">Total GST</div>
-            <div class="financial-amount">₹@adjustedTotalGstAmount.ToString("N2")</div>
-        </div>
-        <div class="financial-item">
-            <div class="financial-label">Discount</div>
-            <div class="financial-amount">₹@(computedDiscountAmount.ToString("N2"))</div>
-        </div>
-        <div class="financial-item">
-            <div class="financial-label">Payment Discount</div>
-            <div class="financial-amount">₹@(paymentDiscountTotal.ToString("N2"))</div>
-        </div>
-        <div class="financial-item">
-            <div class="financial-label">Other Charges</div>
-            <div class="financial-amount">₹@ocGrandTotal.ToString("N2")</div>
-        </div>
-        <div class="financial-item">
-            <div class="financial-label">Room Services</div>
-            <div class="financial-amount">₹@rsGrandTotal.ToString("N2")</div>
-        </div>
-        <div class="financial-item financial-grand-total">
-            <div class="financial-label">Grand Total</div>
-            <div class="financial-amount">₹@adjustedGrandTotal.ToString("N2")</div>
-        </div>
-        <div class="financial-item">
-            <div class="financial-label">Deposit</div>
-            <div class="financial-amount">₹@Model.DepositAmount.ToString("N2")</div>
-        </div>
-        <div class="financial-item">
-            <div class="financial-label">Balance Due</div>
-            <div class="financial-amount">₹@adjustedBalanceAmount.ToString("N2")</div>
+
+        <div class="financial-row">
+            <div class="financial-row-title">Overall</div>
+            <div class="financial-row-items">
+                <div class="financial-item financial-grand-total">
+                    <div class="financial-label">Grand Total</div>
+                    <div class="financial-amount">₹@adjustedGrandTotal.ToString("N2")</div>
+                </div>
+                <div class="financial-item financial-highlight-deposit">
+                    <div class="financial-label">Deposit Amount</div>
+                    <div class="financial-amount">₹@Model.DepositAmount.ToString("N2")</div>
+                </div>
+                <div class="financial-item financial-highlight-due">
+                    <div class="financial-label">Due Amount</div>
+                    <div class="financial-amount">₹@adjustedBalanceAmount.ToString("N2")</div>
+                </div>
+            </div>
         </div>
     </div>
 
-    @if (billingHeadRows.Count > 0)
-    {
-        <div class="billing-headwise">
-            <div class="billing-headwise-title">Billing Head wise Amount</div>
-            <div class="billing-headwise-rows">
-                @foreach (var row in billingHeadRows)
-                {
-                    <div class="billing-headwise-row">
-                        <div class="billing-headwise-name">@row.Head.Name</div>
-                        <div class="billing-headwise-amount">₹@row.Amount!.Value.ToString("N2")</div>
-                    </div>
-                }
-            </div>
-        </div>
-    }
 </div>
 
 <div class="section-card">
@@ -1240,13 +1281,63 @@
             <i class="fas fa-money-bill-wave"></i>
         </div>
         <h3 class="section-title">Payment History</h3>
-        @if (adjustedBalanceAmount > 0)
-        {
-            <button type="button" class="btn btn-primary" onclick="showPaymentModal()" style="margin-left: auto;">
-                <i class="fas fa-plus"></i> Add Payment
-            </button>
-        }
+        <div style="margin-left: auto; display: flex; align-items: center; gap: 0.85rem;">
+            @if (billingHeadRows.Count > 0)
+            {
+                <div class="form-check" style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <input class="form-check-input" type="checkbox" id="toggleBillingHeadwise" style="margin: 0;">
+                    <label class="form-check-label" for="toggleBillingHeadwise" style="margin: 0; font-weight: 600; color: #6b7280;">
+                        Billing Head wise Amount
+                    </label>
+                </div>
+            }
+
+            @if (adjustedBalanceAmount > 0)
+            {
+                <button type="button" class="btn btn-primary" onclick="showPaymentModal()">
+                    <i class="fas fa-plus"></i> Add Payment
+                </button>
+            }
+        </div>
     </div>
+
+    @if (billingHeadRows.Count > 0)
+    {
+        <div id="billingHeadwiseContainer" style="display: none; margin: 0.25rem 0 1rem 0;">
+            <table class="modern-table" style="margin-bottom: 0;">
+                <thead>
+                    <tr>
+                        <th>Billing Head</th>
+                        <th class="text-right"><i class="fas fa-rupee-sign"></i> Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in billingHeadRows)
+                    {
+                        <tr>
+                            <td><strong>@row.Head.Name</strong></td>
+                            <td class="text-right" style="font-family: monospace;"><strong>₹@row.Amount!.Value.ToString("N2")</strong></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const toggle = document.getElementById('toggleBillingHeadwise');
+                const container = document.getElementById('billingHeadwiseContainer');
+                if (!toggle || !container) return;
+
+                const update = () => {
+                    container.style.display = toggle.checked ? '' : 'none';
+                };
+
+                toggle.addEventListener('change', update);
+                update();
+            });
+        </script>
+    }
     @{
         var payments = ViewBag.Payments as IEnumerable<HotelApp.Web.Models.BookingPayment> ?? Enumerable.Empty<HotelApp.Web.Models.BookingPayment>();
     }
