@@ -976,7 +976,7 @@ namespace HotelApp.Web.Controllers
 
                 var quote = await _bookingRepository.GetQuoteAsync(quoteRequest);
                 
-                if (quote != null)
+                if (quote != null && quote.BaseRatePerNight > 0)
                 {
                     return Json(new { 
                         success = true, 

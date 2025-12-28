@@ -18,6 +18,8 @@ PRINT '';
 -- Step 1: Disable Foreign Key Constraints
 -- =============================================
 PRINT 'Step 1: Disabling foreign key constraints...';
+IF OBJECT_ID(N'dbo.RoomServices', N'U') IS NOT NULL
+    ALTER TABLE RoomServices NOCHECK CONSTRAINT ALL;
 ALTER TABLE BookingRooms NOCHECK CONSTRAINT ALL;
 ALTER TABLE BookingAuditLog NOCHECK CONSTRAINT ALL;
 ALTER TABLE BookingPayments NOCHECK CONSTRAINT ALL;
@@ -34,6 +36,7 @@ PRINT '';
 -- =============================================
 PRINT 'Step 2: Counting existing transaction records...';
 
+DECLARE @RoomServicesCount INT;
 DECLARE @BookingRoomsCount INT;
 DECLARE @BookingAuditLogCount INT;
 DECLARE @BookingPaymentsCount INT;
@@ -43,6 +46,11 @@ DECLARE @BookingRoomNightsCount INT;
 DECLARE @ReservationRoomNightsCount INT;
 DECLARE @BookingsCount INT;
 DECLARE @GuestsCount INT;
+
+IF OBJECT_ID(N'dbo.RoomServices', N'U') IS NOT NULL
+    SELECT @RoomServicesCount = COUNT(*) FROM RoomServices;
+ELSE
+    SET @RoomServicesCount = 0;
 
 SELECT @BookingRoomsCount = COUNT(*) FROM BookingRooms;
 SELECT @BookingAuditLogCount = COUNT(*) FROM BookingAuditLog;
@@ -54,6 +62,7 @@ SELECT @ReservationRoomNightsCount = COUNT(*) FROM ReservationRoomNights;
 SELECT @BookingsCount = COUNT(*) FROM Bookings;
 SELECT @GuestsCount = COUNT(*) FROM Guests;
 
+PRINT '  - RoomServices: ' + CAST(@RoomServicesCount AS VARCHAR(10)) + ' records';
 PRINT '  - BookingRooms: ' + CAST(@BookingRoomsCount AS VARCHAR(10)) + ' records';
 PRINT '  - BookingAuditLog: ' + CAST(@BookingAuditLogCount AS VARCHAR(10)) + ' records';
 PRINT '  - BookingPayments: ' + CAST(@BookingPaymentsCount AS VARCHAR(10)) + ' records';
@@ -69,6 +78,13 @@ PRINT '';
 -- Step 3: Delete transaction data in correct order
 -- =============================================
 PRINT 'Step 3: Deleting transaction data...';
+
+-- Delete RoomServices (cached room service settlement lines)
+IF OBJECT_ID(N'dbo.RoomServices', N'U') IS NOT NULL
+BEGIN
+    DELETE FROM RoomServices;
+    PRINT '  ✓ Deleted ' + CAST(@RoomServicesCount AS VARCHAR(10)) + ' RoomServices records';
+END
 
 -- Delete BookingRooms (multi-room assignments)
 DELETE FROM BookingRooms;
@@ -126,6 +142,8 @@ PRINT '';
 -- Step 5: Re-enable Foreign Key Constraints
 -- =============================================
 PRINT 'Step 5: Re-enabling foreign key constraints...';
+IF OBJECT_ID(N'dbo.RoomServices', N'U') IS NOT NULL
+    ALTER TABLE RoomServices CHECK CONSTRAINT ALL;
 ALTER TABLE BookingRooms CHECK CONSTRAINT ALL;
 ALTER TABLE BookingAuditLog CHECK CONSTRAINT ALL;
 ALTER TABLE BookingPayments CHECK CONSTRAINT ALL;
@@ -142,6 +160,8 @@ PRINT '';
 -- =============================================
 PRINT 'Step 6: Resetting identity seeds to start from 1...';
 
+IF OBJECT_ID(N'dbo.RoomServices', N'U') IS NOT NULL
+    DBCC CHECKIDENT ('RoomServices', RESEED, 0);
 DBCC CHECKIDENT ('BookingRooms', RESEED, 0);
 DBCC CHECKIDENT ('BookingAuditLog', RESEED, 0);
 DBCC CHECKIDENT ('BookingPayments', RESEED, 0);
@@ -186,13 +206,17 @@ PRINT '';
 -- =============================================
 PRINT 'Step 8: Final verification...';
 
-DECLARE @RemainingBookings INT, @RemainingPayments INT, @RemainingRooms INT;
+DECLARE @RemainingBookings INT, @RemainingPayments INT, @RemainingRooms INT, @RemainingRoomServices INT;
 
 SELECT @RemainingBookings = COUNT(*) FROM Bookings;
 SELECT @RemainingPayments = COUNT(*) FROM BookingPayments;
 SELECT @RemainingRooms = COUNT(*) FROM BookingRooms;
+IF OBJECT_ID(N'dbo.RoomServices', N'U') IS NOT NULL
+    SELECT @RemainingRoomServices = COUNT(*) FROM RoomServices;
+ELSE
+    SET @RemainingRoomServices = 0;
 
-IF @RemainingBookings = 0 AND @RemainingPayments = 0 AND @RemainingRooms = 0
+IF @RemainingBookings = 0 AND @RemainingPayments = 0 AND @RemainingRooms = 0 AND @RemainingRoomServices = 0
 BEGIN
     PRINT '  ✓ All transaction data successfully removed';
     PRINT '  ✓ System is clean and ready for new bookings';
@@ -203,6 +227,7 @@ BEGIN
     PRINT '    - Remaining Bookings: ' + CAST(@RemainingBookings AS VARCHAR(10));
     PRINT '    - Remaining Payments: ' + CAST(@RemainingPayments AS VARCHAR(10));
     PRINT '    - Remaining Room Assignments: ' + CAST(@RemainingRooms AS VARCHAR(10));
+    PRINT '    - Remaining RoomServices: ' + CAST(@RemainingRoomServices AS VARCHAR(10));
 END
 
 PRINT '';
@@ -212,7 +237,7 @@ PRINT 'Finished at: ' + CONVERT(VARCHAR(50), GETDATE(), 121);
 PRINT '========================================';
 PRINT '';
 PRINT 'SUMMARY:';
-PRINT '  Total Records Deleted: ' + CAST(@BookingsCount + @BookingPaymentsCount + @BookingOtherChargesCount + @BookingGuestsCount + @BookingRoomNightsCount + @ReservationRoomNightsCount + @BookingAuditLogCount + @BookingRoomsCount + @GuestsCount AS VARCHAR(10));
+PRINT '  Total Records Deleted: ' + CAST(@RoomServicesCount + @BookingsCount + @BookingPaymentsCount + @BookingOtherChargesCount + @BookingGuestsCount + @BookingRoomNightsCount + @ReservationRoomNightsCount + @BookingAuditLogCount + @BookingRoomsCount + @GuestsCount AS VARCHAR(10));
 PRINT '  Rooms Reset: ' + CAST(@RoomsUpdated AS VARCHAR(10));
 PRINT '  Master Data: PRESERVED';
 PRINT '';

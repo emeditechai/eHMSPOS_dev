@@ -33,34 +33,51 @@ namespace HotelApp.Web.Repositories
                 return null;
             }
 
-            // Try to find exact match first, then fallback to any active rate for the room type
-            const string rateSql = @"
+            // Pick the best RateMaster row for this request.
+            // Note: CheckOutDate is exclusive for stays; match the last night (CheckOutDate - 1 day) within EndDate.
+            // IMPORTANT: When CustomerType is explicitly chosen (B2C/B2B), do NOT fall back to other customer types.
+            // If no matching rate exists for the selected CustomerType/Source + date range, return no rate.
+            const string rateSqlCustomerTypeFullStay = @"
+                ;WITH CandidateRates AS (
+                    SELECT *
+                    FROM RateMaster
+                    WHERE RoomTypeId = @RoomTypeId
+                      AND BranchID = @BranchID
+                      AND IsActive = 1
+                      AND CAST(@CheckInDate AS DATE) >= CAST(StartDate AS DATE)
+                      AND DATEADD(DAY, -1, CAST(@CheckOutDate AS DATE)) <= CAST(ISNULL(EndDate, '9999-12-31') AS DATE)
+                      AND UPPER(LTRIM(RTRIM(CustomerType))) = UPPER(LTRIM(RTRIM(@CustomerType)))
+                )
                 SELECT TOP 1 *
-                FROM RateMaster
-                WHERE RoomTypeId = @RoomTypeId
-                  AND BranchID = @BranchID
-                  AND @CheckInDate >= StartDate
-                  AND @CheckOutDate <= EndDate
-                  AND IsActive = 1
-                  AND (
-                      -- Priority 1: Exact match on CustomerType and Source
-                      (CustomerType = @CustomerType AND Source = @Source)
-                      OR
-                      -- Priority 2: Match CustomerType only
-                      (CustomerType = @CustomerType AND Source != @Source)
-                      OR
-                      -- Priority 3: Any rate for this room type
-                      (CustomerType != @CustomerType)
-                  )
-                ORDER BY 
-                    CASE 
-                        WHEN CustomerType = @CustomerType AND Source = @Source THEN 1
-                        WHEN CustomerType = @CustomerType THEN 2
-                        ELSE 3
+                FROM CandidateRates
+                ORDER BY
+                    CASE
+                        WHEN REPLACE(UPPER(LTRIM(RTRIM(ISNULL(Source, '')))), ' ', '') = REPLACE(UPPER(LTRIM(RTRIM(ISNULL(@Source, '')))), ' ', '') THEN 1
+                        ELSE 2
                     END,
-                    StartDate DESC";
+                    CAST(StartDate AS DATE) DESC";
 
-            var ratePlan = await _dbConnection.QueryFirstOrDefaultAsync<RateMaster>(rateSql, request);
+            const string rateSqlCustomerTypeCheckInOnly = @"
+                ;WITH CandidateRates AS (
+                    SELECT *
+                    FROM RateMaster
+                    WHERE RoomTypeId = @RoomTypeId
+                      AND BranchID = @BranchID
+                      AND IsActive = 1
+                      AND CAST(@CheckInDate AS DATE) BETWEEN CAST(StartDate AS DATE) AND CAST(ISNULL(EndDate, '9999-12-31') AS DATE)
+                      AND UPPER(LTRIM(RTRIM(CustomerType))) = UPPER(LTRIM(RTRIM(@CustomerType)))
+                )
+                SELECT TOP 1 *
+                FROM CandidateRates
+                ORDER BY
+                    CASE
+                        WHEN REPLACE(UPPER(LTRIM(RTRIM(ISNULL(Source, '')))), ' ', '') = REPLACE(UPPER(LTRIM(RTRIM(ISNULL(@Source, '')))), ' ', '') THEN 1
+                        ELSE 2
+                    END,
+                    CAST(StartDate AS DATE) DESC";
+
+            var ratePlan = await _dbConnection.QueryFirstOrDefaultAsync<RateMaster>(rateSqlCustomerTypeFullStay, request)
+                ?? await _dbConnection.QueryFirstOrDefaultAsync<RateMaster>(rateSqlCustomerTypeCheckInOnly, request);
 
             const string roomTypeSql = "SELECT * FROM RoomTypes WHERE Id = @RoomTypeId AND IsActive = 1";
             var roomType = await _dbConnection.QueryFirstOrDefaultAsync<RoomType>(roomTypeSql, new { request.RoomTypeId });
@@ -70,9 +87,19 @@ namespace HotelApp.Web.Repositories
             }
 
             // Calculate night-by-night rates with weekend and special day logic
-            var taxPercentage = ratePlan?.TaxPercentage ?? 0;
-            var cgstPercentage = (ratePlan?.CGSTPercentage > 0 ? ratePlan.CGSTPercentage : taxPercentage / 2);
-            var sgstPercentage = (ratePlan?.SGSTPercentage > 0 ? ratePlan.SGSTPercentage : taxPercentage / 2);
+            var taxPercentage = 0m;
+            var cgstPercentage = 0m;
+            var sgstPercentage = 0m;
+            if (ratePlan != null)
+            {
+                // Prefer total tax percentage if present; otherwise derive from split CGST/SGST.
+                taxPercentage = ratePlan.TaxPercentage > 0m
+                    ? ratePlan.TaxPercentage
+                    : (ratePlan.CGSTPercentage + ratePlan.SGSTPercentage);
+
+                cgstPercentage = ratePlan.CGSTPercentage > 0m ? ratePlan.CGSTPercentage : taxPercentage / 2m;
+                sgstPercentage = ratePlan.SGSTPercentage > 0m ? ratePlan.SGSTPercentage : taxPercentage / 2m;
+            }
             
             var totalGuests = request.Adults + request.Children;
             var extraGuests = Math.Max(0, totalGuests - roomType.MaxOccupancy);
@@ -216,16 +243,17 @@ namespace HotelApp.Web.Repositories
                 DayOfWeek.Sunday => "Sunday",
                 _ => ""
             };
+            var dayOfWeekUpper = dayOfWeek.ToUpperInvariant();
             const string weekendSql = @"
                 SELECT TOP 1 BaseRate, ExtraPaxRate
                 FROM WeekendRates
                 WHERE RateMasterId = @RateMasterId
                   AND IsActive = 1
-                  AND DayOfWeek = @DayOfWeek";
+                  AND UPPER(LTRIM(RTRIM(DayOfWeek))) = @DayOfWeek";
 
             var weekendRate = await _dbConnection.QueryFirstOrDefaultAsync<(decimal BaseRate, decimal ExtraPaxRate)?>(  
                 weekendSql, 
-                new { RateMasterId = rateMasterId, DayOfWeek = dayOfWeek },
+                new { RateMasterId = rateMasterId, DayOfWeek = dayOfWeekUpper },
                 transaction);
 
             if (weekendRate.HasValue)

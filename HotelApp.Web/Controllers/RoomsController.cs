@@ -372,23 +372,12 @@ public class RoomsController : BaseController
                 
                 // B2C: Get the effective rate for this date and room type (WITHOUT discount applied yet)
                 var rateInfo = GetEffectiveRateForDate(allRates, roomTypeId, start, "B2C");
-
-                // Tax % should come from RateMaster (default rate for this date range/customer type)
-                var b2cTaxPercentage = allRates
-                    .Where(r => r.RoomTypeId == roomTypeId && r.IsActive && r.CustomerType == "B2C")
-                    .Where(r => r.StartDate.Date <= start.Date && r.EndDate.Date >= start.Date)
-                    .Select(r => r.TaxPercentage)
-                    .FirstOrDefault();
+                var b2cTaxPercentage = rateInfo.taxPercentage;
 
                 // B2B: Optional rate (same rate-type logic). Only include if a B2B entry exists.
                 var b2bRateInfo = GetEffectiveRateForDate(allRates, roomTypeId, start, "B2B");
                 var hasB2BRate = b2bRateInfo.baseRate > 0;
-
-                var b2bTaxPercentage = allRates
-                    .Where(r => r.RoomTypeId == roomTypeId && r.IsActive && r.CustomerType == "B2B")
-                    .Where(r => r.StartDate.Date <= start.Date && r.EndDate.Date >= start.Date)
-                    .Select(r => r.TaxPercentage)
-                    .FirstOrDefault();
+                var b2bTaxPercentage = b2bRateInfo.taxPercentage;
                 
                 // Calculate discount
                 decimal originalRate = rateInfo.baseRate;
@@ -450,9 +439,16 @@ public class RoomsController : BaseController
         }
     }
 
-    private (decimal baseRate, decimal extraPaxRate, string rateType, string? eventName) GetEffectiveRateForDate(
+    private (decimal baseRate, decimal extraPaxRate, string rateType, string? eventName, decimal taxPercentage) GetEffectiveRateForDate(
         IEnumerable<RateMaster> allRates, int roomTypeId, DateTime date, string customerType)
     {
+        static decimal EffectiveTaxPercentage(RateMaster r)
+        {
+            if (r.TaxPercentage > 0m) return r.TaxPercentage;
+            var split = r.CGSTPercentage + r.SGSTPercentage;
+            return split > 0m ? split : r.TaxPercentage;
+        }
+
         // Get rates for this room type
         var roomTypeRates = allRates
             .Where(r => r.RoomTypeId == roomTypeId && r.IsActive && r.CustomerType == customerType)
@@ -460,7 +456,7 @@ public class RoomsController : BaseController
         
         if (!roomTypeRates.Any())
         {
-            return (0, 0, "No Rate", null);
+            return (0, 0, "No Rate", null, 0m);
         }
 
         // Priority 1: Check for Special Day Rates
@@ -477,7 +473,7 @@ public class RoomsController : BaseController
             
             if (specialRate != null)
             {
-                return (specialRate.BaseRate, specialRate.ExtraPaxRate, "Special Day", specialRate.EventName);
+                return (specialRate.BaseRate, specialRate.ExtraPaxRate, "Special Day", specialRate.EventName, EffectiveTaxPercentage(rate));
             }
         }
 
@@ -506,7 +502,7 @@ public class RoomsController : BaseController
             
             if (weekendRate != null)
             {
-                return (weekendRate.BaseRate, weekendRate.ExtraPaxRate, "Weekend", null);
+                return (weekendRate.BaseRate, weekendRate.ExtraPaxRate, "Weekend", null, EffectiveTaxPercentage(rate));
             }
         }
 
@@ -517,12 +513,12 @@ public class RoomsController : BaseController
         
         if (defaultRate != null)
         {
-            return (defaultRate.BaseRate, defaultRate.ExtraPaxRate, "Standard", null);
+            return (defaultRate.BaseRate, defaultRate.ExtraPaxRate, "Standard", null, EffectiveTaxPercentage(defaultRate));
         }
 
         // Fallback to first rate if no date match
         var fallbackRate = roomTypeRates.First();
-        return (fallbackRate.BaseRate, fallbackRate.ExtraPaxRate, "Standard", null);
+        return (fallbackRate.BaseRate, fallbackRate.ExtraPaxRate, "Standard", null, EffectiveTaxPercentage(fallbackRate));
     }
 
     private int GetCurrentUserId()

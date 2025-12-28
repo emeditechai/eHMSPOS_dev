@@ -1007,6 +1007,19 @@
 
             var adjustedBalanceAmount = adjustedGrandTotal - appliedToBalanceFromPayments;
 
+            // Allocate paid/applied amount head-wise in the same order as the billing head table.
+            // This is best-effort: BookingPayments are not stored per head, so we allocate sequentially
+            // across (S)tays, (O)ther Charges, (R)oom Services.
+            var billingHeadRowsPaid = new List<(BillingHead Head, decimal Amount, decimal PaidAmount)>();
+            var remainingAppliedToAllocate = appliedToBalanceFromPayments;
+            foreach (var row in billingHeadRows)
+            {
+                var amount = row.Amount!.Value;
+                var paidAmount = remainingAppliedToAllocate <= 0m ? 0m : Math.Min(amount, remainingAppliedToAllocate);
+                billingHeadRowsPaid.Add((row.Head, amount, paidAmount));
+                remainingAppliedToAllocate -= paidAmount;
+            }
+
             // Prefer night-wise breakdown (same as what user sees in details table)
             // to avoid incorrect stored DiscountAmount on older multi-night bookings.
             var rooms = Model.RequiredRooms > 0 ? Model.RequiredRooms : 1;
@@ -1282,7 +1295,7 @@
         </div>
         <h3 class="section-title">Payment History</h3>
         <div style="margin-left: auto; display: flex; align-items: center; gap: 0.85rem;">
-            @if (billingHeadRows.Count > 0)
+            @if (billingHeadRowsPaid.Count > 0)
             {
                 <div class="form-check" style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
                     <input class="form-check-input" type="checkbox" id="toggleBillingHeadwise" style="margin: 0;">
@@ -1301,7 +1314,7 @@
         </div>
     </div>
 
-    @if (billingHeadRows.Count > 0)
+    @if (billingHeadRowsPaid.Count > 0)
     {
         <div id="billingHeadwiseContainer" style="display: none; margin: 0.25rem 0 1rem 0;">
             <table class="modern-table" style="margin-bottom: 0;">
@@ -1309,14 +1322,16 @@
                     <tr>
                         <th>Billing Head</th>
                         <th class="text-right"><i class="fas fa-rupee-sign"></i> Amount</th>
+                        <th class="text-right"><i class="fas fa-rupee-sign"></i> Paid Amount</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var row in billingHeadRows)
+                    @foreach (var row in billingHeadRowsPaid)
                     {
                         <tr>
                             <td><strong>@row.Head.Name</strong></td>
-                            <td class="text-right" style="font-family: monospace;"><strong>₹@row.Amount!.Value.ToString("N2")</strong></td>
+                            <td class="text-right" style="font-family: monospace;"><strong>₹@row.Amount.ToString("N2")</strong></td>
+                            <td class="text-right" style="font-family: monospace;"><strong>₹@row.PaidAmount.ToString("N2")</strong></td>
                         </tr>
                     }
                 </tbody>
