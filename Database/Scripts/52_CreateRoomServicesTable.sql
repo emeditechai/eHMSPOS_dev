@@ -21,6 +21,10 @@ BEGIN
         [Price] DECIMAL(18,2) NOT NULL CONSTRAINT [DF_RoomServices_Price] DEFAULT (0),
         [Qty] INT NOT NULL CONSTRAINT [DF_RoomServices_Qty] DEFAULT (1),
         [NetAmount] DECIMAL(18,2) NOT NULL CONSTRAINT [DF_RoomServices_NetAmount] DEFAULT (0),
+        [DiscountAmount] DECIMAL(18,2) NOT NULL CONSTRAINT [DF_RoomServices_DiscountAmount] DEFAULT (0),
+        [ActualBillAmount] DECIMAL(18,2) NOT NULL CONSTRAINT [DF_RoomServices_ActualBillAmount] DEFAULT (0),
+        [IsSettled] BIT NOT NULL CONSTRAINT [DF_RoomServices_IsSettled] DEFAULT (0),
+        [SettleAmount] DECIMAL(18,2) NOT NULL CONSTRAINT [DF_RoomServices_SettleAmount] DEFAULT (0),
 
         -- Note: GST/CGST/SGST are order-level amounts and may be repeated across rows.
         [CGSTAmount] DECIMAL(18,2) NOT NULL CONSTRAINT [DF_RoomServices_CGSTAmount] DEFAULT (0),

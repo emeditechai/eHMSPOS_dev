@@ -16,10 +16,12 @@
         .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
         .Select(g => g.First())
         .ToList();
+    var rsActualBillTotal = rsOrders.Sum(x => x.ActualBillAmount);
+    var rsDiscountTotal = rsOrders.Sum(x => x.DiscountAmount);
     var rsGstTotal = rsOrders.Sum(x => x.GSTAmount);
     var rsCgstTotal = rsOrders.Sum(x => x.CGSTAmount);
     var rsSgstTotal = rsOrders.Sum(x => x.SGSTAmount);
-    var rsGrandTotal = rsNetTotal + rsGstTotal;
+    var rsGrandTotal = rsActualBillTotal;
 
     var assignedRooms = ViewBag.AssignedRooms as IEnumerable<string> ?? Enumerable.Empty<string>();
     var assignedRoomsText = assignedRooms.Any() ? string.Join(", ", assignedRooms) : "-";
@@ -326,9 +328,9 @@
                 </div>
                 <div class="summary-card">
                     <div class="section-title small">Room Service Amount</div>
-                    <div class="summary-row"><span class="label">Net Total</span><span class="value mono">₹ @rsNetTotal.ToString("N2")</span></div>
+                    <div class="summary-row"><span class="label">Actual Bill (Incl. GST)</span><span class="value mono">₹ @rsActualBillTotal.ToString("N2")</span></div>
                     <div class="summary-row"><span class="label">GST Total</span><span class="value mono">₹ @rsGstTotal.ToString("N2")</span></div>
-                    <div class="summary-row total"><span class="label">Grand Total</span><span class="value mono">₹ @rsGrandTotal.ToString("N2")</span></div>
+                    <div class="summary-row total"><span class="label">Final Amount</span><span class="value mono">₹ @rsGrandTotal.ToString("N2")</span></div>
                 </div>
             </div>
 
@@ -345,6 +347,7 @@
                             <th class="text-right">Price</th>
                             <th class="text-right">Qty</th>
                             <th class="text-right">Net Amount</th>
+                            <th class="text-right">Actual Bill</th>
                             <th class="text-right">CGST</th>
                             <th class="text-right">SGST</th>
                             <th class="text-right">GST</th>
@@ -386,6 +389,7 @@
                                         <td class="text-right mono">₹ @line.Price.ToString("N2")</td>
                                         <td class="text-right mono">@line.Qty</td>
                                         <td class="text-right mono">₹ @line.NetAmount.ToString("N2")</td>
+                                        <td class="text-right mono">₹ @line.ActualBillAmount.ToString("N2")</td>
                                         @if (isFirst)
                                         {
                                             <td class="text-right mono" style="vertical-align: top; padding-top: 18px;" rowspan="@rowspan">₹ @og.CGST.ToString("N2")</td>
@@ -401,6 +405,7 @@
                         <tr style="font-weight: 600; background: #f8f9fa;">
                             <td colspan="5" class="text-right" style="padding: 12px;">Total Room Service:</td>
                             <td class="text-right mono" style="padding: 12px;">₹ @rsNetTotal.ToString("N2")</td>
+                            <td class="text-right mono" style="padding: 12px;">₹ @rsActualBillTotal.ToString("N2")</td>
                             <td class="text-right mono" style="padding: 12px;">₹ @rsCgstTotal.ToString("N2")</td>
                             <td class="text-right mono" style="padding: 12px;">₹ @rsSgstTotal.ToString("N2")</td>
                             <td class="text-right mono" style="padding: 12px;">₹ @rsGstTotal.ToString("N2")</td>

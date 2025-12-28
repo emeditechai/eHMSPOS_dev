@@ -16,6 +16,42 @@ namespace HotelApp.Web.Repositories
             _dbConnection = dbConnection;
         }
 
+        private const string EnsureRoomServicesColumnsSql = @"
+IF COL_LENGTH('dbo.RoomServices', 'DiscountAmount') IS NULL
+BEGIN
+    ALTER TABLE dbo.RoomServices
+        ADD DiscountAmount DECIMAL(18,2) NOT NULL CONSTRAINT DF_RoomServices_DiscountAmount DEFAULT (0);
+END
+
+IF COL_LENGTH('dbo.RoomServices', 'ActualBillAmount') IS NULL
+BEGIN
+    ALTER TABLE dbo.RoomServices
+        ADD ActualBillAmount DECIMAL(18,2) NOT NULL CONSTRAINT DF_RoomServices_ActualBillAmount DEFAULT (0);
+END
+
+IF COL_LENGTH('dbo.RoomServices', 'IsSettled') IS NULL
+BEGIN
+    ALTER TABLE dbo.RoomServices
+        ADD IsSettled BIT NOT NULL CONSTRAINT DF_RoomServices_IsSettled DEFAULT (0);
+END
+
+IF COL_LENGTH('dbo.RoomServices', 'SettleAmount') IS NULL
+BEGIN
+    ALTER TABLE dbo.RoomServices
+        ADD SettleAmount DECIMAL(18,2) NOT NULL CONSTRAINT DF_RoomServices_SettleAmount DEFAULT (0);
+END
+
+IF COL_LENGTH('dbo.RoomServices', 'SettleDate') IS NULL
+BEGIN
+    ALTER TABLE dbo.RoomServices
+        ADD SettleDate DATETIME NULL;
+END";
+
+        private async Task EnsureRoomServicesColumnsAsync()
+        {
+            await _dbConnection.ExecuteAsync(EnsureRoomServicesColumnsSql);
+        }
+
         private static decimal Round2(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
 
         private sealed class RoomServicePendingSettlementRawRow
@@ -69,6 +105,8 @@ namespace HotelApp.Web.Repositories
             public decimal Price { get; set; }
             public int Qty { get; set; }
             public decimal NetAmount { get; set; }
+            public decimal DiscountAmount { get; set; }
+            public decimal ActualBillAmount { get; set; }
             public decimal CGSTAmount { get; set; }
             public decimal SGSTAmount { get; set; }
             public decimal GSTAmount { get; set; }
@@ -147,19 +185,41 @@ namespace HotelApp.Web.Repositories
 
             // As per requirement: CGST/SGST/GST are OrderNo-wise (order-level totals)
             // and should match the stored procedure output.
-            var result = raw.Select(r => new RoomServiceSettlementLineRow
+            // Copy order-level amounts onto each line (no proration) so values match SP per OrderNo.
+            var groupedByOrder = raw
+                .GroupBy(r => r.OrderID > 0 ? r.OrderID : int.MinValue)
+                .ToList();
+
+            var allocated = new List<RoomServiceSettlementLineRow>();
+
+            foreach (var orderGroup in groupedByOrder)
+            {
+                var rows = orderGroup.ToList();
+                var orderDiscountTotal = rows.FirstOrDefault()?.DiscountAmount ?? 0m;
+                var orderBillTotal = rows.FirstOrDefault()?.BillAmount ?? 0m;
+
+                foreach (var r in rows)
                 {
-                    OrderId = r.OrderID,
-                    OrderDate = CoerceSqlDateTime(r.CreatedAt),
-                    OrderNo = (r.OrderNo ?? "-").Trim(),
-                    MenuItem = (r.MenuItemName ?? "-").Trim(),
-                    Price = Round2(r.Rate),
-                    Qty = r.Quantity <= 0 ? 1 : r.Quantity,
-                    NetAmount = Round2(GetLineNet(r)),
-                    CGSTAmount = Round2(r.CGSTAmount),
-                    SGSTAmount = Round2(r.SGSTAmount),
-                    GSTAmount = Round2(r.GSTAmount)
-                })
+                    var lineNet = GetLineNet(r);
+                    allocated.Add(new RoomServiceSettlementLineRow
+                    {
+                        OrderId = r.OrderID,
+                        OrderDate = CoerceSqlDateTime(r.CreatedAt),
+                        OrderNo = (r.OrderNo ?? "-").Trim(),
+                        MenuItem = (r.MenuItemName ?? "-").Trim(),
+                        Price = Round2(r.Rate),
+                        Qty = r.Quantity <= 0 ? 1 : r.Quantity,
+                        NetAmount = Round2(lineNet),
+                        DiscountAmount = Round2(orderDiscountTotal),
+                        ActualBillAmount = Round2(orderBillTotal),
+                        CGSTAmount = Round2(r.CGSTAmount),
+                        SGSTAmount = Round2(r.SGSTAmount),
+                        GSTAmount = Round2(r.GSTAmount)
+                    });
+                }
+            }
+
+            var result = allocated
                 .OrderByDescending(x => x.OrderDate)
                 .ThenByDescending(x => x.OrderNo)
                 .ThenBy(x => x.MenuItem)
@@ -202,6 +262,8 @@ SELECT
     Price,
     Qty,
     NetAmount,
+    DiscountAmount,
+    ActualBillAmount,
     CGSTAmount,
     SGSTAmount,
     GSTAmount
@@ -230,6 +292,8 @@ WHERE BookingID = @BookingID
                     Price = Round2(r.Price),
                     Qty = r.Qty <= 0 ? 1 : r.Qty,
                     NetAmount = Round2(r.NetAmount),
+                    DiscountAmount = Round2(r.DiscountAmount),
+                    ActualBillAmount = Round2(r.ActualBillAmount),
                     CGSTAmount = Round2(r.CGSTAmount),
                     SGSTAmount = Round2(r.SGSTAmount),
                     GSTAmount = Round2(r.GSTAmount)
@@ -263,6 +327,9 @@ WHERE BookingID = @BookingID
             {
                 _dbConnection.Open();
             }
+
+            // Ensure schema has new discount columns even on older databases.
+            await EnsureRoomServicesColumnsAsync();
 
             using var tx = _dbConnection.BeginTransaction();
             try
@@ -324,22 +391,42 @@ WHERE BookingID = @BookingID
                         return itemAmount;
                     }
 
-                    var insertRows = rawList.Select(r => new
+                    var orderGroups = rawList
+                        .GroupBy(r => r.OrderID > 0 ? r.OrderID : int.MinValue)
+                        .ToList();
+
+                    var insertRows = new List<object>();
+
+                    foreach (var orderGroup in orderGroups)
                     {
-                        BookingID = bookingId,
-                        RoomID = roomId,
-                        BranchID = branchId,
-                        OrderID = r.OrderID,
-                        OrderDate = CoerceSqlDateTime(r.CreatedAt),
-                        OrderNo = (r.OrderNo ?? "-").Trim(),
-                        MenuItem = (r.MenuItemName ?? "-").Trim(),
-                        Price = Round2(r.Rate),
-                        Qty = r.Quantity <= 0 ? 1 : r.Quantity,
-                        NetAmount = Round2(GetLineNet(r)),
-                        CGSTAmount = Round2(r.CGSTAmount),
-                        SGSTAmount = Round2(r.SGSTAmount),
-                        GSTAmount = Round2(r.GSTAmount)
-                    });
+                        var orderRows = orderGroup.ToList();
+                        var orderDiscountTotal = orderRows.FirstOrDefault()?.DiscountAmount ?? 0m;
+                        var orderBillTotal = orderRows.FirstOrDefault()?.BillAmount ?? 0m;
+
+                        foreach (var r in orderRows)
+                        {
+                            var lineNet = GetLineNet(r);
+
+                            insertRows.Add(new
+                            {
+                                BookingID = bookingId,
+                                RoomID = roomId,
+                                BranchID = branchId,
+                                OrderID = r.OrderID,
+                                OrderDate = CoerceSqlDateTime(r.CreatedAt),
+                                OrderNo = (r.OrderNo ?? "-").Trim(),
+                                MenuItem = (r.MenuItemName ?? "-").Trim(),
+                                Price = Round2(r.Rate),
+                                Qty = r.Quantity <= 0 ? 1 : r.Quantity,
+                                NetAmount = Round2(lineNet),
+                                DiscountAmount = Round2(orderDiscountTotal),
+                                ActualBillAmount = Round2(orderBillTotal),
+                                CGSTAmount = Round2(r.CGSTAmount),
+                                SGSTAmount = Round2(r.SGSTAmount),
+                                GSTAmount = Round2(r.GSTAmount)
+                            });
+                        }
+                    }
 
                     const string insertSql = @"
 INSERT INTO dbo.RoomServices
@@ -354,6 +441,8 @@ INSERT INTO dbo.RoomServices
     Price,
     Qty,
     NetAmount,
+    DiscountAmount,
+    ActualBillAmount,
     CGSTAmount,
     SGSTAmount,
     GSTAmount
@@ -370,6 +459,8 @@ VALUES
     @Price,
     @Qty,
     @NetAmount,
+    @DiscountAmount,
+    @ActualBillAmount,
     @CGSTAmount,
     @SGSTAmount,
     @GSTAmount
@@ -398,15 +489,47 @@ VALUES
                 return 0m;
             }
 
-            // Net is line-level; GST is order-level and is repeated across items.
-            // So compute GST by distinct order.
-            var netTotal = lines.Sum(x => x.NetAmount);
+            // Use actual bill (net - discount) for totals; GST is order-level and repeated across items.
+            var netTotal = lines.Sum(x => x.ActualBillAmount);
 
             var gstTotal = lines
                 .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
                 .Sum(g => g.First().GSTAmount);
 
             return Round2(netTotal + gstTotal);
+        }
+
+        public async Task<int> SettleRoomServicesAsync(int bookingId, int branchId, decimal? settleAmountOverride = null)
+        {
+            if (bookingId <= 0 || branchId <= 0)
+            {
+                return 0;
+            }
+
+            if (_dbConnection.State != ConnectionState.Open)
+            {
+                _dbConnection.Open();
+            }
+
+            await EnsureRoomServicesColumnsAsync();
+
+            const string sql = @"
+UPDATE dbo.RoomServices
+SET IsSettled = 1,
+    SettleAmount = CASE WHEN @SettleAmountOverride IS NULL THEN ActualBillAmount ELSE @SettleAmountOverride END,
+    SettleDate = GETDATE()
+WHERE BookingID = @BookingID
+  AND BranchID = @BranchID
+  AND (IsSettled = 0 OR IsSettled IS NULL);";
+
+            var affected = await _dbConnection.ExecuteAsync(sql, new
+            {
+                BookingID = bookingId,
+                BranchID = branchId,
+                SettleAmountOverride = settleAmountOverride
+            });
+
+            return affected;
         }
     }
 }

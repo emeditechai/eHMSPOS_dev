@@ -12,15 +12,17 @@
         ?? Enumerable.Empty<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>();
     var roomServiceLinesList = roomServiceLines.ToList();
     var hasRoomServices = roomServiceLinesList.Any();
-    var rsNetTotal = roomServiceLinesList.Sum(x => x.NetAmount);
     var rsOrders = roomServiceLinesList
         .GroupBy(x => x.OrderId)
         .Select(g => g.First())
         .ToList();
+    var rsNetTotal = roomServiceLinesList.Sum(x => x.NetAmount);
+    var rsActualBillTotal = rsOrders.Sum(x => x.ActualBillAmount);
+    var rsDiscountTotal = rsOrders.Sum(x => x.DiscountAmount);
     var rsGstTotal = rsOrders.Sum(x => x.GSTAmount);
     var rsCgstTotal = rsOrders.Sum(x => x.CGSTAmount);
     var rsSgstTotal = rsOrders.Sum(x => x.SGSTAmount);
-    var rsGrandTotal = rsNetTotal + rsGstTotal;
+    var rsGrandTotal = rsActualBillTotal;
 
     // Other Charges (for receipt display + totals)
     var bookingOtherCharges = ViewBag.BookingOtherCharges as IEnumerable<HotelApp.Web.Repositories.BookingOtherChargeDetailRow>
@@ -33,7 +35,7 @@
     var ocGrandTotal = ocAmountTotal + ocGstTotal;
 
     // Header/summary totals
-    var receiptAdjustedGrandTotal = Model.TotalAmount + ocGrandTotal + rsGrandTotal;
+    var receiptAdjustedGrandTotal = Model.TotalAmount + ocGrandTotal + rsActualBillTotal;
 
     // Compute due from payments so payment-time discounts/round-off reduce balance correctly.
     var appliedToBalanceFromPayments = payments?.Sum(p =>
@@ -1004,7 +1006,7 @@
                 var adjustedCgstTotal = cgstTotal + ocCgstTotal + rsCgstTotal;
                 var adjustedSgstTotal = sgstTotal + ocSgstTotal + rsSgstTotal;
                 var adjustedTaxTotal = taxTotal + ocGstTotal + rsGstTotal;
-                var adjustedTotalAmount = Math.Round(afterDiscountTotal + taxTotal + ocGrandTotal + rsGrandTotal, 2, MidpointRounding.AwayFromZero);
+                var adjustedTotalAmount = Math.Round(afterDiscountTotal + taxTotal + ocGrandTotal + rsActualBillTotal, 2, MidpointRounding.AwayFromZero);
                 var adjustedBalancePayable = receiptAdjustedBalanceDue;
             }
 
@@ -1265,8 +1267,8 @@
                             <span class="total-value mono">₹ @(rsGstTotal.ToString("N2"))</span>
                         </div>
                         <div class="total-row stack">
-                            <span class="total-label">Room Service (incl. GST)</span>
-                            <span class="total-value mono">₹ @(rsGrandTotal.ToString("N2"))</span>
+                            <span class="total-label">Room Service Actual Bill (Incl. GST)</span>
+                            <span class="total-value mono">₹ @(rsActualBillTotal.ToString("N2"))</span>
                         </div>
                     }
                     <div class="total-row highlight stack">

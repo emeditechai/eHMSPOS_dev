@@ -731,11 +731,9 @@
     var watermarkRoomServiceLines = ViewBag.RoomServiceLines as IEnumerable<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>
         ?? Enumerable.Empty<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>();
 
-    var watermarkRsNetTotal = watermarkRoomServiceLines.Sum(x => x.NetAmount);
-    var watermarkRsGstTotal = watermarkRoomServiceLines
+    var watermarkRsActualBillTotal = watermarkRoomServiceLines
         .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
-        .Sum(g => g.First().GSTAmount);
-    var watermarkRsGrandTotal = watermarkRsNetTotal + watermarkRsGstTotal;
+        .Sum(g => g.First().ActualBillAmount);
 
     var watermarkPayments = (ViewBag.Payments as IEnumerable<HotelApp.Web.Models.BookingPayment>)
         ?? (Model.Payments ?? Enumerable.Empty<HotelApp.Web.Models.BookingPayment>());
@@ -746,7 +744,7 @@
         + (p.IsRoundOffApplied ? p.RoundOffAmount : 0m)
     );
 
-    var watermarkAdjustedGrandTotal = Model.TotalAmount + watermarkOcGrandTotal + watermarkRsGrandTotal;
+    var watermarkAdjustedGrandTotal = Model.TotalAmount + watermarkOcGrandTotal + watermarkRsActualBillTotal;
     var watermarkBalanceDue = watermarkAdjustedGrandTotal - watermarkAppliedToBalanceFromPayments;
     var showPaidWatermark = watermarkBalanceDue <= 0;
     var showCheckedOutWatermark = Model.ActualCheckOutDate.HasValue;
@@ -939,11 +937,13 @@
             var ocSgstTotal = bookingOtherCharges.Sum(x => x.SGSTAmount);
             var ocGrandTotal = ocAmountTotal + ocGstTotal;
 
-            // Room Service totals (pending settlement)
+            // Room Service totals (pending settlement); ActualBillAmount already includes GST
             var roomServiceLines = ViewBag.RoomServiceLines as IEnumerable<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>
                 ?? Enumerable.Empty<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>();
 
-            var rsNetTotal = roomServiceLines.Sum(x => x.NetAmount);
+            var rsActualBillTotal = roomServiceLines
+                .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
+                .Sum(g => g.First().ActualBillAmount);
             var rsGstTotal = roomServiceLines
                 .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
                 .Sum(g => g.First().GSTAmount);
@@ -953,7 +953,6 @@
             var rsSgstTotal = roomServiceLines
                 .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
                 .Sum(g => g.First().SGSTAmount);
-            var rsGrandTotal = rsNetTotal + rsGstTotal;
 
             // Billing head definitions (from BillingsHeads table; best-effort)
             var billingHeads = ViewBag.BillingHeads as IEnumerable<BillingHead>
@@ -971,7 +970,7 @@
                     Amount = x.Code switch
                     {
                         "S" => (decimal?)Model.TotalAmount,
-                        "R" => (decimal?)rsGrandTotal,
+                        "R" => (decimal?)rsActualBillTotal,
                         "O" => (decimal?)ocGrandTotal,
                         _ => null
                     }
@@ -990,7 +989,7 @@
             var adjustedCgstAmount = Model.CGSTAmount + ocCgstTotal + rsCgstTotal;
             var adjustedSgstAmount = Model.SGSTAmount + ocSgstTotal + rsSgstTotal;
             var adjustedTotalGstAmount = Model.TaxAmount + ocGstTotal + rsGstTotal;
-            var adjustedGrandTotal = Model.TotalAmount + ocGrandTotal + rsGrandTotal;
+            var adjustedGrandTotal = Model.TotalAmount + ocGrandTotal + rsActualBillTotal;
 
             // Compute due from payments so payment-time discounts/round-off adjust the balance immediately.
             // (Bookings.BalanceAmount can be stale for older rows.)
@@ -1083,16 +1082,16 @@
             <div class="financial-row-title">Room Services</div>
             <div class="financial-row-items">
                 <div class="financial-item">
-                    <div class="financial-label">Total Amount</div>
-                    <div class="financial-amount">₹@rsNetTotal.ToString("N2")</div>
+                    <div class="financial-label">Actual Bill (Incl. GST)</div>
+                    <div class="financial-amount">₹@rsActualBillTotal.ToString("N2")</div>
                 </div>
                 <div class="financial-item">
                     <div class="financial-label">Total GST Amount</div>
                     <div class="financial-amount">₹@rsGstTotal.ToString("N2")</div>
                 </div>
                 <div class="financial-item">
-                    <div class="financial-label">Total (Incl. GST)</div>
-                    <div class="financial-amount">₹@rsGrandTotal.ToString("N2")</div>
+                    <div class="financial-label">Final Amount</div>
+                    <div class="financial-amount">₹@rsActualBillTotal.ToString("N2")</div>
                 </div>
             </div>
         </div>
@@ -1518,6 +1517,12 @@
             ?? Enumerable.Empty<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>();
 
         var rsNetTotalSection = roomServiceLinesSection.Sum(x => x.NetAmount);
+        var rsDiscountTotalSection = roomServiceLinesSection
+            .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
+            .Sum(g => g.First().DiscountAmount);
+        var rsActualBillTotalSection = roomServiceLinesSection
+            .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
+            .Sum(g => g.First().ActualBillAmount);
         var rsGstTotalSection = roomServiceLinesSection
             .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
             .Sum(g => g.First().GSTAmount);
@@ -1528,7 +1533,7 @@
             .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
             .Sum(g => g.First().SGSTAmount);
 
-        var rsGrandTotalSection = rsNetTotalSection + rsGstTotalSection;
+        var rsGrandTotalSection = rsActualBillTotalSection;
     }
 
     @if (roomServiceLinesSection.Any())
@@ -1541,7 +1546,9 @@
                     <th><i class="fas fa-utensils"></i> MenuItem</th>
                     <th style="text-align:right;"><i class="fas fa-rupee-sign"></i> Price</th>
                     <th style="text-align:right;"><i class="fas fa-sort-numeric-up"></i> Qty</th>
-                    <th style="text-align:right;"><i class="fas fa-rupee-sign"></i> NetAmount</th>
+                    <th style="text-align:right;"><i class="fas fa-rupee-sign"></i> Net Amount</th>
+                    <th style="text-align:right;"><i class="fas fa-percent"></i> Discount</th>
+                    <th style="text-align:right;"><i class="fas fa-rupee-sign"></i> Actual Bill</th>
                     <th style="text-align:right;"><i class="fas fa-receipt"></i> CGST Amount</th>
                     <th style="text-align:right;"><i class="fas fa-receipt"></i> SGST Amount</th>
                     <th style="text-align:right;"><i class="fas fa-receipt"></i> GST Amount</th>
@@ -1582,7 +1589,9 @@
                             <td>@line.MenuItem</td>
                             <td style="text-align:right;"><strong>₹@line.Price.ToString("N2")</strong></td>
                             <td style="text-align:right;">@line.Qty</td>
-                            <td style="text-align:right;"><strong>₹@line.NetAmount.ToString("N2")</strong></td>
+                            <td style="text-align:right;">₹@line.NetAmount.ToString("N2")</td>
+                            <td style="text-align:right;">₹@line.DiscountAmount.ToString("N2")</td>
+                            <td style="text-align:right;"><strong>₹@line.ActualBillAmount.ToString("N2")</strong></td>
                             @if (isFirst)
                             {
                                 <td style="text-align:right; vertical-align: top; padding-top: 18px;" rowspan="@rowspan"><strong>₹@og.CGST.ToString("N2")</strong></td>
@@ -1597,6 +1606,8 @@
                 <tr>
                     <td colspan="5" style="text-align:right; font-weight:700;">Totals</td>
                     <td style="text-align:right; font-weight:700;">₹@rsNetTotalSection.ToString("N2")</td>
+                    <td style="text-align:right; font-weight:700;">₹@rsDiscountTotalSection.ToString("N2")</td>
+                    <td style="text-align:right; font-weight:700;">₹@rsActualBillTotalSection.ToString("N2")</td>
                     <td style="text-align:right; font-weight:700;">₹@rsCgstTotalSection.ToString("N2")</td>
                     <td style="text-align:right; font-weight:700;">₹@rsSgstTotalSection.ToString("N2")</td>
                     <td style="text-align:right; font-weight:800;">₹@rsGstTotalSection.ToString("N2")</td>

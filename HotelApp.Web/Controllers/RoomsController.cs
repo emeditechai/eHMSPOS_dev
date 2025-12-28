@@ -13,17 +13,20 @@ public class RoomsController : BaseController
     private readonly IFloorRepository _floorRepository;
     private readonly IBookingRepository _bookingRepository;
     private readonly IRateMasterRepository _rateMasterRepository;
+    private readonly IRoomServiceRepository _roomServiceRepository;
 
     public RoomsController(
         IRoomRepository roomRepository, 
         IFloorRepository floorRepository, 
         IBookingRepository bookingRepository,
-        IRateMasterRepository rateMasterRepository)
+        IRateMasterRepository rateMasterRepository,
+        IRoomServiceRepository roomServiceRepository)
     {
         _roomRepository = roomRepository;
         _floorRepository = floorRepository;
         _bookingRepository = bookingRepository;
         _rateMasterRepository = rateMasterRepository;
+        _roomServiceRepository = roomServiceRepository;
     }
 
     public async Task<IActionResult> Dashboard()
@@ -210,6 +213,13 @@ public class RoomsController : BaseController
             var actualCheckOutDate = DateTime.Now;
             await _bookingRepository.UpdateActualCheckOutDateAsync(bookingNumber, actualCheckOutDate, currentUserId);
             Console.WriteLine($"Actual checkout date updated: {actualCheckOutDate}");
+
+            // Mark any cached room service rows as settled for this booking (order-wise)
+            var booking = await _bookingRepository.GetByBookingNumberAsync(bookingNumber);
+            if (booking != null)
+            {
+                await _roomServiceRepository.SettleRoomServicesAsync(booking.Id, booking.BranchID);
+            }
             
             // Get all rooms assigned to this booking and update their status
             var assignedRoomIds = await _bookingRepository.GetAssignedRoomIdsAsync(bookingNumber);
@@ -304,6 +314,13 @@ public class RoomsController : BaseController
             var actualCheckOutDate = DateTime.Now;
             await _bookingRepository.UpdateActualCheckOutDateAsync(bookingNumber, actualCheckOutDate, currentUserId);
             Console.WriteLine($"Actual checkout date updated (Force): {actualCheckOutDate}");
+
+            // Mark any cached room service rows as settled for this booking (order-wise)
+            var booking = await _bookingRepository.GetByBookingNumberAsync(bookingNumber);
+            if (booking != null)
+            {
+                await _roomServiceRepository.SettleRoomServicesAsync(booking.Id, booking.BranchID);
+            }
             
             // Get all rooms assigned to this booking and update their status
             var assignedRoomIds = await _bookingRepository.GetAssignedRoomIdsAsync(bookingNumber);

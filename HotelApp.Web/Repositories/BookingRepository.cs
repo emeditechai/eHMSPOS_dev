@@ -1113,7 +1113,7 @@ namespace HotelApp.Web.Repositories
 
             using var transaction = _dbConnection.BeginTransaction();
 
-            const string getBookingSql = @"SELECT Id FROM Bookings WHERE BookingNumber = @BookingNumber";
+            const string getBookingSql = @"SELECT Id, BranchID FROM Bookings WHERE BookingNumber = @BookingNumber";
             var booking = await _dbConnection.QueryFirstOrDefaultAsync<dynamic>(getBookingSql, new { BookingNumber = bookingNumber }, transaction);
 
             if (booking == null)
@@ -1141,6 +1141,55 @@ namespace HotelApp.Web.Repositories
                 transaction.Rollback();
                 return false;
             }
+
+            // Ensure RoomServices has settlement columns and mark this booking's room services as settled.
+            const string ensureRoomServicesColumnsSql = @"
+IF COL_LENGTH('dbo.RoomServices', 'DiscountAmount') IS NULL
+BEGIN
+    ALTER TABLE dbo.RoomServices
+        ADD DiscountAmount DECIMAL(18,2) NOT NULL CONSTRAINT DF_RoomServices_DiscountAmount DEFAULT (0);
+END
+
+IF COL_LENGTH('dbo.RoomServices', 'ActualBillAmount') IS NULL
+BEGIN
+    ALTER TABLE dbo.RoomServices
+        ADD ActualBillAmount DECIMAL(18,2) NOT NULL CONSTRAINT DF_RoomServices_ActualBillAmount DEFAULT (0);
+END
+
+IF COL_LENGTH('dbo.RoomServices', 'IsSettled') IS NULL
+BEGIN
+    ALTER TABLE dbo.RoomServices
+        ADD IsSettled BIT NOT NULL CONSTRAINT DF_RoomServices_IsSettled DEFAULT (0);
+END
+
+IF COL_LENGTH('dbo.RoomServices', 'SettleAmount') IS NULL
+BEGIN
+    ALTER TABLE dbo.RoomServices
+        ADD SettleAmount DECIMAL(18,2) NOT NULL CONSTRAINT DF_RoomServices_SettleAmount DEFAULT (0);
+END
+
+IF COL_LENGTH('dbo.RoomServices', 'SettleDate') IS NULL
+BEGIN
+    ALTER TABLE dbo.RoomServices
+        ADD SettleDate DATETIME NULL;
+END";
+
+            await _dbConnection.ExecuteAsync(ensureRoomServicesColumnsSql, transaction: transaction);
+
+            const string settleRoomServicesSql = @"
+UPDATE dbo.RoomServices
+SET IsSettled = 1,
+    SettleAmount = CASE WHEN SettleAmount IS NULL OR SettleAmount = 0 THEN ActualBillAmount ELSE SettleAmount END,
+    SettleDate = GETDATE()
+WHERE BookingID = @BookingID
+  AND BranchID = @BranchID
+  AND (IsSettled = 0 OR IsSettled IS NULL);";
+
+            await _dbConnection.ExecuteAsync(settleRoomServicesSql, new
+            {
+                BookingID = (int)booking.Id,
+                BranchID = (int)booking.BranchID
+            }, transaction);
 
             await AddAuditLogAsync(
                 (int)booking.Id,

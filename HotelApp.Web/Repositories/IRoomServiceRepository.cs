@@ -29,6 +29,12 @@ namespace HotelApp.Web.Repositories
             IEnumerable<int> roomIds,
             int branchId
         );
+
+        Task<int> SettleRoomServicesAsync(
+            int bookingId,
+            int branchId,
+            decimal? settleAmountOverride = null
+        );
     }
 
     public sealed class RoomServiceSettlementLineRow
@@ -40,6 +46,8 @@ namespace HotelApp.Web.Repositories
         public decimal Price { get; set; }
         public int Qty { get; set; }
         public decimal NetAmount { get; set; }
+        public decimal DiscountAmount { get; set; }
+        public decimal ActualBillAmount { get; set; }
         public decimal CGSTAmount { get; set; }
         public decimal SGSTAmount { get; set; }
         public decimal GSTAmount { get; set; }
