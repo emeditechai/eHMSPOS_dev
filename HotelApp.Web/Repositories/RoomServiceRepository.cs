@@ -29,7 +29,7 @@ namespace HotelApp.Web.Repositories
             public int OrderType { get; set; }
             public int OrderID { get; set; }
             public string? OrderNo { get; set; }
-            public DateTime CreatedAt { get; set; }
+            public DateTime? CreatedAt { get; set; }
             public decimal BillAmount { get; set; }
             public decimal GSTAmount { get; set; }
             public decimal CGSTAmount { get; set; }
@@ -42,6 +42,19 @@ namespace HotelApp.Web.Repositories
             public int Quantity { get; set; }
             public decimal Rate { get; set; }
             public decimal ItemAmount { get; set; }
+        }
+
+        private static DateTime CoerceSqlDateTime(DateTime? value)
+        {
+            // SQL Server DATETIME valid range: 1753-01-01 through 9999-12-31
+            // Dapper maps NULL datetime to default(DateTime) for non-nullable fields,
+            // which can cause SqlDateTime overflow when inserting. Be defensive.
+            var date = value ?? DateTime.Now;
+            if (date < new DateTime(1753, 1, 1))
+            {
+                return DateTime.Now;
+            }
+            return date;
         }
 
         private sealed class RoomServiceCachedRow
@@ -108,6 +121,19 @@ namespace HotelApp.Web.Repositories
                 return Array.Empty<RoomServiceSettlementLineRow>();
             }
 
+            // Some integrations/stored procedures may return an extra "summary" row with
+            // missing OrderNo/MenuItem (and/or OrderID = 0). Ignore those rows.
+            raw = raw
+                .Where(r =>
+                    r.OrderID > 0 &&
+                    (!string.IsNullOrWhiteSpace(r.OrderNo) || !string.IsNullOrWhiteSpace(r.MenuItemName)))
+                .ToList();
+
+            if (raw.Count == 0)
+            {
+                return Array.Empty<RoomServiceSettlementLineRow>();
+            }
+
             decimal GetLineNet(RoomServicePendingSettlementRawRow r)
             {
                 var qty = r.Quantity <= 0 ? 1 : r.Quantity;
@@ -124,7 +150,7 @@ namespace HotelApp.Web.Repositories
             var result = raw.Select(r => new RoomServiceSettlementLineRow
                 {
                     OrderId = r.OrderID,
-                    OrderDate = r.CreatedAt,
+                    OrderDate = CoerceSqlDateTime(r.CreatedAt),
                     OrderNo = (r.OrderNo ?? "-").Trim(),
                     MenuItem = (r.MenuItemName ?? "-").Trim(),
                     Price = Round2(r.Rate),
@@ -275,6 +301,18 @@ WHERE BookingID = @BookingID
                         continue;
                     }
 
+                    // Filter out invalid/summary rows (missing OrderNo/MenuItem and/or OrderID).
+                    rawList = rawList
+                        .Where(r =>
+                            r.OrderID > 0 &&
+                            (!string.IsNullOrWhiteSpace(r.OrderNo) || !string.IsNullOrWhiteSpace(r.MenuItemName)))
+                        .ToList();
+
+                    if (rawList.Count == 0)
+                    {
+                        continue;
+                    }
+
                     decimal GetLineNet(RoomServicePendingSettlementRawRow r)
                     {
                         var qty = r.Quantity <= 0 ? 1 : r.Quantity;
@@ -292,7 +330,7 @@ WHERE BookingID = @BookingID
                         RoomID = roomId,
                         BranchID = branchId,
                         OrderID = r.OrderID,
-                        OrderDate = r.CreatedAt,
+                        OrderDate = CoerceSqlDateTime(r.CreatedAt),
                         OrderNo = (r.OrderNo ?? "-").Trim(),
                         MenuItem = (r.MenuItemName ?? "-").Trim(),
                         Price = Round2(r.Rate),
