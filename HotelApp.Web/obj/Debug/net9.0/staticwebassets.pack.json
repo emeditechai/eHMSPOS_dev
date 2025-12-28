@@ -29,6 +29,10 @@
       "PackagePath": "staticwebassets/favicon.ico"
     },
     {
+      "Id": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/js/notifications.js",
+      "PackagePath": "staticwebassets/js/notifications.js"
+    },
+    {
       "Id": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/js/site.js",
       "PackagePath": "staticwebassets/js/site.js"
     },
@@ -275,6 +279,14 @@
     {
       "Id": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/uploads/guests/guest_05f58f4f-f155-458d-8e93-5cbd6813e02b.jpeg",
       "PackagePath": "staticwebassets/uploads/guests/guest_05f58f4f-f155-458d-8e93-5cbd6813e02b.jpeg"
+    },
+    {
+      "Id": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/uploads/guests/guest_5138c12d-d67e-499e-8d49-337e8b01437e.pdf",
+      "PackagePath": "staticwebassets/uploads/guests/guest_5138c12d-d67e-499e-8d49-337e8b01437e.pdf"
+    },
+    {
+      "Id": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/uploads/guests/guest_6af57d88-0e08-4a2e-8960-ed5271b99d18.png",
+      "PackagePath": "staticwebassets/uploads/guests/guest_6af57d88-0e08-4a2e-8960-ed5271b99d18.png"
     },
     {
       "Id": "/Users/abhikporel/dev/Hotelapp/HotelApp.Web/wwwroot/uploads/guests/guest_affb60c0-3ce4-4241-aafc-2918735bf24e.jpeg",

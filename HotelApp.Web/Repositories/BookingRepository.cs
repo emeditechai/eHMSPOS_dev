@@ -2288,14 +2288,14 @@ WHERE BookingID = @BookingID
                 // Insert payment
                 const string insertPaymentSql = @"
                     INSERT INTO BookingPayments (
-                        BookingId, ReceiptNumber,
+                        BookingId, ReceiptNumber, BillingHead,
                         Amount, DiscountAmount, DiscountPercent, RoundOffAmount, IsRoundOffApplied,
                         PaymentMethod, PaymentReference, Status, PaidOn, Notes,
                         CardType, CardLastFourDigits, BankId, ChequeDate,
                         CreatedBy, IsAdvancePayment
                     )
                     VALUES (
-                        @BookingId, @ReceiptNumber,
+                        @BookingId, @ReceiptNumber, @BillingHead,
                         @Amount, @DiscountAmount, @DiscountPercent, @RoundOffAmount, @IsRoundOffApplied,
                         @PaymentMethod, @PaymentReference, @Status, @PaidOn, @Notes,
                         @CardType, @CardLastFourDigits, @BankId, @ChequeDate,
@@ -2306,6 +2306,7 @@ WHERE BookingID = @BookingID
                 {
                     payment.BookingId,
                     payment.ReceiptNumber,
+                    payment.BillingHead,
                     payment.Amount,
                     payment.DiscountAmount,
                     payment.DiscountPercent,
@@ -2333,7 +2334,8 @@ WHERE BookingID = @BookingID
                     || ex.Message.Contains("DiscountAmount", StringComparison.OrdinalIgnoreCase)
                     || ex.Message.Contains("DiscountPercent", StringComparison.OrdinalIgnoreCase)
                     || ex.Message.Contains("RoundOffAmount", StringComparison.OrdinalIgnoreCase)
-                    || ex.Message.Contains("IsRoundOffApplied", StringComparison.OrdinalIgnoreCase))
+                    || ex.Message.Contains("IsRoundOffApplied", StringComparison.OrdinalIgnoreCase)
+                    || ex.Message.Contains("BillingHead", StringComparison.OrdinalIgnoreCase))
                 {
                     // Backward-compatible insert for DBs that haven't run the migration yet.
                     const string legacyInsertPaymentSql = @"

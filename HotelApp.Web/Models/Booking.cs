@@ -94,6 +94,7 @@ namespace HotelApp.Web.Models
         public int Id { get; set; }
         public int BookingId { get; set; }
         public string? ReceiptNumber { get; set; }
+        public string? BillingHead { get; set; }
         public decimal Amount { get; set; }
         // Payment-time adjustments
         public decimal DiscountAmount { get; set; } = 0m;

@@ -1009,15 +1009,55 @@
             // Allocate paid/applied amount head-wise in the same order as the billing head table.
             // This is best-effort: BookingPayments are not stored per head, so we allocate sequentially
             // across (S)tays, (O)ther Charges, (R)oom Services.
-            var billingHeadRowsPaid = new List<(BillingHead Head, decimal Amount, decimal PaidAmount)>();
-            var remainingAppliedToAllocate = appliedToBalanceFromPayments;
-            foreach (var row in billingHeadRows)
+            var billingHeadPaidLookup = billingHeadRows.ToDictionary(
+                row => (row.Head.Code ?? string.Empty).Trim().ToUpperInvariant(),
+                _ => 0m
+            );
+
+            foreach (var payment in paymentsForBalance)
             {
-                var amount = row.Amount!.Value;
-                var paidAmount = remainingAppliedToAllocate <= 0m ? 0m : Math.Min(amount, remainingAppliedToAllocate);
-                billingHeadRowsPaid.Add((row.Head, amount, paidAmount));
-                remainingAppliedToAllocate -= paidAmount;
+                var applied = payment.Amount
+                             + payment.DiscountAmount
+                             + (payment.IsRoundOffApplied ? payment.RoundOffAmount : 0m);
+
+                var headCode = (payment.BillingHead ?? string.Empty).Trim().ToUpperInvariant();
+                if (!string.IsNullOrWhiteSpace(headCode) && billingHeadPaidLookup.ContainsKey(headCode))
+                {
+                    billingHeadPaidLookup[headCode] += applied;
+                    continue;
+                }
+
+                foreach (var row in billingHeadRows)
+                {
+                    var code = (row.Head.Code ?? string.Empty).Trim().ToUpperInvariant();
+                    var currentPaid = billingHeadPaidLookup.TryGetValue(code, out var paid) ? paid : 0m;
+                    var due = (row.Amount ?? 0m) - currentPaid;
+                    if (due <= 0 || applied <= 0) continue;
+
+                    var allocation = Math.Min(applied, due);
+                    billingHeadPaidLookup[code] = currentPaid + allocation;
+                    applied -= allocation;
+                    if (applied <= 0) break;
+                }
             }
+
+            var billingHeadRowsPaid = billingHeadRows
+                .Select(row =>
+                {
+                    var code = (row.Head.Code ?? string.Empty).Trim().ToUpperInvariant();
+                    var paidAmount = billingHeadPaidLookup.TryGetValue(code, out var paid) ? paid : 0m;
+                    return (Head: row.Head, Amount: row.Amount!.Value, PaidAmount: Math.Min(row.Amount!.Value, paidAmount));
+                })
+                .ToList();
+
+            var billingHeadRowsWithDue = billingHeadRowsPaid
+                .Select(x => (x.Head, x.Amount, x.PaidAmount, Due: Math.Max(0m, x.Amount - x.PaidAmount)))
+                .ToList();
+
+            var billingHeadLookup = billingHeads
+                .Where(h => !string.IsNullOrWhiteSpace(h.Code))
+                .GroupBy(h => (h.Code ?? string.Empty).Trim().ToUpperInvariant())
+                .ToDictionary(g => g.Key, g => g.First().Name);
 
             // Prefer night-wise breakdown (same as what user sees in details table)
             // to avoid incorrect stored DiscountAmount on older multi-night bookings.
@@ -1362,6 +1402,7 @@
                 <tr>
                     <th><i class="fas fa-calendar"></i> Date</th>
                     <th><i class="fas fa-rupee-sign"></i> Amount</th>
+                    <th><i class="fas fa-list"></i> Billing Head</th>
                     <th><i class="fas fa-tags"></i> Discount</th>
                     <th><i class="fas fa-coins"></i> Round Off</th>
                     <th><i class="fas fa-credit-card"></i> Method</th>
@@ -1374,6 +1415,14 @@
                 @foreach (var payment in payments)
                 {
                     var grossAmount = payment.Amount - payment.RoundOffAmount + payment.DiscountAmount;
+                    var headLabel = "-";
+                    if (!string.IsNullOrWhiteSpace(payment.BillingHead))
+                    {
+                        var normalizedHead = payment.BillingHead.Trim().ToUpperInvariant();
+                        headLabel = billingHeadLookup.TryGetValue(normalizedHead, out var headName)
+                            ? headName
+                            : payment.BillingHead;
+                    }
                     <tr>
                         <td>@payment.PaidOn.ToString("dd MMM yyyy, hh:mm tt")</td>
                         <td>
@@ -1385,6 +1434,7 @@
                                 </span>
                             }
                         </td>
+                        <td><strong>@headLabel</strong></td>
                         <td style="font-family: monospace;">₹@payment.DiscountAmount.ToString("N2")</td>
                         <td style="font-family: monospace;">₹@payment.RoundOffAmount.ToString("N2")</td>
                         <td><span class="badge badge-info">@payment.PaymentMethod</span></td>
@@ -1804,6 +1854,7 @@
             <input type="hidden" id="bookingNumber" name="bookingNumber" value="@Model.BookingNumber" />
             <input type="hidden" id="isAdvancePayment" name="isAdvancePayment" value="false" />
             <input type="hidden" id="grossAmount" name="grossAmount" value="" />
+            <input type="hidden" id="billingHeadAllocations" name="billingHeadAllocations" value="" />
 
             <div class="form-row">
                 <div class="form-group" style="flex: 1;">
@@ -1828,6 +1879,39 @@
                 </label>
                 <small class="text-muted" id="paymentTotalsHint"></small>
             </div>
+
+            @if (billingHeadRowsWithDue.Count > 0)
+            {
+                <div class="form-group">
+                    <label>Billing Head Allocation</label>
+                    <div class="billing-head-allocations">
+                        @foreach (var row in billingHeadRowsWithDue)
+                        {
+                            var code = (row.Head.Code ?? string.Empty).Trim().ToUpperInvariant();
+                            var due = row.Due;
+                            var isDisabled = due <= 0m;
+                            <div class="billing-head-row" data-head-code="@code" data-due="@due">
+                                <label class="billing-head-label">
+                                    <input class="billing-head-toggle" type="checkbox" @(isDisabled ? "disabled" : "checked") />
+                                    <span class="billing-head-name">@row.Head.Name (@code)</span>
+                                    <span class="billing-head-due">Due: ₹@due.ToString("N2")</span>
+                                </label>
+                                <input type="number"
+                                       class="form-control billing-head-amount"
+                                       data-head-code="@code"
+                                       data-due="@due"
+                                       min="0"
+                                       max="@due"
+                                       step="0.01"
+                                       value="@due.ToString("0.00")"
+                                       @(isDisabled ? "readonly" : string.Empty) />
+                                <small class="text-muted billing-head-discount-note" data-head-code="@code" style="display:block; min-width: 140px;"></small>
+                            </div>
+                        }
+                    </div>
+                    <small class="text-muted">Select heads and enter amounts; totals auto-calc the payment.</small>
+                </div>
+            }
             
             <div class="form-group">
                 <label for="amount">Amount (₹) *</label>
@@ -2522,6 +2606,45 @@
         margin-bottom: 1.25rem;
     }
 
+    .billing-head-allocations {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 0.85rem;
+    }
+
+    .billing-head-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        justify-content: space-between;
+    }
+
+    .billing-head-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0;
+        flex: 1;
+    }
+
+    .billing-head-name {
+        font-weight: 700;
+        color: #111827;
+    }
+
+    .billing-head-due {
+        color: #6b7280;
+        font-weight: 600;
+    }
+
+    .billing-head-amount {
+        max-width: 180px;
+    }
+
     .form-group label {
         display: block;
         font-weight: 600;
@@ -2702,6 +2825,63 @@
         return Math.round((n + Number.EPSILON) * 100) / 100;
     }
 
+    function collectBillingHeadAllocations() {
+        const rows = Array.from(document.querySelectorAll('.billing-head-row'));
+        const allocations = [];
+        let total = 0;
+
+        rows.forEach(row => {
+            const toggle = row.querySelector('.billing-head-toggle');
+            const amountInput = row.querySelector('.billing-head-amount');
+            if (!toggle || !amountInput || !toggle.checked) return;
+
+            const amount = parseFloat(amountInput.value || '0') || 0;
+            if (amount <= 0) return;
+
+            allocations.push({
+                billingHeadCode: amountInput.dataset.headCode || null,
+                amount: round2(amount)
+            });
+            total += amount;
+        });
+
+        return { allocations, total: round2(total) };
+    }
+
+    function isDiscountableHead(code) {
+        const normalized = (code || '').trim().toUpperCase();
+        return normalized === 'S' || normalized === 'O';
+    }
+
+    function getDiscountableSelection() {
+        const data = collectBillingHeadAllocations();
+        const discountable = data.allocations.filter(a => isDiscountableHead(a.billingHeadCode));
+        return {
+            data,
+            discountable,
+            isSingleDiscountableSelected: discountable.length === 1 && data.allocations.length === 1
+        };
+    }
+
+    function syncBillingHeadGrossFromUI() {
+        const { allocations, total } = collectBillingHeadAllocations();
+        const amountEl = document.getElementById('amount');
+        setGrossAmount(total);
+        if (amountEl) {
+            isProgrammaticAmountUpdate = true;
+            amountEl.value = total.toFixed(2);
+            isProgrammaticAmountUpdate = false;
+        }
+
+        const hiddenAlloc = document.getElementById('billingHeadAllocations');
+        if (hiddenAlloc) {
+            hiddenAlloc.value = JSON.stringify(allocations);
+        }
+
+        updatePaymentHint();
+        return { allocations, total };
+    }
+
     function updateAmountMaxConstraint() {
         const amountEl = document.getElementById('amount');
         if (!amountEl) return;
@@ -2738,6 +2918,9 @@
         const amountEl = document.getElementById('amount');
         if (!amountEl) return;
 
+        // When head-wise inputs drive gross amount, keep the field as display-only.
+        if (amountEl.hasAttribute('readonly')) return;
+
         const discountType = document.getElementById('discountType')?.value;
         const applyRoundOff = document.getElementById('applyRoundOff')?.checked;
         const shouldAutoFillNet = (discountType && discountType !== 'None') || !!applyRoundOff;
@@ -2750,22 +2933,37 @@
     }
 
     function computePaymentTotals() {
-        const amount = getGrossAmount();
-        const discountType = document.getElementById('discountType').value;
-        const discountValue = parseFloat(document.getElementById('discountValue').value || '0') || 0;
+        const discountTypeEl = document.getElementById('discountType');
+        const discountValueEl = document.getElementById('discountValue');
+        const discountType = discountTypeEl ? discountTypeEl.value : 'None';
+        const discountValue = discountValueEl ? (parseFloat(discountValueEl.value || '0') || 0) : 0;
         const applyRoundOff = document.getElementById('applyRoundOff').checked;
 
-        const grossPaise = toPaise(amount);
+        const selection = getDiscountableSelection();
+        const hasHeadRows = document.querySelectorAll('.billing-head-row').length > 0;
+        const allocationData = hasHeadRows ? selection.data : { allocations: [], total: getGrossAmount() };
+        const grossAmount = hasHeadRows ? allocationData.total : getGrossAmount();
+
+        const grossPaise = toPaise(grossAmount);
+        const discountablePaiseBase = selection.isSingleDiscountableSelected
+            ? toPaise(selection.discountable[0].amount)
+            : 0;
+
         let discountAmount = 0;
         let discountPercent = null;
         let discountPaise = 0;
 
-        if (discountType === 'Flat') {
-            discountPaise = Math.max(0, toPaise(discountValue));
-        } else if (discountType === 'Percent') {
-            const pct = Math.max(0, Math.min(100, discountValue));
-            discountPercent = round2(pct);
-            discountPaise = Math.max(0, Math.round(grossPaise * (pct / 100)));
+        if (discountablePaiseBase > 0 && discountType !== 'None') {
+            if (discountType === 'Flat') {
+                discountPaise = Math.min(discountablePaiseBase, Math.max(0, toPaise(discountValue)));
+            } else if (discountType === 'Percent') {
+                const pct = Math.max(0, Math.min(100, discountValue));
+                discountPercent = round2(pct);
+                discountPaise = Math.max(0, Math.round(discountablePaiseBase * (pct / 100)));
+            }
+        } else {
+            discountPaise = 0;
+            discountPercent = null;
         }
 
         let netPaise = grossPaise - discountPaise;
@@ -2797,18 +2995,34 @@
     }
 
     function updateDiscountUI() {
-        const discountType = document.getElementById('discountType').value;
+        const discountTypeEl = document.getElementById('discountType');
         const group = document.getElementById('discountValueGroup');
         const label = document.getElementById('discountValueLabel');
         const input = document.getElementById('discountValue');
+        const selection = getDiscountableSelection();
+        const hasDiscountable = selection.isSingleDiscountableSelected || document.querySelectorAll('.billing-head-row').length === 0;
 
-        if (discountType === 'None') {
+        if (!hasDiscountable) {
+            if (discountTypeEl) {
+                discountTypeEl.value = 'None';
+                discountTypeEl.setAttribute('disabled', 'disabled');
+            }
+            if (input) input.value = '';
+        } else if (discountTypeEl) {
+            discountTypeEl.removeAttribute('disabled');
+        }
+
+        const currentType = discountTypeEl ? discountTypeEl.value : 'None';
+
+        if (currentType === 'None') {
             group.style.display = 'none';
-            input.value = '';
-            input.removeAttribute('max');
+            if (input) {
+                input.value = '';
+                input.removeAttribute('max');
+            }
         } else {
             group.style.display = 'block';
-            if (discountType === 'Flat') {
+            if (currentType === 'Flat') {
                 label.textContent = 'Discount Amount (₹)';
                 input.setAttribute('max', '999999999');
             } else {
@@ -2841,6 +3055,25 @@
 
         // Keep HTML validation constraints in sync with computed totals.
         updateAmountMaxConstraint();
+        updateHeadwiseDiscountNotes(t);
+    }
+
+    function updateHeadwiseDiscountNotes(totals) {
+        const notes = document.querySelectorAll('.billing-head-discount-note');
+        notes.forEach(n => n.textContent = '');
+
+        if (!totals || totals.discountAmount <= 0) return;
+
+        const selection = getDiscountableSelection();
+        if (!selection.isSingleDiscountableSelected || selection.discountable.length === 0) return;
+
+        const target = selection.discountable[0];
+        const code = (target.billingHeadCode || '').trim().toUpperCase();
+        const noteEl = document.querySelector(`.billing-head-discount-note[data-head-code="${code}"]`);
+        if (!noteEl) return;
+
+        const discountedNet = Math.max(0, round2(target.amount - totals.discountAmount));
+        noteEl.textContent = `Discount: ₹${totals.discountAmount.toFixed(2)} | Net: ₹${discountedNet.toFixed(2)}`;
     }
 
     async function showPaymentModal(isAdvance = false) {
@@ -2848,21 +3081,22 @@
         const modal = document.getElementById('paymentModal');
         const amountField = document.getElementById('amount');
         const isAdvanceField = document.getElementById('isAdvancePayment');
-        
+        const hasBillingHeads = document.querySelectorAll('.billing-head-row').length > 0;
+
+        if (!modal || !amountField || !isAdvanceField) return;
+
         modal.style.display = 'flex';
-        
+
         if (isAdvance) {
-            // Fetch hotel settings for minimum booking amount
             try {
                 const response = await fetch('/HotelSettings/GetSettings');
                 const result = await response.json();
-                
+
                 if (result.success && result.minimumBookingAmountRequired) {
-                    // Calculate minimum advance amount
                     const totalAmount = @Model.TotalAmount;
                     const minPercentage = result.minimumBookingAmount;
                     const minAdvanceAmount = (totalAmount * minPercentage / 100).toFixed(2);
-                    
+
                     amountField.value = minAdvanceAmount;
                     setGrossAmount(parseFloat(minAdvanceAmount) || 0);
                     amountField.setAttribute('min', minAdvanceAmount);
@@ -2876,7 +3110,7 @@
                 amountField.value = balanceAmount.toFixed(2);
                 setGrossAmount(balanceAmount);
             }
-            
+
             isAdvanceField.value = 'true';
         } else {
             amountField.value = balanceAmount.toFixed(2);
@@ -2886,22 +3120,28 @@
             isAdvanceField.value = 'false';
         }
 
-        // Base max is the outstanding balance; round-off may push payable to next rupee.
         amountField.setAttribute('data-base-max', balanceAmount.toFixed(2));
         amountField.setAttribute('max', balanceAmount.toFixed(2));
 
-        // Reset discount/round-off defaults
         const discountType = document.getElementById('discountType');
         const discountValue = document.getElementById('discountValue');
         const applyRoundOff = document.getElementById('applyRoundOff');
         if (discountType) discountType.value = 'None';
         if (discountValue) discountValue.value = '';
         if (applyRoundOff) applyRoundOff.checked = true;
-        updateDiscountUI();
 
-        // Ensure constraints are correct for the default round-off state.
+        if (hasBillingHeads) {
+            amountField.setAttribute('readonly', 'readonly');
+            syncBillingHeadGrossFromUI();
+        } else {
+            amountField.removeAttribute('readonly');
+            setGrossAmount(parseFloat(amountField.value || '0') || 0);
+            const allocHidden = document.getElementById('billingHeadAllocations');
+            if (allocHidden) allocHidden.value = '';
+        }
+
+        updateDiscountUI();
         updateAmountMaxConstraint();
-        
         amountField.focus();
     }
 
@@ -2910,6 +3150,8 @@
         document.getElementById('paymentForm').reset();
         document.getElementById('cardFields').style.display = 'none';
         document.getElementById('chequeFields').style.display = 'none';
+        const allocHidden = document.getElementById('billingHeadAllocations');
+        if (allocHidden) allocHidden.value = '';
     }
 
     function handlePaymentMethodChange() {
@@ -2975,13 +3217,119 @@
             applyNetToAmountField();
         });
 
+        const billingHeadRows = Array.from(document.querySelectorAll('.billing-head-row'));
+
+        const refreshHeadRow = (row) => {
+            const toggle = row.querySelector('.billing-head-toggle');
+            const amountInput = row.querySelector('.billing-head-amount');
+            if (!toggle || !amountInput) return;
+
+            if (toggle.checked) {
+                amountInput.removeAttribute('readonly');
+                amountInput.removeAttribute('disabled');
+                const due = parseFloat(amountInput.dataset.due || '0') || 0;
+                const val = parseFloat(amountInput.value || '0') || 0;
+                if (val <= 0 && due > 0) {
+                    amountInput.value = due.toFixed(2);
+                }
+            } else {
+                amountInput.value = '0.00';
+                amountInput.setAttribute('readonly', 'readonly');
+                amountInput.setAttribute('disabled', 'disabled');
+            }
+        };
+
+        billingHeadRows.forEach(row => {
+            const toggle = row.querySelector('.billing-head-toggle');
+            const amountInput = row.querySelector('.billing-head-amount');
+
+            if (toggle) {
+                toggle.addEventListener('change', () => {
+                    refreshHeadRow(row);
+                    syncBillingHeadGrossFromUI();
+                    updateDiscountUI();
+                });
+            }
+
+            if (amountInput) {
+                amountInput.addEventListener('input', () => {
+                    const due = parseFloat(amountInput.dataset.due || '0') || 0;
+                    let val = parseFloat(amountInput.value || '0') || 0;
+                    if (due > 0 && val > due) {
+                        val = due;
+                    }
+                    val = round2(val);
+                    amountInput.value = val.toFixed(2);
+
+                    if (toggle && val > 0 && !toggle.checked && !toggle.disabled) {
+                        toggle.checked = true;
+                        refreshHeadRow(row);
+                    }
+
+                    syncBillingHeadGrossFromUI();
+                    updateDiscountUI();
+                });
+
+                amountInput.addEventListener('blur', () => {
+                    const min = parseFloat(amountInput.getAttribute('min') || '0') || 0;
+                    const max = parseFloat(amountInput.getAttribute('max') || '0') || 0;
+                    let val = parseFloat(amountInput.value || '0') || 0;
+                    if (max > 0 && val > max) val = max;
+                    if (val < min) val = min;
+                    amountInput.value = round2(val).toFixed(2);
+                    syncBillingHeadGrossFromUI();
+                    updateDiscountUI();
+                });
+            }
+
+            refreshHeadRow(row);
+        });
+
+        if (billingHeadRows.length > 0) {
+            syncBillingHeadGrossFromUI();
+            updateDiscountUI();
+        }
+
         document.getElementById('paymentForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const formData = new FormData(this);
             const paymentMethod = formData.get('paymentMethod');
+            const hasBillingHeads = document.querySelectorAll('.billing-head-row').length > 0;
+            const allocationResult = collectBillingHeadAllocations();
+            if (hasBillingHeads && allocationResult.allocations.length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Select Billing Heads',
+                    text: 'Please select at least one billing head with an amount.',
+                    confirmButtonColor: '#667eea'
+                });
+                return;
+            }
+
+            if (hasBillingHeads) {
+                const overPaid = Array.from(document.querySelectorAll('.billing-head-row')).find(row => {
+                    const toggle = row.querySelector('.billing-head-toggle');
+                    const input = row.querySelector('.billing-head-amount');
+                    if (!toggle || !input || !toggle.checked) return false;
+                    const due = parseFloat(input.dataset.due || '0') || 0;
+                    const val = parseFloat(input.value || '0') || 0;
+                    return due > 0 && (val - due) > 0.05;
+                });
+
+                if (overPaid) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Amount exceeds due',
+                        text: 'Entered head-wise amount exceeds the due for that head.',
+                        confirmButtonColor: '#667eea'
+                    });
+                    return;
+                }
+            }
             // UI Amount field may show NET; always use hidden grossAmount for calculations.
-            const grossAmount = getGrossAmount();
+            const grossAmount = round2(hasBillingHeads ? allocationResult.total : getGrossAmount());
+            setGrossAmount(grossAmount);
             const isAdvance = formData.get('isAdvancePayment') === 'true';
             
             // Validate minimum advance amount if this is an advance payment
@@ -3008,6 +3356,20 @@
                 notes: formData.get('notes'),
                 isAdvancePayment: isAdvance
             };
+
+            if (grossAmount <= 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Amount required',
+                    text: 'Please enter a payment amount.',
+                    confirmButtonColor: '#667eea'
+                });
+                return;
+            }
+
+            if (hasBillingHeads) {
+                data.billingHeadAllocations = JSON.stringify(allocationResult.allocations);
+            }
 
             // Compute discount + round-off totals and send to server
             const totals = computePaymentTotals();

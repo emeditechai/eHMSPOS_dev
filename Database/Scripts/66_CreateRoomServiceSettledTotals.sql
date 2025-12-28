@@ -1,13 +1,13 @@
 -- Create stored procedure to return settled room service totals per order
 -- Filters by OrderID; returns one row per BookingID/BranchID/OrderID/OrderNo
 
-IF OBJECT_ID(N'dbo.usp_GetRoomServiceSettledTotals', N'P') IS NOT NULL
+IF OBJECT_ID(N'HMS_dev.dbo.usp_GetRoomServiceSettledTotals', N'P') IS NOT NULL
 BEGIN
-    DROP PROCEDURE dbo.usp_GetRoomServiceSettledTotals;
+    DROP PROCEDURE HMS_dev.dbo.usp_GetRoomServiceSettledTotals;
 END
 GO
 
-CREATE PROCEDURE dbo.usp_GetRoomServiceSettledTotals
+CREATE PROCEDURE HMS_dev.dbo.usp_GetRoomServiceSettledTotals
     @BookingID INT
 AS
 BEGIN
@@ -27,8 +27,8 @@ BEGIN
         MAX(rs.SGSTAmount) AS SGSTAmount,
         MAX(rs.GSTAmount) AS GSTAmount,
         MAX(CAST(rs.IsSettled AS INT)) AS IsSettled
-    FROM dbo.RoomServices rs
-    INNER JOIN dbo.Bookings b
+    FROM HMS_dev.dbo.RoomServices rs
+    INNER JOIN HMS_dev.dbo.Bookings b
         ON b.Id = rs.BookingID
        AND b.BranchID = rs.BranchID
     WHERE rs.IsSettled = 1

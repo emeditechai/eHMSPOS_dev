@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Text.Json;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -1620,6 +1621,12 @@ namespace HotelApp.Web.Controllers
             public int GuestId { get; set; }
         }
 
+        public class BillingHeadAllocation
+        {
+            public string? BillingHeadCode { get; set; }
+            public decimal Amount { get; set; }
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddPayment(
@@ -1637,14 +1644,45 @@ namespace HotelApp.Web.Controllers
             decimal? discountPercent = null,
             decimal roundOffAmount = 0m,
             bool isRoundOffApplied = false,
-            decimal? netAmount = null)
+            decimal? netAmount = null,
+            string? billingHeadAllocations = null)
         {
             if (string.IsNullOrWhiteSpace(bookingNumber))
             {
                 return Json(new { success = false, message = "Booking number is required." });
             }
 
-            if (amount <= 0)
+            List<BillingHeadAllocation> allocations;
+            try
+            {
+                allocations = string.IsNullOrWhiteSpace(billingHeadAllocations)
+                    ? new List<BillingHeadAllocation>()
+                    : JsonSerializer.Deserialize<List<BillingHeadAllocation>>(billingHeadAllocations,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                        ?? new List<BillingHeadAllocation>();
+            }
+            catch
+            {
+                return Json(new { success = false, message = "Invalid billing head selection." });
+            }
+
+            allocations = allocations
+                .Where(a => a is not null && a.Amount > 0)
+                .Select(a => new BillingHeadAllocation
+                {
+                    BillingHeadCode = string.IsNullOrWhiteSpace(a.BillingHeadCode) ? null : a.BillingHeadCode.Trim(),
+                    Amount = Math.Round(a.Amount, 2, MidpointRounding.AwayFromZero)
+                })
+                .ToList();
+
+            bool IsDiscountable(string? code) => !string.IsNullOrWhiteSpace(code) && (code.Trim().ToUpperInvariant() == "S" || code.Trim().ToUpperInvariant() == "O");
+
+            var grossAmount = Math.Round(allocations.Any() ? allocations.Sum(a => a.Amount) : amount, 2, MidpointRounding.AwayFromZero);
+            var discountableGrossAmount = allocations.Any()
+                ? allocations.Where(a => IsDiscountable(a.BillingHeadCode)).Sum(a => a.Amount)
+                : grossAmount;
+
+            if (grossAmount <= 0)
             {
                 return Json(new { success = false, message = "Payment amount must be greater than zero." });
             }
@@ -1713,21 +1751,26 @@ namespace HotelApp.Web.Controllers
             var effectiveBalanceAmount = booking.BalanceAmount + otherChargesGrandTotal + roomServiceGrandTotal;
 
             // Compute net payable
-            // - Gross is `amount`
+            // - Gross is the sum across selected billing heads
             // - Discount reduces payable
             // - RoundOff adjusts payable to nearest rupee when applied
-            var computedNet = amount;
+            var computedNet = grossAmount;
             if (discountPercent.HasValue && discountPercent.Value > 0)
             {
                 // If both percent and amount are supplied, percent wins.
-                discountAmount = Math.Round(amount * (discountPercent.Value / 100m), 2, MidpointRounding.AwayFromZero);
+                discountAmount = Math.Round(discountableGrossAmount * (discountPercent.Value / 100m), 2, MidpointRounding.AwayFromZero);
             }
-            discountAmount = Math.Round(discountAmount, 2, MidpointRounding.AwayFromZero);
-            computedNet = Math.Round(amount - discountAmount, 2, MidpointRounding.AwayFromZero);
+            discountAmount = Math.Round(Math.Min(discountAmount, discountableGrossAmount), 2, MidpointRounding.AwayFromZero);
+            if (discountAmount > 0 && discountableGrossAmount <= 0)
+            {
+                return Json(new { success = false, message = "Discount can be applied only to Stay or Other Charges. Select one of those heads." });
+            }
+
+            computedNet = Math.Round(grossAmount - discountAmount, 2, MidpointRounding.AwayFromZero);
             if (computedNet < 0)
             {
                 computedNet = 0;
-                discountAmount = Math.Round(amount, 2, MidpointRounding.AwayFromZero);
+                discountAmount = Math.Round(discountableGrossAmount, 2, MidpointRounding.AwayFromZero);
             }
 
             if (isRoundOffApplied)
@@ -1785,47 +1828,109 @@ namespace HotelApp.Web.Controllers
                 return Json(new { success = false, message = $"Net payable cannot exceed balance amount of ₹{maxNetAllowed:N2}." });
             }
 
-            var payment = new BookingPayment
-            {
-                BookingId = booking.Id,
-                Amount = computedNet,
-                DiscountAmount = discountAmount,
-                DiscountPercent = discountPercent,
-                RoundOffAmount = roundOffAmount,
-                IsRoundOffApplied = isRoundOffApplied,
-                PaymentMethod = paymentMethod,
-                PaymentReference = paymentReference,
-                Status = "Captured",
-                PaidOn = DateTime.Now,
-                Notes = notes,
-                CardType = cardType,
-                CardLastFourDigits = cardLastFourDigits,
-                BankId = bankId,
-                ChequeDate = chequeDate,
-                IsAdvancePayment = isAdvancePayment
-            };
+            var allocationsToUse = allocations.Any()
+                ? allocations
+                : new List<BillingHeadAllocation> { new BillingHeadAllocation { BillingHeadCode = null, Amount = grossAmount } };
 
-            var currentUserId = GetCurrentUserId() ?? 0;
-            var success = await _bookingRepository.AddPaymentAsync(payment, currentUserId);
-
-            if (success)
+            var totalGross = allocationsToUse.Sum(a => a.Amount);
+            var discountableTotal = allocationsToUse.Where(a => IsDiscountable(a.BillingHeadCode)).Sum(a => a.Amount);
+            var discountableCount = allocationsToUse.Count(a => IsDiscountable(a.BillingHeadCode));
+            if (totalGross <= 0)
             {
-                var parts = new List<string>
-                {
-                    $"Payment of ₹{computedNet:N2} recorded successfully."
-                };
-                if (discountAmount > 0)
-                {
-                    parts.Add($"Discount: ₹{discountAmount:N2}" + (discountPercent is > 0 ? $" ({discountPercent:N2}%)" : string.Empty));
-                }
-                if (isRoundOffApplied && roundOffAmount != 0)
-                {
-                    parts.Add($"Round off: ₹{roundOffAmount:N2}");
-                }
-                return Json(new { success = true, message = string.Join(" ", parts) });
+                return Json(new { success = false, message = "Please enter an amount for at least one billing head." });
             }
 
-            return Json(new { success = false, message = "Failed to record payment. Please try again." });
+            var payments = new List<BookingPayment>();
+            var discountRemaining = discountAmount;
+            var roundOffRemaining = isRoundOffApplied ? roundOffAmount : 0m;
+            var netRemaining = computedNet;
+
+            for (var i = 0; i < allocationsToUse.Count; i++)
+            {
+                var allocation = allocationsToUse[i];
+                var isLast = i == allocationsToUse.Count - 1;
+                var share = totalGross > 0 ? allocation.Amount / totalGross : 0m;
+                var isDiscountableHead = IsDiscountable(allocation.BillingHeadCode);
+
+                var discountShare = 0m;
+                if (discountableTotal > 0 && isDiscountableHead && discountAmount > 0)
+                {
+                    discountableCount--;
+                    discountShare = discountableCount == 0
+                        ? discountRemaining
+                        : Math.Round(discountAmount * (allocation.Amount / discountableTotal), 2, MidpointRounding.AwayFromZero);
+                    discountRemaining -= discountShare;
+                }
+
+                var roundOffShare = 0m;
+                if (isRoundOffApplied)
+                {
+                    roundOffShare = isLast ? roundOffRemaining : Math.Round(roundOffAmount * share, 2, MidpointRounding.AwayFromZero);
+                    roundOffRemaining -= roundOffShare;
+                }
+
+                var netShare = allocation.Amount - discountShare + roundOffShare;
+                if (netShare < 0)
+                {
+                    netShare = 0m;
+                }
+                if (isLast)
+                {
+                    var adjustedNet = Math.Round(netRemaining, 2, MidpointRounding.AwayFromZero);
+                    if (Math.Abs(adjustedNet - netShare) > 0.02m)
+                    {
+                        netShare = adjustedNet;
+                    }
+                }
+
+                netRemaining -= netShare;
+
+                payments.Add(new BookingPayment
+                {
+                    BookingId = booking.Id,
+                    Amount = netShare,
+                    DiscountAmount = discountShare,
+                    DiscountPercent = discountPercent,
+                    RoundOffAmount = roundOffShare,
+                    IsRoundOffApplied = isRoundOffApplied,
+                    PaymentMethod = paymentMethod,
+                    PaymentReference = paymentReference,
+                    Status = "Captured",
+                    PaidOn = DateTime.Now,
+                    Notes = notes,
+                    CardType = cardType,
+                    CardLastFourDigits = cardLastFourDigits,
+                    BankId = bankId,
+                    ChequeDate = chequeDate,
+                    IsAdvancePayment = isAdvancePayment,
+                    BillingHead = allocation.BillingHeadCode
+                });
+            }
+
+            var currentUserId = GetCurrentUserId() ?? 0;
+            foreach (var payment in payments)
+            {
+                var success = await _bookingRepository.AddPaymentAsync(payment, currentUserId);
+                if (!success)
+                {
+                    return Json(new { success = false, message = "Failed to record payment. Please try again." });
+                }
+            }
+
+            var messageParts = new List<string>
+            {
+                $"Payment of ₹{computedNet:N2} recorded successfully."
+            };
+            if (discountAmount > 0)
+            {
+                messageParts.Add($"Discount: ₹{discountAmount:N2}" + (discountPercent is > 0 ? $" ({discountPercent:N2}%)" : string.Empty));
+            }
+            if (isRoundOffApplied && roundOffAmount != 0)
+            {
+                messageParts.Add($"Round off: ₹{roundOffAmount:N2}");
+            }
+
+            return Json(new { success = true, message = string.Join(" ", messageParts) });
         }
 
         private async Task PopulateLookupsAsync(BookingCreateViewModel? model = null)
