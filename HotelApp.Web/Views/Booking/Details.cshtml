@@ -745,8 +745,9 @@
     );
 
     var watermarkAdjustedGrandTotal = Model.TotalAmount + watermarkOcGrandTotal + watermarkRsActualBillTotal;
-    var watermarkBalanceDue = watermarkAdjustedGrandTotal - watermarkAppliedToBalanceFromPayments;
-    var showPaidWatermark = watermarkBalanceDue <= 0;
+    var watermarkBalanceDueRaw = watermarkAdjustedGrandTotal - watermarkAppliedToBalanceFromPayments;
+    var watermarkBalanceDue = Math.Max(0m, Math.Round(watermarkBalanceDueRaw, 2, MidpointRounding.AwayFromZero));
+    var showPaidWatermark = watermarkBalanceDueRaw <= 0;
     var showCheckedOutWatermark = Model.ActualCheckOutDate.HasValue;
 }
 
@@ -996,6 +997,8 @@
             var paymentsForBalance = (ViewBag.Payments as IEnumerable<HotelApp.Web.Models.BookingPayment>)
                 ?? (Model.Payments ?? Enumerable.Empty<HotelApp.Web.Models.BookingPayment>());
 
+            var totalRoundOffApplied = paymentsForBalance.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m);
+
             var appliedToBalanceFromPayments = paymentsForBalance.Sum(p =>
                 p.Amount
                 + p.DiscountAmount
@@ -1003,8 +1006,8 @@
             );
 
             var paymentDiscountTotal = paymentsForBalance.Sum(p => p.DiscountAmount);
-
-            var adjustedBalanceAmount = adjustedGrandTotal - appliedToBalanceFromPayments;
+            var adjustedBalanceAmountRaw = adjustedGrandTotal - appliedToBalanceFromPayments;
+            var adjustedBalanceAmount = Math.Max(0m, Math.Round(adjustedBalanceAmountRaw, 2, MidpointRounding.AwayFromZero));
 
             // Allocate paid/applied amount head-wise in the same order as the billing head table.
             // This is best-effort: BookingPayments are not stored per head, so we allocate sequentially
@@ -1142,6 +1145,10 @@
                 <div class="financial-item financial-grand-total">
                     <div class="financial-label">Grand Total</div>
                     <div class="financial-amount">₹@adjustedGrandTotal.ToString("N2")</div>
+                </div>
+                <div class="financial-item">
+                    <div class="financial-label">Round Off Applied</div>
+                    <div class="financial-amount">₹@totalRoundOffApplied.ToString("N2")</div>
                 </div>
                 <div class="financial-item financial-highlight-deposit">
                     <div class="financial-label">Deposit Amount</div>
@@ -3076,6 +3083,36 @@
         noteEl.textContent = `Discount: ₹${totals.discountAmount.toFixed(2)} | Net: ₹${discountedNet.toFixed(2)}`;
     }
 
+    function applyDefaultAdvanceAllocation(minAdvanceAmount) {
+        const rows = Array.from(document.querySelectorAll('.billing-head-row'));
+        if (rows.length === 0) return;
+
+        const targetRow = rows.find(r => (r.dataset.headCode || '').trim().toUpperCase() === 'S') || rows[0];
+        const targetAmount = round2(parseFloat(minAdvanceAmount || '0') || 0);
+
+        rows.forEach(row => {
+            const toggle = row.querySelector('.billing-head-toggle');
+            const input = row.querySelector('.billing-head-amount');
+            if (!toggle || !input) return;
+
+            if (row === targetRow) {
+                const due = parseFloat(input.dataset.due || '0') || 0;
+                const val = round2(Math.min(targetAmount, due > 0 ? due : targetAmount));
+                input.value = val.toFixed(2);
+                if (!toggle.disabled) toggle.checked = val > 0;
+                input.removeAttribute('readonly');
+                input.removeAttribute('disabled');
+            } else {
+                input.value = '0.00';
+                if (!toggle.disabled) toggle.checked = false;
+                input.setAttribute('readonly', 'readonly');
+                input.setAttribute('disabled', 'disabled');
+            }
+        });
+
+        syncBillingHeadGrossFromUI();
+    }
+
     async function showPaymentModal(isAdvance = false) {
         const balanceAmount = @adjustedBalanceAmount;
         const modal = document.getElementById('paymentModal');
@@ -3101,6 +3138,9 @@
                     setGrossAmount(parseFloat(minAdvanceAmount) || 0);
                     amountField.setAttribute('min', minAdvanceAmount);
                     amountField.setAttribute('data-min-advance', minAdvanceAmount);
+                    if (hasBillingHeads) {
+                        applyDefaultAdvanceAllocation(minAdvanceAmount);
+                    }
                 } else {
                     amountField.value = balanceAmount.toFixed(2);
                     setGrossAmount(balanceAmount);

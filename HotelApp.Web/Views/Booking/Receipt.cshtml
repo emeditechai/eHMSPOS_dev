@@ -38,13 +38,16 @@
     var receiptAdjustedGrandTotal = Model.TotalAmount + ocGrandTotal + rsActualBillTotal;
 
     // Compute due from payments so payment-time discounts/round-off reduce balance correctly.
+    var totalRoundOffApplied = payments?.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m) ?? 0m;
+
     var appliedToBalanceFromPayments = payments?.Sum(p =>
         p.Amount
         + p.DiscountAmount
         + (p.IsRoundOffApplied ? p.RoundOffAmount : 0m)
     ) ?? 0m;
 
-    var receiptAdjustedBalanceDue = receiptAdjustedGrandTotal - appliedToBalanceFromPayments;
+    var receiptAdjustedBalanceDueRaw = receiptAdjustedGrandTotal - appliedToBalanceFromPayments;
+    var receiptAdjustedBalanceDue = Math.Max(0m, Math.Round(receiptAdjustedBalanceDueRaw, 2, MidpointRounding.AwayFromZero));
 }
 
 <!DOCTYPE html>
@@ -853,6 +856,10 @@
                     <div class="summary-row total">
                         <span class="label">Grand Total</span>
                         <span class="value mono">₹ @receiptAdjustedGrandTotal.ToString("N2")</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="label">Round Off Applied</span>
+                        <span class="value mono">₹ @totalRoundOffApplied.ToString("N2")</span>
                     </div>
                     <div class="summary-row due">
                         <span class="label">Balance Due</span>
