@@ -1,0 +1,300 @@
+<script>
+    async function openOtherChargesModal(bookingNumber) {
+        try {
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+
+            const [masterRes, existingRes] = await Promise.all([
+                fetch('/Booking/GetOtherChargesMaster'),
+                fetch('/Booking/GetBookingOtherCharges?bookingNumber=' + encodeURIComponent(bookingNumber))
+            ]);
+
+            const masterJson = await masterRes.json();
+            const existingJson = await existingRes.json();
+
+            if (!masterJson?.success) {
+                throw new Error(masterJson?.message || 'Failed to load Other Charges master');
+            }
+            if (!existingJson?.success) {
+                throw new Error(existingJson?.message || 'Failed to load booking Other Charges');
+            }
+
+            const masterRows = masterJson.rows || [];
+            const existingRows = existingJson.rows || [];
+
+            const html = `
+                <div style="text-align:left;">
+                    <div style="margin-bottom:12px; font-weight:600;">Booking: <span style="font-weight:800;">${bookingNumber}</span></div>
+
+                    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:12px;">
+                        <div style="flex:1; min-width:260px;">
+                            <label style="display:block; font-size:12px; color:#6b7280; margin-bottom:6px;">Select Other Charge</label>
+                            <select id="ocSelect" class="swal2-input" style="margin:0; height:40px;"></select>
+                        </div>
+                        <div>
+                            <button id="ocAddBtn" type="button" class="swal2-confirm swal2-styled" style="margin:0; height:40px;">Add</button>
+                        </div>
+                    </div>
+
+                    <div style="overflow:auto; border:1px solid #e5e7eb; border-radius:10px;">
+                        <table style="width:100%; border-collapse:collapse; min-width:820px;">
+                            <thead>
+                                <tr style="background:#f9fafb;">
+                                    <th style="text-align:left; padding:10px; border-bottom:1px solid #e5e7eb;">Charge</th>
+                                    <th style="text-align:right; padding:10px; border-bottom:1px solid #e5e7eb;">Rate</th>
+                                    <th style="text-align:right; padding:10px; border-bottom:1px solid #e5e7eb;">Qty</th>
+                                    <th style="text-align:left; padding:10px; border-bottom:1px solid #e5e7eb;">Note</th>
+                                    <th style="text-align:right; padding:10px; border-bottom:1px solid #e5e7eb;">GST %</th>
+                                    <th style="text-align:right; padding:10px; border-bottom:1px solid #e5e7eb;">GST Amt</th>
+                                    <th style="text-align:right; padding:10px; border-bottom:1px solid #e5e7eb;">CGST Amt</th>
+                                    <th style="text-align:right; padding:10px; border-bottom:1px solid #e5e7eb;">SGST Amt</th>
+                                    <th style="text-align:center; padding:10px; border-bottom:1px solid #e5e7eb;">Remove</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ocItemsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            const masterById = new Map(masterRows.map(r => [r.id, r]));
+            const originallySavedIds = new Set((existingRows || []).map(r => r.otherChargeId));
+
+            const result = await Swal.fire({
+                title: 'Other Charges',
+                html,
+                width: 980,
+                showCancelButton: true,
+                confirmButtonText: 'Save',
+                cancelButtonText: 'Close',
+                focusConfirm: false,
+                didOpen: () => {
+                    const sel = document.getElementById('ocSelect');
+                    const addBtn = document.getElementById('ocAddBtn');
+                    const body = document.getElementById('ocItemsBody');
+
+                    // Populate dropdown
+                    sel.innerHTML = masterRows.map(r => {
+                        const label = `${r.code} - ${r.name}`;
+                        return `<option value="${r.id}">${escapeHtml(label)}</option>`;
+                    }).join('');
+
+                    // Seed existing rows
+                    for (const row of existingRows) {
+                        appendRow(body, {
+                            otherChargeId: row.otherChargeId,
+                            code: row.code,
+                            name: row.name,
+                            gstPercent: row.gstPercent,
+                            cgstPercent: row.cgstPercent,
+                            sgstPercent: row.sgstPercent,
+                            qty: row.qty,
+                            note: row.note,
+                            rate: row.rate
+                        }, true);
+                    }
+
+                    addBtn.addEventListener('click', () => {
+                        const id = parseInt(sel.value, 10);
+                        if (!Number.isFinite(id)) return;
+                        if (body.querySelector(`tr[data-ocid="${id}"]`)) {
+                            return;
+                        }
+                        const m = masterById.get(id);
+                        if (!m) return;
+                        appendRow(body, {
+                            otherChargeId: m.id,
+                            code: m.code,
+                            name: m.name,
+                            gstPercent: m.gstPercent,
+                            cgstPercent: m.cgstPercent,
+                            sgstPercent: m.sgstPercent,
+                            qty: 1,
+                            note: '',
+                            rate: m.rate
+                        }, originallySavedIds.has(m.id));
+                    });
+                },
+                preConfirm: async () => {
+                    const body = document.getElementById('ocItemsBody');
+                    const rows = Array.from(body.querySelectorAll('tr'));
+
+                    const items = rows.map(tr => {
+                        const otherChargeId = parseInt(tr.getAttribute('data-ocid'), 10);
+                        const rateInput = tr.querySelector('input[data-role="rate"]');
+                        const qtyInput = tr.querySelector('input[data-role="qty"]');
+                        const noteInput = tr.querySelector('input[data-role="note"]');
+                        const rate = parseFloat(rateInput?.value);
+                        const qty = parseInt(qtyInput?.value, 10);
+                        const note = noteInput?.value;
+                        return {
+                            otherChargeId,
+                            rate: Number.isFinite(rate) ? rate : 0,
+                            qty: Number.isFinite(qty) ? qty : 1,
+                            note: (note ?? '').trim()
+                        };
+                    });
+
+                    if (items.length === 0) {
+                        Swal.showValidationMessage('Please add at least one Other Charge');
+                        return;
+                    }
+
+                    const resp = await fetch('/Booking/SaveBookingOtherCharges', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': token
+                        },
+                        body: JSON.stringify({ bookingNumber, items })
+                    });
+                    const data = await resp.json();
+                    if (!data?.success) {
+                        Swal.showValidationMessage(data?.message || 'Failed to save other charges');
+                        return;
+                    }
+                    return data;
+                }
+            });
+
+            if (result.isConfirmed) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Saved',
+                    text: result.value?.message || 'Other charges saved',
+                    timer: 1200,
+                    showConfirmButton: false
+                }).then(() => location.reload());
+            }
+        } catch (err) {
+            console.error(err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: err?.message || 'Failed to open Other Charges'
+            });
+        }
+
+        function appendRow(tbody, row, isPersisted) {
+            const tr = document.createElement('tr');
+            tr.setAttribute('data-ocid', row.otherChargeId);
+            tr.setAttribute('data-gst', row.gstPercent);
+            tr.setAttribute('data-cgst', row.cgstPercent);
+            tr.setAttribute('data-sgst', row.sgstPercent);
+            tr.setAttribute('data-persisted', isPersisted ? '1' : '0');
+
+            tr.innerHTML = `
+                <td style="padding:10px; border-bottom:1px solid #f3f4f6;">
+                    <div style="font-weight:700;">${escapeHtml(row.code)}</div>
+                    <div style="font-size:12px; color:#6b7280;">${escapeHtml(row.name)}</div>
+                </td>
+                <td style="padding:10px; border-bottom:1px solid #f3f4f6; text-align:right;">
+                    <input data-role="rate" type="number" step="0.01" min="0" value="${Number(row.rate || 0).toFixed(2)}" style="width:120px; text-align:right; padding:8px 10px; border:1px solid #e5e7eb; border-radius:8px;" />
+                </td>
+                <td style="padding:10px; border-bottom:1px solid #f3f4f6; text-align:right;">
+                    <input data-role="qty" type="number" step="1" min="1" value="${Number(row.qty || 1)}" style="width:80px; text-align:right; padding:8px 10px; border:1px solid #e5e7eb; border-radius:8px;" />
+                </td>
+                <td style="padding:10px; border-bottom:1px solid #f3f4f6;">
+                    <input data-role="note" type="text" value="${escapeAttr(row.note || '')}" style="width:240px; padding:8px 10px; border:1px solid #e5e7eb; border-radius:8px;" placeholder="Note" />
+                </td>
+                <td style="padding:10px; border-bottom:1px solid #f3f4f6; text-align:right;">
+                    <span data-role="gstPercent">${Number(row.gstPercent || 0).toFixed(2)}</span>
+                </td>
+                <td style="padding:10px; border-bottom:1px solid #f3f4f6; text-align:right;">
+                    ₹<span data-role="gstAmt">0.00</span>
+                </td>
+                <td style="padding:10px; border-bottom:1px solid #f3f4f6; text-align:right;">
+                    ₹<span data-role="cgstAmt">0.00</span>
+                </td>
+                <td style="padding:10px; border-bottom:1px solid #f3f4f6; text-align:right;">
+                    ₹<span data-role="sgstAmt">0.00</span>
+                </td>
+                <td style="padding:10px; border-bottom:1px solid #f3f4f6; text-align:center;">
+                    <button
+                        type="button"
+                        data-role="remove"
+                        title="Remove"
+                        aria-label="Remove"
+                        style="margin:0; width:40px; height:40px; border-radius:10px; border:1px solid #e5e7eb; background:#fff; color:#ef4444; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;"
+                    ><i class="fas fa-times"></i></button>
+                </td>
+            `;
+
+            const rateInput = tr.querySelector('input[data-role="rate"]');
+            const qtyInput = tr.querySelector('input[data-role="qty"]');
+            const removeBtn = tr.querySelector('button[data-role="remove"]');
+            rateInput.addEventListener('input', () => recalc(tr));
+            qtyInput.addEventListener('input', () => recalc(tr));
+            removeBtn.addEventListener('click', async () => {
+                const persisted = tr.getAttribute('data-persisted') === '1';
+                if (!persisted) {
+                    tr.remove();
+                    return;
+                }
+
+                const confirm = await Swal.fire({
+                    title: 'Remove this charge?',
+                    text: 'This charge is already saved. It will be removed when you click Save.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, remove',
+                    cancelButtonText: 'Cancel',
+                    focusCancel: true
+                });
+
+                if (confirm.isConfirmed) {
+                    tr.remove();
+                }
+            });
+
+            tbody.appendChild(tr);
+            recalc(tr);
+        }
+
+        function recalc(tr) {
+            const rate = parseFloat(tr.querySelector('input[data-role="rate"]').value);
+            const qty = parseInt(tr.querySelector('input[data-role="qty"]').value, 10);
+            const safeRate = Number.isFinite(rate) ? Math.max(0, rate) : 0;
+            const safeQty = Number.isFinite(qty) ? Math.max(1, qty) : 1;
+            const taxable = round2(safeRate * safeQty);
+            const gstPct = parseFloat(tr.getAttribute('data-gst')) || 0;
+            const cgstPct = parseFloat(tr.getAttribute('data-cgst')) || 0;
+            const sgstPct = parseFloat(tr.getAttribute('data-sgst')) || 0;
+            const gstAmt = round2(taxable * gstPct / 100);
+            const cgstAmt = round2(taxable * cgstPct / 100);
+            const sgstAmt = round2(taxable * sgstPct / 100);
+            tr.querySelector('span[data-role="gstAmt"]').textContent = gstAmt.toFixed(2);
+            tr.querySelector('span[data-role="cgstAmt"]').textContent = cgstAmt.toFixed(2);
+            tr.querySelector('span[data-role="sgstAmt"]').textContent = sgstAmt.toFixed(2);
+        }
+
+        function round2(v) {
+            return Math.round((v + Number.EPSILON) * 100) / 100;
+        }
+
+        function escapeHtml(str) {
+            return String(str ?? '').replace(/[&<>'\"]/g, c => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                "'": '&#39;',
+                '"': '&quot;',
+                '\\': '&#92;'
+            }[c]));
+        }
+
+        function escapeAttr(str) {
+            // Escape for placing inside a quoted HTML attribute value
+            return String(str ?? '').replace(/[&<>'"]/g, c => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                "'": '&#39;',
+                '"': '&quot;'
+            }[c]));
+        }
+    }
+</script>
+
+<form method="post" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>

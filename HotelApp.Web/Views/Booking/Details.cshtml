@@ -1468,6 +1468,14 @@
             <i class="fas fa-receipt"></i>
         </div>
         <h3 class="section-title">Other Charges</h3>
+        @if (!Model.ActualCheckOutDate.HasValue)
+        {
+            <div style="margin-left: auto; display: flex; gap: 0.5rem; align-items: center;">
+                <button type="button" class="btn btn-outline-primary" onclick="openOtherChargesModal('@Model.BookingNumber');" title="Add Other Charges" aria-label="Add Other Charges">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        }
     </div>
     @{
         var otherCharges = ViewBag.BookingOtherCharges as IEnumerable<HotelApp.Web.Repositories.BookingOtherChargeDetailRow>
@@ -4335,4 +4343,6 @@
         }
     }
 </script>
+
+@await Html.PartialAsync("_OtherChargesModal")
 }
