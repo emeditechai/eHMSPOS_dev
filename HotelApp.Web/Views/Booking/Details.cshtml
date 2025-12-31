@@ -1900,6 +1900,20 @@
             <input type="hidden" id="grossAmount" name="grossAmount" value="" />
             <input type="hidden" id="billingHeadAllocations" name="billingHeadAllocations" value="" />
 
+            <div class="payment-summary-bar">
+                <div class="payment-summary-item">
+                    <div class="payment-summary-label">Total Due</div>
+                    <div class="payment-summary-value">₹@adjustedBalanceAmount.ToString("N2")</div>
+                </div>
+                <div class="payment-summary-item">
+                    <div class="payment-summary-label">Paying Now</div>
+                    <div class="payment-summary-value" id="paymentPayingNow">₹0.00</div>
+                </div>
+            </div>
+
+            <div class="payment-grid">
+                <div class="payment-col">
+
             <div class="form-row">
                 <div class="form-group" style="flex: 1;">
                     <label for="discountType">Discount Type</label>
@@ -1938,8 +1952,8 @@
                                 <label class="billing-head-label">
                                     <input class="billing-head-toggle" type="checkbox" @(isDisabled ? "disabled" : "checked") />
                                     <span class="billing-head-name">@row.Head.Name (@code)</span>
-                                    <span class="billing-head-due">Due: ₹@due.ToString("N2")</span>
                                 </label>
+                                <div class="billing-head-due">Due: ₹@due.ToString("N2")</div>
                                 <input type="number"
                                        class="form-control billing-head-amount"
                                        data-head-code="@code"
@@ -1958,15 +1972,26 @@
             }
             
             <div class="form-group">
-                <label for="amount">Amount (₹) *</label>
+                <label for="amount">Paying Now (₹) *</label>
                 <input type="number" id="amount" name="amount" step="0.01" min="0.01" max="@adjustedBalanceAmount" 
                        class="form-control" required placeholder="Enter payment amount" />
                 <small class="text-muted">Balance Amount: ₹@adjustedBalanceAmount.ToString("N2")</small>
             </div>
 
+                </div>
+
+                <div class="payment-col">
+
             <div class="form-group">
                 <label for="paymentMethod">Payment Method *</label>
-                <select id="paymentMethod" name="paymentMethod" class="form-control" required onchange="handlePaymentMethodChange()">
+                <div class="payment-method-tabs" id="paymentMethodTabs" role="tablist" aria-label="Payment method">
+                    <button type="button" class="payment-method-tab" data-method="Cash">Cash</button>
+                    <button type="button" class="payment-method-tab" data-method="Card">Card</button>
+                    <button type="button" class="payment-method-tab" data-method="UPI">UPI</button>
+                    <button type="button" class="payment-method-tab" data-method="BankTransfer">Bank Transfer</button>
+                    <button type="button" class="payment-method-tab" data-method="Cheque">Cheque</button>
+                </div>
+                <select id="paymentMethod" name="paymentMethod" class="form-control" required onchange="handlePaymentMethodChange()" style="display:none;" tabindex="-1" aria-hidden="true">
                     <option value="">Select payment method</option>
                     <option value="Cash">Cash</option>
                     <option value="Card">Card</option>
@@ -1977,7 +2002,7 @@
             </div>
 
             <!-- Card-specific fields -->
-            <div id="cardFields" style="display: none;">
+            <div id="cardFields" class="payment-method-fields" style="display: none;">
                 <div class="form-group">
                     <label for="cardType">Card Type *</label>
                     <select id="cardType" name="cardType" class="form-control">
@@ -2011,7 +2036,7 @@
             </div>
 
             <!-- Cheque-specific fields -->
-            <div id="chequeFields" style="display: none;">
+            <div id="chequeFields" class="payment-method-fields" style="display: none;">
                 <div class="form-group">
                     <label for="chequeBankId">Bank Name *</label>
                     <select id="chequeBankId" name="chequeBankId" class="form-control">
@@ -2044,9 +2069,12 @@
 
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="closePaymentModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary" id="recordPaymentBtn" disabled>
                     <i class="fas fa-check"></i> Record Payment
                 </button>
+            </div>
+
+                </div>
             </div>
         </form>
     </div>
@@ -2568,26 +2596,34 @@
 
     /* Payment Modal: scoped refinements for a cleaner, more professional layout */
     #paymentModal .payment-modal-content {
-        max-width: 640px;
+        max-width: 860px;
+        max-height: 95vh;
     }
 
     #paymentModal #paymentForm {
-        padding: 1.25rem 1.5rem;
+        padding: 0.85rem 1.1rem;
+        max-height: none;
+        overflow: visible;
+    }
+
+    #paymentModal .modal-header {
+        padding: 1rem 1.25rem;
     }
 
     #paymentModal .form-group {
-        margin-bottom: 1rem;
+        margin-bottom: 0.75rem;
     }
 
     #paymentModal .billing-head-allocations {
-        padding: 1rem;
+        padding: 0.6rem;
+        gap: 0.6rem;
     }
 
     #paymentModal .billing-head-row {
         display: grid;
-        grid-template-columns: 1fr 180px;
-        gap: 0.75rem;
-        align-items: start;
+        grid-template-columns: 1fr 110px 140px;
+        gap: 0.5rem;
+        align-items: center;
     }
 
     #paymentModal .billing-head-label {
@@ -2596,17 +2632,131 @@
     }
 
     #paymentModal .billing-head-due {
-        display: block;
         font-size: 0.8rem;
+        color: #6b7280;
+        text-align: right;
     }
 
     #paymentModal .billing-head-amount {
-        max-width: 180px;
+        max-width: 160px;
         justify-self: end;
     }
 
     #paymentModal .text-muted {
         font-size: 0.85rem;
+    }
+
+    #paymentModal .payment-summary-bar {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.55rem 0.9rem;
+        border-bottom: 1px solid #e5e7eb;
+        background: #f9fafb;
+    }
+
+    #paymentModal .payment-summary-item {
+        flex: 1;
+        min-width: 0;
+    }
+
+    #paymentModal .payment-summary-label {
+        font-size: 0.8rem;
+        color: #6b7280;
+        font-weight: 600;
+    }
+
+    #paymentModal .payment-summary-value {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: #111827;
+    }
+
+    #paymentModal .payment-grid {
+        display: grid;
+        grid-template-columns: 1.35fr 1fr;
+        gap: 1rem;
+        align-items: start;
+    }
+
+    #paymentModal .payment-col {
+        min-width: 0;
+    }
+
+    #paymentModal .payment-method-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    #paymentModal .payment-method-tab {
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        color: #111827;
+        padding: 0.45rem 0.65rem;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        cursor: pointer;
+        line-height: 1;
+    }
+
+    #paymentModal .payment-method-tab.is-active {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.12);
+    }
+
+    #paymentModal .payment-method-fields {
+        margin-top: 0.75rem;
+        padding: 0.6rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        background: #f9fafb;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+    }
+
+    /* Card fields: keep it in one row to avoid pushing footer off-screen */
+    #paymentModal #cardFields {
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 0.6rem;
+    }
+
+    #paymentModal #cardFields small.text-muted {
+        display: none;
+    }
+
+    #paymentModal .payment-method-fields .form-group {
+        margin-bottom: 0;
+    }
+
+    #paymentModal #cardFields .form-group:last-child,
+    #paymentModal #chequeFields .form-group:last-child {
+        grid-column: 1 / -1;
+    }
+
+    #paymentModal textarea.form-control {
+        resize: none;
+    }
+
+    #paymentModal #notes {
+        height: 60px;
+    }
+
+    /* In no-scroll layout, avoid footer overlapping the last fields */
+    #paymentModal .modal-footer {
+        position: static;
+        padding: 0.85rem 1.1rem;
+    }
+
+    @@media (max-width: 840px) {
+        #paymentModal .payment-modal-content {
+            max-width: 700px;
+        }
+        #paymentModal .payment-grid {
+            grid-template-columns: 1fr;
+        }
     }
 
     @@keyframes slideIn {
@@ -3140,9 +3290,67 @@
         parts.push(`Net Payable: ₹${t.netPayable.toFixed(2)}`);
         hint.textContent = parts.join(' | ');
 
+        const payingNowEl = document.getElementById('paymentPayingNow');
+        if (payingNowEl) {
+            payingNowEl.textContent = `₹${t.netPayable.toFixed(2)}`;
+        }
+
         // Keep HTML validation constraints in sync with computed totals.
         updateAmountMaxConstraint();
         updateHeadwiseDiscountNotes(t);
+
+        updatePaymentActionState();
+    }
+
+    function setPaymentMethod(method) {
+        const select = document.getElementById('paymentMethod');
+        if (!select) return;
+        select.value = method || '';
+
+        // Update tabs visual state
+        const tabs = Array.from(document.querySelectorAll('#paymentMethodTabs .payment-method-tab'));
+        tabs.forEach(btn => {
+            const m = (btn.getAttribute('data-method') || '').trim();
+            btn.classList.toggle('is-active', m === (method || ''));
+        });
+
+        handlePaymentMethodChange();
+        updatePaymentActionState();
+    }
+
+    function initPaymentMethodTabs() {
+        const container = document.getElementById('paymentMethodTabs');
+        if (!container) return;
+
+        // Avoid double-wiring
+        if (container.getAttribute('data-initialized') === 'true') return;
+        container.setAttribute('data-initialized', 'true');
+
+        container.addEventListener('click', (e) => {
+            const btn = e.target.closest('.payment-method-tab');
+            if (!btn) return;
+            const method = btn.getAttribute('data-method') || '';
+            setPaymentMethod(method);
+        });
+    }
+
+    function updatePaymentActionState() {
+        const btn = document.getElementById('recordPaymentBtn');
+        if (!btn) return;
+
+        const method = document.getElementById('paymentMethod')?.value || '';
+        const hasMethod = method.trim().length > 0;
+
+        const hasHeadRows = document.querySelectorAll('.billing-head-row').length > 0;
+        const alloc = hasHeadRows ? collectBillingHeadAllocations() : { allocations: [], total: getGrossAmount() };
+        const gross = hasHeadRows ? (alloc.total || 0) : (getGrossAmount() || 0);
+
+        const amountMax = parseFloat(document.getElementById('amount')?.getAttribute('max') || '0') || 0;
+        const hasPositiveAmount = gross > 0.009;
+        const withinMax = amountMax <= 0 ? true : gross <= (amountMax + 0.05);
+        const hasValidHeads = !hasHeadRows || alloc.allocations.length > 0;
+
+        btn.disabled = !(hasMethod && hasPositiveAmount && withinMax && hasValidHeads);
     }
 
     function updateHeadwiseDiscountNotes(totals) {
@@ -3262,6 +3470,16 @@
 
         updateDiscountUI();
         updateAmountMaxConstraint();
+        initPaymentMethodTabs();
+
+        // Default to Cash for faster entry, without changing backend flow.
+        if (!document.getElementById('paymentMethod')?.value) {
+            setPaymentMethod('Cash');
+        } else {
+            setPaymentMethod(document.getElementById('paymentMethod').value);
+        }
+
+        updatePaymentHint();
         amountField.focus();
     }
 
@@ -3270,6 +3488,10 @@
         document.getElementById('paymentForm').reset();
         document.getElementById('cardFields').style.display = 'none';
         document.getElementById('chequeFields').style.display = 'none';
+        const payingNowEl = document.getElementById('paymentPayingNow');
+        if (payingNowEl) payingNowEl.textContent = '₹0.00';
+        const btn = document.getElementById('recordPaymentBtn');
+        if (btn) btn.disabled = true;
         const allocHidden = document.getElementById('billingHeadAllocations');
         if (allocHidden) allocHidden.value = '';
     }
@@ -3301,6 +3523,8 @@
             document.getElementById('chequeBankId').setAttribute('required', 'required');
             document.getElementById('chequeDate').setAttribute('required', 'required');
         }
+
+        updatePaymentActionState();
     }
 
     $(document).ready(function() {
@@ -3336,6 +3560,9 @@
             updatePaymentHint();
             applyNetToAmountField();
         });
+
+        initPaymentMethodTabs();
+        updatePaymentActionState();
 
         const billingHeadRows = Array.from(document.querySelectorAll('.billing-head-row'));
 
