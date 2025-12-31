@@ -1874,7 +1874,7 @@
 
 <!-- Payment Modal -->
 <div id="paymentModal" class="modal" style="display: none;">
-    <div class="modal-content">
+    <div class="modal-content payment-modal-content">
         <div class="modal-header">
             <h3><i class="fas fa-rupee-sign"></i> Record Payment</h3>
             <button type="button" class="close-btn" onclick="closePaymentModal()">&times;</button>
@@ -2550,6 +2550,49 @@
         flex-direction: column;
         animation: slideIn 0.3s ease-out;
         overflow: hidden;
+    }
+
+    /* Payment Modal: scoped refinements for a cleaner, more professional layout */
+    #paymentModal .payment-modal-content {
+        max-width: 640px;
+    }
+
+    #paymentModal #paymentForm {
+        padding: 1.25rem 1.5rem;
+    }
+
+    #paymentModal .form-group {
+        margin-bottom: 1rem;
+    }
+
+    #paymentModal .billing-head-allocations {
+        padding: 1rem;
+    }
+
+    #paymentModal .billing-head-row {
+        display: grid;
+        grid-template-columns: 1fr 180px;
+        gap: 0.75rem;
+        align-items: start;
+    }
+
+    #paymentModal .billing-head-label {
+        flex-wrap: wrap;
+        row-gap: 0.25rem;
+    }
+
+    #paymentModal .billing-head-due {
+        display: block;
+        font-size: 0.8rem;
+    }
+
+    #paymentModal .billing-head-amount {
+        max-width: 180px;
+        justify-self: end;
+    }
+
+    #paymentModal .text-muted {
+        font-size: 0.85rem;
     }
 
     @@keyframes slideIn {

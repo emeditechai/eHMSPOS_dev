@@ -1841,6 +1841,7 @@ namespace HotelApp.Web.Controllers
             }
 
             var payments = new List<BookingPayment>();
+            var paidOn = DateTime.Now;
             var discountRemaining = discountAmount;
             var roundOffRemaining = isRoundOffApplied ? roundOffAmount : 0m;
             var netRemaining = computedNet;
@@ -1896,7 +1897,7 @@ namespace HotelApp.Web.Controllers
                     PaymentMethod = paymentMethod,
                     PaymentReference = paymentReference,
                     Status = "Captured",
-                    PaidOn = DateTime.Now,
+                    PaidOn = paidOn,
                     Notes = notes,
                     CardType = cardType,
                     CardLastFourDigits = cardLastFourDigits,
@@ -1908,13 +1909,22 @@ namespace HotelApp.Web.Controllers
             }
 
             var currentUserId = GetCurrentUserId() ?? 0;
+            string? receiptGroupNumber = null;
             foreach (var payment in payments)
             {
+                if (!string.IsNullOrWhiteSpace(receiptGroupNumber))
+                {
+                    payment.ReceiptGroupNumber = receiptGroupNumber;
+                }
+
                 var success = await _bookingRepository.AddPaymentAsync(payment, currentUserId);
                 if (!success)
                 {
                     return Json(new { success = false, message = "Failed to record payment. Please try again." });
                 }
+
+                // First inserted payment row becomes the displayed receipt for the whole transaction.
+                receiptGroupNumber ??= payment.ReceiptGroupNumber ?? payment.ReceiptNumber;
             }
 
             var messageParts = new List<string>

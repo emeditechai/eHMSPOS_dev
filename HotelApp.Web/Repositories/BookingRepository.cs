@@ -2281,21 +2281,30 @@ WHERE BookingID = @BookingID
                 // Ensure QUOTED_IDENTIFIER is ON for the indexed column
                 await _dbConnection.ExecuteAsync("SET QUOTED_IDENTIFIER ON", transaction: transaction);
 
+                // Generate receipt group number once per payment transaction.
+                // When a payment is split into multiple rows (e.g., BillingHead-wise), we want the group
+                // number to increment per transaction, not per row.
+                if (string.IsNullOrWhiteSpace(payment.ReceiptGroupNumber))
+                {
+                    payment.ReceiptGroupNumber = await TryGenerateReceiptGroupNumberAsync(payment.PaidOn, transaction);
+                }
+
                 // Generate receipt number
                 var receiptNumber = await GenerateReceiptNumberAsync(transaction);
                 payment.ReceiptNumber = receiptNumber;
+                payment.ReceiptGroupNumber ??= receiptNumber;
 
                 // Insert payment
                 const string insertPaymentSql = @"
                     INSERT INTO BookingPayments (
-                        BookingId, ReceiptNumber, BillingHead,
+                        BookingId, ReceiptNumber, ReceiptGroupNumber, BillingHead,
                         Amount, DiscountAmount, DiscountPercent, RoundOffAmount, IsRoundOffApplied,
                         PaymentMethod, PaymentReference, Status, PaidOn, Notes,
                         CardType, CardLastFourDigits, BankId, ChequeDate,
                         CreatedBy, IsAdvancePayment
                     )
                     VALUES (
-                        @BookingId, @ReceiptNumber, @BillingHead,
+                        @BookingId, @ReceiptNumber, @ReceiptGroupNumber, @BillingHead,
                         @Amount, @DiscountAmount, @DiscountPercent, @RoundOffAmount, @IsRoundOffApplied,
                         @PaymentMethod, @PaymentReference, @Status, @PaidOn, @Notes,
                         @CardType, @CardLastFourDigits, @BankId, @ChequeDate,
@@ -2306,6 +2315,7 @@ WHERE BookingID = @BookingID
                 {
                     payment.BookingId,
                     payment.ReceiptNumber,
+                    payment.ReceiptGroupNumber,
                     payment.BillingHead,
                     payment.Amount,
                     payment.DiscountAmount,
@@ -2335,7 +2345,8 @@ WHERE BookingID = @BookingID
                     || ex.Message.Contains("DiscountPercent", StringComparison.OrdinalIgnoreCase)
                     || ex.Message.Contains("RoundOffAmount", StringComparison.OrdinalIgnoreCase)
                     || ex.Message.Contains("IsRoundOffApplied", StringComparison.OrdinalIgnoreCase)
-                    || ex.Message.Contains("BillingHead", StringComparison.OrdinalIgnoreCase))
+                    || ex.Message.Contains("BillingHead", StringComparison.OrdinalIgnoreCase)
+                    || ex.Message.Contains("ReceiptGroupNumber", StringComparison.OrdinalIgnoreCase))
                 {
                     // Backward-compatible insert for DBs that haven't run the migration yet.
                     const string legacyInsertPaymentSql = @"
@@ -2936,6 +2947,54 @@ WHERE BookingID = @BookingID
             // Generate receipt number with sequential number
             var sequenceNumber = (count + 1).ToString("D4");
             return $"RCP-{today}-{sequenceNumber}";
+        }
+
+        private async Task<string?> TryGenerateReceiptGroupNumberAsync(DateTime paidOn, IDbTransaction transaction)
+        {
+            // Group number increments once per payment transaction.
+            // Example: First payment group RCP-20251231-0001, next payment group RCP-20251231-0002
+            // even if each payment is stored as multiple rows.
+            if (paidOn == default)
+            {
+                paidOn = DateTime.Now;
+            }
+
+            var datePart = paidOn.ToString("yyyyMMdd");
+            var prefix = $"RCP-{datePart}-";
+
+            const string sql = @"
+                SELECT TOP 1 ReceiptGroupNumber
+                FROM BookingPayments WITH (UPDLOCK, HOLDLOCK)
+                WHERE ReceiptGroupNumber LIKE @Pattern
+                ORDER BY ReceiptGroupNumber DESC";
+
+            try
+            {
+                var lastGroup = await _dbConnection.QueryFirstOrDefaultAsync<string>(
+                    sql,
+                    new { Pattern = $"{prefix}%" },
+                    transaction
+                );
+
+                var nextSequence = 1;
+                if (!string.IsNullOrWhiteSpace(lastGroup) && lastGroup.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    var suffix = lastGroup.Substring(prefix.Length);
+                    if (int.TryParse(suffix, out var lastSequence))
+                    {
+                        nextSequence = lastSequence + 1;
+                    }
+                }
+
+                return $"{prefix}{nextSequence:D4}";
+            }
+            catch (Exception ex) when (
+                ex.Message.Contains("Invalid column name", StringComparison.OrdinalIgnoreCase)
+                || ex.Message.Contains("ReceiptGroupNumber", StringComparison.OrdinalIgnoreCase))
+            {
+                // DB hasn't run the migration yet.
+                return null;
+            }
         }
     }
 }

@@ -1311,24 +1311,36 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var payment in payments)
+                            @foreach (var g in payments
+                                .GroupBy(p => string.IsNullOrWhiteSpace(p.ReceiptGroupNumber) ? (p.ReceiptNumber ?? "N/A") : p.ReceiptGroupNumber)
+                                .OrderByDescending(g => g.Max(x => x.PaidOn)))
                             {
+                                var first = g.OrderBy(x => x.Id).FirstOrDefault();
+                                var receiptNo = g.Key ?? "N/A";
+                                var paidOn = first?.PaidOn ?? g.Max(x => x.PaidOn);
+                                var method = first?.PaymentMethod ?? "-";
+                                var reference = first?.PaymentReference ?? "-";
+                                var discount = g.Sum(x => x.DiscountAmount);
+                                var roundOff = g.Sum(x => x.RoundOffAmount);
+                                var amount = g.Sum(x => x.Amount);
+                                var isAdvance = g.Any(x => x.IsAdvancePayment);
+
                                 <tr>
-                                    <td><strong>@(payment.ReceiptNumber ?? "N/A")</strong></td>
-                                    <td>@payment.PaidOn.ToString("dd MMM yyyy hh:mm tt")</td>
+                                    <td><strong>@receiptNo</strong></td>
+                                    <td>@paidOn.ToString("dd MMM yyyy hh:mm tt")</td>
                                     <td>
-                                        @payment.PaymentMethod
-                                        @if (payment.IsAdvancePayment)
+                                        @method
+                                        @if (isAdvance)
                                         {
                                             <span style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-size: 10px; padding: 2px 6px; border-radius: 3px; margin-left: 4px; font-weight: 600;">
                                                 ★ ADVANCE
                                             </span>
                                         }
                                     </td>
-                                    <td>@(payment.PaymentReference ?? "-")</td>
-                                    <td class="text-right">₹ @payment.DiscountAmount.ToString("N2")</td>
-                                    <td class="text-right">₹ @payment.RoundOffAmount.ToString("N2")</td>
-                                    <td class="text-right">₹ @payment.Amount.ToString("N2")</td>
+                                    <td>@reference</td>
+                                    <td class="text-right">₹ @discount.ToString("N2")</td>
+                                    <td class="text-right">₹ @roundOff.ToString("N2")</td>
+                                    <td class="text-right">₹ @amount.ToString("N2")</td>
                                 </tr>
                             }
                         </tbody>
