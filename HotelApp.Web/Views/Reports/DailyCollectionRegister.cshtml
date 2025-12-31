@@ -88,6 +88,7 @@
                 <th>Guest</th>
                 <th>Phone</th>
                 <th>Room Type</th>
+                <th>Billing Head</th>
                 <th>Method</th>
                 <th>Bank</th>
                 <th>Reference</th>
@@ -108,6 +109,7 @@
                 <td>@(string.IsNullOrWhiteSpace(row.GuestName) ? "-" : row.GuestName)</td>
                 <td>@(string.IsNullOrWhiteSpace(row.GuestPhone) ? "-" : row.GuestPhone)</td>
                 <td>@(string.IsNullOrWhiteSpace(row.RoomType) ? "-" : row.RoomType)</td>
+                <td>@(string.IsNullOrWhiteSpace(row.BillingHead) ? "-" : row.BillingHead)</td>
                 <td>@(string.IsNullOrWhiteSpace(row.PaymentMethod) ? "-" : row.PaymentMethod)</td>
                 <td>@(string.IsNullOrWhiteSpace(row.BankName) ? "-" : row.BankName)</td>
                 <td>@(string.IsNullOrWhiteSpace(row.PaymentReference) ? "-" : row.PaymentReference)</td>
@@ -138,14 +140,15 @@
                     guest: (tds[3]?.innerText || '').trim(),
                     phone: (tds[4]?.innerText || '').trim(),
                     roomType: (tds[5]?.innerText || '').trim(),
-                    method: (tds[6]?.innerText || '').trim(),
-                    bank: (tds[7]?.innerText || '').trim(),
-                    reference: (tds[8]?.innerText || '').trim(),
-                    amount: (tds[9]?.innerText || '').trim(),
-                    discount: (tds[10]?.innerText || '').trim(),
-                    roundOff: (tds[11]?.innerText || '').trim(),
-                    status: (tds[12]?.innerText || '').trim(),
-                    createdBy: (tds[13]?.innerText || '').trim(),
+                    billingHead: (tds[6]?.innerText || '').trim(),
+                    method: (tds[7]?.innerText || '').trim(),
+                    bank: (tds[8]?.innerText || '').trim(),
+                    reference: (tds[9]?.innerText || '').trim(),
+                    amount: (tds[10]?.innerText || '').trim(),
+                    discount: (tds[11]?.innerText || '').trim(),
+                    roundOff: (tds[12]?.innerText || '').trim(),
+                    status: (tds[13]?.innerText || '').trim(),
+                    createdBy: (tds[14]?.innerText || '').trim(),
                 };
             });
         };
@@ -164,7 +167,7 @@
         const exportDailyCollectionToCsv = () => {
             const rows = getExportRows();
             const header = [
-                'Paid On','Receipt No','Booking No','Guest','Phone','Room Type','Method','Bank','Reference','Amount','Discount','Round Off','Status','Created By'
+                'Paid On','Receipt No','Booking No','Guest','Phone','Room Type','Billing Head','Method','Bank','Reference','Amount','Discount','Round Off','Status','Created By'
             ];
 
             const escape = (v) => {
@@ -176,7 +179,7 @@
             const lines = [header.map(escape).join(',')];
             rows.forEach(r => {
                 lines.push([
-                    r.paidOn, r.receiptNo, r.bookingNo, r.guest, r.phone, r.roomType, r.method, r.bank, r.reference,
+                    r.paidOn, r.receiptNo, r.bookingNo, r.guest, r.phone, r.roomType, r.billingHead, r.method, r.bank, r.reference,
                     r.amount, r.discount, r.roundOff, r.status, r.createdBy
                 ].map(escape).join(','));
             });
@@ -193,12 +196,12 @@
 
             let html = '<table border="1">';
             html += '<tr>' + [
-                'Paid On','Receipt No','Booking No','Guest','Phone','Room Type','Method','Bank','Reference','Amount','Discount','Round Off','Status','Created By'
+                'Paid On','Receipt No','Booking No','Guest','Phone','Room Type','Billing Head','Method','Bank','Reference','Amount','Discount','Round Off','Status','Created By'
             ].map(h => `<th>${escHtml(h)}</th>`).join('') + '</tr>';
 
             rows.forEach(r => {
                 html += '<tr>' + [
-                    r.paidOn, r.receiptNo, r.bookingNo, r.guest, r.phone, r.roomType, r.method, r.bank, r.reference,
+                    r.paidOn, r.receiptNo, r.bookingNo, r.guest, r.phone, r.roomType, r.billingHead, r.method, r.bank, r.reference,
                     r.amount, r.discount, r.roundOff, r.status, r.createdBy
                 ].map(v => `<td>${escHtml(v)}</td>`).join('') + '</tr>';
             });
@@ -235,10 +238,10 @@
             (doc.autoTable || autoTableFn).call(doc, {
                 startY: 60,
                 head: [[
-                    'Paid On','Receipt No','Booking No','Guest','Phone','Room Type','Method','Bank','Reference','Amount','Discount','Round Off','Status','Created By'
+                    'Paid On','Receipt No','Booking No','Guest','Phone','Room Type','Billing Head','Method','Bank','Reference','Amount','Discount','Round Off','Status','Created By'
                 ]],
                 body: rows.map(r => [
-                    r.paidOn, r.receiptNo, r.bookingNo, r.guest, r.phone, r.roomType, r.method, r.bank, r.reference,
+                    r.paidOn, r.receiptNo, r.bookingNo, r.guest, r.phone, r.roomType, r.billingHead, r.method, r.bank, r.reference,
                     r.amount, r.discount, r.roundOff, r.status, r.createdBy
                 ]),
                 styles: { fontSize: 8 },

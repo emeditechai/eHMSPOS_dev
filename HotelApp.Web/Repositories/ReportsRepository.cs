@@ -172,6 +172,7 @@ public sealed class DailyCollectionRegisterDetailRow
     public string? GuestName { get; set; }
     public string? GuestPhone { get; set; }
     public string? RoomType { get; set; }
+    public string? BillingHead { get; set; }
     public string? PaymentMethod { get; set; }
     public string? BankName { get; set; }
     public string? PaymentReference { get; set; }
