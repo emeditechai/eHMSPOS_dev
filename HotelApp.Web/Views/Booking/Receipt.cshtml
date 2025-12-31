@@ -35,7 +35,9 @@
     var ocGrandTotal = ocAmountTotal + ocGstTotal;
 
     // Header/summary totals
-    var receiptAdjustedGrandTotal = Model.TotalAmount + ocGrandTotal + rsActualBillTotal;
+    var receiptAdjustedGrandTotal = ViewBag.ReceiptAdjustedGrandTotal is decimal serverGrandTotal
+        ? serverGrandTotal
+        : (Model.TotalAmount + ocGrandTotal + rsActualBillTotal);
 
     // Compute due from payments so payment-time discounts/round-off reduce balance correctly.
     var totalRoundOffApplied = payments?.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m) ?? 0m;
@@ -47,7 +49,21 @@
     ) ?? 0m;
 
     var receiptAdjustedBalanceDueRaw = receiptAdjustedGrandTotal - appliedToBalanceFromPayments;
-    var receiptAdjustedBalanceDue = Math.Max(0m, Math.Round(receiptAdjustedBalanceDueRaw, 2, MidpointRounding.AwayFromZero));
+    var receiptAdjustedBalanceDueComputed = Math.Max(0m, Math.Round(receiptAdjustedBalanceDueRaw, 2, MidpointRounding.AwayFromZero));
+    var receiptAdjustedBalanceDue = ViewBag.ReceiptAdjustedBalanceDue is decimal serverBalanceDue
+        ? serverBalanceDue
+        : receiptAdjustedBalanceDueComputed;
+
+    var showDueQr = ViewBag.ShowDueQr is bool b && b;
+    var dueQrUrl = ViewBag.DueQrUrl as string;
+    var showDueQrBlock = receiptAdjustedBalanceDue > 0;
+
+    var inclusions = (Model.RoomType?.Amenities ?? string.Empty)
+        .Split(',', StringSplitOptions.RemoveEmptyEntries)
+        .Select(x => x.Trim())
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
 }
 
 <!DOCTYPE html>
@@ -68,7 +84,8 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #f5f5f5;
             padding: 20px;
-            color: #333;
+            color: #111827;
+            line-height: 1.35;
         }
 
         .mono {
@@ -84,7 +101,10 @@
             max-width: 210mm; /* A4 width */
             margin: 0 auto;
             background: white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 10px 24px rgba(17, 24, 39, 0.08);
             min-height: 297mm; /* A4 height */
         }
 
@@ -97,7 +117,7 @@
             align-items: center;
             justify-content: space-between;
             padding-bottom: 25px;
-            border-bottom: 2px solid #e0e0e0;
+            border-bottom: 1px solid #e5e7eb;
             margin-bottom: 30px;
         }
 
@@ -151,7 +171,7 @@
         .hotel-name {
             font-size: 32px;
             font-weight: 700;
-            color: #2c3e50;
+            color: #111827;
             margin-bottom: 5px;
             letter-spacing: -0.5px;
         }
@@ -175,7 +195,7 @@
 
         .hotel-details {
             font-size: 12px;
-            color: #555;
+            color: #374151;
             line-height: 1.8;
             margin-top: 10px;
         }
@@ -186,7 +206,7 @@
 
         .hotel-details .detail-label {
             font-weight: 600;
-            color: #333;
+            color: #111827;
         }
 
         .reservation-info {
@@ -202,7 +222,7 @@
 
         .summary-grid {
             display: grid;
-            grid-template-columns: 1.2fr 0.8fr;
+            grid-template-columns: 1fr 1fr;
             gap: 18px;
             margin-bottom: 22px;
             padding-bottom: 18px;
@@ -211,9 +231,16 @@
 
         .summary-card {
             border: 1px solid #e5e7eb;
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 14px 14px;
             background: #fff;
+            box-shadow: 0 1px 2px rgba(17, 24, 39, 0.06);
+        }
+
+        .summary-right-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
         }
 
         .summary-row {
@@ -245,6 +272,40 @@
         .summary-row.due .value {
             color: #ef4444;
             font-size: 15px;
+        }
+
+        .due-qr {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .summary-card.qr-card {
+            padding: 12px 14px;
+            margin-top: 2px;
+        }
+
+        .due-qr img {
+            width: 96px;
+            height: 96px;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 6px;
+            background: #fff;
+        }
+
+        .due-qr .text {
+            font-size: 11px;
+            line-height: 1.45;
+            color: #6b7280;
+        }
+
+        .due-qr .text .title {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 4px;
         }
 
         .section-title {
@@ -619,7 +680,7 @@
             position: fixed;
             bottom: 30px;
             right: 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #4f46e5;
             color: white;
             border: none;
             padding: 14px 28px;
@@ -627,7 +688,7 @@
             font-size: 15px;
             font-weight: 600;
             cursor: pointer;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 10px 18px rgba(79, 70, 229, 0.28);
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
@@ -635,8 +696,8 @@
         }
 
         .print-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+            transform: none;
+            box-shadow: 0 12px 22px rgba(79, 70, 229, 0.34);
         }
 
         .contact-info {
@@ -843,27 +904,50 @@
                         <span class="value mono">@receiptIssueDate.ToString("dd MMM yyyy hh:mm tt")</span>
                     </div>
                 </div>
-                <div class="summary-card">
-                    <div class="section-title small">Guest & Amount</div>
-                    <div class="summary-row">
-                        <span class="label">Guest</span>
-                        <span class="value">@Model.PrimaryGuestFirstName @Model.PrimaryGuestLastName</span>
-                    </div>
-                    <div class="summary-row">
-                        <span class="label">Phone</span>
-                        <span class="value mono">@Model.PrimaryGuestPhone</span>
-                    </div>
-                    <div class="summary-row total">
-                        <span class="label">Grand Total</span>
-                        <span class="value mono">₹ @receiptAdjustedGrandTotal.ToString("N2")</span>
-                    </div>
-                    <div class="summary-row">
-                        <span class="label">Round Off Applied</span>
-                        <span class="value mono">₹ @totalRoundOffApplied.ToString("N2")</span>
-                    </div>
-                    <div class="summary-row due">
-                        <span class="label">Balance Due</span>
-                        <span class="value mono">₹ @receiptAdjustedBalanceDue.ToString("N2")</span>
+                <div class="summary-right-stack">
+                    @if (showDueQrBlock)
+                    {
+                        <div class="summary-card qr-card">
+                            <div class="due-qr">
+                                @if (showDueQr && !string.IsNullOrWhiteSpace(dueQrUrl))
+                                {
+                                    <img src="@dueQrUrl" alt="Pay Due QR" />
+                                }
+                                <div class="text">
+                                    <span class="title">Scan to pay due</span>
+                                    <div>Amount: <span class="mono">₹ @receiptAdjustedBalanceDue.ToString("N2")</span></div>
+                                    <div class="mono">Booking: @Model.BookingNumber</div>
+                                    @if (!showDueQr || string.IsNullOrWhiteSpace(dueQrUrl))
+                                    {
+                                        <div style="margin-top:6px;">QR not configured. Enable UPI in <span class="mono">Utility → UPI Settings</span> for this branch.</div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="summary-card">
+                        <div class="section-title small">Guest & Amount</div>
+                        <div class="summary-row">
+                            <span class="label">Guest</span>
+                            <span class="value">@Model.PrimaryGuestFirstName @Model.PrimaryGuestLastName</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="label">Phone</span>
+                            <span class="value mono">@Model.PrimaryGuestPhone</span>
+                        </div>
+                        <div class="summary-row total">
+                            <span class="label">Grand Total</span>
+                            <span class="value mono">₹ @receiptAdjustedGrandTotal.ToString("N2")</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="label">Round Off Applied</span>
+                            <span class="value mono">₹ @totalRoundOffApplied.ToString("N2")</span>
+                        </div>
+                        <div class="summary-row due">
+                            <span class="label">Balance Due</span>
+                            <span class="value mono">₹ @receiptAdjustedBalanceDue.ToString("N2")</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1366,15 +1450,19 @@
             <!-- Inclusions -->
             <div class="plan-details">
                 <h2 class="section-title">Inclusions</h2>
-                <ul class="inclusions-list">
-                    <li>Welcome Drinks</li>
-                    <li>Breakfast: Complimentary (Excluding Meal Plan: "EP")</li>
-                    <li>Free Wi-Fi</li>
-                    <li>Swimming Pool</li>
-                    <li>Car Parking</li>
-                    <li>Beach Access</li>
-                    <li>Multi Gym</li>
-                </ul>
+                @if (inclusions.Count > 0)
+                {
+                    <ul class="inclusions-list">
+                        @foreach (var item in inclusions)
+                        {
+                            <li>@item</li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <div class="subtle" style="font-size: 13px;">No inclusions configured for this room type.</div>
+                }
             </div>
 
             <!-- Contact Info -->

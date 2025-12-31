@@ -1,0 +1,205 @@
+@model HotelApp.Web.Models.UpiSettings
+@{
+    ViewData["Title"] = "UPI Settings";
+}
+
+<style>
+    .config-header {
+        background: white;
+        padding: 1.25rem 1.5rem;
+        border-radius: 6px;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .config-icon {
+        width: 40px;
+        height: 40px;
+        background: #4A90E2;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.25rem;
+    }
+
+    .config-title h2 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .config-subtitle {
+        margin: 0;
+        font-size: 0.85rem;
+        color: #7f8c8d;
+    }
+
+    .settings-section {
+        background: white;
+        border-radius: 6px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #ecf0f1;
+    }
+
+    .section-header-icon {
+        width: 28px;
+        height: 28px;
+        background: #4A90E2;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.85rem;
+    }
+
+    .section-header h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #34495e;
+    }
+
+    .info-box {
+        background: #f8f9fa;
+        border-left: 3px solid #4A90E2;
+        padding: 0.9rem 1rem;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        color: #2c3e50;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .form-grid .full {
+        grid-column: 1 / -1;
+    }
+
+    .hint {
+        font-size: 0.8rem;
+        color: #7f8c8d;
+        margin-top: 0.25rem;
+    }
+
+    .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.9rem 1rem;
+        border: 1px solid #ecf0f1;
+        border-radius: 6px;
+        background: #fff;
+    }
+
+    .toggle-row .title {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+
+    @@media (max-width: 900px) {
+        .form-grid { grid-template-columns: 1fr; }
+    }
+</style>
+
+<div class="config-header">
+    <div class="config-icon"><i class="fas fa-qrcode"></i></div>
+    <div class="config-title">
+        <h2>UPI QR Code Settings</h2>
+        <p class="config-subtitle">Configure UPI details for dynamic QR on booking receipts</p>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+}
+
+<div class="settings-section">
+    <div class="section-header">
+        <div class="section-header-icon"><i class="fas fa-wallet"></i></div>
+        <h3>UPI Configuration</h3>
+    </div>
+
+    <form asp-controller="UpiSettings" asp-action="Save" method="post">
+        @Html.AntiForgeryToken()
+
+        <div class="form-grid">
+            <div class="full">
+                <label class="form-label">UPI ID</label>
+                <input asp-for="UpiVpa" class="form-control" placeholder="hotel@bank" />
+                <div class="hint">Your UPI ID (VPA - Virtual Payment Address)</div>
+                <span class="text-danger" asp-validation-for="UpiVpa"></span>
+            </div>
+
+            <div class="full">
+                <label class="form-label">Business/Restaurant Name</label>
+                <input asp-for="PayeeName" class="form-control" placeholder="Hotel Name" />
+                <div class="hint">This name may appear in the customer’s UPI app</div>
+                <span class="text-danger" asp-validation-for="PayeeName"></span>
+            </div>
+
+            <div class="full">
+                <div class="toggle-row">
+                    <div>
+                        <div class="title">Enable UPI Payments</div>
+                        <div class="hint">When enabled, QR codes will appear on booking receipts for due amount</div>
+                    </div>
+                    <div>
+                        <input asp-for="IsEnabled" type="checkbox" style="width:18px;height:18px;" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="full info-box">
+                <strong>How it works</strong>
+                <ul style="margin: 0.5rem 0 0 1rem;">
+                    <li>Customer scans the QR with any UPI app (GPay/PhonePe/Paytm etc.)</li>
+                    <li>Booking due amount is automatically filled</li>
+                    <li>Receipt QR is generated server-side for safety</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Save Settings
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

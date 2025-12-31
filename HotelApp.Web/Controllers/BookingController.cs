@@ -1,11 +1,14 @@
 using System.Linq;
+using System.Globalization;
 using System.Text.Json;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using HotelApp.Web.Models;
 using HotelApp.Web.Repositories;
 using HotelApp.Web.ViewModels;
+using QRCoder;
 
 namespace HotelApp.Web.Controllers
 {
@@ -34,6 +37,8 @@ namespace HotelApp.Web.Controllers
         private readonly IBookingOtherChargeRepository _bookingOtherChargeRepository;
         private readonly IRoomServiceRepository _roomServiceRepository;
         private readonly IBillingHeadRepository _billingHeadRepository;
+        private readonly PaymentQrOptions _paymentQrOptions;
+        private readonly IUpiSettingsRepository _upiSettingsRepository;
 
         public BookingController(
             IBookingRepository bookingRepository,
@@ -45,7 +50,9 @@ namespace HotelApp.Web.Controllers
             IOtherChargeRepository otherChargeRepository,
             IBookingOtherChargeRepository bookingOtherChargeRepository,
             IRoomServiceRepository roomServiceRepository,
-            IBillingHeadRepository billingHeadRepository)
+            IBillingHeadRepository billingHeadRepository,
+            IOptions<PaymentQrOptions> paymentQrOptions,
+            IUpiSettingsRepository upiSettingsRepository)
         {
             _bookingRepository = bookingRepository;
             _roomRepository = roomRepository;
@@ -57,6 +64,65 @@ namespace HotelApp.Web.Controllers
             _bookingOtherChargeRepository = bookingOtherChargeRepository;
             _roomServiceRepository = roomServiceRepository;
             _billingHeadRepository = billingHeadRepository;
+            _paymentQrOptions = paymentQrOptions.Value ?? new PaymentQrOptions();
+            _upiSettingsRepository = upiSettingsRepository;
+        }
+
+        private static string BuildUpiPayUri(string vpa, string? payeeName, decimal amount, string currency, string note)
+        {
+            // https://www.npci.org.in/what-we-do/upi/product-overview (common UPI URI conventions)
+            // Keep it simple and safe: encode only known fields.
+            var am = Math.Max(0m, Math.Round(amount, 2, MidpointRounding.AwayFromZero))
+                .ToString("0.00", CultureInfo.InvariantCulture);
+
+            var parts = new List<string>
+            {
+                $"pa={Uri.EscapeDataString(vpa)}",
+                $"am={Uri.EscapeDataString(am)}",
+                $"cu={Uri.EscapeDataString(string.IsNullOrWhiteSpace(currency) ? "INR" : currency)}",
+                $"tn={Uri.EscapeDataString(note ?? string.Empty)}"
+            };
+
+            if (!string.IsNullOrWhiteSpace(payeeName))
+            {
+                parts.Insert(1, $"pn={Uri.EscapeDataString(payeeName)}");
+            }
+
+            return "upi://pay?" + string.Join("&", parts);
+        }
+
+        private static (decimal grandTotal, decimal balanceDue) ComputeReceiptTotals(
+            Booking booking,
+            IEnumerable<BookingPayment> payments,
+            IEnumerable<BookingOtherChargeDetailRow> otherCharges,
+            IEnumerable<RoomServiceSettlementLineRow> roomServiceLines)
+        {
+            var otherChargesList = otherCharges?.ToList() ?? new List<BookingOtherChargeDetailRow>();
+            var roomServiceLinesList = roomServiceLines?.ToList() ?? new List<RoomServiceSettlementLineRow>();
+
+            var ocAmountTotal = otherChargesList.Sum(x => x.Rate * (x.Qty <= 0 ? 1 : x.Qty));
+            var ocGstTotal = otherChargesList.Sum(x => x.GSTAmount);
+            var ocGrandTotal = ocAmountTotal + ocGstTotal;
+
+            // Room service lines can contain multiple rows per order; sum unique order totals.
+            var rsOrders = roomServiceLinesList
+                .GroupBy(x => x.OrderId)
+                .Select(g => g.First())
+                .ToList();
+            var rsActualBillTotal = rsOrders.Sum(x => x.ActualBillAmount);
+
+            var grandTotal = booking.TotalAmount + ocGrandTotal + rsActualBillTotal;
+
+            var appliedToBalanceFromPayments = payments?.Sum(p =>
+                p.Amount
+                + p.DiscountAmount
+                + (p.IsRoundOffApplied ? p.RoundOffAmount : 0m)
+            ) ?? 0m;
+
+            var balanceDueRaw = grandTotal - appliedToBalanceFromPayments;
+            var balanceDue = Math.Max(0m, Math.Round(balanceDueRaw, 2, MidpointRounding.AwayFromZero));
+
+            return (grandTotal, balanceDue);
         }
 
         [HttpGet]
@@ -789,6 +855,12 @@ namespace HotelApp.Web.Controllers
                 return RedirectToAction(nameof(List));
             }
 
+            if (booking.BranchID != CurrentBranchID)
+            {
+                TempData["ErrorMessage"] = "Booking not found.";
+                return RedirectToAction(nameof(List));
+            }
+
             // Get hotel settings
             var hotelSettings = await _hotelSettingsRepository.GetByBranchAsync(CurrentBranchID);
             ViewBag.HotelSettings = hotelSettings;
@@ -832,6 +904,27 @@ namespace HotelApp.Web.Controllers
                 ViewBag.RoomServiceLines = Array.Empty<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>();
             }
 
+            // Compute authoritative totals for receipt + QR.
+            var roomServiceLinesForTotals = ViewBag.RoomServiceLines as IEnumerable<RoomServiceSettlementLineRow>
+                ?? Array.Empty<RoomServiceSettlementLineRow>();
+            var (receiptGrandTotal, receiptBalanceDue) = ComputeReceiptTotals(
+                booking,
+                payments ?? Array.Empty<BookingPayment>(),
+                otherCharges ?? Array.Empty<BookingOtherChargeDetailRow>(),
+                roomServiceLinesForTotals);
+
+            ViewBag.ReceiptAdjustedGrandTotal = receiptGrandTotal;
+            ViewBag.ReceiptAdjustedBalanceDue = receiptBalanceDue;
+
+            var upiSettings = await _upiSettingsRepository.GetByBranchAsync(CurrentBranchID);
+            var hasQrConfig = upiSettings?.IsEnabled == true
+                && !string.IsNullOrWhiteSpace(upiSettings.UpiVpa);
+
+            ViewBag.ShowDueQr = hasQrConfig && receiptBalanceDue > 0m;
+            ViewBag.DueQrUrl = (hasQrConfig && receiptBalanceDue > 0m)
+                ? Url.Action(nameof(DueQr), new { bookingNumber })
+                : null;
+
             // Get assigned room numbers
             var assignedRooms = await _bookingRepository.GetAssignedRoomNumbersAsync(booking.Id);
             ViewBag.AssignedRooms = assignedRooms;
@@ -865,6 +958,84 @@ namespace HotelApp.Web.Controllers
             }
 
             return View(booking);
+        }
+
+        [HttpGet]
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public async Task<IActionResult> DueQr(string bookingNumber)
+        {
+            if (string.IsNullOrWhiteSpace(bookingNumber))
+            {
+                return NotFound();
+            }
+
+            var upiSettings = await _upiSettingsRepository.GetByBranchAsync(CurrentBranchID);
+            if (upiSettings?.IsEnabled != true || string.IsNullOrWhiteSpace(upiSettings.UpiVpa))
+            {
+                return NotFound();
+            }
+
+            var booking = await _bookingRepository.GetByBookingNumberAsync(bookingNumber);
+            if (booking == null || booking.BranchID != CurrentBranchID)
+            {
+                return NotFound();
+            }
+
+            var payments = await _bookingRepository.GetPaymentsAsync(booking.Id) ?? Array.Empty<BookingPayment>();
+            var otherCharges = await _bookingOtherChargeRepository.GetDetailsByBookingIdAsync(booking.Id)
+                ?? Array.Empty<BookingOtherChargeDetailRow>();
+
+            IEnumerable<RoomServiceSettlementLineRow> roomServiceLines = Array.Empty<RoomServiceSettlementLineRow>();
+            try
+            {
+                var roomIds = new HashSet<int>();
+                if (booking.RoomId.HasValue && booking.RoomId.Value > 0)
+                {
+                    roomIds.Add(booking.RoomId.Value);
+                }
+
+                var assignedRoomIds = await _bookingRepository.GetAssignedRoomIdsAsync(bookingNumber);
+                foreach (var rid in assignedRoomIds)
+                {
+                    if (rid > 0)
+                    {
+                        roomIds.Add(rid);
+                    }
+                }
+
+                roomServiceLines = await _roomServiceRepository.GetRoomServiceLinesAsync(
+                    booking.Id,
+                    roomIds,
+                    CurrentBranchID
+                ) ?? Array.Empty<RoomServiceSettlementLineRow>();
+            }
+            catch
+            {
+                roomServiceLines = Array.Empty<RoomServiceSettlementLineRow>();
+            }
+
+            var (_, balanceDue) = ComputeReceiptTotals(booking, payments, otherCharges, roomServiceLines);
+            if (balanceDue <= 0m)
+            {
+                return NotFound();
+            }
+
+            var note = (_paymentQrOptions.NoteTemplate ?? "Booking {bookingNumber}")
+                .Replace("{bookingNumber}", booking.BookingNumber);
+            var payUri = BuildUpiPayUri(
+                upiSettings.UpiVpa!,
+                upiSettings.PayeeName,
+                balanceDue,
+                _paymentQrOptions.Currency,
+                note);
+
+            using var generator = new QRCodeGenerator();
+            using var data = generator.CreateQrCode(payUri, QRCodeGenerator.ECCLevel.Q);
+            var qr = new PngByteQRCode(data);
+
+            // Keep a print-friendly size.
+            var pngBytes = qr.GetGraphic(pixelsPerModule: 8);
+            return File(pngBytes, "image/png");
         }
 
         [HttpGet]

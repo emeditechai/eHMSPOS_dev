@@ -13,6 +13,9 @@ builder.Services.AddControllersWithViews()
         options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
     });
 
+builder.Services.Configure<HotelApp.Web.Models.PaymentQrOptions>(
+    builder.Configuration.GetSection("PaymentQr"));
+
 // Database connection factory
 builder.Services.AddScoped<IDbConnection>(_ => new SqlConnection(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -40,6 +43,7 @@ builder.Services.AddScoped<IBookingOtherChargeRepository, BookingOtherChargeRepo
 builder.Services.AddScoped<IRoomServiceRepository, RoomServiceRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<IBillingHeadRepository, BillingHeadRepository>();
+builder.Services.AddScoped<IUpiSettingsRepository, UpiSettingsRepository>();
 
 // Session configuration for BranchID storage
 builder.Services.AddDistributedMemoryCache();
