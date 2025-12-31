@@ -318,6 +318,27 @@ namespace HotelApp.Web.Repositories
         public async Task<(bool hasActiveBooking, string? bookingNumber, decimal balanceAmount)> GetActiveBookingForRoomAsync(int roomId)
         {
             var sql = @"
+                -- Prefer BookingRooms mapping (multi-room bookings)
+                SELECT TOP 1
+                    b.BookingNumber,
+                    b.BalanceAmount,
+                    b.PaymentStatus
+                FROM BookingRooms br
+                INNER JOIN Bookings b ON br.BookingId = b.Id
+                WHERE br.RoomId = @RoomId
+                    AND br.IsActive = 1
+                    AND b.Status IN ('Confirmed', 'CheckedIn')
+                    -- A room is occupied on a date if: CheckInDate <= today AND (ActualCheckOutDate ?? CheckOutDate) > today
+                    AND CAST(b.CheckInDate AS DATE) <= CAST(GETDATE() AS DATE)
+                    AND (
+                        CASE
+                            WHEN b.ActualCheckOutDate IS NOT NULL THEN CAST(b.ActualCheckOutDate AS DATE)
+                            ELSE CAST(b.CheckOutDate AS DATE)
+                        END
+                    ) > CAST(GETDATE() AS DATE)
+                ORDER BY b.CheckInDate DESC;
+
+                -- Fallback for legacy single-room assignment
                 SELECT TOP 1 
                     BookingNumber,
                     BalanceAmount,

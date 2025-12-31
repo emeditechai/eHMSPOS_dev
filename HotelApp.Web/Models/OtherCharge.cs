@@ -5,7 +5,9 @@ namespace HotelApp.Web.Models
         CarRental = 1,
         Fitness = 2,
         Laundry = 3,
-        Others = 4
+        Others = 4,
+        TourAndTravel = 5,
+        FoodAndBeverage = 6
     }
 
     public class OtherCharge

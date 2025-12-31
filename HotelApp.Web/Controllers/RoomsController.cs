@@ -14,19 +14,132 @@ public class RoomsController : BaseController
     private readonly IBookingRepository _bookingRepository;
     private readonly IRateMasterRepository _rateMasterRepository;
     private readonly IRoomServiceRepository _roomServiceRepository;
+    private readonly IBookingOtherChargeRepository _bookingOtherChargeRepository;
 
     public RoomsController(
         IRoomRepository roomRepository, 
         IFloorRepository floorRepository, 
         IBookingRepository bookingRepository,
         IRateMasterRepository rateMasterRepository,
-        IRoomServiceRepository roomServiceRepository)
+        IRoomServiceRepository roomServiceRepository,
+        IBookingOtherChargeRepository bookingOtherChargeRepository)
     {
         _roomRepository = roomRepository;
         _floorRepository = floorRepository;
         _bookingRepository = bookingRepository;
         _rateMasterRepository = rateMasterRepository;
         _roomServiceRepository = roomServiceRepository;
+        _bookingOtherChargeRepository = bookingOtherChargeRepository;
+    }
+
+    private static decimal Round2(decimal value)
+        => Math.Round(value, 2, MidpointRounding.AwayFromZero);
+
+    private static bool IsEffectivePayment(BookingPayment p)
+    {
+        if (p == null) return false;
+        var status = (p.Status ?? string.Empty).Trim();
+        if (status.Length == 0) return true;
+        return status.Equals("Captured", StringComparison.OrdinalIgnoreCase)
+            || status.Equals("Success", StringComparison.OrdinalIgnoreCase)
+            || status.Equals("Paid", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeBillingHeadCode(string? billingHead)
+    {
+        var raw = (billingHead ?? string.Empty).Trim();
+        if (raw.Length == 0) return string.Empty;
+
+        var upper = raw.ToUpperInvariant();
+        if (upper is "S" or "STAY" or "STAY CHARGES" or "STAYCHARGES") return "S";
+        if (upper is "O" or "OTHER" or "OTHER CHARGES" or "OTHERCHARGES") return "O";
+        if (upper is "R" or "ROOM" or "ROOM SERVICES" or "ROOMSERVICE" or "ROOMSERVICES") return "R";
+
+        return string.Empty;
+    }
+
+    private sealed record HeadWiseDue(decimal StayDue, decimal OtherChargesDue, decimal RoomServicesDue, decimal TotalDue);
+
+    private async Task<HeadWiseDue> ComputeHeadWiseDueAsync(Booking booking, IReadOnlyCollection<int> roomIds)
+    {
+        var stayTotal = booking.TotalAmount;
+
+        var otherCharges = await _bookingOtherChargeRepository.GetDetailsByBookingIdAsync(booking.Id);
+        var ocAmountTotal = otherCharges.Sum(x => x.Rate * (x.Qty <= 0 ? 1 : x.Qty));
+        var ocGstTotal = otherCharges.Sum(x => x.GSTAmount);
+        var otherChargesTotal = ocAmountTotal + ocGstTotal;
+
+        var rsLines = await _roomServiceRepository.GetPendingSettlementLinesAsync(booking.Id, roomIds, booking.BranchID);
+        var roomServicesTotal = rsLines
+            .GroupBy(x => x.OrderId > 0 ? $"oid:{x.OrderId}" : $"ono:{x.OrderNo}")
+            .Sum(g => g.First().ActualBillAmount);
+
+        var payments = (booking.Payments ?? new List<BookingPayment>())
+            .Where(IsEffectivePayment)
+            .ToList();
+
+        decimal paidStay = 0m;
+        decimal paidOther = 0m;
+        decimal paidRoomServices = 0m;
+        decimal unassigned = 0m;
+
+        foreach (var payment in payments)
+        {
+            var applied = payment.Amount
+                        + payment.DiscountAmount
+                        + (payment.IsRoundOffApplied ? payment.RoundOffAmount : 0m);
+
+            if (applied <= 0m) continue;
+
+            var code = NormalizeBillingHeadCode(payment.BillingHead);
+            if (code == "S")
+            {
+                paidStay += applied;
+                continue;
+            }
+            if (code == "O")
+            {
+                paidOther += applied;
+                continue;
+            }
+            if (code == "R")
+            {
+                paidRoomServices += applied;
+                continue;
+            }
+
+            unassigned += applied;
+        }
+
+        // Allocate unassigned payments in order: Stay -> Other -> Room Services
+        if (unassigned > 0m)
+        {
+            var dueStayTmp = Math.Max(0m, stayTotal - paidStay);
+            var alloc = Math.Min(unassigned, dueStayTmp);
+            paidStay += alloc;
+            unassigned -= alloc;
+        }
+        if (unassigned > 0m)
+        {
+            var dueOtherTmp = Math.Max(0m, otherChargesTotal - paidOther);
+            var alloc = Math.Min(unassigned, dueOtherTmp);
+            paidOther += alloc;
+            unassigned -= alloc;
+        }
+        if (unassigned > 0m)
+        {
+            var dueRsTmp = Math.Max(0m, roomServicesTotal - paidRoomServices);
+            var alloc = Math.Min(unassigned, dueRsTmp);
+            paidRoomServices += alloc;
+            unassigned -= alloc;
+        }
+
+        var stayDue = Round2(Math.Max(0m, stayTotal - paidStay));
+        var otherDue = Round2(Math.Max(0m, otherChargesTotal - paidOther));
+        var rsDue = Round2(Math.Max(0m, roomServicesTotal - paidRoomServices));
+        var totalDue = Round2(stayDue + otherDue + rsDue);
+
+        return new HeadWiseDue(stayDue, otherDue, rsDue, totalDue);
     }
 
     public async Task<IActionResult> Dashboard()
@@ -191,17 +304,69 @@ public class RoomsController : BaseController
                 return Json(new { success = false, message = "Unable to determine booking reference for this room. Please open the booking and try again." });
             }
 
-            // Check if payment is cleared
-            if (balanceAmount > 0)
+            // 1) Sync Room Service first so latest room service charges are included in due checks.
+            IEnumerable<int> assignedRoomIdsForSync = Enumerable.Empty<int>();
+            try
             {
-                Console.WriteLine($"Payment not cleared. Balance: {balanceAmount}");
-                return Json(new 
-                { 
-                    success = false, 
+                assignedRoomIdsForSync = await _bookingRepository.GetAssignedRoomIdsAsync(bookingNumber);
+                var bookingForSync = await _bookingRepository.GetByBookingNumberAsync(bookingNumber);
+                if (bookingForSync != null)
+                {
+                    var roomIdsToSync = new HashSet<int>();
+                    if (request.RoomId > 0) roomIdsToSync.Add(request.RoomId);
+                    foreach (var rid in assignedRoomIdsForSync)
+                    {
+                        if (rid > 0) roomIdsToSync.Add(rid);
+                    }
+
+                    var inserted = await _roomServiceRepository.SyncRoomServiceLinesAsync(
+                        bookingForSync.Id,
+                        roomIdsToSync,
+                        CurrentBranchID
+                    );
+                    Console.WriteLine($"Room service synced on checkout click. Inserted: {inserted}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Room service sync failed on checkout click: {ex.Message}");
+            }
+
+            // 2) Check pending amount head-wise; only allow checkout when all are cleared.
+            var bookingForDues = await _bookingRepository.GetByBookingNumberAsync(bookingNumber);
+            if (bookingForDues == null)
+            {
+                return Json(new { success = false, message = "Unable to load booking for checkout. Please refresh and try again." });
+            }
+
+            var assignedRoomIdsForDue = (assignedRoomIdsForSync ?? Enumerable.Empty<int>()).ToList();
+            if (assignedRoomIdsForDue.Count == 0)
+            {
+                assignedRoomIdsForDue = (await _bookingRepository.GetAssignedRoomIdsAsync(bookingNumber)).ToList();
+            }
+            if (request.RoomId > 0 && !assignedRoomIdsForDue.Contains(request.RoomId))
+            {
+                assignedRoomIdsForDue.Add(request.RoomId);
+            }
+
+            var due = await ComputeHeadWiseDueAsync(bookingForDues, assignedRoomIdsForDue);
+            if (due.TotalDue > 0.01m)
+            {
+                Console.WriteLine($"Payment not cleared for booking {bookingNumber}. StayDue={due.StayDue}, OtherDue={due.OtherChargesDue}, RoomServicesDue={due.RoomServicesDue}, TotalDue={due.TotalDue}");
+                return Json(new
+                {
+                    success = false,
                     message = "Payment Not Cleared",
                     requiresPayment = true,
                     bookingNumber = bookingNumber,
-                    balanceAmount = balanceAmount
+                    balanceAmount = due.TotalDue,
+                    headWiseDue = new
+                    {
+                        stayChargesDue = due.StayDue,
+                        otherChargesDue = due.OtherChargesDue,
+                        roomServicesDue = due.RoomServicesDue,
+                        totalDue = due.TotalDue
+                    }
                 });
             }
 
@@ -291,18 +456,70 @@ public class RoomsController : BaseController
                 return Json(new { success = false, message = "Unable to determine booking reference for this room. Please open the booking and try again." });
             }
 
-            // Check if payment is cleared
-            if (balanceAmount > 0)
+            // 1) Sync Room Service first so latest room service charges are included in due checks.
+            IEnumerable<int> assignedRoomIdsForSync = Enumerable.Empty<int>();
+            try
             {
-                Console.WriteLine($"Payment not cleared. Balance: {balanceAmount}");
-                return Json(new 
-                { 
-                    success = false, 
+                assignedRoomIdsForSync = await _bookingRepository.GetAssignedRoomIdsAsync(bookingNumber);
+                var bookingForSync = await _bookingRepository.GetByBookingNumberAsync(bookingNumber);
+                if (bookingForSync != null)
+                {
+                    var roomIdsToSync = new HashSet<int>();
+                    if (request.RoomId > 0) roomIdsToSync.Add(request.RoomId);
+                    foreach (var rid in assignedRoomIdsForSync)
+                    {
+                        if (rid > 0) roomIdsToSync.Add(rid);
+                    }
+
+                    var inserted = await _roomServiceRepository.SyncRoomServiceLinesAsync(
+                        bookingForSync.Id,
+                        roomIdsToSync,
+                        CurrentBranchID
+                    );
+                    Console.WriteLine($"Room service synced on force checkout click. Inserted: {inserted}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Room service sync failed on force checkout click: {ex.Message}");
+            }
+
+            // 2) Check pending amount head-wise; only allow checkout when all are cleared.
+            var bookingForDues = await _bookingRepository.GetByBookingNumberAsync(bookingNumber);
+            if (bookingForDues == null)
+            {
+                return Json(new { success = false, message = "Unable to load booking for force checkout. Please refresh and try again." });
+            }
+
+            var assignedRoomIdsForDue = (assignedRoomIdsForSync ?? Enumerable.Empty<int>()).ToList();
+            if (assignedRoomIdsForDue.Count == 0)
+            {
+                assignedRoomIdsForDue = (await _bookingRepository.GetAssignedRoomIdsAsync(bookingNumber)).ToList();
+            }
+            if (request.RoomId > 0 && !assignedRoomIdsForDue.Contains(request.RoomId))
+            {
+                assignedRoomIdsForDue.Add(request.RoomId);
+            }
+
+            var due = await ComputeHeadWiseDueAsync(bookingForDues, assignedRoomIdsForDue);
+            if (due.TotalDue > 0.01m)
+            {
+                Console.WriteLine($"Payment not cleared for booking {bookingNumber} (Force). StayDue={due.StayDue}, OtherDue={due.OtherChargesDue}, RoomServicesDue={due.RoomServicesDue}, TotalDue={due.TotalDue}");
+                return Json(new
+                {
+                    success = false,
                     message = "Payment Not Cleared",
                     requiresPayment = true,
                     bookingNumber = bookingNumber,
-                    balanceAmount = balanceAmount,
-                    checkOutDate = checkOutDate
+                    balanceAmount = due.TotalDue,
+                    checkOutDate = checkOutDate,
+                    headWiseDue = new
+                    {
+                        stayChargesDue = due.StayDue,
+                        otherChargesDue = due.OtherChargesDue,
+                        roomServicesDue = due.RoomServicesDue,
+                        totalDue = due.TotalDue
+                    }
                 });
             }
 

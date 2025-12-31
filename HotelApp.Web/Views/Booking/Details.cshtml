@@ -755,6 +755,9 @@
     var watermarkBalanceDue = Math.Max(0m, Math.Round(watermarkBalanceDueRaw, 2, MidpointRounding.AwayFromZero));
     var showPaidWatermark = watermarkBalanceDueRaw <= 0;
     var showCheckedOutWatermark = Model.ActualCheckOutDate.HasValue;
+
+    // Lock down add/sync actions only when the booking is BOTH fully paid and checked out.
+    var lockPaidAndCheckedOutActions = showPaidWatermark && showCheckedOutWatermark;
 }
 
 @* Watermarks for Checked Out and Fully Paid bookings *@
@@ -1483,10 +1486,15 @@
             <i class="fas fa-receipt"></i>
         </div>
         <h3 class="section-title">Other Charges</h3>
-        @if (!Model.ActualCheckOutDate.HasValue)
+        @if (!Model.ActualCheckOutDate.HasValue || lockPaidAndCheckedOutActions)
         {
             <div style="margin-left: auto; display: flex; gap: 0.5rem; align-items: center;">
-                <button type="button" class="btn btn-outline-primary" onclick="openOtherChargesModal('@Model.BookingNumber');" title="Add Other Charges" aria-label="Add Other Charges">
+                <button type="button"
+                        class="btn btn-outline-primary"
+                        onclick="openOtherChargesModal('@Model.BookingNumber');"
+                        title="@(lockPaidAndCheckedOutActions ? "Disabled: Booking is fully paid and checked out" : "Add Other Charges")"
+                        aria-label="Add Other Charges"
+                        @(lockPaidAndCheckedOutActions ? "disabled" : null)>
                     <i class="fas fa-plus"></i>
                 </button>
             </div>
@@ -1502,6 +1510,8 @@
             2 => "Fitness",
             3 => "Laundry",
             4 => "Others",
+            5 => "Tour & Travel",
+            6 => "Food & Beverage",
             _ => type.ToString()
         };
 
@@ -1587,7 +1597,11 @@
             <a asp-action="RoomServiceReceipt" asp-route-bookingNumber="@Model.BookingNumber" class="btn btn-outline-secondary" target="_blank" title="Print Detail" aria-label="Print Detail">
                 <i class="fas fa-print"></i>
             </a>
-            <button type="button" class="btn btn-outline-primary" onclick="syncRoomService(@Model.Id)">
+            <button type="button"
+                    class="btn btn-outline-primary"
+                    onclick="syncRoomService(@Model.Id)"
+                    title="@(lockPaidAndCheckedOutActions ? "Disabled: Booking is fully paid and checked out" : "Sync")"
+                    @(lockPaidAndCheckedOutActions ? "disabled" : null)>
                 <i class="fas fa-sync-alt"></i> Sync
             </button>
         </div>

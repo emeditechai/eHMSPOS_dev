@@ -114,6 +114,66 @@ namespace HotelApp.Web.Controllers
                 return Json(new { success = false, message = "Booking not found" });
             }
 
+            // Validation: if booking is fully paid AND checked out, do not allow editing other charges.
+            if (booking.ActualCheckOutDate.HasValue)
+            {
+                try
+                {
+                    var existingOtherCharges = (await _bookingOtherChargeRepository.GetDetailsByBookingIdAsync(booking.Id)).ToList();
+                    var otherChargesGrandTotal = existingOtherCharges.Sum(x => (x.Rate * (x.Qty <= 0 ? 1 : x.Qty)) + x.GSTAmount);
+
+                    decimal roomServiceGrandTotal = 0m;
+                    try
+                    {
+                        var roomIds = new HashSet<int>();
+                        if (booking.RoomId.HasValue && booking.RoomId.Value > 0)
+                        {
+                            roomIds.Add(booking.RoomId.Value);
+                        }
+
+                        var assignedRoomIds = await _bookingRepository.GetAssignedRoomIdsAsync(booking.BookingNumber);
+                        foreach (var rid in assignedRoomIds)
+                        {
+                            if (rid > 0)
+                            {
+                                roomIds.Add(rid);
+                            }
+                        }
+
+                        roomServiceGrandTotal = await _roomServiceRepository.GetPendingSettlementGrandTotalAsync(
+                            booking.Id,
+                            roomIds,
+                            CurrentBranchID
+                        );
+                    }
+                    catch
+                    {
+                        roomServiceGrandTotal = 0m;
+                    }
+
+                    var payments = (await _bookingRepository.GetPaymentsAsync(booking.Id)).ToList();
+                    var appliedFromPayments = payments.Sum(p =>
+                        p.Amount
+                        + p.DiscountAmount
+                        + (p.IsRoundOffApplied ? p.RoundOffAmount : 0m)
+                    );
+
+                    var adjustedGrandTotal = booking.TotalAmount + otherChargesGrandTotal + roomServiceGrandTotal;
+                    var balanceDueRaw = adjustedGrandTotal - appliedFromPayments;
+                    var isFullyPaid = balanceDueRaw <= 0m;
+
+                    if (isFullyPaid)
+                    {
+                        return Json(new { success = false, message = "Booking is fully paid and checked out. Other Charges cannot be modified." });
+                    }
+                }
+                catch
+                {
+                    // If we cannot reliably compute, fail closed for checked-out bookings.
+                    return Json(new { success = false, message = "Booking is checked out. Other Charges cannot be modified." });
+                }
+            }
+
             var items = request.Items ?? new List<SaveBookingOtherChargesItem>();
             var distinctItems = items
                 .Where(i => i.OtherChargeId > 0)
@@ -877,12 +937,14 @@ namespace HotelApp.Web.Controllers
                 using var connection = new Microsoft.Data.SqlClient.SqlConnection(_bookingRepository.ConnectionString);
                 await connection.OpenAsync();
 
-                const string bookingSql = @"SELECT BookingNumber, RoomId FROM Bookings WHERE Id = @Id";
+                const string bookingSql = @"SELECT BookingNumber, RoomId, TotalAmount, ActualCheckOutDate FROM Bookings WHERE Id = @Id";
                 using var cmd = new Microsoft.Data.SqlClient.SqlCommand(bookingSql, connection);
                 cmd.Parameters.AddWithValue("@Id", bookingId);
 
                 string? bookingNumber = null;
                 int? primaryRoomId = null;
+                decimal totalAmount = 0m;
+                DateTime? actualCheckOutDate = null;
 
                 using (var reader = await cmd.ExecuteReaderAsync())
                 {
@@ -890,12 +952,88 @@ namespace HotelApp.Web.Controllers
                     {
                         bookingNumber = reader.IsDBNull(0) ? null : reader.GetString(0);
                         primaryRoomId = reader.IsDBNull(1) ? null : reader.GetInt32(1);
+                        totalAmount = reader.IsDBNull(2) ? 0m : reader.GetDecimal(2);
+                        actualCheckOutDate = reader.IsDBNull(3) ? null : reader.GetDateTime(3);
                     }
                 }
 
                 if (string.IsNullOrWhiteSpace(bookingNumber))
                 {
                     return Json(new { success = false, message = "Booking not found." });
+                }
+
+                // Validation: if booking is fully paid AND checked out, do not allow syncing room service.
+                if (actualCheckOutDate.HasValue)
+                {
+                    try
+                    {
+                        decimal otherChargesGrandTotal = 0m;
+                        try
+                        {
+                            var otherChargesRows = await _bookingOtherChargeRepository.GetDetailsByBookingIdAsync(bookingId);
+                            otherChargesGrandTotal = otherChargesRows.Sum(x => (x.Rate * (x.Qty <= 0 ? 1 : x.Qty)) + x.GSTAmount);
+                        }
+                        catch
+                        {
+                            otherChargesGrandTotal = 0m;
+                        }
+
+                        // Build roomIds set first (used in room service total)
+                        var previewRoomIds = new HashSet<int>();
+                        if (roomId.HasValue && roomId.Value > 0)
+                        {
+                            previewRoomIds.Add(roomId.Value);
+                        }
+                        else
+                        {
+                            if (primaryRoomId.HasValue && primaryRoomId.Value > 0)
+                            {
+                                previewRoomIds.Add(primaryRoomId.Value);
+                            }
+                            var assignedRoomIds = await _bookingRepository.GetAssignedRoomIdsAsync(bookingNumber);
+                            foreach (var rid in assignedRoomIds)
+                            {
+                                if (rid > 0)
+                                {
+                                    previewRoomIds.Add(rid);
+                                }
+                            }
+                        }
+
+                        decimal roomServiceGrandTotal = 0m;
+                        try
+                        {
+                            roomServiceGrandTotal = await _roomServiceRepository.GetPendingSettlementGrandTotalAsync(
+                                bookingId,
+                                previewRoomIds,
+                                CurrentBranchID
+                            );
+                        }
+                        catch
+                        {
+                            roomServiceGrandTotal = 0m;
+                        }
+
+                        var payments = (await _bookingRepository.GetPaymentsAsync(bookingId)).ToList();
+                        var appliedFromPayments = payments.Sum(p =>
+                            p.Amount
+                            + p.DiscountAmount
+                            + (p.IsRoundOffApplied ? p.RoundOffAmount : 0m)
+                        );
+
+                        var adjustedGrandTotal = totalAmount + otherChargesGrandTotal + roomServiceGrandTotal;
+                        var balanceDueRaw = adjustedGrandTotal - appliedFromPayments;
+                        var isFullyPaid = balanceDueRaw <= 0m;
+
+                        if (isFullyPaid)
+                        {
+                            return Json(new { success = false, message = "Booking is fully paid and checked out. Room Service sync is disabled." });
+                        }
+                    }
+                    catch
+                    {
+                        return Json(new { success = false, message = "Booking is checked out. Room Service sync is disabled." });
+                    }
                 }
 
                 var roomIds = new HashSet<int>();
