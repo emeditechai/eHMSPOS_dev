@@ -2704,6 +2704,13 @@ WHERE BookingID = @BookingID
             using var transaction = _dbConnection.BeginTransaction();
             try
             {
+                // Resolve BookingId + GuestId from the BookingGuests row to avoid relying on client-supplied values.
+                const string resolveSql = @"
+                    SELECT BookingId, GuestId
+                    FROM BookingGuests
+                    WHERE Id = @Id AND IsActive = 1";
+                var resolved = await _dbConnection.QueryFirstOrDefaultAsync<(int BookingId, int GuestId)>(resolveSql, new { guest.Id }, transaction);
+
                 // Update BookingGuests table
                 const string sql = @"
                     UPDATE BookingGuests 
@@ -2736,16 +2743,28 @@ WHERE BookingID = @BookingID
                 {
                     // Get BranchID from the booking
                     const string getBranchSql = "SELECT BranchID FROM Bookings WHERE Id = @BookingId";
-                    var branchId = await _dbConnection.QueryFirstOrDefaultAsync<int?>(getBranchSql, new { guest.BookingId }, transaction);
+                    var branchId = await _dbConnection.QueryFirstOrDefaultAsync<int?>(getBranchSql, new { BookingId = resolved.BookingId }, transaction);
                     
                     // Split FullName into FirstName and LastName
                     var nameParts = guest.FullName?.Split(' ', 2) ?? new string[] { "", "" };
                     var firstName = nameParts.Length > 0 ? nameParts[0] : "";
                     var lastName = nameParts.Length > 1 ? nameParts[1] : "";
 
-                    // Check if guest exists in Guests table
-                    const string checkGuestSql = "SELECT Id FROM Guests WHERE Phone = @Phone AND IsActive = 1";
-                    var existingGuestId = await _dbConnection.QueryFirstOrDefaultAsync<int?>(checkGuestSql, new { guest.Phone }, transaction);
+                    var targetGuestId = guest.GuestId > 0 ? guest.GuestId : resolved.GuestId;
+
+                    // Prefer updating by GuestId when we have it.
+                    int? existingGuestId = null;
+                    if (targetGuestId > 0)
+                    {
+                        const string checkByIdSql = "SELECT Id FROM Guests WHERE Id = @Id AND IsActive = 1";
+                        existingGuestId = await _dbConnection.QueryFirstOrDefaultAsync<int?>(checkByIdSql, new { Id = targetGuestId }, transaction);
+                    }
+                    else
+                    {
+                        // Fallback: lookup by phone
+                        const string checkGuestSql = "SELECT Id FROM Guests WHERE Phone = @Phone AND IsActive = 1";
+                        existingGuestId = await _dbConnection.QueryFirstOrDefaultAsync<int?>(checkGuestSql, new { guest.Phone }, transaction);
+                    }
 
                     if (existingGuestId.HasValue)
                     {
@@ -2791,6 +2810,20 @@ WHERE BookingID = @BookingID
                             guest.IdentityType,
                             guest.IdentityNumber
                         }, transaction);
+
+                        // Ensure BookingGuests row links back to master guest.
+                        const string backfillGuestIdSql = @"
+                            UPDATE BookingGuests
+                            SET GuestId = @GuestId
+                            WHERE Id = @BookingGuestRowId
+                                AND IsActive = 1
+                                AND (GuestId IS NULL OR GuestId = 0);";
+
+                        await _dbConnection.ExecuteAsync(backfillGuestIdSql, new
+                        {
+                            GuestId = existingGuestId.Value,
+                            BookingGuestRowId = guest.Id
+                        }, transaction);
                     }
                     else
                     {
@@ -2798,10 +2831,11 @@ WHERE BookingID = @BookingID
                         const string insertGuestSql = @"
                             INSERT INTO Guests (FirstName, LastName, Email, Phone, Address, City, State, Country, Pincode, 
                                 CountryId, StateId, CityId, DateOfBirth, Gender, IdentityType, IdentityNumber, BranchID, IsActive, CreatedDate, LastModifiedDate)
+                            OUTPUT INSERTED.Id
                             VALUES (@FirstName, @LastName, @Email, @Phone, @Address, @City, @State, @Country, @Pincode,
-                                @CountryId, @StateId, @CityId, @DateOfBirth, @Gender, @IdentityType, @IdentityNumber, @BranchID, 1, GETDATE(), GETDATE())";
+                                @CountryId, @StateId, @CityId, @DateOfBirth, @Gender, @IdentityType, @IdentityNumber, @BranchID, 1, GETDATE(), GETDATE());";
 
-                        await _dbConnection.ExecuteAsync(insertGuestSql, new
+                        var newGuestId = await _dbConnection.QuerySingleAsync<int>(insertGuestSql, new
                         {
                             FirstName = firstName,
                             LastName = lastName,
@@ -2819,7 +2853,21 @@ WHERE BookingID = @BookingID
                             guest.Gender,
                             guest.IdentityType,
                             guest.IdentityNumber,
-                            BranchID = branchId
+                            BranchID = branchId ?? 0
+                        }, transaction);
+
+                        // Ensure BookingGuests row links back to the newly created master guest.
+                        const string backfillGuestIdSql = @"
+                            UPDATE BookingGuests
+                            SET GuestId = @GuestId
+                            WHERE Id = @BookingGuestRowId
+                                AND IsActive = 1
+                                AND (GuestId IS NULL OR GuestId = 0);";
+
+                        await _dbConnection.ExecuteAsync(backfillGuestIdSql, new
+                        {
+                            GuestId = newGuestId,
+                            BookingGuestRowId = guest.Id
                         }, transaction);
                     }
                 }
@@ -2862,6 +2910,280 @@ WHERE BookingID = @BookingID
             });
 
             return rows > 0;
+        }
+
+        public async Task<bool> SyncGuestDetailsToBookingsAsync(Guest guest, int branchId, int performedBy)
+        {
+            if (guest == null || guest.Id <= 0)
+            {
+                return false;
+            }
+
+            if (_dbConnection.State != ConnectionState.Open)
+            {
+                _dbConnection.Open();
+            }
+
+            var fullName = string.Join(" ", new[]
+                {
+                    (guest.FirstName ?? string.Empty).Trim(),
+                    (guest.LastName ?? string.Empty).Trim()
+                }
+                .Where(x => !string.IsNullOrWhiteSpace(x)));
+
+            // Normalize optional strings to null so we don't persist empty text.
+            string? email = string.IsNullOrWhiteSpace(guest.Email) ? null : guest.Email.Trim();
+            string? phone = string.IsNullOrWhiteSpace(guest.Phone) ? null : guest.Phone.Trim();
+
+            string? phoneLast10 = null;
+            if (!string.IsNullOrWhiteSpace(phone))
+            {
+                var phoneDigits = new string(phone.Where(char.IsDigit).ToArray());
+                if (phoneDigits.Length >= 10)
+                {
+                    phoneLast10 = phoneDigits.Substring(phoneDigits.Length - 10);
+                }
+            }
+            string? address = string.IsNullOrWhiteSpace(guest.Address) ? null : guest.Address.Trim();
+            string? city = string.IsNullOrWhiteSpace(guest.City) ? null : guest.City.Trim();
+            string? state = string.IsNullOrWhiteSpace(guest.State) ? null : guest.State.Trim();
+            string? country = string.IsNullOrWhiteSpace(guest.Country) ? null : guest.Country.Trim();
+            string? pincode = string.IsNullOrWhiteSpace(guest.Pincode) ? null : guest.Pincode.Trim();
+            string? gender = string.IsNullOrWhiteSpace(guest.Gender) ? null : guest.Gender.Trim();
+            string? identityType = string.IsNullOrWhiteSpace(guest.IdentityType) ? null : guest.IdentityType.Trim();
+            string? identityNumber = string.IsNullOrWhiteSpace(guest.IdentityNumber) ? null : guest.IdentityNumber.Trim();
+            string? loyaltyId = string.IsNullOrWhiteSpace(guest.LoyaltyId) ? null : guest.LoyaltyId.Trim();
+
+            using var transaction = _dbConnection.BeginTransaction();
+            try
+            {
+                // Update all active BookingGuests snapshots for this master guest.
+                const string updateBookingGuestsSql = @"
+                    UPDATE bg
+                    SET bg.FullName = @FullName,
+                        bg.Email = @Email,
+                        bg.Phone = @Phone,
+                        bg.Gender = @Gender,
+                        bg.Address = @Address,
+                        bg.City = @City,
+                        bg.State = @State,
+                        bg.Country = @Country,
+                        bg.Pincode = @Pincode,
+                        bg.CountryId = @CountryId,
+                        bg.StateId = @StateId,
+                        bg.CityId = @CityId,
+                        bg.DateOfBirth = @DateOfBirth,
+                        bg.Age = @Age,
+                        bg.IdentityType = @IdentityType,
+                        bg.IdentityNumber = @IdentityNumber,
+                        bg.ModifiedDate = GETDATE(),
+                        bg.ModifiedBy = @PerformedBy
+                    FROM BookingGuests bg
+                    WHERE bg.GuestId = @GuestId
+                        AND bg.IsActive = 1;";
+
+                var updatedBookingGuests = await _dbConnection.ExecuteAsync(updateBookingGuestsSql, new
+                {
+                    GuestId = guest.Id,
+                    FullName = string.IsNullOrWhiteSpace(fullName) ? null : fullName,
+                    Email = email,
+                    Phone = phone,
+                    Gender = gender,
+                    Address = address,
+                    City = city,
+                    State = state,
+                    Country = country,
+                    Pincode = pincode,
+                    guest.CountryId,
+                    guest.StateId,
+                    guest.CityId,
+                    guest.DateOfBirth,
+                    guest.Age,
+                    IdentityType = identityType,
+                    IdentityNumber = identityNumber,
+                    PerformedBy = performedBy
+                }, transaction);
+
+                // Fallback for legacy rows where BookingGuests.GuestId was not set:
+                // if we have a phone, sync rows by phone and also backfill GuestId.
+                if (updatedBookingGuests <= 0 && !string.IsNullOrWhiteSpace(phone) && !string.IsNullOrWhiteSpace(phoneLast10))
+                {
+                    const string updateBookingGuestsByPhoneSql = @"
+                        UPDATE bg
+                        SET bg.GuestId = CASE WHEN bg.GuestId IS NULL OR bg.GuestId = 0 THEN @GuestId ELSE bg.GuestId END,
+                            bg.FullName = @FullName,
+                            bg.Email = @Email,
+                            bg.Phone = @Phone,
+                            bg.Gender = @Gender,
+                            bg.Address = @Address,
+                            bg.City = @City,
+                            bg.State = @State,
+                            bg.Country = @Country,
+                            bg.Pincode = @Pincode,
+                            bg.CountryId = @CountryId,
+                            bg.StateId = @StateId,
+                            bg.CityId = @CityId,
+                            bg.DateOfBirth = @DateOfBirth,
+                            bg.Age = @Age,
+                            bg.IdentityType = @IdentityType,
+                            bg.IdentityNumber = @IdentityNumber,
+                            bg.ModifiedDate = GETDATE(),
+                            bg.ModifiedBy = @PerformedBy
+                        FROM BookingGuests bg
+                        WHERE bg.IsActive = 1
+                            AND (bg.GuestId IS NULL OR bg.GuestId = 0 OR bg.GuestId = @GuestId)
+                            AND RIGHT(
+                                REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(ISNULL(bg.Phone, ''), ' ', ''), '-', ''), '(', ''), ')', ''), '+', ''), '.', ''),
+                                10
+                            ) = @PhoneLast10;";
+
+                    await _dbConnection.ExecuteAsync(updateBookingGuestsByPhoneSql, new
+                    {
+                        GuestId = guest.Id,
+                        FullName = string.IsNullOrWhiteSpace(fullName) ? null : fullName,
+                        Email = email,
+                        Phone = phone,
+                        PhoneLast10 = phoneLast10,
+                        Gender = gender,
+                        Address = address,
+                        City = city,
+                        State = state,
+                        Country = country,
+                        Pincode = pincode,
+                        guest.CountryId,
+                        guest.StateId,
+                        guest.CityId,
+                        guest.DateOfBirth,
+                        guest.Age,
+                        IdentityType = identityType,
+                        IdentityNumber = identityNumber,
+                        PerformedBy = performedBy
+                    }, transaction);
+                }
+
+                if (!string.IsNullOrWhiteSpace(phone) && !string.IsNullOrWhiteSpace(phoneLast10))
+                {
+                    // Extra safety for primary guest rows: some data sets have mismatched/missing BookingGuests.Phone.
+                    // For those, use the canonical Bookings.PrimaryGuestPhone as the join key.
+                    const string updatePrimaryBookingGuestsByBookingPhoneSql = @"
+                        UPDATE bg
+                        SET bg.GuestId = CASE WHEN bg.GuestId IS NULL OR bg.GuestId = 0 THEN @GuestId ELSE bg.GuestId END,
+                            bg.FullName = @FullName,
+                            bg.Email = @Email,
+                            bg.Phone = COALESCE(NULLIF(LTRIM(RTRIM(@Phone)), ''), bg.Phone),
+                            bg.Gender = @Gender,
+                            bg.Address = @Address,
+                            bg.City = @City,
+                            bg.State = @State,
+                            bg.Country = @Country,
+                            bg.Pincode = @Pincode,
+                            bg.CountryId = @CountryId,
+                            bg.StateId = @StateId,
+                            bg.CityId = @CityId,
+                            bg.DateOfBirth = @DateOfBirth,
+                            bg.Age = @Age,
+                            bg.IdentityType = @IdentityType,
+                            bg.IdentityNumber = @IdentityNumber,
+                            bg.ModifiedDate = GETDATE(),
+                            bg.ModifiedBy = @PerformedBy
+                        FROM BookingGuests bg
+                        INNER JOIN Bookings b ON b.Id = bg.BookingId
+                        WHERE bg.IsActive = 1
+                            AND bg.IsPrimary = 1
+                            AND RIGHT(
+                                REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(ISNULL(b.PrimaryGuestPhone, ''), ' ', ''), '-', ''), '(', ''), ')', ''), '+', ''), '.', ''),
+                                10
+                            ) = @PhoneLast10;";
+
+                    await _dbConnection.ExecuteAsync(updatePrimaryBookingGuestsByBookingPhoneSql, new
+                    {
+                        GuestId = guest.Id,
+                        FullName = string.IsNullOrWhiteSpace(fullName) ? null : fullName,
+                        Email = email,
+                        Phone = phone,
+                        PhoneLast10 = phoneLast10,
+                        Gender = gender,
+                        Address = address,
+                        City = city,
+                        State = state,
+                        Country = country,
+                        Pincode = pincode,
+                        guest.CountryId,
+                        guest.StateId,
+                        guest.CityId,
+                        guest.DateOfBirth,
+                        guest.Age,
+                        IdentityType = identityType,
+                        IdentityNumber = identityNumber,
+                        PerformedBy = performedBy
+                    }, transaction);
+                }
+
+                // Keep Bookings.PrimaryGuest* in sync where this guest is the primary guest.
+                // Prefer join via BookingGuests.GuestId, but also fallback via PrimaryGuestPhone for legacy rows.
+                const string updateBookingsPrimarySql = @"
+                    UPDATE b
+                    SET b.PrimaryGuestFirstName = @FirstName,
+                        b.PrimaryGuestLastName = @LastName,
+                        b.PrimaryGuestEmail = @EmailValue,
+                        b.PrimaryGuestPhone = @PhoneValue,
+                        b.LoyaltyId = COALESCE(@LoyaltyId, b.LoyaltyId),
+                        b.LastModifiedDate = GETDATE(),
+                        b.LastModifiedBy = @PerformedBy
+                    FROM Bookings b
+                    INNER JOIN BookingGuests bg ON bg.BookingId = b.Id
+                    WHERE bg.GuestId = @GuestId
+                        AND bg.IsPrimary = 1
+                        AND bg.IsActive = 1;";
+
+                await _dbConnection.ExecuteAsync(updateBookingsPrimarySql, new
+                {
+                    GuestId = guest.Id,
+                    FirstName = (guest.FirstName ?? string.Empty).Trim(),
+                    LastName = (guest.LastName ?? string.Empty).Trim(),
+                    EmailValue = email ?? string.Empty,
+                    PhoneValue = phone ?? string.Empty,
+                    LoyaltyId = loyaltyId,
+                    PerformedBy = performedBy
+                }, transaction);
+
+                if (!string.IsNullOrWhiteSpace(phone) && !string.IsNullOrWhiteSpace(phoneLast10))
+                {
+                    const string updateBookingsPrimaryByPhoneSql = @"
+                        UPDATE b
+                        SET b.PrimaryGuestFirstName = @FirstName,
+                            b.PrimaryGuestLastName = @LastName,
+                            b.PrimaryGuestEmail = @EmailValue,
+                            b.PrimaryGuestPhone = @PhoneValue,
+                            b.LoyaltyId = COALESCE(@LoyaltyId, b.LoyaltyId),
+                            b.LastModifiedDate = GETDATE(),
+                            b.LastModifiedBy = @PerformedBy
+                        FROM Bookings b
+                        WHERE RIGHT(
+                                REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(ISNULL(b.PrimaryGuestPhone, ''), ' ', ''), '-', ''), '(', ''), ')', ''), '+', ''), '.', ''),
+                                10
+                            ) = @PhoneLast10;";
+
+                    await _dbConnection.ExecuteAsync(updateBookingsPrimaryByPhoneSql, new
+                    {
+                        FirstName = (guest.FirstName ?? string.Empty).Trim(),
+                        LastName = (guest.LastName ?? string.Empty).Trim(),
+                        EmailValue = email ?? string.Empty,
+                        PhoneValue = phone,
+                        PhoneLast10 = phoneLast10,
+                        LoyaltyId = loyaltyId,
+                        PerformedBy = performedBy
+                    }, transaction);
+                }
+
+                transaction.Commit();
+                return true;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
         }
 
         public async Task<bool> DeleteGuestAsync(int guestId, int deletedBy)

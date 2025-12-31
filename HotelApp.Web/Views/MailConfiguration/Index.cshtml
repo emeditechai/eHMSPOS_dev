@@ -1,0 +1,185 @@
+@model HotelApp.Web.ViewModels.MailConfigurationViewModel
+@{
+    ViewData["Title"] = "Mail Configuration";
+}
+
+<div class="main-content">
+
+<div class="page-header">
+    <h2><i class="fas fa-envelope"></i> Mail Configuration</h2>
+    <div></div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+}
+
+
+<div class="page-grid-2">
+    <div class="form-container form-container-fluid">
+            <h3 style="margin-bottom: 20px;"><i class="fas fa-server"></i> SMTP Server</h3>
+
+            <form asp-controller="MailConfiguration" asp-action="Save" method="post">
+                @Html.AntiForgeryToken()
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>SMTP Server</label>
+                        <input asp-for="SmtpHost" class="form-control" placeholder="smtp.gmail.com" />
+                        <span class="text-danger" asp-validation-for="SmtpHost"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>SMTP Port</label>
+                        <input asp-for="SmtpPort" class="form-control" type="number" min="1" max="65535" placeholder="587" />
+                        <span class="text-danger" asp-validation-for="SmtpPort"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input asp-for="UserName" class="form-control" placeholder="your@email.com" />
+                        <span class="text-danger" asp-validation-for="UserName"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Password</label>
+                        <div class="input-group">
+                            <input id="smtpPassword" name="Password" class="form-control" type="password" placeholder="@(Model.HasPassword ? "•••••• (saved)" : "Enter password")" autocomplete="new-password" />
+                            <button class="btn btn-outline-secondary" type="button" id="togglePwd" title="Show/Hide">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <small>Leave blank to keep existing password</small>
+                        <span class="text-danger" asp-validation-for="Password"></span>
+                    </div>
+
+                    <div class="form-group form-group-full">
+                        <div class="form-check">
+                            <input asp-for="EnableSslTls" type="checkbox" />
+                            <label asp-for="EnableSslTls">Enable SSL/TLS</label>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 style="margin: 30px 0 20px;"><i class="fas fa-at"></i> Email Settings</h3>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>From Email</label>
+                        <input asp-for="FromEmail" class="form-control" placeholder="your@email.com" />
+                        <span class="text-danger" asp-validation-for="FromEmail"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>From Name</label>
+                        <input asp-for="FromName" class="form-control" placeholder="Hotel Management System" />
+                        <span class="text-danger" asp-validation-for="FromName"></span>
+                    </div>
+
+                    <div class="form-group form-group-full">
+                        <label>Admin Notification Email (Optional)</label>
+                        <input asp-for="AdminNotificationEmail" class="form-control" placeholder="admin@email.com" />
+                        <span class="text-danger" asp-validation-for="AdminNotificationEmail"></span>
+                    </div>
+
+                    <div class="form-group form-group-full">
+                        <div class="form-check">
+                            <input asp-for="IsActive" type="checkbox" />
+                            <label asp-for="IsActive">Activate Email Service</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-save">
+                        <i class="fas fa-save"></i> Save Configuration
+                    </button>
+                </div>
+            </form>
+
+            <h3 style="margin: 30px 0 20px;"><i class="fas fa-paper-plane"></i> Send Test Email</h3>
+
+            <form asp-controller="MailConfiguration" asp-action="SendTest" method="post">
+                @Html.AntiForgeryToken()
+
+                <div class="form-row">
+                    <div class="form-group form-group-full">
+                        <label>Test To Email</label>
+                        <input asp-for="TestToEmail" class="form-control" placeholder="test@yourdomain.com" />
+                        <small>If empty, it will use Admin Notification Email (or From Email)</small>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-save">
+                        <i class="fas fa-paper-plane"></i> Send Test Email
+                    </button>
+                </div>
+            </form>
+    </div>
+
+    <div class="form-container form-container-fluid">
+            <h3 style="margin-bottom: 20px;"><i class="fas fa-circle-info"></i> Quick Guide</h3>
+
+            <div style="margin-bottom: 20px;">
+                <strong>Gmail Configuration</strong>
+                <ul style="margin: 10px 0 0 20px;">
+                    <li>SMTP Server: <span class="text-muted">smtp.gmail.com</span></li>
+                    <li>Port: <span class="text-muted">587 (TLS) or 465 (SSL)</span></li>
+                    <li>Enable SSL: <span class="text-muted">Yes</span></li>
+                    <li>Username: <span class="text-muted">Full email address</span></li>
+                </ul>
+                <div style="margin-top: 10px;">
+                    <strong>Gmail App Password Required</strong>
+                    <ol style="margin: 10px 0 0 20px;">
+                        <li>Enable 2-Step Verification in Google Account</li>
+                        <li>Create an App Password for "Mail"</li>
+                        <li>Use the App Password here (not your normal password)</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <strong>Outlook/Office 365</strong>
+                <ul style="margin: 10px 0 0 20px;">
+                    <li>SMTP Server: <span class="text-muted">smtp.office365.com</span></li>
+                    <li>Port: <span class="text-muted">587</span></li>
+                    <li>Enable SSL: <span class="text-muted">Yes</span></li>
+                    <li>Username: <span class="text-muted">Full email address</span></li>
+                </ul>
+            </div>
+
+            <div>
+                <strong>Security Tips</strong>
+                <ul style="margin: 10px 0 0 20px;">
+                    <li>Use App Passwords (recommended) where supported</li>
+                    <li>Do not share SMTP credentials</li>
+                    <li>Keep SSL/TLS enabled</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        (function() {
+            const btn = document.getElementById('togglePwd');
+            const input = document.getElementById('smtpPassword');
+            if (!btn || !input) return;
+
+            btn.addEventListener('click', function() {
+                input.type = input.type === 'password' ? 'text' : 'password';
+            });
+        })();
+    </script>
+}

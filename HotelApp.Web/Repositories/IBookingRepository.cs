@@ -35,5 +35,6 @@ namespace HotelApp.Web.Repositories
         Task<bool> UpdateGuestAsync(BookingGuest guest);
         Task<bool> DeleteGuestAsync(int guestId, int deletedBy);
         Task<bool> UpdateLatestGuestDocumentPathAsync(int guestId, string documentPath, int performedBy);
+            Task<bool> SyncGuestDetailsToBookingsAsync(Guest guest, int branchId, int performedBy);
     }
 }

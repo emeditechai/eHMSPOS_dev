@@ -157,6 +157,16 @@ namespace HotelApp.Web.Controllers
             var success = await _guestRepository.UpdateAsync(guest);
             if (success)
             {
+                try
+                {
+                    // Keep BookingGuests snapshots + Bookings primary guest fields in sync.
+                    await _bookingRepository.SyncGuestDetailsToBookingsAsync(guest, guest.BranchID, CurrentUserId ?? 0);
+                }
+                catch
+                {
+                    // Best-effort: master guest update succeeded; if sync fails, booking details may lag until edited from booking.
+                }
+
                 TempData["SuccessMessage"] = "Guest details updated successfully.";
                 return RedirectToAction(nameof(Index));
             }

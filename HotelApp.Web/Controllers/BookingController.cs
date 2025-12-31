@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using HotelApp.Web.Models;
 using HotelApp.Web.Repositories;
+using HotelApp.Web.Services;
 using HotelApp.Web.ViewModels;
 using QRCoder;
 
@@ -39,6 +40,8 @@ namespace HotelApp.Web.Controllers
         private readonly IBillingHeadRepository _billingHeadRepository;
         private readonly PaymentQrOptions _paymentQrOptions;
         private readonly IUpiSettingsRepository _upiSettingsRepository;
+        private readonly IMailSender _mailSender;
+        private readonly IRazorViewToStringRenderer _razorViewToStringRenderer;
 
         public BookingController(
             IBookingRepository bookingRepository,
@@ -52,7 +55,9 @@ namespace HotelApp.Web.Controllers
             IRoomServiceRepository roomServiceRepository,
             IBillingHeadRepository billingHeadRepository,
             IOptions<PaymentQrOptions> paymentQrOptions,
-            IUpiSettingsRepository upiSettingsRepository)
+            IUpiSettingsRepository upiSettingsRepository,
+            IMailSender mailSender,
+            IRazorViewToStringRenderer razorViewToStringRenderer)
         {
             _bookingRepository = bookingRepository;
             _roomRepository = roomRepository;
@@ -66,6 +71,27 @@ namespace HotelApp.Web.Controllers
             _billingHeadRepository = billingHeadRepository;
             _paymentQrOptions = paymentQrOptions.Value ?? new PaymentQrOptions();
             _upiSettingsRepository = upiSettingsRepository;
+            _mailSender = mailSender;
+            _razorViewToStringRenderer = razorViewToStringRenderer;
+        }
+
+        private static string GetFriendlyMailErrorMessage(Exception ex)
+        {
+            var msg = (ex.GetBaseException().Message ?? string.Empty).Trim();
+            var msgLower = msg.ToLowerInvariant();
+
+            // Gmail common: 534 5.7.9 / InvalidSecondFactor / app password required
+            if (msgLower.Contains("invalidsecondfactor")
+                || msgLower.Contains("application-specific password")
+                || msgLower.Contains("app password")
+                || (msgLower.Contains("5.7.9") && msgLower.Contains("authentication")))
+            {
+                return "Gmail requires an App Password for SMTP. Please create a Gmail App Password and update Mail Configuration.";
+            }
+
+            return string.IsNullOrWhiteSpace(msg)
+                ? "Failed to send email."
+                : msg;
         }
 
         private static string BuildUpiPayUri(string vpa, string? payeeName, decimal amount, string currency, string note)
@@ -960,6 +986,130 @@ namespace HotelApp.Web.Controllers
             return View(booking);
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SendReceiptEmail(string bookingNumber)
+        {
+            if (string.IsNullOrWhiteSpace(bookingNumber))
+            {
+                return Json(new { success = false, message = "Invalid booking number." });
+            }
+
+            var booking = await _bookingRepository.GetByBookingNumberAsync(bookingNumber);
+            if (booking == null || booking.BranchID != CurrentBranchID)
+            {
+                return Json(new { success = false, message = "Booking not found." });
+            }
+
+            var toEmail = (booking.PrimaryGuestEmail ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(toEmail))
+            {
+                return Json(new { success = false, message = "Guest email ID is not available for this booking." });
+            }
+
+            try
+            {
+                // Prepare the same ViewBag data used by the Receipt template.
+                var hotelSettings = await _hotelSettingsRepository.GetByBranchAsync(CurrentBranchID);
+                ViewBag.HotelSettings = hotelSettings;
+
+                var payments = await _bookingRepository.GetPaymentsAsync(booking.Id);
+                ViewBag.Payments = payments;
+
+                var otherCharges = await _bookingOtherChargeRepository.GetDetailsByBookingIdAsync(booking.Id);
+                ViewBag.BookingOtherCharges = otherCharges;
+
+                try
+                {
+                    var roomIds = new HashSet<int>();
+                    if (booking.RoomId.HasValue && booking.RoomId.Value > 0)
+                    {
+                        roomIds.Add(booking.RoomId.Value);
+                    }
+
+                    var assignedRoomIds = await _bookingRepository.GetAssignedRoomIdsAsync(bookingNumber);
+                    foreach (var rid in assignedRoomIds)
+                    {
+                        if (rid > 0)
+                        {
+                            roomIds.Add(rid);
+                        }
+                    }
+
+                    var roomServiceLines = await _roomServiceRepository.GetRoomServiceLinesAsync(
+                        booking.Id,
+                        roomIds,
+                        CurrentBranchID
+                    );
+
+                    ViewBag.RoomServiceLines = roomServiceLines;
+                }
+                catch
+                {
+                    ViewBag.RoomServiceLines = Array.Empty<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>();
+                }
+
+                var roomServiceLinesForTotals = ViewBag.RoomServiceLines as IEnumerable<RoomServiceSettlementLineRow>
+                    ?? Array.Empty<RoomServiceSettlementLineRow>();
+                var (receiptGrandTotal, receiptBalanceDue) = ComputeReceiptTotals(
+                    booking,
+                    payments ?? Array.Empty<BookingPayment>(),
+                    otherCharges ?? Array.Empty<BookingOtherChargeDetailRow>(),
+                    roomServiceLinesForTotals);
+
+                ViewBag.ReceiptAdjustedGrandTotal = receiptGrandTotal;
+                ViewBag.ReceiptAdjustedBalanceDue = receiptBalanceDue;
+
+                var upiSettings = await _upiSettingsRepository.GetByBranchAsync(CurrentBranchID);
+                var hasQrConfig = upiSettings?.IsEnabled == true
+                    && !string.IsNullOrWhiteSpace(upiSettings.UpiVpa);
+
+                ViewBag.ShowDueQr = hasQrConfig && receiptBalanceDue > 0m;
+                ViewBag.DueQrUrl = (hasQrConfig && receiptBalanceDue > 0m)
+                    ? Url.Action(nameof(DueQr), "Booking", new { bookingNumber }, protocol: Request.Scheme)
+                    : null;
+
+                var assignedRooms = await _bookingRepository.GetAssignedRoomNumbersAsync(booking.Id);
+                ViewBag.AssignedRooms = assignedRooms;
+
+                if (booking.RatePlanId.HasValue)
+                {
+                    var (taxPercentage, cgstPercentage, sgstPercentage) = await _bookingRepository.GetRateMasterTaxPercentagesAsync(booking.RatePlanId.Value);
+                    ViewBag.TaxPercentage = taxPercentage;
+                    ViewBag.CGSTPercentage = cgstPercentage;
+                    ViewBag.SGSTPercentage = sgstPercentage;
+
+                    try
+                    {
+                        using var connection = new Microsoft.Data.SqlClient.SqlConnection(_bookingRepository.ConnectionString);
+                        await connection.OpenAsync();
+                        using var cmd = new Microsoft.Data.SqlClient.SqlCommand("SELECT ApplyDiscount FROM RateMaster WHERE Id = @Id", connection);
+                        cmd.Parameters.AddWithValue("@Id", booking.RatePlanId.Value);
+                        var discountObj = await cmd.ExecuteScalarAsync();
+                        if (discountObj != null && decimal.TryParse(discountObj.ToString(), out var discountPercent))
+                        {
+                            ViewBag.DiscountPercentage = discountPercent;
+                        }
+                    }
+                    catch
+                    {
+                        // Best-effort only.
+                    }
+                }
+
+                var html = await _razorViewToStringRenderer.RenderViewToStringAsync(this, "Receipt", booking);
+
+                var subject = $"Booking Receipt - {booking.BookingNumber}";
+                await _mailSender.SendEmailAsync(CurrentBranchID, toEmail, subject, html);
+
+                return Json(new { success = true, message = $"Receipt sent to {toEmail}." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = GetFriendlyMailErrorMessage(ex) });
+            }
+        }
+
         [HttpGet]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public async Task<IActionResult> DueQr(string bookingNumber)
@@ -1821,6 +1971,7 @@ namespace HotelApp.Web.Controllers
                 var guest = new BookingGuest
                 {
                     Id = request.GuestId,
+                    GuestId = request.MasterGuestId ?? 0,
                     FullName = request.FullName.Trim(),
                     Email = request.Email?.Trim(),
                     Phone = request.Phone?.Trim(),
@@ -1847,6 +1998,30 @@ namespace HotelApp.Web.Controllers
 
                 if (success)
                 {
+                    // Keep master Guest and other booking snapshots in sync (best-effort).
+                    try
+                    {
+                        Guest? master = null;
+                        if (request.MasterGuestId.HasValue && request.MasterGuestId.Value > 0)
+                        {
+                            master = await _guestRepository.GetByIdAsync(request.MasterGuestId.Value);
+                        }
+                        else if (!string.IsNullOrWhiteSpace(request.Phone))
+                        {
+                            // Legacy bookings may not carry GuestId yet; resolve by phone.
+                            master = await _guestRepository.GetByPhoneAsync(request.Phone.Trim());
+                        }
+
+                        if (master != null)
+                        {
+                            await _bookingRepository.SyncGuestDetailsToBookingsAsync(master, master.BranchID, GetCurrentUserId() ?? 0);
+                        }
+                    }
+                    catch
+                    {
+                        // Best-effort only.
+                    }
+
                     return Json(new { success = true, message = "Guest updated successfully!" });
                 }
 
@@ -1907,6 +2082,7 @@ namespace HotelApp.Web.Controllers
         public class UpdateGuestRequest
         {
             public int GuestId { get; set; }
+            public int? MasterGuestId { get; set; }
             public string? FullName { get; set; }
             public string? Email { get; set; }
             public string? Phone { get; set; }

@@ -128,7 +128,7 @@
                             </a>
                         </div>
                     </div>
-                    <div class="menu-item has-dropdown @(controller == "BranchMaster" || controller == "UserManagement" || controller == "HotelSettings" ? "active" : string.Empty)">
+                    <div class="menu-item has-dropdown @(controller == "BranchMaster" || controller == "UserManagement" || controller == "HotelSettings" || controller == "MailConfiguration" ? "active" : string.Empty)">
                         <i class="fas fa-cog"></i>
                         <span>Settings</span>
                         <i class="fas fa-chevron-down dropdown-icon"></i>
@@ -136,6 +136,11 @@
                             <a asp-controller="HotelSettings" asp-action="Index" class="@(controller == "HotelSettings" ? "active" : string.Empty)">
                                 <i class="fas fa-hotel"></i>
                                 <span>Hotel Settings</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+                            <a asp-controller="MailConfiguration" asp-action="Index" class="@(controller == "MailConfiguration" ? "active" : string.Empty)">
+                                <i class="fas fa-envelope"></i>
+                                <span>Mail Configuration</span>
                                 <i class="fas fa-arrow-right dropdown-arrow"></i>
                             </a>
                             <a asp-controller="BranchMaster" asp-action="Index" class="@(controller == "BranchMaster" ? "active" : string.Empty)">
