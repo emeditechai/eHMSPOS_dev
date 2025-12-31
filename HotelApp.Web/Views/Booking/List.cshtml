@@ -14,16 +14,30 @@
     </a>
 </div>
 
-@if (TempData["SuccessMessage"] is string successMessage)
-{
-    <div class="alert alert-success">
-        <i class="fas fa-check-circle"></i> @successMessage
-    </div>
+@{
+    var successMessage = TempData["SuccessMessage"] as string;
+    var errorMessage = TempData["ErrorMessage"] as string;
 }
-@if (TempData["ErrorMessage"] is string errorMessage)
+
+@if (!string.IsNullOrWhiteSpace(successMessage) || !string.IsNullOrWhiteSpace(errorMessage))
 {
-    <div class="alert alert-danger">
-        <i class="fas fa-exclamation-triangle"></i> @errorMessage
+    <div class="toast-stack" aria-live="polite" aria-atomic="true">
+        @if (!string.IsNullOrWhiteSpace(successMessage))
+        {
+            <div class="alert alert-success toast-item" role="status" data-toast>
+                <i class="fas fa-check-circle"></i>
+                <span>@successMessage</span>
+                <button type="button" class="toast-close" aria-label="Close">&times;</button>
+            </div>
+        }
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="alert alert-danger toast-item" role="alert" data-toast>
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>@errorMessage</span>
+                <button type="button" class="toast-close" aria-label="Close">&times;</button>
+            </div>
+        }
     </div>
 }
 
@@ -891,9 +905,62 @@ else
             font-size: 24px;
         }
     }
+
+    .toast-stack {
+        position: fixed;
+        top: 80px;
+        right: 16px;
+        z-index: 2000;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-width: min(520px, calc(100vw - 32px));
+    }
+
+    .toast-item {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .toast-close {
+        margin-left: auto;
+        background: transparent;
+        border: none;
+        padding: 0 4px;
+        font-size: 20px;
+        line-height: 1;
+        cursor: pointer;
+        color: inherit;
+    }
+
+    .toast-hidden {
+        opacity: 0;
+        transform: translateY(-8px);
+        pointer-events: none;
+        transition: opacity 200ms ease, transform 200ms ease;
+    }
 </style>
 
 <script>
+    (function () {
+        const toasts = document.querySelectorAll('[data-toast]');
+        if (!toasts || toasts.length === 0) return;
+
+        function hideToast(toast) {
+            if (!toast || toast.classList.contains('toast-hidden')) return;
+            toast.classList.add('toast-hidden');
+            window.setTimeout(() => toast.remove(), 250);
+        }
+
+        toasts.forEach(toast => {
+            const closeBtn = toast.querySelector('.toast-close');
+            if (closeBtn) closeBtn.addEventListener('click', () => hideToast(toast));
+            window.setTimeout(() => hideToast(toast), 3500);
+        });
+    })();
+
     // Toggle to `true` temporarily while debugging dropdown close behavior.
     const BOOKING_DROPDOWN_DEBUG = false;
     function bookingDropdownLog(...args) {

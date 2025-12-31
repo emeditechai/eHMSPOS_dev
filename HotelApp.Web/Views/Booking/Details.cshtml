@@ -716,6 +716,12 @@
         background: #667eea;
         color: white;
     }
+
+    .btn-icon {
+        padding: 0.35rem 0.6rem;
+        border-radius: 6px;
+        line-height: 1;
+    }
 </style>
 
 @{
@@ -853,6 +859,15 @@
                 else
                 {
                     <text>Not Assigned</text>
+                    <a asp-action="AssignRoom"
+                       asp-controller="Booking"
+                       asp-route-bookingNumber="@Model.BookingNumber"
+                       class="btn-modern btn-secondary btn-icon"
+                       style="margin-left: 8px;"
+                       title="Assign Room"
+                       aria-label="Assign Room">
+                        <i class="fas fa-bed" aria-hidden="true"></i>
+                    </a>
                 }
             </span>
         </div>
