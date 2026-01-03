@@ -23,6 +23,21 @@
                 <label for="toDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">To Date</label>
                 <input id="toDate" name="toDate" type="date" class="form-control" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
             </div>
+
+            <div>
+                <label for="billingHeadFilter" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">Billing Head</label>
+                <div id="billingHeadFilter" style="position: relative; min-width: 260px;">
+                    <input id="billingHeadFilterInput" type="text" class="form-control" placeholder="All" readonly style="cursor: pointer;" />
+                    <div id="billingHeadFilterPanel" style="display:none; position:absolute; z-index: 50; top: calc(100% + 6px); left: 0; width: 100%; background: #fff; border: 1px solid #d1d5db; border-radius: 6px; padding: 10px;">
+                        <input id="billingHeadFilterSearch" type="text" class="form-control" placeholder="search" style="margin-bottom: 10px;" />
+                        <div style="display:flex; align-items:center; gap:10px; padding: 6px 2px;">
+                            <input id="billingHeadFilterAll" type="checkbox" checked />
+                            <label for="billingHeadFilterAll" style="margin:0; cursor:pointer;">All</label>
+                        </div>
+                        <div id="billingHeadFilterOptions" style="max-height: 220px; overflow:auto; padding-right: 4px;"></div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div style="display:flex; gap:10px; align-items:flex-end;">
@@ -130,7 +145,8 @@
     <script>
         const getExportRows = () => {
             const table = document.getElementById('dailyCollectionTable');
-            const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
+            const bodyRows = Array.from(table.querySelectorAll('tbody tr'))
+                .filter(tr => tr.style.display !== 'none');
             return bodyRows.map(tr => {
                 const tds = Array.from(tr.querySelectorAll('td'));
                 return {
@@ -152,6 +168,162 @@
                 };
             });
         };
+
+        const normalizeBillingHeadText = (s) => {
+            const v = String(s ?? '').trim();
+            return (v === '-' ? '' : v);
+        };
+
+        const getSelectedBillingHeads = () => {
+            const allCheckbox = document.getElementById('billingHeadFilterAll');
+            if (allCheckbox?.checked) return new Set();
+
+            const container = document.getElementById('billingHeadFilterOptions');
+            if (!container) return new Set();
+
+            const selected = new Set();
+            Array.from(container.querySelectorAll('input[type="checkbox"][data-billinghead]')).forEach(cb => {
+                if (cb.checked) selected.add(cb.getAttribute('data-billinghead'));
+            });
+            return selected;
+        };
+
+        const setBillingHeadFilterInputText = () => {
+            const input = document.getElementById('billingHeadFilterInput');
+            if (!input) return;
+
+            const selected = getSelectedBillingHeads();
+            if (selected.size === 0) {
+                input.value = 'All';
+                return;
+            }
+            if (selected.size === 1) {
+                input.value = Array.from(selected)[0];
+                return;
+            }
+            input.value = `${selected.size} selected`;
+        };
+
+        const populateBillingHeadFilterOptions = () => {
+            const optionsContainer = document.getElementById('billingHeadFilterOptions');
+            const allCheckbox = document.getElementById('billingHeadFilterAll');
+            if (!optionsContainer || !allCheckbox) return;
+
+            const table = document.getElementById('dailyCollectionTable');
+            if (!table) return;
+
+            const heads = new Set();
+            Array.from(table.querySelectorAll('tbody tr')).forEach(tr => {
+                const tds = tr.querySelectorAll('td');
+                const head = normalizeBillingHeadText(tds[6]?.innerText || '');
+                if (head) heads.add(head);
+            });
+
+            const previouslySelected = getSelectedBillingHeads();
+            const preserveSpecific = previouslySelected.size > 0;
+            if (!preserveSpecific) {
+                allCheckbox.checked = true;
+            }
+
+            const options = Array.from(heads).sort((a, b) => a.localeCompare(b));
+            optionsContainer.innerHTML = options.map((h, idx) => {
+                const safeId = `bh_opt_${idx}`;
+                const checked = preserveSpecific && previouslySelected.has(h);
+                const escaped = String(h).replace(/"/g, '&quot;');
+                return `
+                    <div class="bh-opt" data-label="${escaped}" style="display:flex; align-items:center; gap:10px; padding: 6px 2px;">
+                        <input id="${safeId}" type="checkbox" data-billinghead="${escaped}" ${checked ? 'checked' : ''} />
+                        <label for="${safeId}" style="margin:0; cursor:pointer;">${escaped}</label>
+                    </div>
+                `;
+            }).join('');
+
+            if (optionsContainer.querySelector('input[type="checkbox"][data-billinghead]:checked')) {
+                allCheckbox.checked = false;
+            }
+
+            setBillingHeadFilterInputText();
+        };
+
+        const applyBillingHeadFilter = () => {
+            const selectedValues = getSelectedBillingHeads();
+
+            const table = document.getElementById('dailyCollectionTable');
+            if (!table) return;
+
+            Array.from(table.querySelectorAll('tbody tr')).forEach(tr => {
+                const tds = tr.querySelectorAll('td');
+                const head = normalizeBillingHeadText(tds[6]?.innerText || '');
+                tr.style.display = (selectedValues.size === 0 || selectedValues.has(head)) ? '' : 'none';
+            });
+
+            setBillingHeadFilterInputText();
+        };
+
+        const setBillingHeadPanelOpen = (open) => {
+            const panel = document.getElementById('billingHeadFilterPanel');
+            if (!panel) return;
+            panel.style.display = open ? 'block' : 'none';
+            if (open) {
+                const search = document.getElementById('billingHeadFilterSearch');
+                search?.focus();
+            }
+        };
+
+        const filterBillingHeadOptionsBySearch = () => {
+            const search = document.getElementById('billingHeadFilterSearch');
+            const optionsContainer = document.getElementById('billingHeadFilterOptions');
+            if (!search || !optionsContainer) return;
+
+            const q = (search.value || '').trim().toLowerCase();
+            Array.from(optionsContainer.querySelectorAll('.bh-opt')).forEach(el => {
+                const label = (el.getAttribute('data-label') || '').toLowerCase();
+                el.style.display = (!q || label.includes(q)) ? '' : 'none';
+            });
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            populateBillingHeadFilterOptions();
+
+            const root = document.getElementById('billingHeadFilter');
+            const input = document.getElementById('billingHeadFilterInput');
+            const panel = document.getElementById('billingHeadFilterPanel');
+            const allCheckbox = document.getElementById('billingHeadFilterAll');
+            const optionsContainer = document.getElementById('billingHeadFilterOptions');
+            const search = document.getElementById('billingHeadFilterSearch');
+
+            input?.addEventListener('click', () => {
+                const isOpen = panel?.style.display === 'block';
+                setBillingHeadPanelOpen(!isOpen);
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!root || !panel) return;
+                if (panel.style.display !== 'block') return;
+                if (root.contains(e.target)) return;
+                setBillingHeadPanelOpen(false);
+            });
+
+            allCheckbox?.addEventListener('change', () => {
+                if (!optionsContainer || !allCheckbox) return;
+                if (allCheckbox.checked) {
+                    Array.from(optionsContainer.querySelectorAll('input[type="checkbox"][data-billinghead]')).forEach(cb => {
+                        cb.checked = false;
+                    });
+                }
+                applyBillingHeadFilter();
+            });
+
+            optionsContainer?.addEventListener('change', (e) => {
+                const target = e.target;
+                if (!(target instanceof HTMLInputElement)) return;
+                if (target.type !== 'checkbox') return;
+                if (allCheckbox) allCheckbox.checked = false;
+                applyBillingHeadFilter();
+            });
+
+            search?.addEventListener('input', filterBillingHeadOptionsBySearch);
+        });
 
         const downloadBlob = (blob, filename) => {
             const url = URL.createObjectURL(blob);

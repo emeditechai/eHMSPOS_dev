@@ -208,6 +208,7 @@ public sealed class GstReportDetailRow
     public string? BookingNumber { get; set; }
     public string? GuestName { get; set; }
     public string? RoomType { get; set; }
+    public string? BillingHead { get; set; }
     public decimal GSTAmount { get; set; }
     public decimal CGSTAmount { get; set; }
     public decimal SGSTAmount { get; set; }
