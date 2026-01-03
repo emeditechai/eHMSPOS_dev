@@ -82,6 +82,19 @@ BEGIN
         END;
 
     /* ------------------------------------------------------------
+       User join detection
+    ------------------------------------------------------------ */
+    DECLARE @UserJoin NVARCHAR(MAX) = N'';
+    DECLARE @CreatedByExpr NVARCHAR(MAX) = N'CAST(bp.CreatedBy AS NVARCHAR(200))';
+    
+    IF OBJECT_ID('dbo.Users', 'U') IS NOT NULL
+    BEGIN
+        SET @UserJoin = N'
+    LEFT JOIN dbo.Users u ON u.Id = TRY_CAST(bp.CreatedBy AS INT)';
+        SET @CreatedByExpr = N'CAST(ISNULL(u.FullName, CAST(bp.CreatedBy AS NVARCHAR(200))) AS NVARCHAR(200))';
+    END;
+
+    /* ------------------------------------------------------------
        SUMMARY QUERY
     ------------------------------------------------------------ */
     DECLARE @SqlSummary NVARCHAR(MAX) = N'
@@ -217,6 +230,7 @@ BEGIN
         bp.PaidOn,
         b.BookingNumber,
         CONCAT(b.PrimaryGuestFirstName,'' '',b.PrimaryGuestLastName) AS GuestName,
+        rt.TypeName AS RoomType,
         ' + @BillingHeadSelect + N'
         ROUND(
             bp.Amount *
@@ -285,12 +299,17 @@ BEGIN
             ),
         2) AS TaxableValue,
 
-        CAST(bp.Amount AS DECIMAL(18,2)) AS PaidAmount
+        b.Status AS Status,
+        bp.Status AS PaymentStatus,
+        CAST(bp.Amount AS DECIMAL(18,2)) AS PaidAmount,
+        ' + @CreatedByExpr + N' AS CreatedBy
     FROM dbo.Bookings b
     INNER JOIN dbo.BookingPayments bp ON bp.BookingId = b.Id
     ' + @BillingHeadJoin + N'
     LEFT JOIN OC oc ON oc.BookingId = b.Id
     LEFT JOIN RS rs ON rs.BookingId = b.Id
+    LEFT JOIN dbo.RoomTypes rt ON rt.Id = b.RoomTypeId
+    ' + @UserJoin + N'
     WHERE b.BranchID = @BranchID
       AND CAST(bp.PaidOn AS DATE) BETWEEN @FromDate AND @ToDate
       AND bp.Status IN (''Completed'',''Captured'',''Success'')
