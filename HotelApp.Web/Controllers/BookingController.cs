@@ -513,7 +513,9 @@ namespace HotelApp.Web.Controllers
                 decimal totalDueAmount = 0m;
 
                 var paymentMethods = new List<object>();
+                var billingHeads = new List<object>();
                 var payments = new List<object>();
+                var dailyTrend = new List<object>();
 
                 using var reader = await command.ExecuteReaderAsync();
 
@@ -539,7 +541,22 @@ namespace HotelApp.Web.Controllers
                     }
                 }
 
-                // 3) Payment details
+                // 3) Billing head breakdown
+                if (await reader.NextResultAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        billingHeads.Add(new
+                        {
+                            billingHead = reader.IsDBNull(reader.GetOrdinal("BillingHead")) ? "" : reader.GetString(reader.GetOrdinal("BillingHead")),
+                            totalAmount = reader.IsDBNull(reader.GetOrdinal("TotalAmount")) ? 0m : reader.GetDecimal(reader.GetOrdinal("TotalAmount")),
+                            totalGst = reader.IsDBNull(reader.GetOrdinal("TotalGST")) ? 0m : reader.GetDecimal(reader.GetOrdinal("TotalGST")),
+                            transactionCount = reader.IsDBNull(reader.GetOrdinal("TransactionCount")) ? 0 : reader.GetInt32(reader.GetOrdinal("TransactionCount"))
+                        });
+                    }
+                }
+
+                // 4) Payment details
                 var bookingDueMap = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
                 if (await reader.NextResultAsync())
                 {
@@ -549,12 +566,18 @@ namespace HotelApp.Web.Controllers
                         var receiptNo = reader.IsDBNull(reader.GetOrdinal("ReceiptNumber")) ? string.Empty : reader.GetString(reader.GetOrdinal("ReceiptNumber"));
                         var amount = reader.GetDecimal(reader.GetOrdinal("Amount"));
 
-                        // Allocate GST proportionally to each payment amount.
-                        decimal gstAmount = 0m;
-                        if (totalCollection > 0)
-                        {
-                            gstAmount = Math.Round((amount / totalCollection) * totalGst, 2);
-                        }
+                        // GST amount is returned from the stored procedure (already allocated).
+                        var gstAmountOrdinal = reader.GetOrdinal("GSTAmount");
+                        var gstAmount = reader.IsDBNull(gstAmountOrdinal) ? 0m : reader.GetDecimal(gstAmountOrdinal);
+
+                        var paidOnOrdinal = reader.GetOrdinal("PaidOn");
+                        var paidOn = reader.IsDBNull(paidOnOrdinal) ? (DateTime?)null : reader.GetDateTime(paidOnOrdinal);
+
+                        var paymentMethodOrdinal = reader.GetOrdinal("PaymentMethod");
+                        var paymentMethod = reader.IsDBNull(paymentMethodOrdinal) ? string.Empty : reader.GetString(paymentMethodOrdinal);
+
+                        var billingHeadOrdinal = reader.GetOrdinal("BillingHead");
+                        var billingHead = reader.IsDBNull(billingHeadOrdinal) ? string.Empty : reader.GetString(billingHeadOrdinal);
 
                         // Track due (balance) per booking from the result set.
                         var bookingBalanceOrdinal = reader.GetOrdinal("BookingBalance");
@@ -571,9 +594,26 @@ namespace HotelApp.Web.Controllers
                         {
                             receiptNo,
                             bookingNo = bookingNumber,
+                            paidOn,
+                            paymentMethod,
+                            billingHead,
                             receiptAmount = amount,
                             gstAmount,
                             createdBy
+                        });
+                    }
+                }
+
+                // 5) Daily trend (optional)
+                if (await reader.NextResultAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        dailyTrend.Add(new
+                        {
+                            paymentDate = reader.IsDBNull(reader.GetOrdinal("PaymentDate")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("PaymentDate")),
+                            transactionCount = reader.IsDBNull(reader.GetOrdinal("TransactionCount")) ? 0 : reader.GetInt32(reader.GetOrdinal("TransactionCount")),
+                            totalAmount = reader.IsDBNull(reader.GetOrdinal("TotalAmount")) ? 0m : reader.GetDecimal(reader.GetOrdinal("TotalAmount"))
                         });
                     }
                 }
@@ -591,6 +631,8 @@ namespace HotelApp.Web.Controllers
                         totalDueAmount
                     },
                     paymentMethods,
+                    billingHeads,
+                    dailyTrend,
                     payments
                 });
             }
