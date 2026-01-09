@@ -1105,11 +1105,40 @@ namespace HotelApp.Web.Controllers
                 var upiSettings = await _upiSettingsRepository.GetByBranchAsync(CurrentBranchID);
                 var hasQrConfig = upiSettings?.IsEnabled == true
                     && !string.IsNullOrWhiteSpace(upiSettings.UpiVpa);
+                var shouldShowDueQr = hasQrConfig && receiptBalanceDue > 0m;
 
-                ViewBag.ShowDueQr = hasQrConfig && receiptBalanceDue > 0m;
-                ViewBag.DueQrUrl = (hasQrConfig && receiptBalanceDue > 0m)
+                ViewBag.ShowDueQr = shouldShowDueQr;
+                ViewBag.DueQrUrl = shouldShowDueQr
                     ? Url.Action(nameof(DueQr), "Booking", new { bookingNumber }, protocol: Request.Scheme)
                     : null;
+
+                string? dueQrInlineDataUrl = null;
+                if (shouldShowDueQr && upiSettings != null)
+                {
+                    try
+                    {
+                        var note = (_paymentQrOptions.NoteTemplate ?? "Booking {bookingNumber}")
+                            .Replace("{bookingNumber}", booking.BookingNumber);
+                        var payUri = BuildUpiPayUri(
+                            upiSettings.UpiVpa!,
+                            upiSettings.PayeeName,
+                            receiptBalanceDue,
+                            _paymentQrOptions.Currency,
+                            note);
+
+                        using var generator = new QRCodeGenerator();
+                        using var data = generator.CreateQrCode(payUri, QRCodeGenerator.ECCLevel.Q);
+                        var qr = new PngByteQRCode(data);
+                        var pngBytes = qr.GetGraphic(pixelsPerModule: 8);
+                        dueQrInlineDataUrl = $"data:image/png;base64,{Convert.ToBase64String(pngBytes)}";
+                    }
+                    catch
+                    {
+                        // Inline QR is best-effort; fall back to hosted endpoint when available.
+                    }
+                }
+
+                ViewBag.DueQrInlineDataUrl = dueQrInlineDataUrl;
 
                 var assignedRooms = await _bookingRepository.GetAssignedRoomNumbersAsync(booking.Id);
                 ViewBag.AssignedRooms = assignedRooms;
@@ -1139,7 +1168,7 @@ namespace HotelApp.Web.Controllers
                     }
                 }
 
-                var html = await _razorViewToStringRenderer.RenderViewToStringAsync(this, "Receipt", booking);
+                var html = await _razorViewToStringRenderer.RenderViewToStringAsync(this, "ReceiptEmail", booking);
 
                 var subject = $"Booking Receipt - {booking.BookingNumber}";
                 await _mailSender.SendEmailAsync(CurrentBranchID, toEmail, subject, html);

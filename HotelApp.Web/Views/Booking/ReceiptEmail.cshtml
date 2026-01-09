@@ -1,0 +1,507 @@
+@model HotelApp.Web.Models.Booking
+@{
+    Layout = null;
+    ViewData["Title"] = $"Booking Receipt - {Model.BookingNumber}";
+
+    var hotelSettings = ViewBag.HotelSettings as HotelApp.Web.Models.HotelSettings;
+    var payments = ViewBag.Payments as IEnumerable<HotelApp.Web.Models.BookingPayment>;
+    var totalPaid = payments?.Sum(p => p.Amount) ?? 0m;
+    var receiptIssueDate = DateTime.Now;
+
+    // Room service context
+    var roomServiceLines = ViewBag.RoomServiceLines as IEnumerable<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>
+        ?? Enumerable.Empty<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>();
+    var roomServiceLinesList = roomServiceLines.ToList();
+    var hasRoomServices = roomServiceLinesList.Any();
+    var rsOrders = roomServiceLinesList.GroupBy(x => x.OrderId).Select(g => g.First()).ToList();
+    var rsActualBillTotal = rsOrders.Sum(x => x.ActualBillAmount);
+    var rsGstTotal = rsOrders.Sum(x => x.GSTAmount);
+    var rsCgstTotal = rsOrders.Sum(x => x.CGSTAmount);
+    var rsSgstTotal = rsOrders.Sum(x => x.SGSTAmount);
+
+    // Other charges context
+    var bookingOtherCharges = ViewBag.BookingOtherCharges as IEnumerable<HotelApp.Web.Repositories.BookingOtherChargeDetailRow>
+        ?? Enumerable.Empty<HotelApp.Web.Repositories.BookingOtherChargeDetailRow>();
+    var hasOtherCharges = bookingOtherCharges.Any();
+    var ocAmountTotal = bookingOtherCharges.Sum(x => x.Rate * (x.Qty <= 0 ? 1 : x.Qty));
+    var ocGstTotal = bookingOtherCharges.Sum(x => x.GSTAmount);
+    var ocCgstTotal = bookingOtherCharges.Sum(x => x.CGSTAmount);
+    var ocSgstTotal = bookingOtherCharges.Sum(x => x.SGSTAmount);
+    var ocGrandTotal = ocAmountTotal + ocGstTotal;
+
+    var receiptAdjustedGrandTotal = ViewBag.ReceiptAdjustedGrandTotal is decimal serverGrandTotal
+        ? serverGrandTotal
+        : (Model.TotalAmount + ocGrandTotal + rsActualBillTotal);
+
+    var totalRoundOffApplied = payments?.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m) ?? 0m;
+    var appliedToBalanceFromPayments = payments?.Sum(p =>
+        p.Amount + p.DiscountAmount + (p.IsRoundOffApplied ? p.RoundOffAmount : 0m)
+    ) ?? 0m;
+
+    var receiptAdjustedBalanceDueRaw = receiptAdjustedGrandTotal - appliedToBalanceFromPayments;
+    var receiptAdjustedBalanceDueComputed = Math.Max(0m, Math.Round(receiptAdjustedBalanceDueRaw, 2, MidpointRounding.AwayFromZero));
+    var receiptAdjustedBalanceDue = ViewBag.ReceiptAdjustedBalanceDue is decimal serverBalanceDue
+        ? serverBalanceDue
+        : receiptAdjustedBalanceDueComputed;
+
+    var showDueQr = ViewBag.ShowDueQr is bool b && b;
+    var dueQrUrl = ViewBag.DueQrUrl as string;
+    var dueQrInlineDataUrl = ViewBag.DueQrInlineDataUrl as string;
+    var qrImageSrc = !string.IsNullOrWhiteSpace(dueQrInlineDataUrl)
+        ? dueQrInlineDataUrl
+        : dueQrUrl;
+    var hasDueQrImage = showDueQr && !string.IsNullOrWhiteSpace(qrImageSrc);
+    var showDueQrBlock = receiptAdjustedBalanceDue > 0;
+
+    var assignedRooms = (ViewBag.AssignedRooms as IEnumerable<string>)?.ToList() ?? new List<string>();
+    var hasAssignedRooms = assignedRooms.Any();
+
+    // Night totals reused from the printable view (condensed for email).
+    var roomNightsForTotals = hasAssignedRooms
+        ? (Model.RoomNights ?? new List<HotelApp.Web.Models.BookingRoomNight>()).Cast<dynamic>().ToList()
+        : (Model.ReservationRoomNights ?? new List<HotelApp.Web.Models.ReservationRoomNight>()).Cast<dynamic>().ToList();
+    var hasNightBreakdownForTotals = roomNightsForTotals.Any();
+    var roomsForTotals = Model.RequiredRooms > 0 ? Model.RequiredRooms : 1;
+    var distinctDatesForTotals = roomNightsForTotals.Select(n => n.StayDate.Date).Distinct().Count();
+    var rowsPerDateForTotals = distinctDatesForTotals > 0 ? (decimal)roomNightsForTotals.Count / distinctDatesForTotals : 0m;
+    var roomNightsIncludeAllRooms = hasNightBreakdownForTotals && roomsForTotals > 1 && rowsPerDateForTotals > 1m;
+    var roomMultiplierForTotals = roomNightsIncludeAllRooms ? 1 : roomsForTotals;
+
+    var hasNightPricingColumns = hasNightBreakdownForTotals
+        && roomNightsForTotals.Any(n => n.ActualBaseRate > 0 || n.DiscountAmount > 0);
+
+    var afterDiscountTotal = hasNightBreakdownForTotals
+        ? ((decimal)roomNightsForTotals.Sum(n => (decimal)n.RateAmount) * roomMultiplierForTotals)
+        : Model.BaseAmount;
+
+    var taxTotal = hasNightBreakdownForTotals
+        ? ((decimal)roomNightsForTotals.Sum(n => (decimal)n.TaxAmount) * roomMultiplierForTotals)
+        : Model.TaxAmount;
+
+    var cgstTotal = hasNightBreakdownForTotals
+        ? ((decimal)roomNightsForTotals.Sum(n => (decimal)n.CGSTAmount) * roomMultiplierForTotals)
+        : Model.CGSTAmount;
+
+    var sgstTotal = hasNightBreakdownForTotals
+        ? ((decimal)roomNightsForTotals.Sum(n => (decimal)n.SGSTAmount) * roomMultiplierForTotals)
+        : Model.SGSTAmount;
+
+    var discountAmount = hasNightPricingColumns
+        ? Math.Round(((decimal)roomNightsForTotals.Sum(n => (decimal)n.DiscountAmount) * roomMultiplierForTotals), 2, MidpointRounding.AwayFromZero)
+        : Model.DiscountAmount;
+
+    var discountPercentForTotals = ViewBag.DiscountPercentage != null ? (decimal)ViewBag.DiscountPercentage : 0m;
+    if (!hasNightPricingColumns && hasNightBreakdownForTotals && discountPercentForTotals > 0)
+    {
+        var divisor = 1 - (discountPercentForTotals / 100m);
+        if (divisor > 0)
+        {
+            var originalTotal = Math.Round(afterDiscountTotal / divisor, 2, MidpointRounding.AwayFromZero);
+            discountAmount = Math.Round(originalTotal - afterDiscountTotal, 2, MidpointRounding.AwayFromZero);
+        }
+    }
+
+    var preDiscountTotal = afterDiscountTotal + discountAmount;
+
+    var adjustedCgstTotal = cgstTotal + ocCgstTotal + rsCgstTotal;
+    var adjustedSgstTotal = sgstTotal + ocSgstTotal + rsSgstTotal;
+    var adjustedTaxTotal = taxTotal + ocGstTotal + rsGstTotal;
+    var adjustedTotalAmount = Math.Round(afterDiscountTotal + taxTotal + ocGrandTotal + rsActualBillTotal, 2, MidpointRounding.AwayFromZero);
+
+    var inclusions = (Model.RoomType?.Amenities ?? string.Empty)
+        .Split(',', StringSplitOptions.RemoveEmptyEntries)
+        .Select(x => x.Trim())
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    var baseUrl = string.Empty;
+    if (Context?.Request != null)
+    {
+        var request = Context.Request;
+        baseUrl = $"{request.Scheme}://{request.Host}";
+    }
+
+    string ResolveAbsoluteAsset(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return string.Empty;
+        }
+
+        return url.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+            ? url
+            : string.IsNullOrWhiteSpace(baseUrl)
+                ? url
+                : $"{baseUrl}{url}";
+    }
+
+    var logoUrl = ResolveAbsoluteAsset(hotelSettings?.LogoPath);
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <style>
+        body { margin: 0; padding: 0; background: #f4f6fb; font-family: 'Inter', 'Segoe UI', Arial, sans-serif; color: #111827; }
+        table { border-collapse: collapse; }
+        .main-container { width: 100%; background: #f4f6fb; padding: 24px 12px; }
+        .card { max-width: 640px; width: 100%; background: #ffffff; border-radius: 12px; box-shadow: 0 6px 24px rgba(15, 23, 42, 0.08); overflow: hidden; }
+        .section-title { font-size: 15px; font-weight: 700; color: #111827; margin: 0 0 8px 0; }
+        .divider { border-top: 1px solid #e5e7eb; margin: 24px 0; }
+        .status-chip { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+        .status-paid { background: #dcfce7; color: #166534; }
+        .status-due { background: #fee2e2; color: #b91c1c; }
+        .summary-table td { padding: 4px 0; font-size: 13px; }
+        .summary-label { color: #6b7280; }
+        .summary-value { color: #111827; font-weight: 600; }
+        .pill { border-radius: 999px; background: #1d4ed8; color: #fff; padding: 6px 14px; font-size: 12px; font-weight: 600; }
+        .border-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; }
+        .table-head { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+        .table-cell { font-size: 13px; color: #111827; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
+        .table-cell-last { border-bottom: none; }
+        .amount { font-variant-numeric: tabular-nums; }
+        @@media only screen and (max-width: 600px) {
+            .card { border-radius: 0; box-shadow: none; }
+            .stack-column { display: block !important; width: 100% !important; }
+            .pad-responsive { padding: 16px !important; }
+        }
+    </style>
+</head>
+<body>
+    <table role="presentation" class="main-container" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+            <td align="center">
+                <table role="presentation" class="card" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td class="pad-responsive" style="padding: 28px 32px 16px 32px; background: linear-gradient(135deg, #4338ca, #6d28d9); color: #fff;">
+                            <table role="presentation" width="100%">
+                                <tr>
+                                    <td style="width: 72px; vertical-align: top;">
+                                        @if (!string.IsNullOrWhiteSpace(logoUrl))
+                                        {
+                                            <img src="@logoUrl" alt="Hotel Logo" style="max-width: 72px; border-radius: 10px; display: block;" />
+                                        }
+                                    </td>
+                                    <td style="text-align: right;">
+                                        <div style="font-size: 22px; font-weight: 700; letter-spacing: -0.3px;">@(hotelSettings?.HotelName ?? "Hotel Receipt")</div>
+                                        @if (!string.IsNullOrWhiteSpace(hotelSettings?.GSTCode))
+                                        {
+                                            <div style="font-size: 12px; margin-top: 4px;">GSTIN: @hotelSettings.GSTCode</div>
+                                        }
+                                        <div style="margin-top: 12px; font-size: 14px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase;">Booking Receipt</div>
+                                    </td>
+                                </tr>
+                            </table>
+                            <table role="presentation" width="100%" style="margin-top: 20px;">
+                                <tr>
+                                    <td class="stack-column" style="color: #c7d2fe; font-size: 13px;">
+                                        Booking No.<br /><span style="font-size: 20px; color: #fff; font-weight: 700;">@Model.BookingNumber</span>
+                                    </td>
+                                    <td class="stack-column" style="text-align: right;">
+                                        <span class="status-chip @(receiptAdjustedBalanceDue <= 0 ? "status-paid" : "status-due")">
+                                            @(receiptAdjustedBalanceDue <= 0 ? "Paid" : "Due")
+                                        </span>
+                                        <div style="margin-top: 6px; font-size: 13px;">Issued on @receiptIssueDate.ToString("dd MMM yyyy hh:mm tt")</div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="pad-responsive" style="padding: 24px 32px;">
+                            <table role="presentation" width="100%" style="margin-bottom: 18px;">
+                                <tr>
+                                    <td class="stack-column" style="width: 50%; vertical-align: top;">
+                                        <div class="section-title">Stay Details</div>
+                                        <table class="summary-table" role="presentation" width="100%">
+                                            <tr>
+                                                <td class="summary-label">Room</td>
+                                                <td class="summary-value">@(Model.RoomType?.TypeName ?? "-"), @Model.RequiredRooms Room(s)</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="summary-label">Guests</td>
+                                                <td class="summary-value">@Model.Adults Adult(s), @Model.Children Child(ren)</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="summary-label">Check-in</td>
+                                                <td class="summary-value">@Model.CheckInDate.ToString("dd MMM yyyy")</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="summary-label">Check-out</td>
+                                                <td class="summary-value">@Model.CheckOutDate.ToString("dd MMM yyyy")</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="summary-label">Nights</td>
+                                                <td class="summary-value">@Model.Nights</td>
+                                            </tr>
+                                            @if (Model.ActualCheckInDate.HasValue)
+                                            {
+                                                <tr>
+                                                    <td class="summary-label">Actual Check-in</td>
+                                                    <td class="summary-value">@Model.ActualCheckInDate.Value.ToString("dd MMM yyyy hh:mm tt")</td>
+                                                </tr>
+                                            }
+                                            @if (Model.ActualCheckOutDate.HasValue)
+                                            {
+                                                <tr>
+                                                    <td class="summary-label">Actual Check-out</td>
+                                                    <td class="summary-value">@Model.ActualCheckOutDate.Value.ToString("dd MMM yyyy hh:mm tt")</td>
+                                                </tr>
+                                            }
+                                            @if (hasAssignedRooms)
+                                            {
+                                                <tr>
+                                                    <td class="summary-label">Assigned Room(s)</td>
+                                                    <td class="summary-value">@string.Join(", ", assignedRooms)</td>
+                                                </tr>
+                                            }
+                                        </table>
+                                    </td>
+                                    <td class="stack-column" style="width: 50%; vertical-align: top; padding-left: 20px;">
+                                        <div class="section-title">Primary Guest</div>
+                                        <table class="summary-table" role="presentation" width="100%">
+                                            <tr>
+                                                <td class="summary-label">Name</td>
+                                                <td class="summary-value">@Model.PrimaryGuestFirstName @Model.PrimaryGuestLastName</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="summary-label">Phone</td>
+                                                <td class="summary-value">@Model.PrimaryGuestPhone</td>
+                                            </tr>
+                                            @if (!string.IsNullOrWhiteSpace(Model.PrimaryGuestEmail))
+                                            {
+                                                <tr>
+                                                    <td class="summary-label">Email</td>
+                                                    <td class="summary-value">@Model.PrimaryGuestEmail</td>
+                                                </tr>
+                                            }
+                                            <tr>
+                                                <td class="summary-label">Channel</td>
+                                                <td class="summary-value">@Model.Channel</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="summary-label">Source</td>
+                                                <td class="summary-value">@Model.Source</td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <div class="border-card" style="margin-bottom: 20px;">
+                                <table role="presentation" width="100%">
+                                    <tr>
+                                        <td class="stack-column" style="width: 50%; vertical-align: top;">
+                                            <div class="section-title" style="margin-bottom: 12px;">Charges Overview</div>
+                                            <table role="presentation" width="100%">
+                                                <tr>
+                                                    <td class="summary-label">Room Total (pre-discount)</td>
+                                                    <td class="summary-value amount">₹ @preDiscountTotal.ToString("N2")</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="summary-label">Discount</td>
+                                                    <td class="summary-value amount" style="color: #dc2626;">- ₹ @discountAmount.ToString("N2")</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="summary-label">Stay GST</td>
+                                                    <td class="summary-value amount">₹ @adjustedTaxTotal.ToString("N2")</td>
+                                                </tr>
+                                                @if (hasOtherCharges)
+                                                {
+                                                    <tr>
+                                                        <td class="summary-label">Other Charges</td>
+                                                        <td class="summary-value amount">₹ @ocGrandTotal.ToString("N2")</td>
+                                                    </tr>
+                                                }
+                                                @if (hasRoomServices)
+                                                {
+                                                    <tr>
+                                                        <td class="summary-label">Room Service</td>
+                                                        <td class="summary-value amount">₹ @rsActualBillTotal.ToString("N2")</td>
+                                                    </tr>
+                                                }
+                                                <tr>
+                                                    <td class="summary-label">Round Off</td>
+                                                    <td class="summary-value amount">₹ @totalRoundOffApplied.ToString("N2")</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="summary-label">Grand Total</td>
+                                                    <td class="summary-value amount" style="font-size: 16px;">₹ @receiptAdjustedGrandTotal.ToString("N2")</td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                        <td class="stack-column" style="width: 50%; vertical-align: top; padding-left: 20px;">
+                                            <div class="section-title" style="margin-bottom: 12px;">Balance</div>
+                                            <table role="presentation" width="100%">
+                                                <tr>
+                                                    <td class="summary-label">Amount Paid</td>
+                                                    <td class="summary-value amount" style="color: #059669;">₹ @totalPaid.ToString("N2")</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="summary-label">Balance Due</td>
+                                                    <td class="summary-value amount" style="color: @(receiptAdjustedBalanceDue <= 0 ? "#059669" : "#dc2626"); font-size: 18px;">₹ @receiptAdjustedBalanceDue.ToString("N2")</td>
+                                                </tr>
+                                            </table>
+                                            @if (showDueQrBlock)
+                                            {
+                                                <table role="presentation" width="100%" style="margin-top: 12px;">
+                                                    <tr>
+                                                        <td style="width: 120px;">
+                                                            @if (hasDueQrImage)
+                                                            {
+                                                                <img src="@qrImageSrc" alt="Scan to pay due" width="120" height="120" style="display: block; border: 1px solid #e5e7eb; border-radius: 12px; padding: 8px;" />
+                                                            }
+                                                        </td>
+                                                        <td style="font-size: 12px; color: #4b5563;">
+                                                            <strong>Scan to pay the balance.</strong><br />
+                                                            Booking: @Model.BookingNumber<br />
+                                                            Due: ₹ @receiptAdjustedBalanceDue.ToString("N2")
+                                                            @if (!hasDueQrImage)
+                                                            {
+                                                                <div style="margin-top: 6px;">Configure UPI settings to enable QR collection.</div>
+                                                            }
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            }
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            @if (payments != null && payments.Any())
+                            {
+                                <div style="margin-bottom: 20px;">
+                                    <div class="section-title">Payment Summary</div>
+                                    <table role="presentation" width="100%">
+                                        <tr>
+                                            <td class="table-head">Receipt</td>
+                                            <td class="table-head">Method</td>
+                                            <td class="table-head">Reference</td>
+                                            <td class="table-head" style="text-align: right;">Amount</td>
+                                        </tr>
+                                        @foreach (var g in payments
+                                            .GroupBy(p => string.IsNullOrWhiteSpace(p.ReceiptGroupNumber) ? (p.ReceiptNumber ?? "N/A") : p.ReceiptGroupNumber)
+                                            .OrderByDescending(g => g.Max(x => x.PaidOn)))
+                                        {
+                                            var first = g.OrderBy(x => x.Id).FirstOrDefault();
+                                            var receiptNo = g.Key ?? "N/A";
+                                            var paidOn = first?.PaidOn ?? g.Max(x => x.PaidOn);
+                                            var method = first?.PaymentMethod ?? "-";
+                                            var reference = first?.PaymentReference ?? "-";
+                                            var amount = g.Sum(x => x.Amount);
+                                            <tr>
+                                                <td class="table-cell">
+                                                    <strong>@receiptNo</strong><br />
+                                                    <span style="color: #6b7280; font-size: 12px;">@paidOn.ToString("dd MMM yyyy hh:mm tt")</span>
+                                                </td>
+                                                <td class="table-cell">@method</td>
+                                                <td class="table-cell">@reference</td>
+                                                <td class="table-cell" style="text-align: right;">₹ @amount.ToString("N2")</td>
+                                            </tr>
+                                        }
+                                        <tr>
+                                            <td colspan="4" class="table-cell table-cell-last" style="text-align: right; font-weight: 700; padding-top: 12px;">Total Paid: ₹ @totalPaid.ToString("N2")</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            }
+
+                            @if (hasOtherCharges)
+                            {
+                                <div style="margin-bottom: 20px;">
+                                    <div class="section-title">Other Charges</div>
+                                    <table role="presentation" width="100%">
+                                        <tr>
+                                            <td class="table-head">Particulars</td>
+                                            <td class="table-head" style="text-align: center;">Qty</td>
+                                            <td class="table-head" style="text-align: right;">Amount</td>
+                                        </tr>
+                                        @foreach (var oc in bookingOtherCharges)
+                                        {
+                                            var qty = oc.Qty <= 0 ? 1 : oc.Qty;
+                                            var amount = oc.Rate * qty + oc.GSTAmount;
+                                            <tr>
+                                                <td class="table-cell">
+                                                    <strong>@oc.Name</strong>
+                                                    @if (!string.IsNullOrWhiteSpace(oc.Note))
+                                                    {
+                                                        <br /><span style="color: #6b7280; font-size: 12px;">Note: @oc.Note</span>
+                                                    }
+                                                </td>
+                                                <td class="table-cell" style="text-align: center;">@qty</td>
+                                                <td class="table-cell" style="text-align: right;">₹ @amount.ToString("N2")</td>
+                                            </tr>
+                                        }
+                                    </table>
+                                </div>
+                            }
+
+                            @if (hasRoomServices)
+                            {
+                                <div style="margin-bottom: 20px;">
+                                    <div class="section-title">Room Service Summary</div>
+                                    <table role="presentation" width="100%">
+                                        <tr>
+                                            <td class="table-head">Order</td>
+                                            <td class="table-head">Date</td>
+                                            <td class="table-head" style="text-align: right;">Amount</td>
+                                        </tr>
+                                        @foreach (var rs in rsOrders.OrderByDescending(x => x.OrderDate))
+                                        {
+                                            <tr>
+                                                <td class="table-cell">#@rs.OrderNo</td>
+                                                <td class="table-cell">@rs.OrderDate.ToString("dd MMM yyyy hh:mm tt")</td>
+                                                <td class="table-cell" style="text-align: right;">₹ @rs.ActualBillAmount.ToString("N2")</td>
+                                            </tr>
+                                        }
+                                        <tr>
+                                            <td colspan="3" class="table-cell table-cell-last" style="text-align: right; font-weight: 700; padding-top: 12px;">Total: ₹ @rsActualBillTotal.ToString("N2")</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            }
+
+                            <div class="border-card" style="background: #f9fafb;">
+                                <div class="section-title" style="margin-bottom: 8px;">Inclusions</div>
+                                @if (inclusions.Any())
+                                {
+                                    <ul style="margin: 0; padding-left: 18px; color: #374151;">
+                                        @foreach (var item in inclusions)
+                                        {
+                                            <li style="margin-bottom: 6px;">@item</li>
+                                        }
+                                    </ul>
+                                }
+                                else
+                                {
+                                    <div style="font-size: 13px; color: #6b7280;">No inclusions configured for this room type.</div>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background: #0f172a; color: #cbd5f5; text-align: center; padding: 18px 12px; font-size: 12px;">
+                            @if (hotelSettings != null)
+                            {
+                                <div>@hotelSettings.Address</div>
+                                <div>Phone: @hotelSettings.ContactNumber1 | Email: @hotelSettings.EmailAddress</div>
+                                @if (!string.IsNullOrEmpty(hotelSettings.Website))
+                                {
+                                    <div>Website: @hotelSettings.Website</div>
+                                }
+                            }
+                            <div style="margin-top: 8px; font-weight: 600; color: #e0e7ff;">This is an automated message from @(hotelSettings?.HotelName ?? "our hotel").</div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
