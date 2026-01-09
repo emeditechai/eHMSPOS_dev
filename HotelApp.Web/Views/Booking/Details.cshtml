@@ -2037,21 +2037,31 @@
                             var due = row.Due;
                             var isDisabled = due <= 0m;
                             <div class="billing-head-row" data-head-code="@code" data-due="@due">
-                                <label class="billing-head-label">
-                                    <input class="billing-head-toggle" type="checkbox" @(isDisabled ? "disabled" : "checked") />
-                                    <span class="billing-head-name">@row.Head.Name (@code)</span>
-                                </label>
-                                <div class="billing-head-due">Due: ₹@due.ToString("N2")</div>
-                                <input type="number"
-                                       class="form-control billing-head-amount"
-                                       data-head-code="@code"
-                                       data-due="@due"
-                                       min="0"
-                                       max="@due"
-                                       step="0.01"
-                                       value="@due.ToString("0.00")"
-                                       @(isDisabled ? "readonly" : string.Empty) />
-                                <small class="text-muted billing-head-discount-note" data-head-code="@code" style="display:block; min-width: 140px;"></small>
+                                <div class="billing-head-info">
+                                    <label class="billing-head-label">
+                                        <input class="billing-head-toggle" type="checkbox" @(isDisabled ? "disabled" : "checked") />
+                                        <span class="billing-head-name">@row.Head.Name (@code)</span>
+                                    </label>
+                                    <div class="billing-head-due">Due: ₹@due.ToString("N2")</div>
+                                </div>
+                                <div class="billing-head-input-wrap">
+                                    <input type="number"
+                                           class="form-control billing-head-amount"
+                                           data-head-code="@code"
+                                           data-due="@due"
+                                           min="0"
+                                           max="@due"
+                                           step="0.01"
+                                           inputmode="decimal"
+                                           value="@due.ToString("0.00")"
+                                           @(isDisabled ? "readonly" : string.Empty) />
+                                    <div class="billing-head-quick">
+                                        <button type="button" class="billing-head-quick-btn" data-action="zero" title="Clear allocation">Clear</button>
+                                        <button type="button" class="billing-head-quick-btn" data-action="half" title="Allocate half of the due">50%</button>
+                                        <button type="button" class="billing-head-quick-btn" data-action="full" title="Allocate full due amount">Due</button>
+                                    </div>
+                                    <small class="text-muted billing-head-discount-note" data-head-code="@code" style="display:block; min-width: 140px;"></small>
+                                </div>
                             </div>
                         }
                     </div>
@@ -2710,9 +2720,15 @@
 
     #paymentModal .billing-head-row {
         display: grid;
-        grid-template-columns: 1fr 110px 140px;
-        gap: 0.5rem;
-        align-items: center;
+        grid-template-columns: minmax(0, 1fr) 240px;
+        gap: 0.75rem;
+        align-items: flex-start;
+    }
+
+    #paymentModal .billing-head-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
     }
 
     #paymentModal .billing-head-label {
@@ -2723,12 +2739,12 @@
     #paymentModal .billing-head-due {
         font-size: 0.8rem;
         color: #6b7280;
-        text-align: right;
     }
 
-    #paymentModal .billing-head-amount {
-        max-width: 160px;
-        justify-self: end;
+    #paymentModal .billing-head-input-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
     }
 
     #paymentModal .text-muted {
@@ -2943,10 +2959,16 @@
     }
 
     .billing-head-row {
-        display: flex;
-        align-items: center;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 240px;
         gap: 0.75rem;
-        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .billing-head-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
     }
 
     .billing-head-label {
@@ -2954,7 +2976,7 @@
         align-items: center;
         gap: 0.5rem;
         margin: 0;
-        flex: 1;
+        flex-wrap: wrap;
     }
 
     .billing-head-name {
@@ -2965,10 +2987,41 @@
     .billing-head-due {
         color: #6b7280;
         font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .billing-head-input-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
     }
 
     .billing-head-amount {
-        max-width: 180px;
+        max-width: 100%;
+    }
+
+    .billing-head-quick {
+        display: flex;
+        gap: 0.35rem;
+        flex-wrap: wrap;
+    }
+
+    .billing-head-quick-btn {
+        border: 1px solid #d1d5db;
+        border-radius: 999px;
+        padding: 0.2rem 0.65rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: #fff;
+        color: #374151;
+        cursor: pointer;
+        transition: background 0.2s, border-color 0.2s;
+    }
+
+    .billing-head-quick-btn:hover {
+        border-color: #818cf8;
+        background: rgba(129, 140, 248, 0.08);
+        color: #312e81;
     }
 
     .form-group label {
@@ -3207,6 +3260,48 @@
         updatePaymentHint();
         return { allocations, total };
     }
+
+    function applyBillingHeadQuickAction(row, action) {
+        if (!row) return;
+        const amountInput = row.querySelector('.billing-head-amount');
+        if (!amountInput) return;
+
+        const due = parseFloat(amountInput.dataset.due || row.dataset.due || '0') || 0;
+        let nextValue = 0;
+
+        switch ((action || '').toLowerCase()) {
+            case 'half':
+                nextValue = due / 2;
+                break;
+            case 'full':
+                nextValue = due;
+                break;
+            default:
+                nextValue = 0;
+        }
+
+        nextValue = round2(nextValue);
+        amountInput.value = nextValue.toFixed(2);
+
+        const toggle = row.querySelector('.billing-head-toggle');
+        if (toggle && !toggle.disabled) {
+            if (nextValue > 0 && !toggle.checked) {
+                toggle.checked = true;
+            } else if (nextValue === 0 && toggle.checked) {
+                toggle.checked = false;
+            }
+        }
+
+        syncBillingHeadGrossFromUI();
+    }
+
+    document.addEventListener('click', function (event) {
+        const quickButton = event.target.closest('.billing-head-quick-btn');
+        if (!quickButton) return;
+        event.preventDefault();
+        const row = quickButton.closest('.billing-head-row');
+        applyBillingHeadQuickAction(row, quickButton.dataset.action);
+    });
 
     function updateAmountMaxConstraint() {
         const amountEl = document.getElementById('amount');
