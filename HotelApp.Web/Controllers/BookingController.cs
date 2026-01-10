@@ -42,6 +42,7 @@ namespace HotelApp.Web.Controllers
         private readonly IUpiSettingsRepository _upiSettingsRepository;
         private readonly IMailSender _mailSender;
         private readonly IRazorViewToStringRenderer _razorViewToStringRenderer;
+        private readonly IBookingReceiptTemplateRepository _bookingReceiptTemplateRepository;
 
         public BookingController(
             IBookingRepository bookingRepository,
@@ -57,7 +58,8 @@ namespace HotelApp.Web.Controllers
             IOptions<PaymentQrOptions> paymentQrOptions,
             IUpiSettingsRepository upiSettingsRepository,
             IMailSender mailSender,
-            IRazorViewToStringRenderer razorViewToStringRenderer)
+            IRazorViewToStringRenderer razorViewToStringRenderer,
+            IBookingReceiptTemplateRepository bookingReceiptTemplateRepository)
         {
             _bookingRepository = bookingRepository;
             _roomRepository = roomRepository;
@@ -73,6 +75,7 @@ namespace HotelApp.Web.Controllers
             _upiSettingsRepository = upiSettingsRepository;
             _mailSender = mailSender;
             _razorViewToStringRenderer = razorViewToStringRenderer;
+            _bookingReceiptTemplateRepository = bookingReceiptTemplateRepository;
         }
 
         private static string GetFriendlyMailErrorMessage(Exception ex)
@@ -1040,7 +1043,29 @@ namespace HotelApp.Web.Controllers
                 }
             }
 
-            return View(booking);
+            // Pick receipt template per-branch (default: classic)
+            string templateKey;
+            try
+            {
+                var templateSetting = await _bookingReceiptTemplateRepository.GetByBranchAsync(CurrentBranchID);
+                templateKey = string.IsNullOrWhiteSpace(templateSetting?.TemplateKey)
+                    ? "classic"
+                    : templateSetting!.TemplateKey.Trim().ToLowerInvariant();
+            }
+            catch
+            {
+                templateKey = "classic";
+            }
+
+            var viewName = templateKey switch
+            {
+                "modern" => "Receipt_Modern",
+                "compact" => "Receipt_Compact",
+                "minimal" => "Receipt_Minimal",
+                _ => "Receipt"
+            };
+
+            return View(viewName, booking);
         }
 
         [HttpPost]

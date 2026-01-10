@@ -48,6 +48,7 @@ builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<IBillingHeadRepository, BillingHeadRepository>();
 builder.Services.AddScoped<IUpiSettingsRepository, UpiSettingsRepository>();
 builder.Services.AddScoped<IMailConfigurationRepository, MailConfigurationRepository>();
+builder.Services.AddScoped<IBookingReceiptTemplateRepository, BookingReceiptTemplateRepository>();
 
 builder.Services.AddScoped<IMailPasswordProtector, MailPasswordProtector>();
 builder.Services.AddScoped<IMailSender, MailSender>();

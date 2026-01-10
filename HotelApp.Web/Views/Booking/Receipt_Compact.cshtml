@@ -1,0 +1,226 @@
+@model HotelApp.Web.Models.Booking
+@{
+    ViewData["Title"] = $"Receipt - {Model.BookingNumber}";
+    Layout = null;
+    var hotelSettings = ViewBag.HotelSettings as HotelApp.Web.Models.HotelSettings;
+    var payments = ViewBag.Payments as IEnumerable<HotelApp.Web.Models.BookingPayment> ?? Enumerable.Empty<HotelApp.Web.Models.BookingPayment>();
+    var totalPaid = payments.Sum(x => x.Amount);
+
+    var roomServiceLines = ViewBag.RoomServiceLines as IEnumerable<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>
+        ?? Enumerable.Empty<HotelApp.Web.Repositories.RoomServiceSettlementLineRow>();
+    var roomServiceLinesList = roomServiceLines.ToList();
+    var rsOrders = roomServiceLinesList.GroupBy(x => x.OrderId).Select(g => g.First()).ToList();
+    var rsActualBillTotal = rsOrders.Sum(x => x.ActualBillAmount);
+
+    var bookingOtherCharges = ViewBag.BookingOtherCharges as IEnumerable<HotelApp.Web.Repositories.BookingOtherChargeDetailRow>
+        ?? Enumerable.Empty<HotelApp.Web.Repositories.BookingOtherChargeDetailRow>();
+    var ocAmountTotal = bookingOtherCharges.Sum(x => x.Rate * (x.Qty <= 0 ? 1 : x.Qty));
+    var ocGstTotal = bookingOtherCharges.Sum(x => x.GSTAmount);
+    var ocGrandTotal = ocAmountTotal + ocGstTotal;
+
+    var receiptAdjustedGrandTotal = ViewBag.ReceiptAdjustedGrandTotal is decimal serverGrandTotal
+        ? serverGrandTotal
+        : (Model.TotalAmount + ocGrandTotal + rsActualBillTotal);
+
+    var appliedToBalanceFromPayments = payments.Sum(p =>
+        p.Amount
+        + p.DiscountAmount
+        + (p.IsRoundOffApplied ? p.RoundOffAmount : 0m)
+    );
+
+    var receiptAdjustedBalanceDueRaw = receiptAdjustedGrandTotal - appliedToBalanceFromPayments;
+    var receiptAdjustedBalanceDueComputed = Math.Max(0m, Math.Round(receiptAdjustedBalanceDueRaw, 2, MidpointRounding.AwayFromZero));
+    var receiptAdjustedBalanceDue = ViewBag.ReceiptAdjustedBalanceDue is decimal serverBalanceDue
+        ? serverBalanceDue
+        : receiptAdjustedBalanceDueComputed;
+
+    var paymentDiscountTotal = payments.Sum(p => p.DiscountAmount);
+    var paymentRoundOffTotal = payments.Where(p => p.IsRoundOffApplied).Sum(p => p.RoundOffAmount);
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, Helvetica, sans-serif; color: #111; margin: 0; }
+        .wrap { max-width: 840px; margin: 0 auto; padding: 18px; }
+
+        .print-button {
+            position: fixed;
+            top: 14px;
+            right: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            border-radius: 999px;
+            border: 1px solid #ddd;
+            background: #111;
+            color: #fff;
+            font-weight: 800;
+            cursor: pointer;
+            z-index: 9999;
+        }
+
+        .print-button svg { display: block; }
+        .top { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+        .h1 { font-size: 18px; font-weight: 800; margin: 0; }
+        .muted { color: #555; font-size: 12px; }
+        hr { border: 0; border-top: 1px solid #ddd; margin: 12px 0; }
+        .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+        .box { border: 1px solid #ddd; padding: 10px; }
+        .k { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.04em; }
+        .v { font-size: 13px; font-weight: 700; margin-top: 4px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border-bottom: 1px solid #eee; padding: 6px 6px; font-size: 12px; }
+        th { text-transform: uppercase; font-size: 11px; color: #555; }
+        td.r, th.r { text-align: right; }
+        .tot { font-weight: 800; }
+        @@media print {
+            @@page { size: A4; margin: 10mm; }
+            .wrap { padding: 0; max-width: none; }
+            .print-button { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <button type="button" class="print-button" onclick="window.print()" aria-label="Print receipt">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 9V2h12v7" />
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+            <rect x="6" y="14" width="12" height="8" />
+        </svg>
+        Print
+    </button>
+    <div class="wrap">
+        <div class="top">
+            <div>
+                <p class="h1">@(string.IsNullOrWhiteSpace(hotelSettings?.HotelName) ? "LuxStay Hotel" : hotelSettings!.HotelName)</p>
+                <div class="muted">@hotelSettings?.Address</div>
+                <div class="muted">@hotelSettings?.ContactNumber1</div>
+                @if (!string.IsNullOrWhiteSpace(hotelSettings?.GSTCode))
+                {
+                    <div class="muted">GST: @hotelSettings!.GSTCode</div>
+                }
+            </div>
+            <div style="text-align:right;">
+                <div class="v">Receipt: @Model.BookingNumber</div>
+                <div class="muted">@DateTime.Now.ToString("dd MMM yyyy")</div>
+                <div class="muted">Status: @Model.Status • @Model.PaymentStatus</div>
+            </div>
+        </div>
+
+        <hr />
+
+        <div class="grid">
+            <div class="box">
+                <div class="k">Guest</div>
+                <div class="v">@($"{Model.PrimaryGuestFirstName} {Model.PrimaryGuestLastName}".Trim())</div>
+                <div class="muted">@Model.PrimaryGuestPhone</div>
+                <div class="muted">@(!string.IsNullOrWhiteSpace(Model.PrimaryGuestEmail) ? Model.PrimaryGuestEmail : "-")</div>
+                <div class="muted">Guests: @Model.Adults A / @Model.Children C</div>
+            </div>
+            <div class="box">
+                <div class="k">Stay</div>
+                <div class="v">@Model.CheckInDate.ToString("dd MMM yyyy") → @Model.CheckOutDate.ToString("dd MMM yyyy")</div>
+                <div class="muted">Nights: @Model.Nights</div>
+                @if (Model.ActualCheckInDate.HasValue || Model.ActualCheckOutDate.HasValue)
+                {
+                    <div class="muted">Actual: @(Model.ActualCheckInDate?.ToString("dd MMM, hh:mm tt") ?? "-") → @(Model.ActualCheckOutDate?.ToString("dd MMM, hh:mm tt") ?? "-")</div>
+                }
+            </div>
+            <div class="box">
+                <div class="k">Room</div>
+                <div class="v">@(Model.RoomType?.TypeName ?? "-")</div>
+                <div class="muted">Rooms: @Model.RequiredRooms</div>
+                @if (!string.IsNullOrWhiteSpace(Model.Channel))
+                {
+                    <div class="muted">Channel: @Model.Channel</div>
+                }
+            </div>
+        </div>
+
+        <hr />
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Head</th>
+                    <th class="r">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>Room (incl. taxes)</td><td class="r">₹@Model.TotalAmount.ToString("N2")</td></tr>
+                <tr><td>Other Charges (incl. GST)</td><td class="r">₹@ocGrandTotal.ToString("N2")</td></tr>
+                <tr><td>Room Service</td><td class="r">₹@rsActualBillTotal.ToString("N2")</td></tr>
+                <tr class="tot"><td>Grand Total</td><td class="r">₹@receiptAdjustedGrandTotal.ToString("N2")</td></tr>
+                <tr class="tot"><td>Paid</td><td class="r">₹@totalPaid.ToString("N2")</td></tr>
+                <tr class="tot"><td>Payment Discounts</td><td class="r">₹@paymentDiscountTotal.ToString("N2")</td></tr>
+                <tr class="tot"><td>Round-off</td><td class="r">₹@paymentRoundOffTotal.ToString("N2")</td></tr>
+                <tr class="tot"><td>Due</td><td class="r">₹@receiptAdjustedBalanceDue.ToString("N2")</td></tr>
+            </tbody>
+        </table>
+
+        @if (payments.Any())
+        {
+            <hr />
+            <div class="k" style="margin-bottom:6px;">Payments</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Method</th>
+                        <th>Ref</th>
+                        <th class="r">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in payments.OrderBy(x => x.PaidOn))
+                    {
+                        <tr>
+                            <td>@p.PaidOn.ToString("dd MMM yyyy")</td>
+                            <td>@p.PaymentMethod</td>
+                            <td>@(string.IsNullOrWhiteSpace(p.PaymentReference) ? "-" : p.PaymentReference)</td>
+                            <td class="r">₹@p.Amount.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        @if (bookingOtherCharges.Any())
+        {
+            <hr />
+            <div class="k" style="margin-bottom:6px;">Other Charges</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Date</th>
+                        <th>Name</th>
+                        <th class="r">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var oc in bookingOtherCharges)
+                    {
+                        var safeQty = oc.Qty <= 0 ? 1 : oc.Qty;
+                        var total = (oc.Rate * safeQty) + oc.GSTAmount;
+                        <tr>
+                            <td><strong>@oc.Code</strong></td>
+                            <td>@oc.ChargeDate.ToString("dd MMM yyyy")</td>
+                            <td>@oc.Name</td>
+                            <td class="r">₹@total.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <div class="muted" style="text-align:center; margin-top: 14px;">Thank you.</div>
+    </div>
+</body>
+</html>

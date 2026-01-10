@@ -20,7 +20,7 @@
         var isLoginPage = controller.Equals("Account", StringComparison.OrdinalIgnoreCase) && action.Equals("Login", StringComparison.OrdinalIgnoreCase);
         var displayName = User.FindFirst("displayName")?.Value ?? User.Identity?.Name ?? "Guest";
         bool roomsNavActive = controller is "Rooms" or "RoomMaster" or "RateMaster" or "FloorMaster" or "RoomTypeMaster" or "AmenitiesMaster";
-        bool utilityNavActive = controller is "OtherChargesMaster" or "UpiSettings";
+        bool utilityNavActive = controller is "OtherChargesMaster" or "UpiSettings" or "BookingReceiptTemplate";
     }
 
     @if (!isLoginPage)
@@ -169,6 +169,11 @@
                             <a asp-controller="UpiSettings" asp-action="Index" class="@(controller == "UpiSettings" ? "active" : string.Empty)">
                                 <i class="fas fa-qrcode"></i>
                                 <span>UPI Settings</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+                            <a asp-controller="BookingReceiptTemplate" asp-action="Index" class="@(controller == "BookingReceiptTemplate" ? "active" : string.Empty)">
+                                <i class="fas fa-file-invoice"></i>
+                                <span>Booking Receipt Template Configuration</span>
                                 <i class="fas fa-arrow-right dropdown-arrow"></i>
                             </a>
                         </div>

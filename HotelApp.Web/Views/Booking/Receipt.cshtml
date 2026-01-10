@@ -775,15 +775,18 @@
                 padding: 0;
                 margin: 0;
                 width: 210mm;
+                height: auto;
             }
             
             .receipt-container {
                 box-shadow: none;
-                max-width: 100%;
+                max-width: none;
                 width: 210mm;
-                min-height: 297mm;
+                min-height: auto;
+                height: auto;
                 margin: 0;
-                page-break-after: avoid;
+                page-break-after: auto;
+                break-after: auto;
             }
 
             .totals-section,
@@ -791,20 +794,25 @@
                 background: transparent !important;
             }
 
-            .plan-details,
-            .payment-summary,
-            .totals-section,
-            .summary-grid,
             .receipt-header,
-            .contact-info {
+            .summary-card,
+            .qr-card,
+            .date-section {
                 page-break-inside: avoid;
+                break-inside: avoid;
             }
 
-            table,
-            tr,
-            td,
-            th {
+            table {
+                page-break-inside: auto;
+                break-inside: auto;
+            }
+
+            thead { display: table-header-group; }
+            tfoot { display: table-footer-group; }
+
+            tr {
                 page-break-inside: avoid;
+                break-inside: avoid;
             }
             
             .receipt-content {
