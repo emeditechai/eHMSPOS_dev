@@ -44,11 +44,18 @@ namespace HotelApp.Web.Repositories
                 SELECT r.Id, r.RoomNumber, r.RoomTypeId, r.Floor, r.Status, r.Notes, 
                        r.BranchID, r.IsActive, r.CreatedDate, r.LastModifiedDate,
                        f.FloorName,
+                       mh.Reason AS MaintenanceReason,
                        rt.Id AS RoomType_Id, rt.TypeName, rt.Description, rt.BaseRate, rt.MaxOccupancy, rt.Amenities,
                        b.CheckInDate, b.CheckOutDate, b.BookingNumber, b.BalanceAmount, b.PrimaryGuestName, b.GuestCount
                 FROM Rooms r
                 INNER JOIN RoomTypes rt ON r.RoomTypeId = rt.Id
                 LEFT JOIN Floors f ON r.Floor = f.Id
+                OUTER APPLY (
+                    SELECT TOP 1 rmh.Reason
+                    FROM RoomMaintenanceHistory rmh
+                    WHERE rmh.RoomId = r.Id
+                    ORDER BY rmh.CreatedDate DESC, rmh.Id DESC
+                ) mh
                 LEFT JOIN (
                     SELECT br.RoomId, bk.CheckInDate, bk.CheckOutDate, bk.BookingNumber, bk.BalanceAmount,
                            CONCAT(bk.PrimaryGuestFirstName, ' ', bk.PrimaryGuestLastName) AS PrimaryGuestName,
@@ -79,6 +86,7 @@ namespace HotelApp.Web.Repositories
                     Floor = row.Floor,
                     Status = row.Status,
                     Notes = row.Notes,
+                    MaintenanceReason = row.MaintenanceReason,
                     BranchID = row.BranchID,
                     IsActive = row.IsActive,
                     CreatedDate = row.CreatedDate,
@@ -303,6 +311,16 @@ namespace HotelApp.Web.Repositories
             return await GetRoomStatusCountsAsync(branchId);
         }
 
+        public async Task<string?> GetRoomStatusAsync(int roomId)
+        {
+            var sql = @"
+                SELECT Status
+                FROM Rooms
+                WHERE Id = @RoomId AND IsActive = 1";
+
+            return await _dbConnection.QueryFirstOrDefaultAsync<string?>(sql, new { RoomId = roomId });
+        }
+
         public async Task<bool> UpdateRoomStatusAsync(int roomId, string status, int modifiedBy)
         {
             var sql = @"
@@ -313,6 +331,57 @@ namespace HotelApp.Web.Repositories
 
             var rowsAffected = await _dbConnection.ExecuteAsync(sql, new { RoomId = roomId, Status = status });
             return rowsAffected > 0;
+        }
+
+        public async Task<(bool success, int historyId, DateTime createdDate)> AddMaintenanceHistoryAsync(int roomId, string reason, int createdBy)
+        {
+            var normalizedReason = (reason ?? string.Empty).Trim();
+            if (normalizedReason.Length == 0)
+            {
+                return (false, 0, default);
+            }
+
+            if (normalizedReason.Length > 500)
+            {
+                normalizedReason = normalizedReason.Substring(0, 500);
+            }
+
+            var sql = @"
+                INSERT INTO RoomMaintenanceHistory (RoomId, BranchID, Reason, CreatedBy)
+                OUTPUT INSERTED.Id, INSERTED.CreatedDate
+                SELECT @RoomId, r.BranchID, @Reason, @CreatedBy
+                FROM Rooms r
+                WHERE r.Id = @RoomId AND r.IsActive = 1;";
+
+            var inserted = await _dbConnection.QueryFirstOrDefaultAsync<(int Id, DateTime CreatedDate)>(
+                sql,
+                new { RoomId = roomId, Reason = normalizedReason, CreatedBy = createdBy }
+            );
+
+            if (inserted.Id <= 0)
+            {
+                return (false, 0, default);
+            }
+
+            return (true, inserted.Id, inserted.CreatedDate);
+        }
+
+        public async Task<bool> CloseLatestMaintenanceAsync(int roomId)
+        {
+            var sql = @"
+                ;WITH latest AS (
+                    SELECT TOP 1 Id
+                    FROM RoomMaintenanceHistory
+                    WHERE RoomId = @RoomId
+                      AND MarkAvailableDate IS NULL
+                    ORDER BY CreatedDate DESC, Id DESC
+                )
+                UPDATE RoomMaintenanceHistory
+                SET MarkAvailableDate = GETDATE()
+                WHERE Id IN (SELECT Id FROM latest);";
+
+            var rows = await _dbConnection.ExecuteAsync(sql, new { RoomId = roomId });
+            return rows > 0;
         }
 
         public async Task<(bool hasActiveBooking, string? bookingNumber, decimal balanceAmount)> GetActiveBookingForRoomAsync(int roomId)

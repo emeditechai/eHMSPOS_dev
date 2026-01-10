@@ -232,6 +232,21 @@
             font-weight: 600;
             white-space: nowrap;
         }
+
+        .room-maintenance-reason {
+            margin-top: 6px;
+            padding: 6px 10px;
+            background: #fff3cd;
+            border-radius: 6px;
+            font-size: 10px;
+            color: #856404;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            border-left: 2px solid #ffc107;
+            text-align: left;
+        }
         
         .room-booking-info {
             margin-top: 6px;
@@ -891,7 +906,7 @@
                                         <i class="fas fa-broom"></i>
                                         <span>Need Cleaning</span>
                                     </div>
-                                    <div class="room-action-item status-maintenance" onclick="event.stopPropagation(); updateRoomStatus(@room.Id, 'Maintenance')">
+                                    <div class="room-action-item status-maintenance" onclick="event.stopPropagation(); logMaintenance(@room.Id)">
                                         <i class="fas fa-tools"></i>
                                         <span>Maintenance</span>
                                     </div>
@@ -908,6 +923,10 @@
                         <div class="room-number">@room.RoomNumber</div>
                         <div class="room-type">@room.RoomTypeName</div>
                         <span class="room-status-badge @room.Status.ToLower()">@room.Status</span>
+                        @if (room.Status == "Maintenance" && !string.IsNullOrWhiteSpace(room.MaintenanceReason))
+                        {
+                            <div class="room-maintenance-reason" title="@room.MaintenanceReason">@room.MaintenanceReason</div>
+                        }
                         @if (room.Status == "Occupied")
                         {
                             var isOverdue = room.CheckOutDate.HasValue && room.CheckOutDate.Value.Date < DateTime.Today;
@@ -1220,10 +1239,94 @@
                     dropdown.classList.remove('show');
                 }
             });
+
+            document.querySelectorAll('.room-card.menu-open').forEach(card => {
+                if (card.getAttribute('data-room-id') !== String(roomId)) {
+                    card.classList.remove('menu-open');
+                }
+            });
             
             // Toggle current dropdown
             const dropdown = document.getElementById(`actions-${roomId}`);
             dropdown.classList.toggle('show');
+
+            const roomCard = document.querySelector(`.room-card[data-room-id="${roomId}"]`);
+            if (roomCard) {
+                if (dropdown.classList.contains('show')) {
+                    roomCard.classList.add('menu-open');
+                } else {
+                    roomCard.classList.remove('menu-open');
+                }
+            }
+        }
+
+        function logMaintenance(roomId) {
+            // Close dropdown immediately
+            document.querySelectorAll('.room-actions-dropdown').forEach(dropdown => dropdown.classList.remove('show'));
+            const roomCard = document.querySelector(`.room-card[data-room-id="${roomId}"]`);
+            if (roomCard) roomCard.classList.remove('menu-open');
+
+            Swal.fire({
+                title: 'Maintenance Reason',
+                input: 'textarea',
+                inputLabel: 'Reason (required)',
+                inputPlaceholder: 'Enter maintenance reason...',
+                inputAttributes: {
+                    maxlength: 500
+                },
+                showCancelButton: true,
+                confirmButtonText: 'Save & Mark Maintenance',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#4A90E2',
+                cancelButtonColor: '#6c757d',
+                preConfirm: (value) => {
+                    const reason = (value || '').trim();
+                    if (!reason) {
+                        Swal.showValidationMessage('Reason is required');
+                        return false;
+                    }
+                    return reason;
+                }
+            }).then((result) => {
+                if (!result.isConfirmed) return;
+                const reason = result.value;
+
+                fetch('@Url.Action("LogMaintenance", "Rooms")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ roomId: roomId, reason: reason })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const createdDateText = data.createdDate ? `Logged at: ${data.createdDate}` : '';
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Saved',
+                            text: createdDateText || data.message,
+                            timer: 1500
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message || 'Failed to log maintenance'
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error logging maintenance:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Failed to log maintenance: ' + error.message
+                    });
+                });
+            });
         }
 
         function updateRoomStatus(roomId, status) {
@@ -1689,6 +1792,10 @@
             if (!event.target.closest('.room-actions-menu')) {
                 document.querySelectorAll('.room-actions-dropdown').forEach(dropdown => {
                     dropdown.classList.remove('show');
+                });
+
+                document.querySelectorAll('.room-card.menu-open').forEach(card => {
+                    card.classList.remove('menu-open');
                 });
             }
         });

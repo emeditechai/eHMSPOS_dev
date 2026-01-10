@@ -217,7 +217,8 @@ public class RoomsController : BaseController
                 BalanceAmount = r.BalanceAmount,
                 BookingNumber = r.BookingNumber,
                 PrimaryGuestName = r.PrimaryGuestName,
-                GuestCount = r.GuestCount
+                GuestCount = r.GuestCount,
+                MaintenanceReason = r.MaintenanceReason
             }).ToList(),
             Floors = floorsWithRooms,
             RoomTypeAvailabilities = availability.Select(kvp => new RoomTypeAvailability
@@ -255,6 +256,16 @@ public class RoomsController : BaseController
             return Json(new { success = false, message = "Invalid status value" });
         }
 
+        if (request.Status == "Available")
+        {
+            // If this room was in Maintenance, close the latest maintenance record.
+            var currentStatus = await _roomRepository.GetRoomStatusAsync(request.RoomId);
+            if (string.Equals(currentStatus, "Maintenance", StringComparison.OrdinalIgnoreCase))
+            {
+                await _roomRepository.CloseLatestMaintenanceAsync(request.RoomId);
+            }
+        }
+
         var currentUserId = GetCurrentUserId();
         var success = await _roomRepository.UpdateRoomStatusAsync(request.RoomId, request.Status, currentUserId);
 
@@ -264,6 +275,49 @@ public class RoomsController : BaseController
         }
 
         return Json(new { success = false, message = "Failed to update room status" });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> LogMaintenance([FromBody] LogMaintenanceRequest request)
+    {
+        if (request == null || request.RoomId <= 0)
+        {
+            return Json(new { success = false, message = "Invalid room" });
+        }
+
+        var reason = (request.Reason ?? string.Empty).Trim();
+        if (reason.Length == 0)
+        {
+            return Json(new { success = false, message = "Reason is required" });
+        }
+
+        if (reason.Length > 500)
+        {
+            reason = reason.Substring(0, 500);
+        }
+
+        var currentUserId = GetCurrentUserId();
+
+        var (logged, historyId, createdDate) = await _roomRepository.AddMaintenanceHistoryAsync(request.RoomId, reason, currentUserId);
+        if (!logged)
+        {
+            return Json(new { success = false, message = "Failed to log maintenance history" });
+        }
+
+        // Keep existing flow consistent: put the room into Maintenance after logging.
+        var statusUpdated = await _roomRepository.UpdateRoomStatusAsync(request.RoomId, "Maintenance", currentUserId);
+        if (!statusUpdated)
+        {
+            return Json(new { success = false, message = "Maintenance was logged but room status update failed" });
+        }
+
+        return Json(new
+        {
+            success = true,
+            message = "Maintenance logged and room marked as Maintenance",
+            historyId,
+            createdDate
+        });
     }
 
     [HttpGet]
@@ -804,4 +858,10 @@ public class UpdateRoomStatusRequest
 {
     public int RoomId { get; set; }
     public string Status { get; set; } = string.Empty;
+}
+
+public class LogMaintenanceRequest
+{
+    public int RoomId { get; set; }
+    public string Reason { get; set; } = string.Empty;
 }

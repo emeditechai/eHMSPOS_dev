@@ -17,7 +17,10 @@ namespace HotelApp.Web.Repositories
         Task<bool> IsRoomAvailableAsync(int roomId, DateTime checkInDate, DateTime checkOutDate, string? excludeBookingNumber = null);
         Task<Dictionary<string, int>> GetRoomStatusCountsAsync(int branchId);
         Task<Dictionary<string, int>> GetYesterdayRoomStatusCountsAsync(int branchId);
+        Task<string?> GetRoomStatusAsync(int roomId);
         Task<bool> UpdateRoomStatusAsync(int roomId, string status, int modifiedBy);
+        Task<(bool success, int historyId, DateTime createdDate)> AddMaintenanceHistoryAsync(int roomId, string reason, int createdBy);
+        Task<bool> CloseLatestMaintenanceAsync(int roomId);
         Task<(bool hasActiveBooking, string? bookingNumber, decimal balanceAmount)> GetActiveBookingForRoomAsync(int roomId);
         Task<(bool hasBooking, string? bookingNumber, decimal balanceAmount, DateTime? checkOutDate)> GetAnyBookingForRoomAsync(int roomId);
         Task<Dictionary<int, (string roomTypeName, int totalRooms, int availableRooms, decimal baseRate, int maxOccupancy, List<string> availableRoomNumbers, string? discount)>> GetRoomAvailabilityByDateRangeAsync(int branchId, DateTime startDate, DateTime endDate);

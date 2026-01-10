@@ -417,12 +417,18 @@
     flex-direction: column;
     min-height: 140px;
     position: relative;
+    z-index: 0;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .room-card:hover {
     transform: translateY(-3px);
+    z-index: 1;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.room-card.menu-open {
+    z-index: 999;
 }
 
 .room-card.available {

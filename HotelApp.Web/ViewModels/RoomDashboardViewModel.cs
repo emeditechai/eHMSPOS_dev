@@ -49,5 +49,6 @@ namespace HotelApp.Web.ViewModels
         public string? BookingNumber { get; set; }
         public string? PrimaryGuestName { get; set; }
         public int? GuestCount { get; set; }
+        public string? MaintenanceReason { get; set; }
     }
 }
