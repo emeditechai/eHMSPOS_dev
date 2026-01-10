@@ -10,10 +10,12 @@ namespace HotelApp.Web.Repositories
 
     public class BookingOtherChargeDetailRow
     {
+        public int Id { get; set; }
         public int OtherChargeId { get; set; }
         public string Code { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public int Type { get; set; }
+        public DateTime ChargeDate { get; set; }
         public decimal GSTPercent { get; set; }
         public decimal CGSTPercent { get; set; }
         public decimal SGSTPercent { get; set; }
@@ -27,7 +29,9 @@ namespace HotelApp.Web.Repositories
 
     public class BookingOtherChargeUpsertRow
     {
+        public int? Id { get; set; }
         public int OtherChargeId { get; set; }
+        public DateTime ChargeDate { get; set; }
         public int Qty { get; set; }
         public decimal Rate { get; set; }
         public string? Note { get; set; }

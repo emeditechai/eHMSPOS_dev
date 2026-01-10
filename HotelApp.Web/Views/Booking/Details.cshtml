@@ -1528,6 +1528,10 @@
                 @foreach (var payment in payments)
                 {
                     var grossAmount = payment.Amount - payment.RoundOffAmount + payment.DiscountAmount;
+                    var hasRoundOff = payment.RoundOffAmount != 0m;
+                    var roundOffDisplay = hasRoundOff
+                        ? $"{(payment.RoundOffAmount > 0 ? "+" : "-")}₹{Math.Abs(payment.RoundOffAmount).ToString("N2")}"
+                        : "₹0.00";
                     var headLabel = "-";
                     if (!string.IsNullOrWhiteSpace(payment.BillingHead))
                     {
@@ -1539,7 +1543,16 @@
                     <tr>
                         <td>@payment.PaidOn.ToString("dd MMM yyyy, hh:mm tt")</td>
                         <td>
-                            <strong title="Gross: ₹@grossAmount.ToString("N2")">₹@payment.Amount.ToString("N2")</strong>
+                            <div class="payment-amount-display" title="Collected: ₹@payment.Amount.ToString("N2")">
+                                <div class="payment-amount-gross">₹@grossAmount.ToString("N2")</div>
+                                <div class="payment-amount-net">
+                                    Collected: ₹@payment.Amount.ToString("N2")
+                                    @if (hasRoundOff)
+                                    {
+                                        <span class="roundoff-chip">@(roundOffDisplay)</span>
+                                    }
+                                </div>
+                            </div>
                             @if (payment.IsAdvancePayment)
                             {
                                 <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 0.25rem; margin-left: 0.5rem;">
@@ -1549,7 +1562,7 @@
                         </td>
                         <td><strong>@headLabel</strong></td>
                         <td style="font-family: monospace;">₹@payment.DiscountAmount.ToString("N2")</td>
-                        <td style="font-family: monospace;">₹@payment.RoundOffAmount.ToString("N2")</td>
+                        <td style="font-family: monospace;">@roundOffDisplay</td>
                         <td><span class="badge badge-info">@payment.PaymentMethod</span></td>
                         <td><span class="badge badge-success">@payment.Status</span></td>
                         <td style="font-family: monospace;">@(payment.PaymentReference ?? "-")</td>
@@ -1558,6 +1571,9 @@
                 }
             </tbody>
         </table>
+        <p style="font-size: 0.85rem; color: #6b7280; margin-top: 0.5rem;">
+            Gross amount shows the head-wise due before adjustments. The collected value reflects the rounded cash received for that entry.
+        </p>
     }
     else
     {
@@ -1616,6 +1632,7 @@
             <thead>
                 <tr>
                     <th><i class="fas fa-hashtag"></i> Code</th>
+                    <th><i class="fas fa-calendar-day"></i> Date</th>
                     <th><i class="fas fa-tag"></i> Name</th>
                     <th><i class="fas fa-layer-group"></i> Type</th>
                     <th style="text-align:right;"><i class="fas fa-rupee-sign"></i> Rate</th>
@@ -1636,6 +1653,7 @@
                     var amount = oc.Rate * safeQty;
                     <tr>
                         <td style="font-family: monospace;"><strong>@oc.Code</strong></td>
+                        <td>@oc.ChargeDate.ToString("dd MMM yyyy")</td>
                         <td>@oc.Name</td>
                         <td><span class="badge badge-info">@OtherChargeTypeLabel(oc.Type)</span></td>
                         <td style="text-align:right;"><strong>₹@oc.Rate.ToString("N2")</strong></td>
@@ -1652,7 +1670,7 @@
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="3" style="text-align:right; font-weight:700;">Totals</td>
+                    <td colspan="4" style="text-align:right; font-weight:700;">Totals</td>
                     <td></td>
                     <td></td>
                     <td style="text-align:right; font-weight:700;">₹@otherAmountTotal.ToString("N2")</td>
@@ -3179,6 +3197,36 @@
         color: #6b7280;
         font-style: italic;
         text-align: center;
+    }
+
+    .payment-amount-display {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        line-height: 1.3;
+    }
+
+    .payment-amount-gross {
+        font-weight: 600;
+        font-size: 1rem;
+    }
+
+    .payment-amount-net {
+        font-size: 0.82rem;
+        color: #6b7280;
+    }
+
+    .roundoff-chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 0.35rem;
+        margin-left: 0.35rem;
+        font-size: 0.75rem;
+        border-radius: 999px;
+        background: rgba(79, 70, 229, 0.12);
+        color: #4f46e5;
+        font-weight: 600;
     }
 </style>
 

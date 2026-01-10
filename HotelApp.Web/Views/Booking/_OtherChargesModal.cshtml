@@ -1,6 +1,10 @@
 <script>
     async function openOtherChargesModal(bookingNumber) {
         try {
+            if (typeof Swal === 'undefined') {
+                throw new Error('SweetAlert (Swal) is not loaded');
+            }
+
             const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
 
             const [masterRes, existingRes] = await Promise.all([
@@ -20,34 +24,66 @@
 
             const masterRows = masterJson.rows || [];
             const existingRows = existingJson.rows || [];
+            const masterById = new Map(masterRows.map(r => [r.id, r]));
+
+            let ocRowTempId = 0;
+            let workingRows = [];
 
             const html = `
-                <div style="text-align:left;">
-                    <div style="margin-bottom:12px; font-weight:600;">Booking: <span style="font-weight:800;">${bookingNumber}</span></div>
-
-                    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:12px;">
+                <style>
+                    .oc-modal-body { text-align:left; font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif; color:#111827; }
+                    .oc-modal-booking { font-weight:600; margin-bottom:12px; color:#374151; }
+                    .oc-modal-booking span { font-weight:800; }
+                    .oc-modal-toolbar { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; background:#f9fafb; border:1px solid #e5e7eb; border-radius:14px; padding:14px; margin-bottom:16px; }
+                    .oc-modal-toolbar label { display:block; font-size:12px; font-weight:600; letter-spacing:0.02em; color:#6b7280; margin-bottom:6px; text-transform:uppercase; }
+                    .oc-modal-toolbar select { width:280px; height:44px; border-radius:10px; border:1px solid #d1d5db; padding:0 12px; font-size:0.95rem; background:#fff; color:#111827; box-shadow: inset 0 1px 0 rgba(255,255,255,0.6); }
+                    .oc-modal-add-btn { height:44px; border-radius:10px; padding:0 22px; border:none; font-weight:600; letter-spacing:0.01em; background: linear-gradient(130deg, #7f5af0, #5b21b6); color:#fff; cursor:pointer; box-shadow: 0 10px 30px rgba(127, 90, 240, 0.28); transition: transform 150ms ease, box-shadow 150ms ease; }
+                    .oc-modal-add-btn:hover { transform: translateY(-1px); box-shadow: 0 14px 32px rgba(127, 90, 240, 0.35); }
+                    .oc-modal-table-wrapper { border: 1px solid #e5e7eb; border-radius:14px; overflow:auto; box-shadow: inset 0 1px 0 rgba(255,255,255,0.6); }
+                    .oc-modal-table { width:100%; border-collapse:separate; border-spacing:0; min-width:1000px; }
+                    .oc-modal-table thead th { background:#f3f4f6; position:sticky; top:0; z-index:1; padding:12px 14px; font-size:12px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:#4b5563; border-bottom:1px solid #e5e7eb; white-space:nowrap; }
+                    .oc-modal-table tbody td { padding:14px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+                    .oc-modal-table tbody tr:last-child td { border-bottom:none; }
+                    .oc-charge-cell { display:flex; flex-direction:column; gap:4px; }
+                    .oc-charge-code { font-family:"Space Mono","SFMono-Regular",Consolas,monospace; font-size:0.95rem; font-weight:700; color:#1f2937; }
+                    .oc-charge-name { font-size:0.85rem; color:#6b7280; }
+                    .oc-modal-table input[type="number"], .oc-modal-table input[type="text"] { width:100%; border:1px solid #d1d5db; border-radius:10px; padding:8px 10px; font-size:0.95rem; background:#fff; transition:border-color 120ms ease, box-shadow 120ms ease; }
+                    .oc-modal-table input:focus { border-color:#7f5af0; box-shadow:0 0 0 3px rgba(127, 90, 240, 0.2); outline:none; }
+                    .oc-modal-table input[data-role="rate"] { max-width:110px; }
+                    .oc-modal-table input[data-role="qty"] { max-width:70px; text-align:center; }
+                    .oc-remove-btn { width:40px; height:40px; border-radius:12px; border:1px solid #fee2e2; background:#fff5f5; color:#dc2626; cursor:pointer; transition: background 120ms ease; }
+                    .oc-remove-btn:hover { background:#fee2e2; }
+                    .oc-date-chip { display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border-radius:999px; background:#eef2ff; color:#3730a3; font-weight:600; font-size:0.9rem; letter-spacing:0.01em; }
+                    .oc-date-chip i { font-size:0.85rem; }
+                    .oc-row-flash { animation: ocRowPulse 0.8s ease; }
+                    @@keyframes ocRowPulse { 0% { background-color:#fef3c7; } 100% { background-color:transparent; } }
+                    .oc-empty { text-align:center; padding:28px; color:#9ca3af; font-style:italic; letter-spacing:0.03em; }
+                </style>
+                <div class="oc-modal-body">
+                    <div class="oc-modal-booking">Booking: <span>${bookingNumber}</span></div>
+                    <div class="oc-modal-toolbar">
                         <div style="flex:1; min-width:260px;">
-                            <label style="display:block; font-size:12px; color:#6b7280; margin-bottom:6px;">Select Other Charge</label>
-                            <select id="ocSelect" class="swal2-input" style="margin:0; height:40px;"></select>
+                            <label for="ocSelect">Select Charge</label>
+                            <select id="ocSelect"></select>
                         </div>
                         <div>
-                            <button id="ocAddBtn" type="button" class="swal2-confirm swal2-styled" style="margin:0; height:40px;">Add</button>
+                            <button id="ocAddBtn" type="button" class="oc-modal-add-btn">Add</button>
                         </div>
                     </div>
-
-                    <div style="overflow:auto; border:1px solid #e5e7eb; border-radius:10px;">
-                        <table style="width:100%; border-collapse:collapse; min-width:820px;">
+                    <div class="oc-modal-table-wrapper">
+                        <table class="oc-modal-table">
                             <thead>
-                                <tr style="background:#f9fafb;">
-                                    <th style="text-align:left; padding:10px; border-bottom:1px solid #e5e7eb;">Charge</th>
-                                    <th style="text-align:right; padding:10px; border-bottom:1px solid #e5e7eb;">Rate</th>
-                                    <th style="text-align:right; padding:10px; border-bottom:1px solid #e5e7eb;">Qty</th>
-                                    <th style="text-align:left; padding:10px; border-bottom:1px solid #e5e7eb;">Note</th>
-                                    <th style="text-align:right; padding:10px; border-bottom:1px solid #e5e7eb;">GST %</th>
-                                    <th style="text-align:right; padding:10px; border-bottom:1px solid #e5e7eb;">GST Amt</th>
-                                    <th style="text-align:right; padding:10px; border-bottom:1px solid #e5e7eb;">CGST Amt</th>
-                                    <th style="text-align:right; padding:10px; border-bottom:1px solid #e5e7eb;">SGST Amt</th>
-                                    <th style="text-align:center; padding:10px; border-bottom:1px solid #e5e7eb;">Remove</th>
+                                <tr>
+                                    <th>Charge</th>
+                                    <th style="text-align:right; width:120px;">Rate</th>
+                                    <th style="text-align:right; width:90px;">Qty</th>
+                                    <th style="width:160px;">Date</th>
+                                    <th style="width:240px;">Note</th>
+                                    <th style="text-align:right; width:90px;">GST %</th>
+                                    <th style="text-align:right; width:120px;">GST Amt</th>
+                                    <th style="text-align:right; width:120px;">CGST Amt</th>
+                                    <th style="text-align:right; width:120px;">SGST Amt</th>
+                                    <th style="text-align:center; width:80px;">Remove</th>
                                 </tr>
                             </thead>
                             <tbody id="ocItemsBody"></tbody>
@@ -55,9 +91,6 @@
                     </div>
                 </div>
             `;
-
-            const masterById = new Map(masterRows.map(r => [r.id, r]));
-            const originallySavedIds = new Set((existingRows || []).map(r => r.otherChargeId));
 
             const result = await Swal.fire({
                 title: 'Other Charges',
@@ -72,72 +105,191 @@
                     const addBtn = document.getElementById('ocAddBtn');
                     const body = document.getElementById('ocItemsBody');
 
-                    // Populate dropdown
+                    const toNumber = (value, fallback = 0) => {
+                        const parsed = Number(value);
+                        return Number.isFinite(parsed) ? parsed : fallback;
+                    };
+
+                    const normalizeQtyValue = value => {
+                        const parsed = parseInt(value ?? '', 10);
+                        return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+                    };
+
+                    const normalizeRow = (row, isPersisted) => {
+                        const reference = masterById.get(row.otherChargeId) || {};
+                        const normalizedDate = row.chargeDate && row.chargeDate.length >= 10
+                            ? row.chargeDate.slice(0, 10)
+                            : new Date().toISOString().slice(0, 10);
+
+                        return {
+                            key: isPersisted && row.id ? `db-${row.id}` : `tmp-${++ocRowTempId}`,
+                            persisted: Boolean(isPersisted && row.id),
+                            id: isPersisted ? row.id : null,
+                            otherChargeId: row.otherChargeId,
+                            code: row.code ?? reference.code ?? '',
+                            name: row.name ?? reference.name ?? '',
+                            gstPercent: toNumber(row.gstPercent, reference.gstPercent ?? 0),
+                            cgstPercent: toNumber(row.cgstPercent, reference.cgstPercent ?? 0),
+                            sgstPercent: toNumber(row.sgstPercent, reference.sgstPercent ?? 0),
+                            qty: normalizeQtyValue(row.qty),
+                            rate: toNumber(row.rate, reference.rate ?? 0),
+                            note: row.note ?? '',
+                            chargeDate: normalizedDate
+                        };
+                    };
+
+                    const recalcRow = (tr, row) => {
+                        const safeRate = Math.max(0, toNumber(row.rate, 0));
+                        const safeQty = normalizeQtyValue(row.qty);
+                        row.qty = safeQty;
+                        const taxable = round2(safeRate * safeQty);
+                        const gstAmt = round2(taxable * (toNumber(row.gstPercent, 0) / 100));
+                        const cgstAmt = round2(taxable * (toNumber(row.cgstPercent, 0) / 100));
+                        const sgstAmt = round2(taxable * (toNumber(row.sgstPercent, 0) / 100));
+
+                        tr.querySelector('span[data-role="gstAmt"]').textContent = gstAmt.toFixed(2);
+                        tr.querySelector('span[data-role="cgstAmt"]').textContent = cgstAmt.toFixed(2);
+                        tr.querySelector('span[data-role="sgstAmt"]').textContent = sgstAmt.toFixed(2);
+                    };
+
+                    const removeRowByKey = key => {
+                        workingRows = workingRows.filter(r => r.key !== key);
+                        renderRows();
+                    };
+
+                    const createRowElement = row => {
+                        const tr = document.createElement('tr');
+                        tr.dataset.key = row.key;
+                        tr.innerHTML = `
+                            <td class="oc-charge-cell">
+                                <div class="oc-charge-code">${escapeHtml(row.code)}</div>
+                                <div class="oc-charge-name">${escapeHtml(row.name)}</div>
+                            </td>
+                            <td style="text-align:right;"><input data-role="rate" type="number" step="0.01" min="0" style="text-align:right;" /></td>
+                            <td style="text-align:right;"><input data-role="qty" type="number" step="1" min="1" style="text-align:center;" /></td>
+                            <td><div class="oc-date-chip"><i class="far fa-calendar-alt"></i><span>${formatDisplayDate(row.chargeDate)}</span></div></td>
+                            <td><input data-role="note" type="text" placeholder="Note" /></td>
+                            <td style="text-align:right; font-weight:600;"><span>${toNumber(row.gstPercent, 0).toFixed(2)}</span></td>
+                            <td style="text-align:right; font-family:'Space Mono', monospace;">₹<span data-role="gstAmt">0.00</span></td>
+                            <td style="text-align:right; font-family:'Space Mono', monospace;">₹<span data-role="cgstAmt">0.00</span></td>
+                            <td style="text-align:right; font-family:'Space Mono', monospace;">₹<span data-role="sgstAmt">0.00</span></td>
+                            <td style="text-align:center;"><button type="button" data-role="remove" title="Remove" aria-label="Remove" class="oc-remove-btn" style="display:inline-flex; align-items:center; justify-content:center;"><i class="fas fa-times"></i></button></td>
+                        `;
+
+                        const rateInput = tr.querySelector('input[data-role="rate"]');
+                        const qtyInput = tr.querySelector('input[data-role="qty"]');
+                        const noteInput = tr.querySelector('input[data-role="note"]');
+                        const removeBtn = tr.querySelector('button[data-role="remove"]');
+
+                        rateInput.value = toNumber(row.rate, 0).toFixed(2);
+                        qtyInput.value = normalizeQtyValue(row.qty);
+                        noteInput.value = row.note ?? '';
+
+                        rateInput.addEventListener('input', () => {
+                            row.rate = toNumber(rateInput.value, 0);
+                            recalcRow(tr, row);
+                        });
+
+                        qtyInput.addEventListener('input', () => {
+                            row.qty = normalizeQtyValue(qtyInput.value);
+                            recalcRow(tr, row);
+                        });
+
+                        noteInput.addEventListener('input', () => {
+                            row.note = noteInput.value ?? '';
+                        });
+
+                        removeBtn.addEventListener('click', async () => {
+                            if (row.persisted) {
+                                const confirmResult = await Swal.fire({
+                                    title: 'Remove this charge?',
+                                    text: 'This charge is already saved. It will be removed when you click Save.',
+                                    icon: 'warning',
+                                    showCancelButton: true,
+                                    confirmButtonText: 'Yes, remove',
+                                    cancelButtonText: 'Cancel',
+                                    focusCancel: true
+                                });
+
+                                if (!confirmResult.isConfirmed) {
+                                    return;
+                                }
+                            }
+
+                            removeRowByKey(row.key);
+                        });
+
+                        recalcRow(tr, row);
+                        return tr;
+                    };
+
+                    const renderRows = highlightKey => {
+                        body.innerHTML = '';
+                        if (workingRows.length === 0) {
+                            body.innerHTML = `<tr><td class="oc-empty" colspan="10">No other charges added yet.</td></tr>`;
+                            return;
+                        }
+
+                        for (const row of workingRows) {
+                            const tr = createRowElement(row);
+                            body.appendChild(tr);
+                            if (highlightKey && row.key === highlightKey) {
+                                tr.classList.add('oc-row-flash');
+                                tr.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                                setTimeout(() => tr.classList.remove('oc-row-flash'), 900);
+                            }
+                        }
+                    };
+
                     sel.innerHTML = masterRows.map(r => {
                         const label = `${r.code} - ${r.name}`;
                         return `<option value="${r.id}">${escapeHtml(label)}</option>`;
                     }).join('');
 
-                    // Seed existing rows
-                    for (const row of existingRows) {
-                        appendRow(body, {
-                            otherChargeId: row.otherChargeId,
-                            code: row.code,
-                            name: row.name,
-                            gstPercent: row.gstPercent,
-                            cgstPercent: row.cgstPercent,
-                            sgstPercent: row.sgstPercent,
-                            qty: row.qty,
-                            note: row.note,
-                            rate: row.rate
-                        }, true);
-                    }
+                    addBtn.disabled = masterRows.length === 0;
+                    addBtn.title = masterRows.length === 0 ? 'No active Other Charges found' : 'Add selected charge';
+
+                    workingRows = existingRows.map(row => normalizeRow(row, true));
+                    renderRows();
 
                     addBtn.addEventListener('click', () => {
                         const id = parseInt(sel.value, 10);
                         if (!Number.isFinite(id)) return;
-                        if (body.querySelector(`tr[data-ocid="${id}"]`)) {
-                            return;
-                        }
-                        const m = masterById.get(id);
-                        if (!m) return;
-                        appendRow(body, {
-                            otherChargeId: m.id,
-                            code: m.code,
-                            name: m.name,
-                            gstPercent: m.gstPercent,
-                            cgstPercent: m.cgstPercent,
-                            sgstPercent: m.sgstPercent,
+                        const reference = masterById.get(id);
+                        if (!reference) return;
+
+                        const newRow = normalizeRow({
+                            id: null,
+                            otherChargeId: reference.id,
+                            code: reference.code,
+                            name: reference.name,
+                            gstPercent: reference.gstPercent,
+                            cgstPercent: reference.cgstPercent,
+                            sgstPercent: reference.sgstPercent,
                             qty: 1,
+                            rate: reference.rate,
                             note: '',
-                            rate: m.rate
-                        }, originallySavedIds.has(m.id));
+                            chargeDate: new Date().toISOString().slice(0, 10)
+                        }, false);
+
+                        workingRows.push(newRow);
+                        renderRows(newRow.key);
                     });
                 },
                 preConfirm: async () => {
-                    const body = document.getElementById('ocItemsBody');
-                    const rows = Array.from(body.querySelectorAll('tr'));
-
-                    const items = rows.map(tr => {
-                        const otherChargeId = parseInt(tr.getAttribute('data-ocid'), 10);
-                        const rateInput = tr.querySelector('input[data-role="rate"]');
-                        const qtyInput = tr.querySelector('input[data-role="qty"]');
-                        const noteInput = tr.querySelector('input[data-role="note"]');
-                        const rate = parseFloat(rateInput?.value);
-                        const qty = parseInt(qtyInput?.value, 10);
-                        const note = noteInput?.value;
-                        return {
-                            otherChargeId,
-                            rate: Number.isFinite(rate) ? rate : 0,
-                            qty: Number.isFinite(qty) ? qty : 1,
-                            note: (note ?? '').trim()
-                        };
-                    });
-
-                    if (items.length === 0) {
+                    if (workingRows.length === 0) {
                         Swal.showValidationMessage('Please add at least one Other Charge');
                         return;
                     }
+
+                    const items = workingRows.map(row => ({
+                        id: row.persisted ? row.id : null,
+                        otherChargeId: row.otherChargeId,
+                        chargeDate: row.chargeDate,
+                        rate: round2(Number(row.rate) || 0),
+                        qty: Math.max(1, Math.round(Number(row.qty) || 1)),
+                        note: (row.note ?? '').trim()
+                    }));
 
                     const resp = await fetch('/Booking/SaveBookingOtherCharges', {
                         method: 'POST',
@@ -174,105 +326,12 @@
             });
         }
 
-        function appendRow(tbody, row, isPersisted) {
-            const tr = document.createElement('tr');
-            tr.setAttribute('data-ocid', row.otherChargeId);
-            tr.setAttribute('data-gst', row.gstPercent);
-            tr.setAttribute('data-cgst', row.cgstPercent);
-            tr.setAttribute('data-sgst', row.sgstPercent);
-            tr.setAttribute('data-persisted', isPersisted ? '1' : '0');
-
-            tr.innerHTML = `
-                <td style="padding:10px; border-bottom:1px solid #f3f4f6;">
-                    <div style="font-weight:700;">${escapeHtml(row.code)}</div>
-                    <div style="font-size:12px; color:#6b7280;">${escapeHtml(row.name)}</div>
-                </td>
-                <td style="padding:10px; border-bottom:1px solid #f3f4f6; text-align:right;">
-                    <input data-role="rate" type="number" step="0.01" min="0" value="${Number(row.rate || 0).toFixed(2)}" style="width:120px; text-align:right; padding:8px 10px; border:1px solid #e5e7eb; border-radius:8px;" />
-                </td>
-                <td style="padding:10px; border-bottom:1px solid #f3f4f6; text-align:right;">
-                    <input data-role="qty" type="number" step="1" min="1" value="${Number(row.qty || 1)}" style="width:80px; text-align:right; padding:8px 10px; border:1px solid #e5e7eb; border-radius:8px;" />
-                </td>
-                <td style="padding:10px; border-bottom:1px solid #f3f4f6;">
-                    <input data-role="note" type="text" value="${escapeAttr(row.note || '')}" style="width:240px; padding:8px 10px; border:1px solid #e5e7eb; border-radius:8px;" placeholder="Note" />
-                </td>
-                <td style="padding:10px; border-bottom:1px solid #f3f4f6; text-align:right;">
-                    <span data-role="gstPercent">${Number(row.gstPercent || 0).toFixed(2)}</span>
-                </td>
-                <td style="padding:10px; border-bottom:1px solid #f3f4f6; text-align:right;">
-                    ₹<span data-role="gstAmt">0.00</span>
-                </td>
-                <td style="padding:10px; border-bottom:1px solid #f3f4f6; text-align:right;">
-                    ₹<span data-role="cgstAmt">0.00</span>
-                </td>
-                <td style="padding:10px; border-bottom:1px solid #f3f4f6; text-align:right;">
-                    ₹<span data-role="sgstAmt">0.00</span>
-                </td>
-                <td style="padding:10px; border-bottom:1px solid #f3f4f6; text-align:center;">
-                    <button
-                        type="button"
-                        data-role="remove"
-                        title="Remove"
-                        aria-label="Remove"
-                        style="margin:0; width:40px; height:40px; border-radius:10px; border:1px solid #e5e7eb; background:#fff; color:#ef4444; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;"
-                    ><i class="fas fa-times"></i></button>
-                </td>
-            `;
-
-            const rateInput = tr.querySelector('input[data-role="rate"]');
-            const qtyInput = tr.querySelector('input[data-role="qty"]');
-            const removeBtn = tr.querySelector('button[data-role="remove"]');
-            rateInput.addEventListener('input', () => recalc(tr));
-            qtyInput.addEventListener('input', () => recalc(tr));
-            removeBtn.addEventListener('click', async () => {
-                const persisted = tr.getAttribute('data-persisted') === '1';
-                if (!persisted) {
-                    tr.remove();
-                    return;
-                }
-
-                const confirm = await Swal.fire({
-                    title: 'Remove this charge?',
-                    text: 'This charge is already saved. It will be removed when you click Save.',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Yes, remove',
-                    cancelButtonText: 'Cancel',
-                    focusCancel: true
-                });
-
-                if (confirm.isConfirmed) {
-                    tr.remove();
-                }
-            });
-
-            tbody.appendChild(tr);
-            recalc(tr);
-        }
-
-        function recalc(tr) {
-            const rate = parseFloat(tr.querySelector('input[data-role="rate"]').value);
-            const qty = parseInt(tr.querySelector('input[data-role="qty"]').value, 10);
-            const safeRate = Number.isFinite(rate) ? Math.max(0, rate) : 0;
-            const safeQty = Number.isFinite(qty) ? Math.max(1, qty) : 1;
-            const taxable = round2(safeRate * safeQty);
-            const gstPct = parseFloat(tr.getAttribute('data-gst')) || 0;
-            const cgstPct = parseFloat(tr.getAttribute('data-cgst')) || 0;
-            const sgstPct = parseFloat(tr.getAttribute('data-sgst')) || 0;
-            const gstAmt = round2(taxable * gstPct / 100);
-            const cgstAmt = round2(taxable * cgstPct / 100);
-            const sgstAmt = round2(taxable * sgstPct / 100);
-            tr.querySelector('span[data-role="gstAmt"]').textContent = gstAmt.toFixed(2);
-            tr.querySelector('span[data-role="cgstAmt"]').textContent = cgstAmt.toFixed(2);
-            tr.querySelector('span[data-role="sgstAmt"]').textContent = sgstAmt.toFixed(2);
-        }
-
         function round2(v) {
             return Math.round((v + Number.EPSILON) * 100) / 100;
         }
 
         function escapeHtml(str) {
-            return String(str ?? '').replace(/[&<>'\"]/g, c => ({
+            return String(str ?? '').replace(/[&<>'"]/g, c => ({
                 '&': '&amp;',
                 '<': '&lt;',
                 '>': '&gt;',
@@ -282,15 +341,12 @@
             }[c]));
         }
 
-        function escapeAttr(str) {
-            // Escape for placing inside a quoted HTML attribute value
-            return String(str ?? '').replace(/[&<>'"]/g, c => ({
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                "'": '&#39;',
-                '"': '&quot;'
-            }[c]));
+        function formatDisplayDate(isoDate) {
+            if (!isoDate) return '-';
+            const parts = isoDate.split('-');
+            if (parts.length !== 3) return isoDate;
+            const [year, month, day] = parts;
+            return `${day}/${month}/${year}`;
         }
     }
 </script>

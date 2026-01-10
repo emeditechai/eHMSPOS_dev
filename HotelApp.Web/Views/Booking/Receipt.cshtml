@@ -1254,6 +1254,7 @@
                         <thead>
                             <tr>
                                 <th>Particulars</th>
+                                <th class="text-center">Date</th>
                                 <th class="text-center">Qty</th>
                                 <th class="text-right">Rate</th>
                                 <th class="text-right">Amount</th>
@@ -1276,6 +1277,7 @@
                                             <br /><small class="subtle">Note: @oc.Note</small>
                                         }
                                     </td>
+                                    <td class="text-center mono">@oc.ChargeDate.ToString("dd MMM yyyy")</td>
                                     <td class="text-center mono">@qty</td>
                                     <td class="text-right mono">₹ @oc.Rate.ToString("N2")</td>
                                     <td class="text-right mono">₹ @amount.ToString("N2")</td>
@@ -1286,7 +1288,7 @@
                         </tbody>
                         <tfoot>
                             <tr style="font-weight: 600; background: #f8f9fa;">
-                                <td colspan="3" class="text-right" style="padding: 12px;">Total Other Charges:</td>
+                                <td colspan="4" class="text-right" style="padding: 12px;">Total Other Charges:</td>
                                 <td class="text-right mono" style="padding: 12px;">₹ @ocAmountTotal.ToString("N2")</td>
                                 <td class="text-right mono" style="padding: 12px;">₹ @ocGstTotal.ToString("N2")</td>
                                 <td class="text-right mono" style="padding: 12px;">₹ @ocGrandTotal.ToString("N2")</td>

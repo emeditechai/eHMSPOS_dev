@@ -266,23 +266,20 @@ namespace HotelApp.Web.Controllers
                 }
             }
 
-            var items = request.Items ?? new List<SaveBookingOtherChargesItem>();
-            var distinctItems = items
+            var incomingItems = (request.Items ?? new List<SaveBookingOtherChargesItem>())
                 .Where(i => i.OtherChargeId > 0)
-                .GroupBy(i => i.OtherChargeId)
-                .Select(g => g.Last())
                 .ToList();
 
             var performedBy = GetCurrentUserId();
             var existingRows = (await _bookingOtherChargeRepository.GetDetailsByBookingIdAsync(booking.Id)).ToList();
-            var existingById = existingRows.ToDictionary(r => r.OtherChargeId, r => r);
+            var existingById = existingRows.ToDictionary(r => r.Id, r => r);
 
             // If empty list, we interpret as "clear all other charges".
-            if (distinctItems.Count == 0)
+            if (incomingItems.Count == 0)
             {
                 if (existingRows.Count > 0)
                 {
-                    foreach (var existing in existingRows.OrderBy(r => r.Name).ThenBy(r => r.Code))
+                    foreach (var existing in existingRows.OrderBy(r => r.ChargeDate).ThenBy(r => r.Name))
                     {
                         var qty = existing.Qty <= 0 ? 1 : existing.Qty;
                         await _bookingRepository.AddAuditLogAsync(
@@ -290,13 +287,13 @@ namespace HotelApp.Web.Controllers
                             booking.BookingNumber,
                             "Other Charge Removed",
                             $"Removed other charge: {existing.Code} - {existing.Name}",
-                            $"Qty: {qty}, Rate: ₹{existing.Rate:N2}",
+                            $"Date: {existing.ChargeDate:dd MMM yyyy}, Qty: {qty}, Rate: ₹{existing.Rate:N2}",
                             null,
                             performedBy);
                     }
                 }
 
-                await _bookingOtherChargeRepository.UpsertForBookingAsync(booking.Id, Array.Empty<BookingOtherChargeUpsertRow>(), GetCurrentUserId());
+                await _bookingOtherChargeRepository.UpsertForBookingAsync(booking.Id, Array.Empty<BookingOtherChargeUpsertRow>(), performedBy);
                 return Json(new { success = true, message = "Other charges cleared" });
             }
 
@@ -306,7 +303,7 @@ namespace HotelApp.Web.Controllers
                 .ToDictionary(r => r.Id, r => r);
 
             var upserts = new List<BookingOtherChargeUpsertRow>();
-            foreach (var item in distinctItems)
+            foreach (var item in incomingItems)
             {
                 if (!master.TryGetValue(item.OtherChargeId, out var charge))
                 {
@@ -320,6 +317,16 @@ namespace HotelApp.Web.Controllers
                 {
                     note = note.Substring(0, 500);
                 }
+
+                int? persistedId = null;
+                BookingOtherChargeDetailRow? persistedRow = null;
+                if (item.Id.HasValue && existingById.TryGetValue(item.Id.Value, out var existingRow))
+                {
+                    persistedId = item.Id.Value;
+                    persistedRow = existingRow;
+                }
+
+                var chargeDate = persistedRow?.ChargeDate.Date ?? DateTime.Now.Date;
                 var taxable = Round2(unitRate * qty);
                 var gstAmt = Round2(taxable * (charge.GSTPercent / 100m));
                 var cgstAmt = Round2(taxable * (charge.CGSTPercent / 100m));
@@ -327,7 +334,9 @@ namespace HotelApp.Web.Controllers
 
                 upserts.Add(new BookingOtherChargeUpsertRow
                 {
+                    Id = persistedId,
                     OtherChargeId = item.OtherChargeId,
+                    ChargeDate = chargeDate,
                     Qty = qty,
                     Rate = Round2(unitRate),
                     Note = note,
@@ -338,73 +347,77 @@ namespace HotelApp.Web.Controllers
             }
 
             // Activity Timeline logging (add/update/remove)
-            var upsertById = upserts.ToDictionary(u => u.OtherChargeId, u => u);
-            var newIds = upserts.Select(u => u.OtherChargeId).ToHashSet();
-            var oldIds = existingById.Keys.ToHashSet();
+            var retainedIds = upserts.Where(u => u.Id.HasValue).Select(u => u.Id!.Value).ToHashSet();
+            var addedRows = upserts.Where(u => !u.Id.HasValue).ToList();
+            var updatedRows = upserts.Where(u => u.Id.HasValue && existingById.ContainsKey(u.Id.Value)).ToList();
+            var removedRows = existingRows.Where(r => !retainedIds.Contains(r.Id)).ToList();
 
-            var addedIds = newIds.Except(oldIds).ToList();
-            var removedIds = oldIds.Except(newIds).ToList();
-            var commonIds = newIds.Intersect(oldIds).ToList();
-
-            foreach (var id in addedIds)
+            foreach (var row in addedRows)
             {
-                if (master.TryGetValue(id, out var charge))
+                if (!master.TryGetValue(row.OtherChargeId, out var charge))
                 {
-                    var row = upsertById[id];
-                    await _bookingRepository.AddAuditLogAsync(
-                        booking.Id,
-                        booking.BookingNumber,
-                        "Other Charge Added",
-                        $"Added other charge: {charge.Code} - {charge.Name}",
-                        null,
-                        $"Qty: {row.Qty}, Rate: ₹{row.Rate:N2}, Note: {(string.IsNullOrWhiteSpace(row.Note) ? "-" : row.Note)}",
-                        performedBy);
+                    continue;
                 }
+
+                await _bookingRepository.AddAuditLogAsync(
+                    booking.Id,
+                    booking.BookingNumber,
+                    "Other Charge Added",
+                    $"Added other charge: {charge.Code} - {charge.Name}",
+                    null,
+                    $"Date: {row.ChargeDate:dd MMM yyyy}, Qty: {row.Qty}, Rate: ₹{row.Rate:N2}, Note: {(string.IsNullOrWhiteSpace(row.Note) ? "-" : row.Note)}",
+                    performedBy);
             }
 
-            foreach (var id in commonIds)
+            foreach (var row in updatedRows)
             {
-                var existing = existingById[id];
+                var existing = existingById[row.Id!.Value];
                 var oldQty = existing.Qty <= 0 ? 1 : existing.Qty;
                 var oldRate = Round2(existing.Rate);
                 var oldNote = string.IsNullOrWhiteSpace(existing.Note) ? null : existing.Note.Trim();
-                var incoming = upsertById[id];
-                var newQty = incoming.Qty <= 0 ? 1 : incoming.Qty;
-                var newRate = Round2(incoming.Rate);
-                var newNote = string.IsNullOrWhiteSpace(incoming.Note) ? null : incoming.Note.Trim();
+                var existingDate = existing.ChargeDate.Date;
+                var newNote = string.IsNullOrWhiteSpace(row.Note) ? null : row.Note.Trim();
 
-                if (oldQty != newQty || oldRate != newRate || !string.Equals(oldNote, newNote, StringComparison.Ordinal))
+                var hasChanges =
+                    existing.OtherChargeId != row.OtherChargeId ||
+                    oldQty != row.Qty ||
+                    oldRate != row.Rate ||
+                    existingDate != row.ChargeDate.Date ||
+                    !string.Equals(oldNote, newNote, StringComparison.Ordinal);
+
+                if (!hasChanges)
                 {
-                    var label = master.TryGetValue(id, out var charge)
-                        ? $"{charge.Code} - {charge.Name}"
-                        : $"{existingById[id].Code} - {existingById[id].Name}";
-
-                    await _bookingRepository.AddAuditLogAsync(
-                        booking.Id,
-                        booking.BookingNumber,
-                        "Other Charge Updated",
-                        $"Updated other charge: {label}",
-                        $"Qty: {oldQty}, Rate: ₹{oldRate:N2}, Note: {(string.IsNullOrWhiteSpace(oldNote) ? "-" : oldNote)}",
-                        $"Qty: {newQty}, Rate: ₹{newRate:N2}, Note: {(string.IsNullOrWhiteSpace(newNote) ? "-" : newNote)}",
-                        performedBy);
+                    continue;
                 }
+
+                var label = master.TryGetValue(existing.OtherChargeId, out var charge)
+                    ? $"{charge.Code} - {charge.Name}"
+                    : $"{existing.Code} - {existing.Name}";
+
+                await _bookingRepository.AddAuditLogAsync(
+                    booking.Id,
+                    booking.BookingNumber,
+                    "Other Charge Updated",
+                    $"Updated other charge: {label}",
+                    $"Date: {existingDate:dd MMM yyyy}, Qty: {oldQty}, Rate: ₹{oldRate:N2}, Note: {(string.IsNullOrWhiteSpace(oldNote) ? "-" : oldNote)}",
+                    $"Date: {row.ChargeDate:dd MMM yyyy}, Qty: {row.Qty}, Rate: ₹{row.Rate:N2}, Note: {(string.IsNullOrWhiteSpace(newNote) ? "-" : newNote)}",
+                    performedBy);
             }
 
-            foreach (var id in removedIds)
+            foreach (var row in removedRows)
             {
-                var existing = existingById[id];
-                var qty = existing.Qty <= 0 ? 1 : existing.Qty;
+                var qty = row.Qty <= 0 ? 1 : row.Qty;
                 await _bookingRepository.AddAuditLogAsync(
                     booking.Id,
                     booking.BookingNumber,
                     "Other Charge Removed",
-                    $"Removed other charge: {existing.Code} - {existing.Name}",
-                    $"Qty: {qty}, Rate: ₹{existing.Rate:N2}",
+                    $"Removed other charge: {row.Code} - {row.Name}",
+                    $"Date: {row.ChargeDate:dd MMM yyyy}, Qty: {qty}, Rate: ₹{row.Rate:N2}",
                     null,
                     performedBy);
             }
 
-            await _bookingOtherChargeRepository.UpsertForBookingAsync(booking.Id, upserts, GetCurrentUserId());
+            await _bookingOtherChargeRepository.UpsertForBookingAsync(booking.Id, upserts, performedBy);
             return Json(new { success = true, message = "Other charges saved" });
         }
 
@@ -418,10 +431,12 @@ namespace HotelApp.Web.Controllers
 
         public class SaveBookingOtherChargesItem
         {
+            public int? Id { get; set; }
             public int OtherChargeId { get; set; }
             public decimal Rate { get; set; }
             public int Qty { get; set; }
             public string? Note { get; set; }
+            public DateTime? ChargeDate { get; set; }
         }
 
         public async Task<IActionResult> List(DateTime? fromDate, DateTime? toDate, string? statusFilter)

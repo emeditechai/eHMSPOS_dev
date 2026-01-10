@@ -419,6 +419,7 @@
                                     <table role="presentation" width="100%">
                                         <tr>
                                             <td class="table-head">Particulars</td>
+                                            <td class="table-head" style="text-align: center;">Date</td>
                                             <td class="table-head" style="text-align: center;">Qty</td>
                                             <td class="table-head" style="text-align: right;">Amount</td>
                                         </tr>
@@ -434,6 +435,7 @@
                                                         <br /><span style="color: #6b7280; font-size: 12px;">Note: @oc.Note</span>
                                                     }
                                                 </td>
+                                                <td class="table-cell" style="text-align: center;">@oc.ChargeDate.ToString("dd MMM yyyy")</td>
                                                 <td class="table-cell" style="text-align: center;">@qty</td>
                                                 <td class="table-cell" style="text-align: right;">₹ @amount.ToString("N2")</td>
                                             </tr>
