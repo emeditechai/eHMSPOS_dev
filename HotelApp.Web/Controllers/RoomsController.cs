@@ -78,6 +78,8 @@ public class RoomsController : BaseController
             .Where(IsEffectivePayment)
             .ToList();
 
+        var totalRoundOffApplied = payments.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m);
+
         decimal paidStay = 0m;
         decimal paidOther = 0m;
         decimal paidRoomServices = 0m;
@@ -87,7 +89,7 @@ public class RoomsController : BaseController
         {
             var applied = payment.Amount
                         + payment.DiscountAmount
-                        + (payment.IsRoundOffApplied ? payment.RoundOffAmount : 0m);
+                        ;
 
             if (applied <= 0m) continue;
 
@@ -137,6 +139,37 @@ public class RoomsController : BaseController
         var stayDue = Round2(Math.Max(0m, stayTotal - paidStay));
         var otherDue = Round2(Math.Max(0m, otherChargesTotal - paidOther));
         var rsDue = Round2(Math.Max(0m, roomServicesTotal - paidRoomServices));
+
+        // Apply round-off as an adjustment to the overall payable amount (not as a payment).
+        // Negative round-off reduces payable (so it should reduce due), positive increases payable.
+        if (totalRoundOffApplied < 0m)
+        {
+            var remainingReduction = -totalRoundOffApplied;
+
+            var reduceStay = Math.Min(stayDue, remainingReduction);
+            stayDue = Round2(stayDue - reduceStay);
+            remainingReduction -= reduceStay;
+
+            if (remainingReduction > 0m)
+            {
+                var reduceOther = Math.Min(otherDue, remainingReduction);
+                otherDue = Round2(otherDue - reduceOther);
+                remainingReduction -= reduceOther;
+            }
+
+            if (remainingReduction > 0m)
+            {
+                var reduceRs = Math.Min(rsDue, remainingReduction);
+                rsDue = Round2(rsDue - reduceRs);
+                remainingReduction -= reduceRs;
+            }
+        }
+        else if (totalRoundOffApplied > 0m)
+        {
+            // If payable was rounded up, add the extra amount to due (attribute to stay by default).
+            stayDue = Round2(stayDue + totalRoundOffApplied);
+        }
+
         var totalDue = Round2(stayDue + otherDue + rsDue);
 
         return new HeadWiseDue(stayDue, otherDue, rsDue, totalDue);

@@ -987,15 +987,18 @@ namespace HotelApp.Web.Repositories
                         CGSTAmount = @CGSTAmount,
                         SGSTAmount = @SGSTAmount,
                         TotalAmount = @TotalAmount,
-                        BalanceAmount = @TotalAmount - ISNULL((
-                            SELECT SUM(
-                                Amount
-                                + ISNULL(DiscountAmount, 0)
-                                + CASE WHEN ISNULL(IsRoundOffApplied, 0) = 1 THEN ISNULL(RoundOffAmount, 0) ELSE 0 END
-                            )
-                            FROM BookingPayments
-                            WHERE BookingId = Bookings.Id
-                        ), 0),
+                        BalanceAmount = (@TotalAmount
+                            + ISNULL((
+                                SELECT SUM(CASE WHEN ISNULL(IsRoundOffApplied, 0) = 1 THEN ISNULL(RoundOffAmount, 0) ELSE 0 END)
+                                FROM BookingPayments
+                                WHERE BookingId = Bookings.Id
+                            ), 0)
+                            - ISNULL((
+                                SELECT SUM(Amount + ISNULL(DiscountAmount, 0))
+                                FROM BookingPayments
+                                WHERE BookingId = Bookings.Id
+                            ), 0)
+                        ),
                         LastModifiedDate = GETDATE()
                     WHERE BookingNumber = @BookingNumber";
 
@@ -2398,17 +2401,17 @@ WHERE BookingID = @BookingID
 
                 // Update booking deposit and balance
                 // DepositAmount tracks actual money received (net).
-                // BalanceAmount must reduce by the total adjustment applied against dues: net + discount + round-off.
+                // BalanceAmount represents payable (incl. round-off) minus applied (net + discount).
                 var discountApplied = payment.DiscountAmount;
                 var roundOffApplied = payment.IsRoundOffApplied ? payment.RoundOffAmount : 0m;
-                var appliedToBalance = payment.Amount + discountApplied + roundOffApplied;
+                var appliedToBalanceNet = payment.Amount + discountApplied;
 
                 const string updateBookingSql = @"
                     UPDATE Bookings 
                     SET DepositAmount = DepositAmount + @NetAmount,
-                        BalanceAmount = BalanceAmount - @AppliedToBalance,
+                        BalanceAmount = BalanceAmount - @AppliedToBalanceNet + @RoundOffApplied,
                         PaymentStatus = CASE 
-                            WHEN ((BalanceAmount - @AppliedToBalance) + @OtherChargesGrandTotal) <= 0 THEN 'Paid'
+                            WHEN ((BalanceAmount - @AppliedToBalanceNet + @RoundOffApplied) + @OtherChargesGrandTotal) <= 0 THEN 'Paid'
                             WHEN (DepositAmount + @NetAmount) > 0 THEN 'Partially Paid'
                             ELSE 'Pending'
                         END,
@@ -2420,7 +2423,8 @@ WHERE BookingID = @BookingID
                 { 
                     BookingId = payment.BookingId,
                     NetAmount = payment.Amount,
-                    AppliedToBalance = appliedToBalance,
+                    AppliedToBalanceNet = appliedToBalanceNet,
+                    RoundOffApplied = roundOffApplied,
                     OtherChargesGrandTotal = otherChargesGrandTotal,
                     PerformedBy = performedBy
                 }, transaction);
@@ -2483,14 +2487,18 @@ WHERE BookingID = @BookingID
                             ISNULL(SUM(
                                 Amount
                                 + ISNULL(DiscountAmount, 0)
-                                + CASE WHEN ISNULL(IsRoundOffApplied, 0) = 1 THEN ISNULL(RoundOffAmount, 0) ELSE 0 END
-                            ), 0) AS AppliedToBalance
+                            ), 0) AS AppliedToBalanceNet,
+                            ISNULL(SUM(
+                                CASE WHEN ISNULL(IsRoundOffApplied, 0) = 1 THEN ISNULL(RoundOffAmount, 0) ELSE 0 END
+                            ), 0) AS RoundOffTotal
                         FROM BookingPayments
                         WHERE BookingId = @BookingId";
 
                     var row = await _dbConnection.QueryFirstAsync<dynamic>(paymentsSql, new { BookingId = bookingId }, transaction);
                     depositAmount = row.DepositAmount is decimal d1 ? d1 : Convert.ToDecimal(row.DepositAmount ?? 0m);
-                    appliedToBalance = row.AppliedToBalance is decimal d2 ? d2 : Convert.ToDecimal(row.AppliedToBalance ?? 0m);
+                    var appliedToBalanceNet = row.AppliedToBalanceNet is decimal d2 ? d2 : Convert.ToDecimal(row.AppliedToBalanceNet ?? 0m);
+                    var roundOffTotal = row.RoundOffTotal is decimal d3 ? d3 : Convert.ToDecimal(row.RoundOffTotal ?? 0m);
+                    appliedToBalance = appliedToBalanceNet - roundOffTotal;
                 }
                 catch (Exception ex) when (
                     ex.Message.Contains("Invalid column name", StringComparison.OrdinalIgnoreCase)
@@ -2507,6 +2515,8 @@ WHERE BookingID = @BookingID
                     appliedToBalance = depositAmount;
                 }
 
+                // appliedToBalance is stored as (net + discount) minus round-off, so subtracting it
+                // is equivalent to: TotalAmount + RoundOffTotal - (net + discount)
                 var expectedBalance = booking.TotalAmount - appliedToBalance;
                 var expectedDeposit = depositAmount;
 

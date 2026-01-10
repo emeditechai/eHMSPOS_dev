@@ -192,15 +192,19 @@
                                 
                                 // Calculate payment status
                                 // DepositAmount stores cash received (net). But a booking can be fully settled by
-                                // net + payment-time discount + round-off. Use payments when available.
+                                // net + payment-time discount, with round-off adjusting the final payable amount.
                                 var paymentsForBalance = booking.Payments ?? Enumerable.Empty<HotelApp.Web.Models.BookingPayment>();
-                                var settledAmount = paymentsForBalance.Any()
-                                    ? paymentsForBalance.Sum(p => p.Amount + p.DiscountAmount + (p.IsRoundOffApplied ? p.RoundOffAmount : 0m))
+                                var totalRoundOffApplied = paymentsForBalance.Any()
+                                    ? paymentsForBalance.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m)
+                                    : 0m;
+                                var settledNet = paymentsForBalance.Any()
+                                    ? paymentsForBalance.Sum(p => p.Amount + p.DiscountAmount)
                                     : booking.DepositAmount;
 
-                                var balanceAmount = booking.TotalAmount - settledAmount;
+                                var finalPayable = booking.TotalAmount + totalRoundOffApplied;
+                                var balanceAmount = finalPayable - settledNet;
                                 var paymentPercentage = booking.TotalAmount > 0
-                                    ? Math.Max(0, Math.Min(100, (settledAmount / booking.TotalAmount) * 100))
+                                    ? Math.Max(0, Math.Min(100, (settledNet / booking.TotalAmount) * 100))
                                     : 0;
                                 var paymentStatusClass = "";
                                 var paymentStatusIcon = "";
@@ -212,7 +216,7 @@
                                     paymentStatusIcon = "fas fa-check-circle";
                                     paymentStatusText = "Fully Paid";
                                 }
-                                else if (settledAmount > 0)
+                                else if (settledNet > 0)
                                 {
                                     paymentStatusClass = "payment-badge-partial";
                                     paymentStatusIcon = "fas fa-clock";

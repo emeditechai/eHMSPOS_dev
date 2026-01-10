@@ -142,13 +142,15 @@ namespace HotelApp.Web.Controllers
 
             var grandTotal = booking.TotalAmount + ocGrandTotal + rsActualBillTotal;
 
+            var totalRoundOffApplied = payments?.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m) ?? 0m;
+
             var appliedToBalanceFromPayments = payments?.Sum(p =>
                 p.Amount
                 + p.DiscountAmount
-                + (p.IsRoundOffApplied ? p.RoundOffAmount : 0m)
             ) ?? 0m;
 
-            var balanceDueRaw = grandTotal - appliedToBalanceFromPayments;
+            var finalPayable = grandTotal + totalRoundOffApplied;
+            var balanceDueRaw = finalPayable - appliedToBalanceFromPayments;
             var balanceDue = Math.Max(0m, Math.Round(balanceDueRaw, 2, MidpointRounding.AwayFromZero));
 
             return (grandTotal, balanceDue);
@@ -247,14 +249,12 @@ namespace HotelApp.Web.Controllers
                     }
 
                     var payments = (await _bookingRepository.GetPaymentsAsync(booking.Id)).ToList();
-                    var appliedFromPayments = payments.Sum(p =>
-                        p.Amount
-                        + p.DiscountAmount
-                        + (p.IsRoundOffApplied ? p.RoundOffAmount : 0m)
-                    );
+                    var totalRoundOffApplied = payments.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m);
+                    var appliedFromPayments = payments.Sum(p => p.Amount + p.DiscountAmount);
 
                     var adjustedGrandTotal = booking.TotalAmount + otherChargesGrandTotal + roomServiceGrandTotal;
-                    var balanceDueRaw = adjustedGrandTotal - appliedFromPayments;
+                    var adjustedFinalPayable = adjustedGrandTotal + totalRoundOffApplied;
+                    var balanceDueRaw = adjustedFinalPayable - appliedFromPayments;
                     var isFullyPaid = balanceDueRaw <= 0m;
 
                     if (isFullyPaid)
@@ -1447,14 +1447,12 @@ namespace HotelApp.Web.Controllers
                         }
 
                         var payments = (await _bookingRepository.GetPaymentsAsync(bookingId)).ToList();
-                        var appliedFromPayments = payments.Sum(p =>
-                            p.Amount
-                            + p.DiscountAmount
-                            + (p.IsRoundOffApplied ? p.RoundOffAmount : 0m)
-                        );
+                        var totalRoundOffApplied = payments.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m);
+                        var appliedFromPayments = payments.Sum(p => p.Amount + p.DiscountAmount);
 
                         var adjustedGrandTotal = totalAmount + otherChargesGrandTotal + roomServiceGrandTotal;
-                        var balanceDueRaw = adjustedGrandTotal - appliedFromPayments;
+                        var adjustedFinalPayable = adjustedGrandTotal + totalRoundOffApplied;
+                        var balanceDueRaw = adjustedFinalPayable - appliedFromPayments;
                         var isFullyPaid = balanceDueRaw <= 0m;
 
                         if (isFullyPaid)

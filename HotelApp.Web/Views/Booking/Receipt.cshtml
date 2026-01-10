@@ -45,10 +45,10 @@
     var appliedToBalanceFromPayments = payments?.Sum(p =>
         p.Amount
         + p.DiscountAmount
-        + (p.IsRoundOffApplied ? p.RoundOffAmount : 0m)
     ) ?? 0m;
 
-    var receiptAdjustedBalanceDueRaw = receiptAdjustedGrandTotal - appliedToBalanceFromPayments;
+    var receiptAdjustedFinalPayable = receiptAdjustedGrandTotal + totalRoundOffApplied;
+    var receiptAdjustedBalanceDueRaw = receiptAdjustedFinalPayable - appliedToBalanceFromPayments;
     var receiptAdjustedBalanceDueComputed = Math.Max(0m, Math.Round(receiptAdjustedBalanceDueRaw, 2, MidpointRounding.AwayFromZero));
     var receiptAdjustedBalanceDue = ViewBag.ReceiptAdjustedBalanceDue is decimal serverBalanceDue
         ? serverBalanceDue
