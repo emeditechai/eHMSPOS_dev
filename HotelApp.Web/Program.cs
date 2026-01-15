@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using HotelApp.Web.Repositories;
 using HotelApp.Web.Services;
 using Microsoft.AspNetCore.DataProtection;
+using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,7 +18,76 @@ builder.Services.AddControllersWithViews()
 builder.Services.Configure<HotelApp.Web.Models.PaymentQrOptions>(
     builder.Configuration.GetSection("PaymentQr"));
 
-builder.Services.AddDataProtection();
+// Persist DataProtection keys so signed public links (e.g., Guest Feedback tokens)
+// remain valid across app restarts after publish.
+var dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "DataProtectionKeys");
+Directory.CreateDirectory(dataProtectionKeysPath);
+
+static void TryMigrateLegacyDataProtectionKeys(string newKeyRingPath)
+{
+    try
+    {
+        // If we already have keys in the new location, do nothing.
+        if (Directory.Exists(newKeyRingPath) && Directory.EnumerateFiles(newKeyRingPath, "*.xml").Any())
+        {
+            return;
+        }
+
+        var legacyCandidates = new List<string>();
+
+        // Common default key ring locations for ASP.NET Core.
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.IsNullOrWhiteSpace(home))
+        {
+            legacyCandidates.Add(Path.Combine(home, ".aspnet", "DataProtection-Keys"));
+        }
+
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (!string.IsNullOrWhiteSpace(localAppData))
+        {
+            legacyCandidates.Add(Path.Combine(localAppData, "ASP.NET", "DataProtection-Keys"));
+        }
+
+        foreach (var legacyPath in legacyCandidates.Distinct())
+        {
+            if (!Directory.Exists(legacyPath))
+            {
+                continue;
+            }
+
+            var legacyFiles = Directory.EnumerateFiles(legacyPath, "*.xml").ToList();
+            if (legacyFiles.Count == 0)
+            {
+                continue;
+            }
+
+            foreach (var src in legacyFiles)
+            {
+                var dest = Path.Combine(newKeyRingPath, Path.GetFileName(src));
+                if (File.Exists(dest))
+                {
+                    continue;
+                }
+
+                File.Copy(src, dest);
+            }
+
+            // Migration succeeded from the first location that had keys.
+            return;
+        }
+    }
+    catch
+    {
+        // Best-effort only. If keys are genuinely missing, mail password must be re-saved.
+    }
+}
+
+TryMigrateLegacyDataProtectionKeys(dataProtectionKeysPath);
+
+builder.Services
+    .AddDataProtection()
+    .SetApplicationName("HotelApp")
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
 
 // Database connection factory
 builder.Services.AddScoped<IDbConnection>(_ => new SqlConnection(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -49,10 +119,12 @@ builder.Services.AddScoped<IBillingHeadRepository, BillingHeadRepository>();
 builder.Services.AddScoped<IUpiSettingsRepository, UpiSettingsRepository>();
 builder.Services.AddScoped<IMailConfigurationRepository, MailConfigurationRepository>();
 builder.Services.AddScoped<IBookingReceiptTemplateRepository, BookingReceiptTemplateRepository>();
+builder.Services.AddScoped<IGuestFeedbackRepository, GuestFeedbackRepository>();
 
 builder.Services.AddScoped<IMailPasswordProtector, MailPasswordProtector>();
 builder.Services.AddScoped<IMailSender, MailSender>();
 builder.Services.AddScoped<IRazorViewToStringRenderer, RazorViewToStringRenderer>();
+builder.Services.AddScoped<IGuestFeedbackLinkService, GuestFeedbackLinkService>();
 
 // Session configuration for BranchID storage
 builder.Services.AddDistributedMemoryCache();

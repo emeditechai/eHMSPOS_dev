@@ -73,7 +73,7 @@
                             </a>
                         </div>
                     </div>
-                    @{ bool bookingsNavActive = controller == "Booking" || controller == "Guest"; }
+                    @{ bool bookingsNavActive = controller == "Booking" || controller == "Guest" || controller == "GuestFeedback"; }
                     <div class="menu-item has-dropdown @(bookingsNavActive ? "active" : string.Empty)">
                         <i class="fas fa-calendar-check"></i>
                         <span>Bookings</span>
@@ -98,6 +98,12 @@
                             <a asp-controller="Booking" asp-action="PaymentDashboard" class="@(controller == "Booking" && action == "PaymentDashboard" ? "active" : string.Empty)">
                                 <i class="fas fa-chart-line"></i>
                                 <span>Payment Dashboard</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+
+                            <a asp-controller="GuestFeedback" asp-action="List" class="@(controller == "GuestFeedback" ? "active" : string.Empty)">
+                                <i class="fas fa-comment-dots"></i>
+                                <span>Guest Feedback</span>
                                 <i class="fas fa-arrow-right dropdown-arrow"></i>
                             </a>
 

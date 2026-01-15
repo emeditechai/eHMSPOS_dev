@@ -1,0 +1,282 @@
+@model HotelApp.Web.ViewModels.GuestFeedbackCreateViewModel
+@{
+    ViewData["Title"] = "Guest Feedback";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/guest-feedback.css" />
+}
+
+<div class="guest-feedback-page">
+    <div class="gf-header">
+        <div>
+            <div class="gf-title">
+                <i class="fas fa-comment-dots"></i>
+                <span>Guest Feedback</span>
+            </div>
+            <div class="gf-subtitle">We value your stay experience. Please rate and share any comments.</div>
+        </div>
+        @if (User?.Identity?.IsAuthenticated == true)
+        {
+            <div>
+                <a class="gf-btn secondary" asp-action="List"><i class="fas fa-list"></i> View Feedback</a>
+            </div>
+        }
+    </div>
+
+    <div class="gf-hotel-bar">
+        <div>
+            <div class="gf-hotel-name">@(Model.HotelName ?? ViewBag.CurrentBranchName)</div>
+            <div style="color: rgba(31,41,55,0.75); font-size: 0.9rem;">@(Model.HotelAddress ?? "")</div>
+        </div>
+        <div class="gf-hotel-meta">
+            @if (!string.IsNullOrWhiteSpace(Model.HotelEmail))
+            {
+                <span><i class="fas fa-envelope"></i> @Model.HotelEmail</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.HotelWebsite))
+            {
+                <span><i class="fas fa-globe"></i> @Model.HotelWebsite</span>
+            }
+        </div>
+    </div>
+
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+
+        <input type="hidden" asp-for="AccessToken" />
+        <input type="hidden" asp-for="BookingId" />
+        <input type="hidden" asp-for="BookingNumber" />
+        <input type="hidden" asp-for="RoomNumber" />
+        <input type="hidden" asp-for="QuickTags" id="QuickTags" />
+
+        <div class="gf-card">
+            <h3><i class="fas fa-user"></i> Guest Information</h3>
+            <div class="gf-grid">
+                <div class="gf-field">
+                    <label asp-for="GuestName">Name (optional)</label>
+                    <input asp-for="GuestName" placeholder="Guest name" />
+                    <span class="gf-validation" asp-validation-for="GuestName"></span>
+                </div>
+                <div class="gf-field">
+                    <label asp-for="Email">Email (optional)</label>
+                    <input asp-for="Email" placeholder="guest@email.com" />
+                    <span class="gf-validation" asp-validation-for="Email"></span>
+                </div>
+                <div class="gf-field">
+                    <label asp-for="Phone">Phone (optional)</label>
+                    <input asp-for="Phone" placeholder="Contact number" />
+                    <span class="gf-validation" asp-validation-for="Phone"></span>
+                </div>
+                <div class="gf-field">
+                    <label asp-for="Birthday">Birthday</label>
+                    <input asp-for="Birthday" type="date" />
+                    <span class="gf-validation" asp-validation-for="Birthday"></span>
+                </div>
+                <div class="gf-field">
+                    <label asp-for="Anniversary">Anniversary</label>
+                    <input asp-for="Anniversary" type="date" />
+                    <span class="gf-validation" asp-validation-for="Anniversary"></span>
+                </div>
+                <div class="gf-field">
+                    <label asp-for="VisitDate">Visit Date</label>
+                    <input asp-for="VisitDate" type="date" />
+                    <span class="gf-validation" asp-validation-for="VisitDate"></span>
+                </div>
+                <div class="gf-field" style="grid-column: 1 / -1;">
+                    <label>Was this your first stay?</label>
+                    <div class="gf-inline">
+                        <label class="radio">
+                            <input type="radio" name="IsFirstVisit" value="true" @(Model.IsFirstVisit == true ? "checked" : "") /> Yes
+                        </label>
+                        <label class="radio">
+                            <input type="radio" name="IsFirstVisit" value="false" @(Model.IsFirstVisit == false ? "checked" : "") /> No
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="gf-card">
+            <h3><i class="fas fa-star"></i> Ratings</h3>
+
+            <div class="gf-rating-row">
+                <div class="gf-rating-label">Overall Rating <span style="color:#dc2626;">*</span></div>
+                <div>
+                    <div class="gf-stars" data-stars>
+                        @for (var i = 5; i >= 1; i--)
+                        {
+                            var id = $"OverallRating_{i}";
+                            <input type="radio" id="@id" name="OverallRating" value="@i" @(Model.OverallRating == i ? "checked" : "") required />
+                            <label for="@id" title="@i">★</label>
+                        }
+                    </div>
+                    <div class="gf-validation"><span asp-validation-for="OverallRating"></span></div>
+                </div>
+            </div>
+
+            <div class="gf-rating-row">
+                <div class="gf-rating-label">Room Cleanliness</div>
+                <div class="gf-stars" data-stars>
+                    @for (var i = 5; i >= 1; i--)
+                    {
+                        var id = $"RoomCleanlinessRating_{i}";
+                        <input type="radio" id="@id" name="RoomCleanlinessRating" value="@i" @(Model.RoomCleanlinessRating == i ? "checked" : "") />
+                        <label for="@id" title="@i">★</label>
+                    }
+                </div>
+            </div>
+
+            <div class="gf-rating-row">
+                <div class="gf-rating-label">Staff Behavior</div>
+                <div class="gf-stars" data-stars>
+                    @for (var i = 5; i >= 1; i--)
+                    {
+                        var id = $"StaffBehaviorRating_{i}";
+                        <input type="radio" id="@id" name="StaffBehaviorRating" value="@i" @(Model.StaffBehaviorRating == i ? "checked" : "") />
+                        <label for="@id" title="@i">★</label>
+                    }
+                </div>
+            </div>
+
+            <div class="gf-rating-row">
+                <div class="gf-rating-label">Service</div>
+                <div class="gf-stars" data-stars>
+                    @for (var i = 5; i >= 1; i--)
+                    {
+                        var id = $"ServiceRating_{i}";
+                        <input type="radio" id="@id" name="ServiceRating" value="@i" @(Model.ServiceRating == i ? "checked" : "") />
+                        <label for="@id" title="@i">★</label>
+                    }
+                </div>
+            </div>
+
+            <div class="gf-rating-row">
+                <div class="gf-rating-label">Room Comfort</div>
+                <div class="gf-stars" data-stars>
+                    @for (var i = 5; i >= 1; i--)
+                    {
+                        var id = $"RoomComfortRating_{i}";
+                        <input type="radio" id="@id" name="RoomComfortRating" value="@i" @(Model.RoomComfortRating == i ? "checked" : "") />
+                        <label for="@id" title="@i">★</label>
+                    }
+                </div>
+            </div>
+
+            <div class="gf-rating-row">
+                <div class="gf-rating-label">Amenities</div>
+                <div class="gf-stars" data-stars>
+                    @for (var i = 5; i >= 1; i--)
+                    {
+                        var id = $"AmenitiesRating_{i}";
+                        <input type="radio" id="@id" name="AmenitiesRating" value="@i" @(Model.AmenitiesRating == i ? "checked" : "") />
+                        <label for="@id" title="@i">★</label>
+                    }
+                </div>
+            </div>
+
+            <div class="gf-rating-row">
+                <div class="gf-rating-label">Food</div>
+                <div class="gf-stars" data-stars>
+                    @for (var i = 5; i >= 1; i--)
+                    {
+                        var id = $"FoodRating_{i}";
+                        <input type="radio" id="@id" name="FoodRating" value="@i" @(Model.FoodRating == i ? "checked" : "") />
+                        <label for="@id" title="@i">★</label>
+                    }
+                </div>
+            </div>
+
+            <div class="gf-rating-row">
+                <div class="gf-rating-label">Value For Money</div>
+                <div class="gf-stars" data-stars>
+                    @for (var i = 5; i >= 1; i--)
+                    {
+                        var id = $"ValueForMoneyRating_{i}";
+                        <input type="radio" id="@id" name="ValueForMoneyRating" value="@i" @(Model.ValueForMoneyRating == i ? "checked" : "") />
+                        <label for="@id" title="@i">★</label>
+                    }
+                </div>
+            </div>
+
+            <div class="gf-rating-row">
+                <div class="gf-rating-label">Check-in Experience</div>
+                <div class="gf-stars" data-stars>
+                    @for (var i = 5; i >= 1; i--)
+                    {
+                        var id = $"CheckInExperienceRating_{i}";
+                        <input type="radio" id="@id" name="CheckInExperienceRating" value="@i" @(Model.CheckInExperienceRating == i ? "checked" : "") />
+                        <label for="@id" title="@i">★</label>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="gf-card">
+            <h3><i class="fas fa-tags"></i> Quick Tags</h3>
+            <div style="color: rgba(31,41,55,0.70); font-size: 0.95rem;">Select any that match the stay experience.</div>
+            <div class="gf-tags" id="tags">
+                <button type="button" class="gf-tag" data-tag="Friendly Staff">Friendly Staff</button>
+                <button type="button" class="gf-tag" data-tag="Clean Rooms">Clean Rooms</button>
+                <button type="button" class="gf-tag" data-tag="Great Location">Great Location</button>
+                <button type="button" class="gf-tag" data-tag="Quick Check-in">Quick Check-in</button>
+                <button type="button" class="gf-tag" data-tag="Good Amenities">Good Amenities</button>
+                <button type="button" class="gf-tag" data-tag="Value for Money">Value for Money</button>
+                <button type="button" class="gf-tag" data-tag="Needs Improvement">Needs Improvement</button>
+                <button type="button" class="gf-tag" data-tag="Noise Issue">Noise Issue</button>
+            </div>
+        </div>
+
+        <div class="gf-card">
+            <h3><i class="fas fa-comment"></i> Comments</h3>
+            <div class="gf-field">
+                <label asp-for="Comments">Comments (optional)</label>
+                <textarea asp-for="Comments" placeholder="Share any details or suggestions..."></textarea>
+                <span class="gf-validation" asp-validation-for="Comments"></span>
+            </div>
+
+            <div class="gf-actions">
+                @if (User?.Identity?.IsAuthenticated == true)
+                {
+                    <a class="gf-btn secondary" asp-action="List"><i class="fas fa-times"></i> Cancel</a>
+                }
+                <button class="gf-btn primary" type="submit"><i class="fas fa-paper-plane"></i> Submit Feedback</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+    <script>
+        (function() {
+            const tagsEl = document.getElementById('tags');
+            const hidden = document.getElementById('QuickTags');
+            if (!tagsEl || !hidden) return;
+
+            const initial = (hidden.value || '').split(',').map(x => x.trim()).filter(Boolean);
+            const selected = new Set(initial);
+
+            function sync() {
+                hidden.value = Array.from(selected).join(', ');
+            }
+
+            tagsEl.querySelectorAll('[data-tag]').forEach(btn => {
+                const tag = btn.getAttribute('data-tag');
+                if (selected.has(tag)) btn.classList.add('active');
+                btn.addEventListener('click', () => {
+                    if (selected.has(tag)) {
+                        selected.delete(tag);
+                        btn.classList.remove('active');
+                    } else {
+                        selected.add(tag);
+                        btn.classList.add('active');
+                    }
+                    sync();
+                });
+            });
+
+            sync();
+        })();
+    </script>
+}

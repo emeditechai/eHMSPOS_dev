@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using HotelApp.Web.Repositories;
 using HotelApp.Web.ViewModels;
 using HotelApp.Web.Models;
+using HotelApp.Web.Services;
+using System.Text.Encodings.Web;
 
 namespace HotelApp.Web.Controllers;
 
@@ -15,6 +17,9 @@ public class RoomsController : BaseController
     private readonly IRateMasterRepository _rateMasterRepository;
     private readonly IRoomServiceRepository _roomServiceRepository;
     private readonly IBookingOtherChargeRepository _bookingOtherChargeRepository;
+    private readonly IMailSender _mailSender;
+    private readonly IHotelSettingsRepository _hotelSettingsRepository;
+    private readonly IGuestFeedbackLinkService _guestFeedbackLinkService;
 
     public RoomsController(
         IRoomRepository roomRepository, 
@@ -22,7 +27,10 @@ public class RoomsController : BaseController
         IBookingRepository bookingRepository,
         IRateMasterRepository rateMasterRepository,
         IRoomServiceRepository roomServiceRepository,
-        IBookingOtherChargeRepository bookingOtherChargeRepository)
+                IBookingOtherChargeRepository bookingOtherChargeRepository,
+                IMailSender mailSender,
+                IHotelSettingsRepository hotelSettingsRepository,
+                IGuestFeedbackLinkService guestFeedbackLinkService)
     {
         _roomRepository = roomRepository;
         _floorRepository = floorRepository;
@@ -30,7 +38,77 @@ public class RoomsController : BaseController
         _rateMasterRepository = rateMasterRepository;
         _roomServiceRepository = roomServiceRepository;
         _bookingOtherChargeRepository = bookingOtherChargeRepository;
+                _mailSender = mailSender;
+                _hotelSettingsRepository = hotelSettingsRepository;
+                _guestFeedbackLinkService = guestFeedbackLinkService;
     }
+
+        private async Task TrySendGuestFeedbackEmailAsync(Booking booking)
+        {
+                try
+                {
+                        if (booking == null)
+                        {
+                                return;
+                        }
+
+                        var toEmail = (booking.PrimaryGuestEmail ?? string.Empty).Trim();
+                        if (string.IsNullOrWhiteSpace(toEmail))
+                        {
+                                return;
+                        }
+
+                        var baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
+                        var expiresUtc = DateTimeOffset.UtcNow.AddDays(30);
+                        var token = _guestFeedbackLinkService.CreateToken(booking.BookingNumber, booking.BranchID, expiresUtc);
+                        var feedbackUrl = $"{baseUrl}/GuestFeedback/Create?t={Uri.EscapeDataString(token)}";
+
+                        var hotel = await _hotelSettingsRepository.GetByBranchAsync(booking.BranchID);
+                        var hotelName = (hotel?.HotelName ?? "Hotel").Trim();
+
+                        var enc = HtmlEncoder.Default;
+                        var safeHotelName = enc.Encode(hotelName);
+                        var safeBookingNumber = enc.Encode(booking.BookingNumber);
+                        var safeFeedbackUrl = enc.Encode(feedbackUrl);
+
+                        var subject = $"We value your feedback - {hotelName}";
+                        var html = $@"<!doctype html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <meta name='viewport' content='width=device-width,initial-scale=1' />
+</head>
+<body style='margin:0;padding:0;background:#f6f7fb;font-family:Arial,Helvetica,sans-serif;'>
+    <div style='max-width:640px;margin:0 auto;padding:24px;'>
+        <div style='background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;'>
+            <h2 style='margin:0 0 8px 0;color:#111827;font-size:20px;'>Thank you for staying with {safeHotelName}</h2>
+            <p style='margin:0 0 14px 0;color:#374151;font-size:14px;line-height:20px;'>
+                Your booking reference: <strong>{safeBookingNumber}</strong>
+            </p>
+            <p style='margin:0 0 18px 0;color:#374151;font-size:14px;line-height:20px;'>
+                Please take a minute to share your experience. Your feedback helps us improve.
+            </p>
+            <p style='margin:0 0 18px 0;'>
+                <a href='{safeFeedbackUrl}' style='display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:10px 14px;border-radius:10px;font-size:14px;'>
+                    Submit Guest Feedback
+                </a>
+            </p>
+            <p style='margin:0;color:#6b7280;font-size:12px;line-height:18px;'>
+                If the button doesn't work, open this link: <br />
+                <a href='{safeFeedbackUrl}' style='color:#2563eb;text-decoration:underline;word-break:break-all;'>{safeFeedbackUrl}</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>";
+
+                        await _mailSender.SendEmailAsync(booking.BranchID, toEmail, subject, html);
+                }
+                catch
+                {
+                        // Best-effort only; checkout flow must not fail if email fails.
+                }
+        }
 
     private static decimal Round2(decimal value)
         => Math.Round(value, 2, MidpointRounding.AwayFromZero);
@@ -471,6 +549,7 @@ public class RoomsController : BaseController
             if (booking != null)
             {
                 await _roomServiceRepository.SettleRoomServicesAsync(booking.Id, booking.BranchID);
+                await TrySendGuestFeedbackEmailAsync(booking);
             }
             
             // Get all rooms assigned to this booking and update their status
@@ -624,6 +703,7 @@ public class RoomsController : BaseController
             if (booking != null)
             {
                 await _roomServiceRepository.SettleRoomServicesAsync(booking.Id, booking.BranchID);
+                await TrySendGuestFeedbackEmailAsync(booking);
             }
             
             // Get all rooms assigned to this booking and update their status

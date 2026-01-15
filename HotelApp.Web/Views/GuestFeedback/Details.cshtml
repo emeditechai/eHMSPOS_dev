@@ -1,0 +1,85 @@
+@model HotelApp.Web.ViewModels.GuestFeedbackDetailsViewModel
+@{
+    ViewData["Title"] = "Guest Feedback";
+    string Stars(byte? value)
+    {
+        var v = value ?? 0;
+        var filled = new string('★', v);
+        var empty = new string('☆', Math.Max(0, 5 - v));
+        return filled + empty;
+    }
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/guest-feedback.css" />
+}
+
+<div class="guest-feedback-page">
+    <div class="gf-header">
+        <div>
+            <div class="gf-title"><i class="fas fa-comment-dots"></i> <span>Guest Feedback</span></div>
+            <div class="gf-subtitle">Submitted on @Model.CreatedDate.ToString("dd/MM/yyyy HH:mm")</div>
+        </div>
+        <div class="gf-actions" style="margin-top:0;">
+            <a class="gf-btn secondary" asp-action="List"><i class="fas fa-arrow-left"></i> Back</a>
+            <a class="gf-btn primary" asp-action="Create"><i class="fas fa-plus"></i> New</a>
+        </div>
+    </div>
+
+    <div class="gf-hotel-bar">
+        <div>
+            <div class="gf-hotel-name">@(Model.HotelName ?? ViewBag.CurrentBranchName)</div>
+            <div style="color: rgba(31,41,55,0.75); font-size: 0.9rem;">@(Model.HotelAddress ?? "")</div>
+        </div>
+        <div class="gf-hotel-meta">
+            @if (!string.IsNullOrWhiteSpace(Model.HotelEmail))
+            {
+                <span><i class="fas fa-envelope"></i> @Model.HotelEmail</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.HotelWebsite))
+            {
+                <span><i class="fas fa-globe"></i> @Model.HotelWebsite</span>
+            }
+        </div>
+    </div>
+
+    <div class="gf-card">
+        <h3><i class="fas fa-user"></i> Guest Information</h3>
+        <div class="gf-grid">
+            <div><strong>Name:</strong> @(Model.GuestName ?? "-")</div>
+            <div><strong>Email:</strong> @(Model.Email ?? "-")</div>
+            <div><strong>Phone:</strong> @(Model.Phone ?? "-")</div>
+            <div><strong>Visit Date:</strong> @Model.VisitDate.ToString("dd/MM/yyyy")</div>
+            <div><strong>Birthday:</strong> @(Model.Birthday.HasValue ? Model.Birthday.Value.ToString("dd/MM/yyyy") : "-")</div>
+            <div><strong>Anniversary:</strong> @(Model.Anniversary.HasValue ? Model.Anniversary.Value.ToString("dd/MM/yyyy") : "-")</div>
+            <div><strong>First Visit:</strong> @(Model.IsFirstVisit.HasValue ? (Model.IsFirstVisit.Value ? "Yes" : "No") : "-")</div>
+            <div><strong>Booking:</strong> @(Model.BookingNumber ?? "-")</div>
+            <div><strong>Room:</strong> @(Model.RoomNumber ?? "-")</div>
+        </div>
+    </div>
+
+    <div class="gf-card">
+        <h3><i class="fas fa-star"></i> Ratings</h3>
+        <div class="gf-grid" style="grid-template-columns: repeat(2, 1fr);">
+            <div><strong>Overall:</strong> <span style="color:#f59e0b; font-weight:900;">@Stars(Model.OverallRating)</span> (@Model.OverallRating)</div>
+            <div><strong>Room Cleanliness:</strong> <span style="color:#f59e0b; font-weight:900;">@Stars(Model.RoomCleanlinessRating)</span></div>
+            <div><strong>Staff Behavior:</strong> <span style="color:#f59e0b; font-weight:900;">@Stars(Model.StaffBehaviorRating)</span></div>
+            <div><strong>Service:</strong> <span style="color:#f59e0b; font-weight:900;">@Stars(Model.ServiceRating)</span></div>
+            <div><strong>Room Comfort:</strong> <span style="color:#f59e0b; font-weight:900;">@Stars(Model.RoomComfortRating)</span></div>
+            <div><strong>Amenities:</strong> <span style="color:#f59e0b; font-weight:900;">@Stars(Model.AmenitiesRating)</span></div>
+            <div><strong>Food:</strong> <span style="color:#f59e0b; font-weight:900;">@Stars(Model.FoodRating)</span></div>
+            <div><strong>Value For Money:</strong> <span style="color:#f59e0b; font-weight:900;">@Stars(Model.ValueForMoneyRating)</span></div>
+            <div><strong>Check-in Experience:</strong> <span style="color:#f59e0b; font-weight:900;">@Stars(Model.CheckInExperienceRating)</span></div>
+        </div>
+    </div>
+
+    <div class="gf-card">
+        <h3><i class="fas fa-tags"></i> Quick Tags</h3>
+        <div>@(string.IsNullOrWhiteSpace(Model.QuickTags) ? "-" : Model.QuickTags)</div>
+    </div>
+
+    <div class="gf-card">
+        <h3><i class="fas fa-comment"></i> Comments</h3>
+        <div style="white-space: pre-wrap;">@(string.IsNullOrWhiteSpace(Model.Comments) ? "-" : Model.Comments)</div>
+    </div>
+</div>

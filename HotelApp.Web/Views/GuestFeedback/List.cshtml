@@ -1,0 +1,81 @@
+@model List<HotelApp.Web.ViewModels.GuestFeedbackListItemViewModel>
+@{
+    ViewData["Title"] = "Guest Feedback";
+    var fromDate = ViewBag.FromDate as DateTime?;
+    var toDate = ViewBag.ToDate as DateTime?;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/guest-feedback.css" />
+}
+
+<div class="guest-feedback-page">
+    <div class="gf-header">
+        <div>
+            <div class="gf-title"><i class="fas fa-comment-dots"></i> <span>Guest Feedback</span></div>
+            <div class="gf-subtitle">Review feedback submitted for this branch.</div>
+        </div>
+        <div class="gf-actions" style="margin-top:0;">
+            <a class="gf-btn primary" asp-action="Create"><i class="fas fa-plus"></i> New Feedback</a>
+        </div>
+    </div>
+
+    <div class="gf-card">
+        <form method="get" class="gf-grid" style="align-items:end;">
+            <div class="gf-field">
+                <label>From Date</label>
+                <input type="date" name="fromDate" value="@(fromDate.HasValue ? fromDate.Value.ToString("yyyy-MM-dd") : "")" />
+            </div>
+            <div class="gf-field">
+                <label>To Date</label>
+                <input type="date" name="toDate" value="@(toDate.HasValue ? toDate.Value.ToString("yyyy-MM-dd") : "")" />
+            </div>
+            <div class="gf-field">
+                <button class="gf-btn primary" type="submit"><i class="fas fa-filter"></i> Filter</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="gf-card">
+        <table class="gf-table">
+            <thead>
+                <tr>
+                    <th>Visit Date</th>
+                    <th>Booking</th>
+                    <th>Room</th>
+                    <th>Guest</th>
+                    <th>Phone</th>
+                    <th>Overall</th>
+                    <th>Tags</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model == null || Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="8" style="color: rgba(31,41,55,0.65);">No feedback found.</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var row in Model)
+                    {
+                        <tr>
+                            <td>@row.VisitDate.ToString("dd/MM/yyyy")</td>
+                            <td>@(row.BookingNumber ?? "-")</td>
+                            <td>@(row.RoomNumber ?? "-")</td>
+                            <td>@(row.GuestName ?? "-")</td>
+                            <td>@(row.Phone ?? "-")</td>
+                            <td><span class="gf-badge"><i class="fas fa-star"></i> @row.OverallRating</span></td>
+                            <td style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@(row.QuickTags ?? "-")</td>
+                            <td>
+                                <a class="gf-btn secondary" asp-action="Details" asp-route-id="@row.Id"><i class="fas fa-eye"></i> View</a>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
