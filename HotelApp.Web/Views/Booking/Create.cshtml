@@ -561,6 +561,9 @@
                             <button type="button" class="camera-btn" id="primaryGuestStartCamera">
                                 <i class="fas fa-camera"></i> Start Camera
                             </button>
+                            <button type="button" class="camera-btn" id="primaryGuestUpload" style="display:none;">
+                                <i class="fas fa-upload"></i> Upload Photo
+                            </button>
                             <button type="button" class="camera-btn primary" id="primaryGuestCapture" disabled>
                                 <i class="fas fa-circle"></i> Capture
                             </button>
@@ -574,6 +577,8 @@
                         <div class="guest-photo-hint">Uses your device camera. Captured photo will be saved for the primary guest.</div>
                         <div class="guest-photo-error" id="primaryGuestCameraError" style="display:none;"></div>
                     </div>
+
+                    <input type="file" id="primaryGuestPhotoFile" accept="image/*" capture="user" style="display:none;" />
 
                     <input asp-for="PrimaryGuestPhotoBase64" type="hidden" id="primaryGuestPhotoBase64" />
                     <input asp-for="PrimaryGuestPhotoContentType" type="hidden" id="primaryGuestPhotoContentType" />
@@ -820,9 +825,20 @@
             const $captureBtn = $('#primaryGuestCapture');
             const $retakeBtn = $('#primaryGuestRetake');
             const $removeBtn = $('#primaryGuestRemove');
+            const $uploadBtn = $('#primaryGuestUpload');
+            const $fileInput = $('#primaryGuestPhotoFile');
             const $err = $('#primaryGuestCameraError');
             const $base64 = $('#primaryGuestPhotoBase64');
             const $ctype = $('#primaryGuestPhotoContentType');
+
+            function isLocalhostHost() {
+                const h = (window.location && window.location.hostname) ? window.location.hostname : '';
+                return h === 'localhost' || h === '127.0.0.1' || h === '[::1]';
+            }
+
+            function ensureUploadAvailable() {
+                $uploadBtn.show();
+            }
 
             function setCameraError(message) {
                 if (!message) {
@@ -851,8 +867,16 @@
                 setCameraError('');
                 stopPrimaryGuestCamera();
 
+                // Browsers block getUserMedia on non-secure origins (HTTP) except localhost.
+                if (!window.isSecureContext && !isLocalhostHost()) {
+                    ensureUploadAvailable();
+                    setCameraError('Camera requires HTTPS on published sites. Please use Upload Photo.');
+                    return;
+                }
+
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                     setCameraError('Camera is not supported in this browser.');
+                    ensureUploadAvailable();
                     return;
                 }
 
@@ -874,7 +898,17 @@
                     $photoPreview.hide();
                     $captureBtn.prop('disabled', false);
                 } catch (e) {
-                    setCameraError('Unable to access camera. Please allow camera permission.');
+                    ensureUploadAvailable();
+                    const name = (e && e.name) ? e.name : '';
+                    if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+                        setCameraError('Camera permission denied. Please allow camera permission or use Upload Photo.');
+                    } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+                        setCameraError('No camera device found. Please use Upload Photo.');
+                    } else if (name === 'SecurityError') {
+                        setCameraError('Camera requires HTTPS on published sites. Please use Upload Photo.');
+                    } else {
+                        setCameraError('Unable to access camera. Please use Upload Photo.');
+                    }
                     stopPrimaryGuestCamera();
                 }
             }
@@ -898,11 +932,42 @@
                 $photoPreview.attr('src', '').hide();
                 $retakeBtn.hide();
                 $removeBtn.hide();
+                $fileInput.val('');
                 setCameraError('');
             }
 
             $startBtn.on('click', async function() {
                 await startPrimaryGuestCamera();
+            });
+
+            $uploadBtn.on('click', function() {
+                setCameraError('');
+                stopPrimaryGuestCamera();
+                $fileInput.trigger('click');
+            });
+
+            $fileInput.on('change', function() {
+                setCameraError('');
+                const file = this.files && this.files.length ? this.files[0] : null;
+                if (!file) return;
+                if (!file.type || !file.type.startsWith('image/')) {
+                    setCameraError('Please select an image file.');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    const dataUrl = ev.target && ev.target.result ? String(ev.target.result) : '';
+                    if (!dataUrl) {
+                        setCameraError('Failed to read selected image.');
+                        return;
+                    }
+                    setCapturedPhoto(dataUrl, file.type || 'image/jpeg');
+                };
+                reader.onerror = function() {
+                    setCameraError('Failed to read selected image.');
+                };
+                reader.readAsDataURL(file);
             });
 
             $captureBtn.on('click', function() {
