@@ -90,6 +90,21 @@ namespace HotelApp.Web.Models
         public int? UpdatedBy { get; set; }
     }
 
+    public class AssetMaker
+    {
+        public int Id { get; set; }
+        public int BranchID { get; set; }
+
+        [Required, StringLength(80)]
+        public string Name { get; set; } = string.Empty;
+
+        public bool IsActive { get; set; } = true;
+        public DateTime CreatedDate { get; set; }
+        public int? CreatedBy { get; set; }
+        public DateTime? UpdatedDate { get; set; }
+        public int? UpdatedBy { get; set; }
+    }
+
     public class AssetItem
     {
         public int Id { get; set; }
@@ -102,6 +117,15 @@ namespace HotelApp.Web.Models
         public string Name { get; set; } = string.Empty;
 
         public AssetItemCategory Category { get; set; } = AssetItemCategory.Asset;
+
+        [Display(Name = "Maker")]
+        public int? MakerId { get; set; }
+
+        [Display(Name = "Barcode"), StringLength(60)]
+        public string? Barcode { get; set; }
+
+        [Display(Name = "Asset Tag"), StringLength(60)]
+        public string? AssetTag { get; set; }
 
         [Display(Name = "Unit")]
         public int UnitId { get; set; }
@@ -126,6 +150,7 @@ namespace HotelApp.Web.Models
 
         // Navigation helpers (filled by queries)
         public string? UnitName { get; set; }
+        public string? MakerName { get; set; }
         public List<int> EligibleDepartmentIds { get; set; } = new();
     }
 

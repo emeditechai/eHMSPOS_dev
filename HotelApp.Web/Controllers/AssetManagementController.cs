@@ -224,6 +224,95 @@ namespace HotelApp.Web.Controllers
             return RedirectToAction(nameof(Units));
         }
 
+        // -------------------- Masters: Makers --------------------
+        public async Task<IActionResult> Makers()
+        {
+            ViewData["Title"] = "Asset Makers";
+            var rows = await _assets.GetMakersAsync(CurrentBranchID);
+            return View(rows);
+        }
+
+        public async Task<IActionResult> MakerDetails(int id)
+        {
+            ViewData["Title"] = "Maker Details";
+            var row = (await _assets.GetMakersAsync(CurrentBranchID)).FirstOrDefault(x => x.Id == id);
+            if (row == null)
+            {
+                return NotFound();
+            }
+
+            return View(row);
+        }
+
+        public IActionResult CreateMaker()
+        {
+            ViewData["Title"] = "Create Maker";
+            var model = new AssetMaker { BranchID = CurrentBranchID, IsActive = true };
+            return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateMaker(AssetMaker model)
+        {
+            model.BranchID = CurrentBranchID;
+            model.CreatedBy = CurrentUserId;
+
+            if (!ModelState.IsValid)
+            {
+                ViewData["Title"] = "Create Maker";
+                return View(model);
+            }
+
+            if (await _assets.MakerNameExistsAsync(CurrentBranchID, model.Name, null))
+            {
+                ModelState.AddModelError(nameof(model.Name), "Maker already exists.");
+                ViewData["Title"] = "Create Maker";
+                return View(model);
+            }
+
+            await _assets.CreateMakerAsync(model);
+            TempData["SuccessMessage"] = "Maker created successfully.";
+            return RedirectToAction(nameof(Makers));
+        }
+
+        public async Task<IActionResult> EditMaker(int id)
+        {
+            ViewData["Title"] = "Edit Maker";
+            var row = (await _assets.GetMakersAsync(CurrentBranchID)).FirstOrDefault(x => x.Id == id);
+            if (row == null)
+            {
+                return NotFound();
+            }
+
+            return View(row);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditMaker(AssetMaker model)
+        {
+            model.BranchID = CurrentBranchID;
+            model.UpdatedBy = CurrentUserId;
+
+            if (!ModelState.IsValid)
+            {
+                ViewData["Title"] = "Edit Maker";
+                return View(model);
+            }
+
+            if (await _assets.MakerNameExistsAsync(CurrentBranchID, model.Name, model.Id))
+            {
+                ModelState.AddModelError(nameof(model.Name), "Maker already exists.");
+                ViewData["Title"] = "Edit Maker";
+                return View(model);
+            }
+
+            await _assets.UpdateMakerAsync(model);
+            TempData["SuccessMessage"] = "Maker updated successfully.";
+            return RedirectToAction(nameof(Makers));
+        }
+
         // -------------------- Masters: Items --------------------
         public async Task<IActionResult> Items()
         {
@@ -259,6 +348,7 @@ namespace HotelApp.Web.Controllers
                 Item = new AssetItem { BranchID = CurrentBranchID, IsActive = true, RequiresCustodian = true },
                 Departments = (await _assets.GetDepartmentsAsync(CurrentBranchID)).ToList(),
                 Units = (await _assets.GetUnitsAsync(CurrentBranchID)).ToList(),
+                Makers = (await _assets.GetMakersAsync(CurrentBranchID)).ToList(),
                 SelectedDepartmentIds = new List<int>()
             };
 
@@ -275,6 +365,12 @@ namespace HotelApp.Web.Controllers
             // Reload lookups
             vm.Departments = (await _assets.GetDepartmentsAsync(CurrentBranchID)).ToList();
             vm.Units = (await _assets.GetUnitsAsync(CurrentBranchID)).ToList();
+            vm.Makers = (await _assets.GetMakersAsync(CurrentBranchID)).ToList();
+
+            if (vm.Item.MakerId.HasValue && !vm.Makers.Any(m => m.Id == vm.Item.MakerId.Value))
+            {
+                ModelState.AddModelError("Item.MakerId", "Invalid maker.");
+            }
 
             if (!ModelState.IsValid)
             {
@@ -285,6 +381,20 @@ namespace HotelApp.Web.Controllers
             if (await _assets.ItemCodeExistsAsync(CurrentBranchID, vm.Item.Code, null))
             {
                 ModelState.AddModelError("Item.Code", "Code already exists.");
+                ViewData["Title"] = "Create Asset Item";
+                return View(vm);
+            }
+
+            if (!string.IsNullOrWhiteSpace(vm.Item.Barcode) && await _assets.ItemBarcodeExistsAsync(CurrentBranchID, vm.Item.Barcode, null))
+            {
+                ModelState.AddModelError("Item.Barcode", "Barcode already exists.");
+                ViewData["Title"] = "Create Asset Item";
+                return View(vm);
+            }
+
+            if (!string.IsNullOrWhiteSpace(vm.Item.AssetTag) && await _assets.ItemAssetTagExistsAsync(CurrentBranchID, vm.Item.AssetTag, null))
+            {
+                ModelState.AddModelError("Item.AssetTag", "Asset tag already exists.");
                 ViewData["Title"] = "Create Asset Item";
                 return View(vm);
             }
@@ -311,6 +421,7 @@ namespace HotelApp.Web.Controllers
                 Item = item,
                 Departments = (await _assets.GetDepartmentsAsync(CurrentBranchID)).ToList(),
                 Units = (await _assets.GetUnitsAsync(CurrentBranchID)).ToList(),
+                Makers = (await _assets.GetMakersAsync(CurrentBranchID)).ToList(),
                 SelectedDepartmentIds = item.EligibleDepartmentIds ?? new List<int>()
             };
 
@@ -326,6 +437,12 @@ namespace HotelApp.Web.Controllers
 
             vm.Departments = (await _assets.GetDepartmentsAsync(CurrentBranchID)).ToList();
             vm.Units = (await _assets.GetUnitsAsync(CurrentBranchID)).ToList();
+            vm.Makers = (await _assets.GetMakersAsync(CurrentBranchID)).ToList();
+
+            if (vm.Item.MakerId.HasValue && !vm.Makers.Any(m => m.Id == vm.Item.MakerId.Value))
+            {
+                ModelState.AddModelError("Item.MakerId", "Invalid maker.");
+            }
 
             if (!ModelState.IsValid)
             {
@@ -336,6 +453,20 @@ namespace HotelApp.Web.Controllers
             if (await _assets.ItemCodeExistsAsync(CurrentBranchID, vm.Item.Code, vm.Item.Id))
             {
                 ModelState.AddModelError("Item.Code", "Code already exists.");
+                ViewData["Title"] = "Edit Asset Item";
+                return View(vm);
+            }
+
+            if (!string.IsNullOrWhiteSpace(vm.Item.Barcode) && await _assets.ItemBarcodeExistsAsync(CurrentBranchID, vm.Item.Barcode, vm.Item.Id))
+            {
+                ModelState.AddModelError("Item.Barcode", "Barcode already exists.");
+                ViewData["Title"] = "Edit Asset Item";
+                return View(vm);
+            }
+
+            if (!string.IsNullOrWhiteSpace(vm.Item.AssetTag) && await _assets.ItemAssetTagExistsAsync(CurrentBranchID, vm.Item.AssetTag, vm.Item.Id))
+            {
+                ModelState.AddModelError("Item.AssetTag", "Asset tag already exists.");
                 ViewData["Title"] = "Edit Asset Item";
                 return View(vm);
             }

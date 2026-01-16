@@ -127,6 +127,11 @@
                                 <span>Item Master</span>
                                 <i class="fas fa-arrow-right dropdown-arrow"></i>
                             </a>
+                            <a asp-controller="AssetManagement" asp-action="Makers" class="@(controller == "AssetManagement" && action == "Makers" ? "active" : string.Empty)">
+                                <i class="fas fa-industry"></i>
+                                <span>Makers</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
                             <a asp-controller="AssetManagement" asp-action="Departments" class="@(controller == "AssetManagement" && action == "Departments" ? "active" : string.Empty)">
                                 <i class="fas fa-sitemap"></i>
                                 <span>Departments</span>

@@ -19,9 +19,9 @@ namespace HotelApp.Web.Repositories
             var fromUtc = fromDate.Date;
             var toUtcExclusive = toDate.Date.AddDays(1);
 
-            // MovementType values:
-            // IN: OpeningStockIn(1), ReturnIn(2), DamageRecoveryIn(3)
-            // OUT: DepartmentIssueOut(10), RoomAllocationOut(11), GuestIssueOut(12), ConsumableUsageOut(13), AutoCheckoutConsumableOut(14)
+            // MovementType values (see AssetMovementType enum):
+            // IN: OpeningStockIn(1), ReturnIn(2), TransferIn(3), DamageRecoveryIn(4)
+            // OUT: DepartmentIssueOut(10), RoomAllocationOut(11), GuestIssueOut(12), ConsumableUsageOut(13), TransferOut(14), AutoCheckoutConsumableOut(20)
             const string sql = @"
                 SELECT
                     (SELECT COUNT(1) FROM AssetItems WHERE BranchID = @BranchID AND IsActive = 1) AS ActiveItemsCount,
@@ -43,31 +43,31 @@ namespace HotelApp.Web.Repositories
                      WHERE m.BranchID = @BranchID AND m.MovementDate >= @FromDate AND m.MovementDate < @ToDateExclusive
                     ) AS MovementsCount,
 
-                    (SELECT COUNT(1)
-                     FROM AssetMovements m
-                     WHERE m.BranchID = @BranchID AND m.MovementDate >= @FromDate AND m.MovementDate < @ToDateExclusive
-                       AND m.MovementType IN (1,2,3)
-                    ) AS MovementsInCount,
+                                        (SELECT COUNT(1)
+                                         FROM AssetMovements m
+                                         WHERE m.BranchID = @BranchID AND m.MovementDate >= @FromDate AND m.MovementDate < @ToDateExclusive
+                                             AND m.MovementType IN (1,2,3,4)
+                                        ) AS MovementsInCount,
 
-                    (SELECT COUNT(1)
-                     FROM AssetMovements m
-                     WHERE m.BranchID = @BranchID AND m.MovementDate >= @FromDate AND m.MovementDate < @ToDateExclusive
-                       AND m.MovementType IN (10,11,12,13,14)
-                    ) AS MovementsOutCount,
+                                        (SELECT COUNT(1)
+                                         FROM AssetMovements m
+                                         WHERE m.BranchID = @BranchID AND m.MovementDate >= @FromDate AND m.MovementDate < @ToDateExclusive
+                                             AND m.MovementType IN (10,11,12,13,14,20)
+                                        ) AS MovementsOutCount,
 
-                    (SELECT ISNULL(SUM(l.Qty), 0)
-                     FROM AssetMovements m
-                     INNER JOIN AssetMovementLines l ON l.MovementId = m.Id
-                     WHERE m.BranchID = @BranchID AND m.MovementDate >= @FromDate AND m.MovementDate < @ToDateExclusive
-                       AND m.MovementType IN (1,2,3)
-                    ) AS TotalInQty,
+                                        (SELECT ISNULL(SUM(l.Qty), 0)
+                                         FROM AssetMovements m
+                                         INNER JOIN AssetMovementLines l ON l.MovementId = m.Id
+                                         WHERE m.BranchID = @BranchID AND m.MovementDate >= @FromDate AND m.MovementDate < @ToDateExclusive
+                                             AND m.MovementType IN (1,2,3,4)
+                                        ) AS TotalInQty,
 
-                    (SELECT ISNULL(SUM(l.Qty), 0)
-                     FROM AssetMovements m
-                     INNER JOIN AssetMovementLines l ON l.MovementId = m.Id
-                     WHERE m.BranchID = @BranchID AND m.MovementDate >= @FromDate AND m.MovementDate < @ToDateExclusive
-                       AND m.MovementType IN (10,11,12,13,14)
-                    ) AS TotalOutQty,
+                                        (SELECT ISNULL(SUM(l.Qty), 0)
+                                         FROM AssetMovements m
+                                         INNER JOIN AssetMovementLines l ON l.MovementId = m.Id
+                                         WHERE m.BranchID = @BranchID AND m.MovementDate >= @FromDate AND m.MovementDate < @ToDateExclusive
+                                             AND m.MovementType IN (10,11,12,13,14,20)
+                                        ) AS TotalOutQty,
 
                     (SELECT COUNT(1)
                      FROM AssetDamageLoss dl
@@ -167,6 +167,58 @@ namespace HotelApp.Web.Repositories
             return (await _db.ExecuteAsync(sql, row)) > 0;
         }
 
+        public async Task<IEnumerable<AssetMaker>> GetMakersAsync(int branchId)
+        {
+            const string sql = @"
+                SELECT Id, BranchID, [Name], IsActive, CreatedDate, CreatedBy, UpdatedDate, UpdatedBy
+                FROM AssetMakers
+                WHERE BranchID = @BranchID
+                ORDER BY [Name]";
+
+            return await _db.QueryAsync<AssetMaker>(sql, new { BranchID = branchId });
+        }
+
+        public async Task<bool> MakerNameExistsAsync(int branchId, string name, int? excludeMakerId = null)
+        {
+            const string sql = @"
+                SELECT COUNT(1)
+                FROM AssetMakers
+                WHERE BranchID = @BranchID
+                  AND [Name] = @Name
+                  AND (@ExcludeId IS NULL OR Id <> @ExcludeId)";
+
+            var count = await _db.ExecuteScalarAsync<int>(sql, new
+            {
+                BranchID = branchId,
+                Name = name?.Trim(),
+                ExcludeId = excludeMakerId
+            });
+            return count > 0;
+        }
+
+        public async Task<int> CreateMakerAsync(AssetMaker row)
+        {
+            const string sql = @"
+                INSERT INTO AssetMakers (BranchID, [Name], IsActive, CreatedDate, CreatedBy)
+                VALUES (@BranchID, @Name, @IsActive, SYSUTCDATETIME(), @CreatedBy);
+                SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+            return await _db.ExecuteScalarAsync<int>(sql, row);
+        }
+
+        public async Task<bool> UpdateMakerAsync(AssetMaker row)
+        {
+            const string sql = @"
+                UPDATE AssetMakers
+                SET [Name] = @Name,
+                    IsActive = @IsActive,
+                    UpdatedDate = SYSUTCDATETIME(),
+                    UpdatedBy = @UpdatedBy
+                WHERE Id = @Id AND BranchID = @BranchID";
+
+            return (await _db.ExecuteAsync(sql, row)) > 0;
+        }
+
         public async Task<IEnumerable<AssetItemLookupRow>> GetItemLookupAsync(int branchId)
         {
             const string sql = @"
@@ -176,9 +228,13 @@ namespace HotelApp.Web.Repositories
                        u.[Name] AS UnitName,
                        i.Category,
                        i.RequiresCustodian,
-                       i.IsChargeable
+                  i.IsChargeable,
+                  m.[Name] AS MakerName,
+                  i.Barcode,
+                  i.AssetTag
                 FROM AssetItems i
                 INNER JOIN AssetUnits u ON u.Id = i.UnitId
+              LEFT JOIN AssetMakers m ON m.Id = i.MakerId
                 WHERE i.BranchID = @BranchID AND i.IsActive = 1
                 ORDER BY i.[Name], i.Code";
 
@@ -198,15 +254,46 @@ namespace HotelApp.Web.Repositories
             return count > 0;
         }
 
+        public async Task<bool> ItemBarcodeExistsAsync(int branchId, string barcode, int? excludeItemId = null)
+        {
+            const string sql = @"
+                SELECT COUNT(1)
+                FROM AssetItems
+                WHERE BranchID = @BranchID
+                  AND Barcode = @Barcode
+                  AND (@ExcludeId IS NULL OR Id <> @ExcludeId)";
+
+            var trimmed = barcode?.Trim();
+            var count = await _db.ExecuteScalarAsync<int>(sql, new { BranchID = branchId, Barcode = trimmed, ExcludeId = excludeItemId });
+            return count > 0;
+        }
+
+        public async Task<bool> ItemAssetTagExistsAsync(int branchId, string assetTag, int? excludeItemId = null)
+        {
+            const string sql = @"
+                SELECT COUNT(1)
+                FROM AssetItems
+                WHERE BranchID = @BranchID
+                  AND AssetTag = @AssetTag
+                  AND (@ExcludeId IS NULL OR Id <> @ExcludeId)";
+
+            var trimmed = assetTag?.Trim();
+            var count = await _db.ExecuteScalarAsync<int>(sql, new { BranchID = branchId, AssetTag = trimmed, ExcludeId = excludeItemId });
+            return count > 0;
+        }
+
         public async Task<AssetItem?> GetItemByIdAsync(int id, int branchId)
         {
             const string sql = @"
-                SELECT i.Id, i.BranchID, i.Code, i.[Name], i.Category, i.UnitId,
+              SELECT i.Id, i.BranchID, i.Code, i.[Name], i.Category, i.UnitId,
+                  i.MakerId, i.Barcode, i.AssetTag,
                        i.IsRoomEligible, i.IsChargeable, i.ThresholdQty, i.RequiresCustodian,
                        i.IsActive, i.CreatedDate, i.CreatedBy, i.UpdatedDate, i.UpdatedBy,
-                       u.[Name] AS UnitName
+                  u.[Name] AS UnitName,
+                  m.[Name] AS MakerName
                 FROM AssetItems i
                 INNER JOIN AssetUnits u ON u.Id = i.UnitId
+              LEFT JOIN AssetMakers m ON m.Id = i.MakerId
                 WHERE i.Id = @Id AND i.BranchID = @BranchID";
 
             var item = await _db.QueryFirstOrDefaultAsync<AssetItem>(sql, new { Id = id, BranchID = branchId });
@@ -224,10 +311,16 @@ namespace HotelApp.Web.Repositories
         {
             const string sql = @"
                 INSERT INTO AssetItems
-                    (BranchID, Code, [Name], Category, UnitId, IsRoomEligible, IsChargeable, ThresholdQty, RequiresCustodian, IsActive, CreatedDate, CreatedBy)
+                    (BranchID, Code, [Name], Category, UnitId, MakerId, Barcode, AssetTag, IsRoomEligible, IsChargeable, ThresholdQty, RequiresCustodian, IsActive, CreatedDate, CreatedBy)
                 VALUES
-                    (@BranchID, @Code, @Name, @Category, @UnitId, @IsRoomEligible, @IsChargeable, @ThresholdQty, @RequiresCustodian, @IsActive, SYSUTCDATETIME(), @CreatedBy);
+                    (@BranchID, @Code, @Name, @Category, @UnitId, @MakerId, @Barcode, @AssetTag, @IsRoomEligible, @IsChargeable, @ThresholdQty, @RequiresCustodian, @IsActive, SYSUTCDATETIME(), @CreatedBy);
                 SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+            static string? NormalizeTag(string? s)
+            {
+                if (string.IsNullOrWhiteSpace(s)) return null;
+                return s.Trim();
+            }
 
             return await _db.ExecuteScalarAsync<int>(sql, new
             {
@@ -236,6 +329,9 @@ namespace HotelApp.Web.Repositories
                 item.Name,
                 Category = (int)item.Category,
                 item.UnitId,
+                item.MakerId,
+                Barcode = NormalizeTag(item.Barcode),
+                AssetTag = NormalizeTag(item.AssetTag),
                 item.IsRoomEligible,
                 item.IsChargeable,
                 item.ThresholdQty,
@@ -253,6 +349,9 @@ namespace HotelApp.Web.Repositories
                     [Name] = @Name,
                     Category = @Category,
                     UnitId = @UnitId,
+                    MakerId = @MakerId,
+                    Barcode = @Barcode,
+                    AssetTag = @AssetTag,
                     IsRoomEligible = @IsRoomEligible,
                     IsChargeable = @IsChargeable,
                     ThresholdQty = @ThresholdQty,
@@ -262,6 +361,12 @@ namespace HotelApp.Web.Repositories
                     UpdatedBy = @UpdatedBy
                 WHERE Id = @Id AND BranchID = @BranchID";
 
+            static string? NormalizeTag(string? s)
+            {
+                if (string.IsNullOrWhiteSpace(s)) return null;
+                return s.Trim();
+            }
+
             var rows = await _db.ExecuteAsync(sql, new
             {
                 item.Id,
@@ -270,6 +375,9 @@ namespace HotelApp.Web.Repositories
                 item.Name,
                 Category = (int)item.Category,
                 item.UnitId,
+                item.MakerId,
+                Barcode = NormalizeTag(item.Barcode),
+                AssetTag = NormalizeTag(item.AssetTag),
                 item.IsRoomEligible,
                 item.IsChargeable,
                 item.ThresholdQty,
@@ -420,14 +528,14 @@ namespace HotelApp.Web.Repositories
                 }, tx);
 
                 const string itemInfoSql = @"
-                    SELECT Id, Category
+                    SELECT Id, Code, [Name], Category
                     FROM AssetItems
                     WHERE BranchID = @BranchID AND Id IN @Ids";
 
-                var itemInfos = (await _db.QueryAsync<(int Id, int Category)>(
+                var itemInfos = (await _db.QueryAsync<(int Id, string Code, string Name, int Category)>(
                     itemInfoSql,
                     new { BranchID = movement.BranchID, Ids = movement.Lines.Select(l => l.ItemId).Distinct().ToArray() },
-                    tx)).ToDictionary(x => x.Id, x => (AssetItemCategory)x.Category);
+                    tx)).ToDictionary(x => x.Id, x => (Category: (AssetItemCategory)x.Category, x.Code, x.Name));
 
                 const string insertLineSql = @"
                     INSERT INTO AssetMovementLines (MovementId, ItemId, Qty, SerialNumber, LineNote)
@@ -451,7 +559,7 @@ namespace HotelApp.Web.Repositories
                         LineNote = line.LineNote
                     }, tx);
 
-                    if (!itemInfos.TryGetValue(line.ItemId, out var category))
+                    if (!itemInfos.TryGetValue(line.ItemId, out var itemInfo))
                     {
                         tx.Rollback();
                         return (false, "Invalid item selected.", 0);
@@ -488,13 +596,16 @@ namespace HotelApp.Web.Repositories
 
                         var newQty = current.Value + delta;
 
-                        var isConsumable = category == AssetItemCategory.Consumable;
+                        var isConsumable = itemInfo.Category == AssetItemCategory.Consumable;
                         if (newQty < 0m)
                         {
                             if (!(isConsumable && movement.AllowNegativeOverride))
                             {
                                 tx.Rollback();
-                                return (false, "Stock would become negative. Operation blocked.", 0);
+                                var itemLabel = string.IsNullOrWhiteSpace(itemInfo.Code)
+                                    ? itemInfo.Name
+                                    : $"{itemInfo.Name} ({itemInfo.Code})";
+                                return (false, $"Insufficient stock for {itemLabel}. Available: {current.Value:0.##}, Requested: {line.Qty:0.##}.", 0);
                             }
                         }
 
@@ -612,12 +723,23 @@ namespace HotelApp.Web.Repositories
                                                         WHEN 20 THEN 'Auto Checkout Consumables (OUT)'
                                                         ELSE CONCAT('Type ', m.MovementType)
                                              END AS MovementType,
+                                             ISNULL(ml.TotalQty, 0) AS TotalQty,
+                                             CASE
+                                                        WHEN m.MovementType IN (1,2,3,4) THEN ISNULL(ml.TotalQty, 0)
+                                                        WHEN m.MovementType IN (10,11,12,13,14,20) THEN -ISNULL(ml.TotalQty, 0)
+                                                        ELSE ISNULL(ml.TotalQty, 0)
+                                             END AS NetQty,
                        m.BookingNumber,
                        m.GuestName,
                        fd.[Name] AS FromDepartment,
                        td.[Name] AS ToDepartment,
                        m.Notes
                 FROM AssetMovements m
+                                LEFT JOIN (
+                                        SELECT MovementId, SUM(Qty) AS TotalQty
+                                        FROM AssetMovementLines
+                                        GROUP BY MovementId
+                                ) ml ON ml.MovementId = m.Id
                 LEFT JOIN AssetDepartments fd ON fd.Id = m.FromDepartmentId
                 LEFT JOIN AssetDepartments td ON td.Id = m.ToDepartmentId
                 WHERE m.BranchID = @BranchID

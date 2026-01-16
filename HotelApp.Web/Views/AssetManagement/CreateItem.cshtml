@@ -38,6 +38,22 @@
             </div>
 
             <div class="form-group">
+                <label asp-for="Item.MakerId" class="form-label">Maker</label>
+                <select asp-for="Item.MakerId" class="form-control" asp-items="@(new SelectList(Model.Makers, "Id", "Name"))">
+                    <option value="">-- Select Maker (Optional) --</option>
+                </select>
+                <span asp-validation-for="Item.MakerId" class="text-danger"></span>
+                <small class="text-muted">If not found, add it from <a asp-action="CreateMaker">Makers</a>.</small>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Item.Barcode" class="form-label">Barcode</label>
+                <input asp-for="Item.Barcode" class="form-control" />
+                <span asp-validation-for="Item.Barcode" class="text-danger"></span>
+                <small class="text-muted">Optional. Must be unique if provided.</small>
+            </div>
+
+            <div class="form-group">
                 <label class="form-label">Room Eligible</label>
                 <select asp-for="Item.IsRoomEligible" class="form-control">
                     <option value="true">Yes</option>
@@ -66,6 +82,13 @@
                 <label asp-for="Item.ThresholdQty" class="form-label">Threshold Qty</label>
                 <input asp-for="Item.ThresholdQty" class="form-control" />
                 <span asp-validation-for="Item.ThresholdQty" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Item.AssetTag" class="form-label">Asset Tag</label>
+                <input asp-for="Item.AssetTag" class="form-control" />
+                <span asp-validation-for="Item.AssetTag" class="text-danger"></span>
+                <small class="text-muted">Optional. Must be unique if provided.</small>
             </div>
 
             <div class="form-group">

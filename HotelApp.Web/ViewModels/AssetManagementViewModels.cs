@@ -39,6 +39,7 @@ namespace HotelApp.Web.ViewModels
         public AssetItem Item { get; set; } = new();
         public List<AssetDepartment> Departments { get; set; } = new();
         public List<AssetUnit> Units { get; set; } = new();
+        public List<AssetMaker> Makers { get; set; } = new();
         public List<int> SelectedDepartmentIds { get; set; } = new();
     }
 
@@ -85,7 +86,17 @@ namespace HotelApp.Web.ViewModels
         public List<RoomLookupRow> Rooms { get; set; } = new();
     }
 
-    public record AssetItemLookupRow(int Id, string Code, string Name, string UnitName, AssetItemCategory Category, bool RequiresCustodian, bool IsChargeable);
+    public record AssetItemLookupRow(
+        int Id,
+        string Code,
+        string Name,
+        string UnitName,
+        AssetItemCategory Category,
+        bool RequiresCustodian,
+        bool IsChargeable,
+        string? MakerName,
+        string? Barcode,
+        string? AssetTag);
     public record RoomLookupRow(int Id, string RoomNumber);
 
     public class AssetDamageLossCreateViewModel
@@ -141,6 +152,8 @@ namespace HotelApp.Web.ViewModels
         public int Id { get; set; }
         public DateTime MovementDate { get; set; }
         public string MovementType { get; set; } = string.Empty;
+        public decimal TotalQty { get; set; }
+        public decimal NetQty { get; set; }
         public string? BookingNumber { get; set; }
         public string? GuestName { get; set; }
         public string? FromDepartment { get; set; }

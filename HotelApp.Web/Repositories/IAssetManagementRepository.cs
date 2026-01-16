@@ -17,9 +17,16 @@ namespace HotelApp.Web.Repositories
         Task<int> CreateUnitAsync(AssetUnit row);
         Task<bool> UpdateUnitAsync(AssetUnit row);
 
+        Task<IEnumerable<AssetMaker>> GetMakersAsync(int branchId);
+        Task<int> CreateMakerAsync(AssetMaker row);
+        Task<bool> UpdateMakerAsync(AssetMaker row);
+        Task<bool> MakerNameExistsAsync(int branchId, string name, int? excludeMakerId = null);
+
         Task<IEnumerable<AssetItemLookupRow>> GetItemLookupAsync(int branchId);
         Task<AssetItem?> GetItemByIdAsync(int id, int branchId);
         Task<bool> ItemCodeExistsAsync(int branchId, string code, int? excludeItemId = null);
+        Task<bool> ItemBarcodeExistsAsync(int branchId, string barcode, int? excludeItemId = null);
+        Task<bool> ItemAssetTagExistsAsync(int branchId, string assetTag, int? excludeItemId = null);
         Task<int> CreateItemAsync(AssetItem item);
         Task<bool> UpdateItemAsync(AssetItem item);
         Task SetItemDepartmentsAsync(int itemId, IReadOnlyCollection<int> departmentIds, int? performedBy);

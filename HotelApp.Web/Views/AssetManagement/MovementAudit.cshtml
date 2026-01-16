@@ -48,6 +48,7 @@
                 <tr>
                     <th>Date</th>
                     <th>Type</th>
+                    <th class="text-end">Qty</th>
                     <th>Booking</th>
                     <th>Guest</th>
                     <th>From Dept</th>
@@ -61,6 +62,12 @@
                 <tr>
                     <td>@row.MovementDate.ToLocalTime().ToString("dd-MMM-yyyy HH:mm")</td>
                     <td><strong>@row.MovementType</strong></td>
+                    <td class="text-end">
+                        @{
+                            var qtyText = (row.NetQty > 0 ? "+" : string.Empty) + row.NetQty.ToString("0.##");
+                        }
+                        <strong>@qtyText</strong>
+                    </td>
                     <td>@row.BookingNumber</td>
                     <td>@row.GuestName</td>
                     <td>@row.FromDepartment</td>

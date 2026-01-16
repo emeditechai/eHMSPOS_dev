@@ -14,6 +14,9 @@
 <div class="table-container" style="padding: 16px;">
     <div><strong>Code:</strong> @Model.Code</div>
     <div><strong>Name:</strong> @Model.Name</div>
+    <div><strong>Maker:</strong> @(string.IsNullOrWhiteSpace(Model.MakerName) ? "-" : Model.MakerName)</div>
+    <div><strong>Barcode:</strong> @(string.IsNullOrWhiteSpace(Model.Barcode) ? "-" : Model.Barcode)</div>
+    <div><strong>Asset Tag:</strong> @(string.IsNullOrWhiteSpace(Model.AssetTag) ? "-" : Model.AssetTag)</div>
     <div><strong>Unit:</strong> @Model.UnitName</div>
     <div><strong>Category:</strong> @Model.Category</div>
     <div><strong>Room Eligible:</strong> @(Model.IsRoomEligible ? "Yes" : "No")</div>

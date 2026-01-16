@@ -34,6 +34,9 @@
                 <tr>
                     <th>Code</th>
                     <th>Name</th>
+                    <th>Maker</th>
+                    <th>Barcode</th>
+                    <th>Asset Tag</th>
                     <th>Unit</th>
                     <th>Category</th>
                     <th>
@@ -50,6 +53,9 @@
                 <tr>
                     <td><strong>@row.Code</strong></td>
                     <td>@row.Name</td>
+                    <td>@(string.IsNullOrWhiteSpace(row.MakerName) ? "-" : row.MakerName)</td>
+                    <td>@(string.IsNullOrWhiteSpace(row.Barcode) ? "-" : row.Barcode)</td>
+                    <td>@(string.IsNullOrWhiteSpace(row.AssetTag) ? "-" : row.AssetTag)</td>
                     <td>@row.UnitName</td>
                     <td>@CategoryLabel(row.Category)</td>
                     <td>@(row.RequiresCustodian ? "Yes" : "No")</td>
