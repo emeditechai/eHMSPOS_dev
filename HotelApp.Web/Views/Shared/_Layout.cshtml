@@ -109,6 +109,64 @@
 
                         </div>
                     </div>
+
+                    @{ bool assetsNavActive = controller == "AssetManagement"; }
+                    <div class="menu-item has-dropdown @(assetsNavActive ? "active" : string.Empty)">
+                        <i class="fas fa-boxes-stacked"></i>
+                        <span>Asset Management</span>
+                        <i class="fas fa-chevron-down dropdown-icon"></i>
+                        <div class="dropdown-menu">
+                            <a asp-controller="AssetManagement" asp-action="Index" class="@(controller == "AssetManagement" && action == "Index" ? "active" : string.Empty)">
+                                <i class="fas fa-gauge"></i>
+                                <span>Overview</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+
+                            <a asp-controller="AssetManagement" asp-action="Items" class="@(controller == "AssetManagement" && action == "Items" ? "active" : string.Empty)">
+                                <i class="fas fa-box"></i>
+                                <span>Item Master</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+                            <a asp-controller="AssetManagement" asp-action="Departments" class="@(controller == "AssetManagement" && action == "Departments" ? "active" : string.Empty)">
+                                <i class="fas fa-sitemap"></i>
+                                <span>Departments</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+                            <a asp-controller="AssetManagement" asp-action="Units" class="@(controller == "AssetManagement" && action == "Units" ? "active" : string.Empty)">
+                                <i class="fas fa-ruler"></i>
+                                <span>Units</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+                            <a asp-controller="AssetManagement" asp-action="ConsumableStandards" class="@(controller == "AssetManagement" && action == "ConsumableStandards" ? "active" : string.Empty)">
+                                <i class="fas fa-bottle-droplet"></i>
+                                <span>Consumable Standards</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+
+                            <a asp-controller="AssetManagement" asp-action="CreateMovement" class="@(controller == "AssetManagement" && action == "CreateMovement" ? "active" : string.Empty)">
+                                <i class="fas fa-right-left"></i>
+                                <span>Stock Movement</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+                            <a asp-controller="AssetManagement" asp-action="MovementAudit" class="@(controller == "AssetManagement" && action == "MovementAudit" ? "active" : string.Empty)">
+                                <i class="fas fa-list"></i>
+                                <span>Movement Audit</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+
+                            <a asp-controller="AssetManagement" asp-action="DamageLoss" class="@(controller == "AssetManagement" && action == "DamageLoss" ? "active" : string.Empty)">
+                                <i class="fas fa-triangle-exclamation"></i>
+                                <span>Damage/Loss</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+
+                            <a asp-controller="AssetManagement" asp-action="StockReport" class="@(controller == "AssetManagement" && action == "StockReport" ? "active" : string.Empty)">
+                                <i class="fas fa-chart-column"></i>
+                                <span>Stock Report</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+                        </div>
+                    </div>
                     @{ bool reportsNavActive = controller == "Reports"; }
                     <div class="menu-item has-dropdown @(reportsNavActive ? "active" : string.Empty)">
                         <i class="fas fa-chart-bar"></i>

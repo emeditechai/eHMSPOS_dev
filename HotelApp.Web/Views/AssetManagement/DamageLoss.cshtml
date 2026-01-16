@@ -1,0 +1,109 @@
+@model IEnumerable<HotelApp.Web.Models.AssetDamageLossRecord>
+@{
+    ViewData["Title"] = "Damage/Loss";
+    var canApprove = (bool)(ViewBag.CanApprove ?? false);
+
+    string StatusLabel(HotelApp.Web.Models.AssetDamageLossStatus s) => s switch
+    {
+        HotelApp.Web.Models.AssetDamageLossStatus.Pending => "Pending",
+        HotelApp.Web.Models.AssetDamageLossStatus.Approved => "Approved",
+        HotelApp.Web.Models.AssetDamageLossStatus.Recovered => "Recovered",
+        HotelApp.Web.Models.AssetDamageLossStatus.Closed => "Closed",
+        _ => s.ToString()
+    };
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-triangle-exclamation"></i> Damage/Loss</h2>
+    <a asp-action="CreateDamageLoss" class="btn-create">
+        <i class="fas fa-plus"></i> Log Damage/Loss
+    </a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">
+        <i class="fas fa-check-circle"></i>
+        @TempData["SuccessMessage"]
+    </div>
+}
+
+@if (Model.Any())
+{
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Item</th>
+                    <th>Qty</th>
+                    <th>Type</th>
+                    <th>Context</th>
+                    <th>Status</th>
+                    <th style="width: 240px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in Model)
+            {
+                <tr>
+                    <td>@row.Id</td>
+                    <td><strong>@row.ItemName</strong> <span class="text-muted">(@row.ItemCode)</span></td>
+                    <td>@row.Qty.ToString("0.##")</td>
+                    <td>@row.IssueType</td>
+                    <td>
+                        @if (!string.IsNullOrWhiteSpace(row.BookingNumber))
+                        {
+                            <div>Booking: <strong>@row.BookingNumber</strong></div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(row.RoomNumber))
+                        {
+                            <div>Room: <strong>@row.RoomNumber</strong></div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(row.DepartmentName))
+                        {
+                            <div>Dept: <strong>@row.DepartmentName</strong></div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(row.GuestName))
+                        {
+                            <div>Guest: <strong>@row.GuestName</strong></div>
+                        }
+                    </td>
+                    <td><span class="badge badge-maintenance">@StatusLabel(row.Status)</span></td>
+                    <td>
+                        <div class="action-buttons">
+                            <a asp-action="DamageLossDetails" asp-route-id="@row.Id" class="btn-action btn-view" title="Details">
+                                <i class="fas fa-eye"></i>
+                                <span>Details</span>
+                            </a>
+
+                            @if (canApprove && row.Status == HotelApp.Web.Models.AssetDamageLossStatus.Pending)
+                            {
+                                <form asp-action="ApproveDamageLoss" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@row.Id" />
+                                    <button type="submit" class="btn-action btn-save" title="Approve">
+                                        <i class="fas fa-check"></i>
+                                        <span>Approve</span>
+                                    </button>
+                                </form>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="empty-state">
+        <i class="fas fa-triangle-exclamation"></i>
+        <h3>No Damage/Loss Records</h3>
+        <p>Log any breakage or missing items.</p>
+        <a asp-action="CreateDamageLoss" class="btn-create">
+            <i class="fas fa-plus"></i> Log Damage/Loss
+        </a>
+    </div>
+}

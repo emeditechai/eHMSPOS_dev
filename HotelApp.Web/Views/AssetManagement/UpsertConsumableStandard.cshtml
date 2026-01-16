@@ -1,0 +1,62 @@
+@model HotelApp.Web.Models.AssetConsumableStandard
+@{
+    ViewData["Title"] = "Upsert Consumable Standard";
+    var items = (IEnumerable<HotelApp.Web.ViewModels.AssetItemLookupRow>)(ViewBag.Items ?? Array.Empty<HotelApp.Web.ViewModels.AssetItemLookupRow>());
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-plus"></i> Add / Update Consumable Standard</h2>
+</div>
+
+<div class="master-form-container">
+    <form asp-action="UpsertConsumableStandard" method="post" class="master-form">
+        @Html.AntiForgeryToken()
+
+        <div class="form-grid">
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label asp-for="ItemId" class="form-label">Item</label>
+                <select asp-for="ItemId" class="form-control">
+                    <option value="">-- Select Consumable Item --</option>
+                    @foreach (var it in items.Where(x => x.Category == HotelApp.Web.Models.AssetItemCategory.Consumable))
+                    {
+                        <option value="@it.Id">@it.Name (@it.Code) - @it.UnitName</option>
+                    }
+                </select>
+                <span asp-validation-for="ItemId" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="PerRoomPerDayQty" class="form-label"></label>
+                <input asp-for="PerRoomPerDayQty" class="form-control" />
+                <span asp-validation-for="PerRoomPerDayQty" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="PerStayQty" class="form-label"></label>
+                <input asp-for="PerStayQty" class="form-control" />
+                <span asp-validation-for="PerStayQty" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <select asp-for="IsActive" class="form-control">
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a asp-action="ConsumableStandards" class="btn-cancel">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+            <button type="submit" class="btn-save">
+                <i class="fas fa-save"></i> Save
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

@@ -1,0 +1,85 @@
+@model IEnumerable<HotelApp.Web.ViewModels.AssetItemLookupRow>
+@{
+    ViewData["Title"] = "Asset Item Master";
+
+    string CategoryLabel(HotelApp.Web.Models.AssetItemCategory c) => c switch
+    {
+        HotelApp.Web.Models.AssetItemCategory.Asset => "Asset",
+        HotelApp.Web.Models.AssetItemCategory.Reusable => "Reusable",
+        HotelApp.Web.Models.AssetItemCategory.Consumable => "Consumable",
+        _ => c.ToString()
+    };
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-box"></i> Asset Item Master</h2>
+    <a asp-action="CreateItem" class="btn-create">
+        <i class="fas fa-plus"></i> Add Item
+    </a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">
+        <i class="fas fa-check-circle"></i>
+        @TempData["SuccessMessage"]
+    </div>
+}
+
+@if (Model.Any())
+{
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>Unit</th>
+                    <th>Category</th>
+                    <th>
+                        Custodian Req.
+                        <i class="fas fa-info-circle text-muted" title="If Yes, Stock Movement requires entering a custodian name for accountability."></i>
+                    </th>
+                    <th>Chargeable</th>
+                    <th style="width: 140px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in Model)
+            {
+                <tr>
+                    <td><strong>@row.Code</strong></td>
+                    <td>@row.Name</td>
+                    <td>@row.UnitName</td>
+                    <td>@CategoryLabel(row.Category)</td>
+                    <td>@(row.RequiresCustodian ? "Yes" : "No")</td>
+                    <td>@(row.IsChargeable ? "Yes" : "No")</td>
+                    <td>
+                        <div class="action-buttons">
+                            <a asp-action="ItemDetails" asp-route-id="@row.Id" class="btn-action btn-view" title="View">
+                                <i class="fas fa-eye"></i>
+                                <span>View</span>
+                            </a>
+                            <a asp-action="EditItem" asp-route-id="@row.Id" class="btn-action btn-edit" title="Edit">
+                                <i class="fas fa-pen"></i>
+                                <span>Edit</span>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="empty-state">
+        <i class="fas fa-box"></i>
+        <h3>No Items Found</h3>
+        <p>Add items to track stock and allocations.</p>
+        <a asp-action="CreateItem" class="btn-create">
+            <i class="fas fa-plus"></i> Add Item
+        </a>
+    </div>
+}

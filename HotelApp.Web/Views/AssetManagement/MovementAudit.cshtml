@@ -1,0 +1,85 @@
+@model IEnumerable<HotelApp.Web.ViewModels.AssetMovementListRow>
+@{
+    ViewData["Title"] = "Movement Audit";
+    var fromDate = (DateTime?)ViewBag.FromDate;
+    var toDate = (DateTime?)ViewBag.ToDate;
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-list"></i> Movement Audit</h2>
+    <a asp-action="CreateMovement" class="btn-create">
+        <i class="fas fa-plus"></i> New Movement
+    </a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">
+        <i class="fas fa-check-circle"></i>
+        @TempData["SuccessMessage"]
+    </div>
+}
+
+<div class="master-form-container" style="margin-bottom: 12px;">
+    <form method="get" class="master-form">
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label">From</label>
+                <input type="date" name="fromDate" value="@(fromDate?.ToString("yyyy-MM-dd"))" class="form-control" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">To</label>
+                <input type="date" name="toDate" value="@(toDate?.ToString("yyyy-MM-dd"))" class="form-control" />
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-save">
+                <i class="fas fa-filter"></i> Filter
+            </button>
+        </div>
+    </form>
+</div>
+
+@if (Model.Any())
+{
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Booking</th>
+                    <th>Guest</th>
+                    <th>From Dept</th>
+                    <th>To Dept</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in Model)
+            {
+                <tr>
+                    <td>@row.MovementDate.ToLocalTime().ToString("dd-MMM-yyyy HH:mm")</td>
+                    <td><strong>@row.MovementType</strong></td>
+                    <td>@row.BookingNumber</td>
+                    <td>@row.GuestName</td>
+                    <td>@row.FromDepartment</td>
+                    <td>@row.ToDepartment</td>
+                    <td>@row.Notes</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="empty-state">
+        <i class="fas fa-list"></i>
+        <h3>No Movements Found</h3>
+        <p>Create your first movement to track stock in/out.</p>
+        <a asp-action="CreateMovement" class="btn-create">
+            <i class="fas fa-plus"></i> New Movement
+        </a>
+    </div>
+}

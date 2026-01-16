@@ -10,5 +10,8 @@ HotelApp.Web/wwwroot/uploads/
 # User uploads (generated at runtime)
 HotelApp.Web/wwwroot/uploads/
 
+# Runtime DataProtection keys (do not commit)
+HotelApp.Web/App_Data/
+
 # OS
 .DS_Store

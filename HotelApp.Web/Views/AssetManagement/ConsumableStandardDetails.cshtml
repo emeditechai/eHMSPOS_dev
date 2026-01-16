@@ -1,0 +1,24 @@
+@model HotelApp.Web.Models.AssetConsumableStandard
+@{
+    ViewData["Title"] = "Consumable Standard Details";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-eye"></i> Consumable Standard Details</h2>
+    <a asp-action="UpsertConsumableStandard" class="btn-create">
+        <i class="fas fa-pen"></i> Add / Update
+    </a>
+</div>
+
+<div class="table-container" style="padding: 16px;">
+    <div><strong>Item:</strong> @Model.ItemName (@Model.ItemCode)</div>
+    <div><strong>Per Room/Day:</strong> @Model.PerRoomPerDayQty.ToString("0.##")</div>
+    <div><strong>Per Stay:</strong> @Model.PerStayQty.ToString("0.##")</div>
+    <div><strong>Status:</strong> @(Model.IsActive ? "Active" : "Inactive")</div>
+</div>
+
+<div class="form-actions">
+    <a asp-action="ConsumableStandards" class="btn-cancel">
+        <i class="fas fa-arrow-left"></i> Back
+    </a>
+</div>

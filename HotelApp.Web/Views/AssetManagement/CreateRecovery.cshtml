@@ -1,0 +1,50 @@
+@model HotelApp.Web.ViewModels.AssetDamageLossRecoveryCreateViewModel
+@{
+    ViewData["Title"] = "Record Recovery";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-plus"></i> Record Recovery</h2>
+</div>
+
+<div class="master-form-container">
+    <form asp-action="CreateRecovery" method="post" class="master-form">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="DamageLossId" />
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label asp-for="RecoveryType" class="form-label">Recovery Type</label>
+                <select asp-for="RecoveryType" class="form-control" asp-items="Html.GetEnumSelectList<HotelApp.Web.Models.AssetRecoveryType>()"></select>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Amount" class="form-label"></label>
+                <input asp-for="Amount" class="form-control" type="number" step="0.01" />
+                <span asp-validation-for="Amount" class="text-danger"></span>
+            </div>
+
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label asp-for="Notes" class="form-label"></label>
+                <input asp-for="Notes" class="form-control" />
+            </div>
+
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <div class="text-muted">Bill posting integration will be added next (will post to guest bill when selected).</div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a asp-action="DamageLossDetails" asp-route-id="@Model.DamageLossId" class="btn-cancel">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+            <button type="submit" class="btn-save">
+                <i class="fas fa-save"></i> Save
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

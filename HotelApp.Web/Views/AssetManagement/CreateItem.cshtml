@@ -1,0 +1,106 @@
+@model HotelApp.Web.ViewModels.AssetItemEditViewModel
+@{
+    ViewData["Title"] = "Create Asset Item";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-plus"></i> Create Asset Item</h2>
+</div>
+
+<div class="master-form-container">
+    <form asp-action="CreateItem" method="post" class="master-form">
+        @Html.AntiForgeryToken()
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label asp-for="Item.Code" class="form-label">Code</label>
+                <input asp-for="Item.Code" class="form-control" />
+                <span asp-validation-for="Item.Code" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Item.Name" class="form-label">Name</label>
+                <input asp-for="Item.Name" class="form-control" />
+                <span asp-validation-for="Item.Name" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Item.UnitId" class="form-label">Unit</label>
+                <select asp-for="Item.UnitId" class="form-control" asp-items="@(new SelectList(Model.Units, "Id", "Name"))">
+                    <option value="">-- Select Unit --</option>
+                </select>
+                <span asp-validation-for="Item.UnitId" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Item.Category" class="form-label">Category</label>
+                <select asp-for="Item.Category" class="form-control" asp-items="Html.GetEnumSelectList<HotelApp.Web.Models.AssetItemCategory>()"></select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Room Eligible</label>
+                <select asp-for="Item.IsRoomEligible" class="form-control">
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Chargeable</label>
+                <select asp-for="Item.IsChargeable" class="form-control">
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Requires Custodian</label>
+                <select asp-for="Item.RequiresCustodian" class="form-control">
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                </select>
+                <small class="text-muted">If Yes, Stock Movement will require a custodian name for this item.</small>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Item.ThresholdQty" class="form-label">Threshold Qty</label>
+                <input asp-for="Item.ThresholdQty" class="form-control" />
+                <span asp-validation-for="Item.ThresholdQty" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <select asp-for="Item.IsActive" class="form-control">
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label class="form-label">Eligible Departments</label>
+                <div class="table-container" style="padding: 12px;">
+                    @foreach (var dept in Model.Departments)
+                    {
+                        <label style="display: inline-flex; align-items: center; gap: 8px; margin-right: 16px; margin-bottom: 8px;">
+                            <input type="checkbox" name="SelectedDepartmentIds" value="@dept.Id" @(Model.SelectedDepartmentIds.Contains(dept.Id) ? "checked" : null) />
+                            <span>@dept.Name</span>
+                        </label>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a asp-action="Items" class="btn-cancel">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+            <button type="submit" class="btn-save">
+                <i class="fas fa-save"></i> Save
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

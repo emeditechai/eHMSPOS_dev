@@ -1,0 +1,90 @@
+@model HotelApp.Web.Models.AssetDamageLossRecord
+@{
+    ViewData["Title"] = "Damage/Loss Details";
+    var canApprove = (bool)(ViewBag.CanApprove ?? false);
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-eye"></i> Damage/Loss Details</h2>
+    <a asp-action="CreateRecovery" asp-route-id="@Model.Id" class="btn-create">
+        <i class="fas fa-plus"></i> Record Recovery
+    </a>
+</div>
+
+<div class="table-container" style="padding: 16px;">
+    <div><strong>Item:</strong> @Model.ItemName (@Model.ItemCode)</div>
+    <div><strong>Qty:</strong> @Model.Qty.ToString("0.##")</div>
+    <div><strong>Type:</strong> @Model.IssueType</div>
+    <div><strong>Status:</strong> @Model.Status</div>
+    <div style="margin-top: 10px;"><strong>Reason:</strong> @Model.Reason</div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.BookingNumber))
+    {
+        <div style="margin-top: 10px;"><strong>Booking:</strong> @Model.BookingNumber</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.RoomNumber))
+    {
+        <div><strong>Room:</strong> @Model.RoomNumber</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.DepartmentName))
+    {
+        <div><strong>Department:</strong> @Model.DepartmentName</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.GuestName))
+    {
+        <div><strong>Guest:</strong> @Model.GuestName</div>
+    }
+
+    @if (canApprove && Model.Status == HotelApp.Web.Models.AssetDamageLossStatus.Pending)
+    {
+        <form asp-action="ApproveDamageLoss" method="post" style="margin-top: 12px;">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+            <button type="submit" class="btn-save">
+                <i class="fas fa-check"></i> Approve
+            </button>
+        </form>
+    }
+</div>
+
+<div class="page-header" style="margin-top: 16px;">
+    <h2><i class="fas fa-hand-holding-dollar"></i> Recoveries</h2>
+</div>
+
+@if (Model.Recoveries.Any())
+{
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var r in Model.Recoveries)
+            {
+                <tr>
+                    <td>@r.CreatedDate.ToLocalTime().ToString("dd-MMM-yyyy HH:mm")</td>
+                    <td>@r.RecoveryType</td>
+                    <td>@r.Amount.ToString("0.00")</td>
+                    <td>@r.Notes</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="empty-state">
+        <i class="fas fa-hand-holding-dollar"></i>
+        <h3>No Recoveries</h3>
+        <p>Add recoveries like cash, bill posting, replacement, or staff deduction.</p>
+        <a asp-action="CreateRecovery" asp-route-id="@Model.Id" class="btn-create">
+            <i class="fas fa-plus"></i> Record Recovery
+        </a>
+    </div>
+}

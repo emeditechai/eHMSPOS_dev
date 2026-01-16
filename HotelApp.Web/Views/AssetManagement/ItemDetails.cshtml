@@ -1,0 +1,42 @@
+@model HotelApp.Web.Models.AssetItem
+@{
+    ViewData["Title"] = "Item Details";
+    var departmentNames = (IEnumerable<string>)(ViewBag.DepartmentNames ?? Array.Empty<string>());
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-eye"></i> Item Details</h2>
+    <a asp-action="EditItem" asp-route-id="@Model.Id" class="btn-create">
+        <i class="fas fa-pen"></i> Edit
+    </a>
+</div>
+
+<div class="table-container" style="padding: 16px;">
+    <div><strong>Code:</strong> @Model.Code</div>
+    <div><strong>Name:</strong> @Model.Name</div>
+    <div><strong>Unit:</strong> @Model.UnitName</div>
+    <div><strong>Category:</strong> @Model.Category</div>
+    <div><strong>Room Eligible:</strong> @(Model.IsRoomEligible ? "Yes" : "No")</div>
+    <div><strong>Chargeable:</strong> @(Model.IsChargeable ? "Yes" : "No")</div>
+    <div><strong>Requires Custodian:</strong> @(Model.RequiresCustodian ? "Yes" : "No")</div>
+    <div><strong>Threshold Qty:</strong> @(Model.ThresholdQty?.ToString("0.##") ?? "-")</div>
+    <div><strong>Status:</strong> @(Model.IsActive ? "Active" : "Inactive")</div>
+
+    <div style="margin-top: 12px;">
+        <strong>Eligible Departments:</strong>
+        @if (departmentNames.Any())
+        {
+            <div>@string.Join(", ", departmentNames)</div>
+        }
+        else
+        {
+            <div class="text-muted">None</div>
+        }
+    </div>
+</div>
+
+<div class="form-actions">
+    <a asp-action="Items" class="btn-cancel">
+        <i class="fas fa-arrow-left"></i> Back
+    </a>
+</div>

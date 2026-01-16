@@ -1,0 +1,22 @@
+@model HotelApp.Web.Models.AssetUnit
+@{
+    ViewData["Title"] = "Unit Details";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-eye"></i> Unit Details</h2>
+    <a asp-action="EditUnit" asp-route-id="@Model.Id" class="btn-create">
+        <i class="fas fa-pen"></i> Edit
+    </a>
+</div>
+
+<div class="table-container" style="padding: 16px;">
+    <div><strong>Name:</strong> @Model.Name</div>
+    <div><strong>Status:</strong> @(Model.IsActive ? "Active" : "Inactive")</div>
+</div>
+
+<div class="form-actions">
+    <a asp-action="Units" class="btn-cancel">
+        <i class="fas fa-arrow-left"></i> Back
+    </a>
+</div>

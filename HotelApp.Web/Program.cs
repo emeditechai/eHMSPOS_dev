@@ -120,6 +120,7 @@ builder.Services.AddScoped<IUpiSettingsRepository, UpiSettingsRepository>();
 builder.Services.AddScoped<IMailConfigurationRepository, MailConfigurationRepository>();
 builder.Services.AddScoped<IBookingReceiptTemplateRepository, BookingReceiptTemplateRepository>();
 builder.Services.AddScoped<IGuestFeedbackRepository, GuestFeedbackRepository>();
+builder.Services.AddScoped<IAssetManagementRepository, AssetManagementRepository>();
 
 builder.Services.AddScoped<IMailPasswordProtector, MailPasswordProtector>();
 builder.Services.AddScoped<IMailSender, MailSender>();

@@ -1,0 +1,271 @@
+@model HotelApp.Web.ViewModels.AssetMovementCreateViewModel
+@{
+    ViewData["Title"] = "Stock Movement";
+    var isAdmin = (bool)(ViewBag.IsAdmin ?? false);
+
+    var movementTypeOptions = new (HotelApp.Web.Models.AssetMovementType value, string label)[]
+    {
+        (HotelApp.Web.Models.AssetMovementType.OpeningStockIn, "Opening Stock (IN)"),
+        (HotelApp.Web.Models.AssetMovementType.ReturnIn, "Return (IN)"),
+        (HotelApp.Web.Models.AssetMovementType.DamageRecoveryIn, "Damage Recovery (IN)"),
+
+        (HotelApp.Web.Models.AssetMovementType.DepartmentIssueOut, "Department Issue (OUT)"),
+        (HotelApp.Web.Models.AssetMovementType.RoomAllocationOut, "Room Allocation (OUT)"),
+        (HotelApp.Web.Models.AssetMovementType.GuestIssueOut, "Guest Issue (OUT)"),
+        (HotelApp.Web.Models.AssetMovementType.ConsumableUsageOut, "Consumable Usage (OUT)"),
+        (HotelApp.Web.Models.AssetMovementType.AutoCheckoutConsumableOut, "Auto Checkout Consumables (OUT)"),
+    };
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-right-left"></i> Stock Movement</h2>
+</div>
+
+<div class="master-form-container">
+    <form asp-action="CreateMovement" method="post" class="master-form">
+        @Html.AntiForgeryToken()
+
+        <div asp-validation-summary="All" class="text-danger" style="margin-bottom: 10px;"></div>
+
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div class="alert alert-danger">
+                <i class="fas fa-triangle-exclamation"></i>
+                Please fix the errors and try again.
+            </div>
+        }
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label asp-for="MovementType" class="form-label">Movement Type</label>
+                <select asp-for="MovementType" class="form-control" id="movementType">
+                    @foreach (var opt in movementTypeOptions)
+                    {
+                        <option value="@((int)opt.value)">@opt.label</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group" id="custodianGroup">
+                <label asp-for="CustodianName" class="form-label">
+                    Custodian Name
+                    <i class="fas fa-info-circle text-muted" title="Required when any selected item has ‘Requires Custodian = Yes’ for accountability."></i>
+                </label>
+                <input asp-for="CustodianName" class="form-control" placeholder="Required for some items" />
+                <span asp-validation-for="CustodianName" class="text-danger"></span>
+                <small class="text-muted">Required when any selected item has “Requires Custodian = Yes”.</small>
+            </div>
+
+            <div class="form-group" id="deptToGroup">
+                <label asp-for="ToDepartmentId" class="form-label"></label>
+                <select asp-for="ToDepartmentId" class="form-control" asp-items="@(new SelectList(Model.Departments, "Id", "Name"))">
+                    <option value="">-- Select Department --</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="roomGroup">
+                <label asp-for="RoomId" class="form-label"></label>
+                <select asp-for="RoomId" class="form-control" asp-items="@(new SelectList(Model.Rooms, "Id", "RoomNumber"))">
+                    <option value="">-- Select Room --</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="bookingGroup">
+                <label asp-for="BookingNumber" class="form-label"></label>
+                <input asp-for="BookingNumber" class="form-control" />
+            </div>
+
+            <div class="form-group" id="guestGroup">
+                <label asp-for="GuestName" class="form-label"></label>
+                <input asp-for="GuestName" class="form-control" />
+            </div>
+
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label asp-for="Notes" class="form-label"></label>
+                <input asp-for="Notes" class="form-control" />
+            </div>
+
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label style="display: inline-flex; align-items: center; gap: 8px;">
+                    @if (isAdmin)
+                    {
+                        <input asp-for="AllowNegativeOverride" type="checkbox" />
+                    }
+                    else
+                    {
+                        <input type="checkbox" disabled="disabled" />
+                        <input type="hidden" asp-for="AllowNegativeOverride" />
+                    }
+                    <span>Allow Negative (Admin Override) — consumables only</span>
+                </label>
+                @if (!isAdmin)
+                {
+                    <div class="text-muted" style="margin-top: 6px;">Only Admin can enable negative override.</div>
+                }
+            </div>
+        </div>
+
+        <div class="table-container" style="margin-top: 12px;">
+            <table class="data-table" id="linesTable">
+                <thead>
+                    <tr>
+                        <th style="width: 45%;">Item</th>
+                        <th style="width: 12%;">Qty</th>
+                        <th style="width: 18%;">Serial</th>
+                        <th>Note</th>
+                        <th style="width: 80px;">Remove</th>
+                    </tr>
+                </thead>
+                <tbody id="linesBody">
+                @for (int i = 0; i < Model.Lines.Count; i++)
+                {
+                    <tr>
+                        <td>
+                            <select asp-for="Lines[i].ItemId" class="form-control">
+                                <option value="">-- Select Item --</option>
+                                @foreach (var it in Model.Items)
+                                {
+                                    <option value="@it.Id">@it.Name (@it.Code) - @it.UnitName</option>
+                                }
+                            </select>
+                        </td>
+                        <td>
+                            <input asp-for="Lines[i].Qty" type="number" step="0.01" class="form-control" />
+                        </td>
+                        <td>
+                            <input asp-for="Lines[i].SerialNumber" class="form-control" />
+                        </td>
+                        <td>
+                            <input asp-for="Lines[i].LineNote" class="form-control" />
+                        </td>
+                        <td>
+                            <button type="button" class="btn-action btn-delete" onclick="removeLine(this)">
+                                <i class="fas fa-trash"></i>
+                                <span>Remove</span>
+                            </button>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+
+            <div style="display:flex; justify-content:flex-end; padding: 12px;">
+                <button type="button" class="btn-create" onclick="addLine()">
+                    <i class="fas fa-plus"></i> Add Line
+                </button>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a asp-action="MovementAudit" class="btn-cancel">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+            <button type="submit" class="btn-save">
+                <i class="fas fa-save"></i> Save Movement
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+
+    <script>
+        let lineIndex = @Model.Lines.Count;
+
+        function reindexLines() {
+            const rows = document.querySelectorAll('#linesBody tr');
+            let idx = 0;
+            rows.forEach(row => {
+                row.querySelectorAll('select, input').forEach(el => {
+                    const name = el.getAttribute('name');
+                    if (!name) return;
+                    el.setAttribute('name', name.replace(/Lines\[\d+\]/g, `Lines[${idx}]`));
+                });
+                idx++;
+            });
+            lineIndex = idx;
+        }
+
+        function addLine() {
+            const tbody = document.getElementById('linesBody');
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>
+                    <select name="Lines[${lineIndex}].ItemId" class="form-control">
+                        <option value="">-- Select Item --</option>
+                        ${getItemsOptionsHtml()}
+                    </select>
+                </td>
+                <td>
+                    <input name="Lines[${lineIndex}].Qty" type="number" step="0.01" class="form-control" />
+                </td>
+                <td>
+                    <input name="Lines[${lineIndex}].SerialNumber" class="form-control" />
+                </td>
+                <td>
+                    <input name="Lines[${lineIndex}].LineNote" class="form-control" />
+                </td>
+                <td>
+                    <button type="button" class="btn-action btn-delete" onclick="removeLine(this)">
+                        <i class="fas fa-trash"></i>
+                        <span>Remove</span>
+                    </button>
+                </td>`;
+
+            tbody.appendChild(tr);
+            reindexLines();
+        }
+
+        function removeLine(btn) {
+            const tr = btn.closest('tr');
+            tr.remove();
+            if (document.querySelectorAll('#linesBody tr').length === 0) {
+                addLine();
+            }
+            reindexLines();
+        }
+
+        function getItemsOptionsHtml() {
+            const options = [];
+            @foreach (var it in Model.Items)
+            {
+                <text>options.push(`<option value="@it.Id">@it.Name (@it.Code) - @it.UnitName</option>`);</text>
+            }
+            return options.join('');
+        }
+
+        function applyMovementTypeRules() {
+            const t = parseInt(document.getElementById('movementType').value, 10);
+
+            // hide all optional groups by default
+            document.getElementById('deptToGroup').style.display = 'none';
+            document.getElementById('roomGroup').style.display = 'none';
+            document.getElementById('bookingGroup').style.display = 'none';
+            document.getElementById('guestGroup').style.display = 'none';
+
+            // show required groups by movement
+            if (t === 10) { // DepartmentIssueOut
+                document.getElementById('deptToGroup').style.display = '';
+            }
+            if (t === 11) { // RoomAllocationOut
+                document.getElementById('roomGroup').style.display = '';
+            }
+            if (t === 12) { // GuestIssueOut
+                document.getElementById('bookingGroup').style.display = '';
+                document.getElementById('guestGroup').style.display = '';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            applyMovementTypeRules();
+            document.getElementById('movementType').addEventListener('change', applyMovementTypeRules);
+
+            // Ensure model binder receives continuous indices
+            document.querySelector('form').addEventListener('submit', function () {
+                reindexLines();
+            });
+        });
+    </script>
+}

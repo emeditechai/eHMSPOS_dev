@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Asset Management SOP</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Asset Management SOP</h1>
+</header>
+<h1 id="standard-operating-procedure-sop-asset-management">Standard
+Operating Procedure (SOP) — Asset Management</h1>
+<p><strong>Document ID:</strong> SOP-AM-001<br />
+<strong>Module:</strong> Asset Management (Internal Inventory)<br />
+<strong>Effective Date:</strong> 16 Jan 2026<br />
+<strong>Version:</strong> 1.0<br />
+<strong>Owner:</strong> Hotel Operations / Store Keeper<br />
+<strong>Applies To:</strong> All branches using HotelApp</p>
+<hr />
+<h2 id="purpose">1. Purpose</h2>
+<p>To define a standard, step-by-step process to:</p>
+<ul>
+<li>Maintain item masters (Units, Departments, Items)</li>
+<li>Record stock IN/OUT using Stock Movement</li>
+<li>Monitor balances using Stock Report and Movement Audit</li>
+<li>Record and recover Damage/Loss cases</li>
+</ul>
+<hr />
+<h2 id="scope">2. Scope</h2>
+<p><strong>In-scope</strong></p>
+<ul>
+<li>Unit Master, Department Master, Item Master</li>
+<li>Consumable Standards</li>
+<li>Stock Movement (IN/OUT)</li>
+<li>Movement Audit</li>
+<li>Stock Report</li>
+<li>Damage/Loss and Recovery</li>
+</ul>
+<p><strong>Out-of-scope</strong></p>
+<ul>
+<li>Purchase orders / procurement</li>
+<li>Vendor management</li>
+</ul>
+<hr />
+<h2 id="roles-responsibilities">3. Roles &amp; Responsibilities</h2>
+<ul>
+<li><strong>Admin</strong>
+<ul>
+<li>Can enable <strong>Allow Negative (Admin Override)</strong> for
+consumables</li>
+<li>Oversees configuration and access</li>
+</ul></li>
+<li><strong>Manager / Supervisor</strong>
+<ul>
+<li>Reviews movements when required</li>
+<li>Approves Damage/Loss records</li>
+</ul></li>
+<li><strong>Store Keeper / Staff</strong>
+<ul>
+<li>Creates masters (if allowed)</li>
+<li>Enters Stock Movements</li>
+<li>Logs Damage/Loss records</li>
+</ul></li>
+</ul>
+<hr />
+<h2 id="definitions">4. Definitions</h2>
+<ul>
+<li><strong>Branch:</strong> Operational unit for which stock is
+maintained. Stock is always maintained per branch.</li>
+<li><strong>Asset:</strong> Reusable/durable item (e.g., equipment,
+tools).</li>
+<li><strong>Consumable:</strong> Item consumed during operations (e.g.,
+soap, water bottle).</li>
+<li><strong>Movement:</strong> A transaction that increases (IN) or
+decreases (OUT) stock.</li>
+<li><strong>Custodian:</strong> Person responsible for an issued
+item.</li>
+<li><strong>Requires Custodian:</strong> Item setting that forces
+capturing Custodian Name during movement.</li>
+</ul>
+<hr />
+<h2 id="preconditions-controls">5. Preconditions / Controls</h2>
+<p>Before starting daily operations:</p>
+<ol type="1">
+<li>Confirm you are working in the correct <strong>Branch</strong>.</li>
+<li>Ensure Units, Departments, and Items are created.</li>
+<li>Confirm item codes are standardized and
+<strong>unique</strong>.</li>
+<li>Do not issue stock without recording a Stock Movement.</li>
+</ol>
+<hr />
+<h2 id="procedure">6. Procedure</h2>
+<h3 id="access-the-module">6.1 Access the Module</h3>
+<ol type="1">
+<li>Login to HotelApp.</li>
+<li>From the top navbar, open <strong>Asset Management</strong>.</li>
+<li>Available menus:
+<ul>
+<li>Item Master</li>
+<li>Departments</li>
+<li>Units</li>
+<li>Consumable Standards</li>
+<li>Stock Movement</li>
+<li>Movement Audit</li>
+<li>Stock Report</li>
+<li>Damage/Loss</li>
+</ul></li>
+</ol>
+<hr />
+<h3 id="master-setup-one-time-per-branch">6.2 Master Setup (One-time per
+Branch)</h3>
+<h4 id="create-units">6.2.1 Create Units</h4>
+<ol type="1">
+<li>Open <strong>Asset Management → Units</strong>.</li>
+<li>Click <strong>Create Unit</strong>.</li>
+<li>Enter unit name (examples: <code>Nos</code>, <code>Pcs</code>,
+<code>Kg</code>, <code>Ltr</code>).</li>
+<li>Save.</li>
+</ol>
+<h4 id="create-departments">6.2.2 Create Departments</h4>
+<ol type="1">
+<li>Open <strong>Asset Management → Departments</strong>.</li>
+<li>Click <strong>Create Department</strong>.</li>
+<li>Enter department name (examples: <code>Housekeeping</code>,
+<code>Maintenance</code>, <code>Front Office</code>).</li>
+<li>Save.</li>
+</ol>
+<h4 id="create-items-item-master">6.2.3 Create Items (Item Master)</h4>
+<ol type="1">
+<li>Open <strong>Asset Management → Item Master</strong>.</li>
+<li>Click <strong>Create Item</strong>.</li>
+<li>Fill the form:
+<ul>
+<li><strong>Code</strong>: must be <strong>unique</strong> (system
+blocks duplicates).</li>
+<li><strong>Name</strong>: item name.</li>
+<li><strong>Unit</strong>: select from Unit Master.</li>
+<li><strong>Category</strong>:
+<ul>
+<li><strong>Asset</strong>: durable item</li>
+<li><strong>Consumable</strong>: consumable item</li>
+</ul></li>
+<li><strong>Room Eligible</strong>: set <strong>Yes</strong> if it can
+be allocated/used for rooms.</li>
+<li><strong>Chargeable</strong>: set <strong>Yes</strong> if recovery
+from guest/staff may happen.</li>
+<li><strong>Requires Custodian</strong>:
+<ul>
+<li>If <strong>Yes</strong>, <strong>Stock Movement</strong> requires
+<strong>Custodian Name</strong> whenever this item is used.</li>
+<li>Use for items requiring accountability (costly
+tools/equipment).</li>
+</ul></li>
+<li><strong>Threshold Qty</strong>: optional, for low stock
+awareness.</li>
+<li><strong>Status</strong>: Active/Inactive.</li>
+<li><strong>Eligible Departments</strong>: select which departments can
+use this item.</li>
+</ul></li>
+<li>Save.</li>
+</ol>
+<hr />
+<h3 id="configure-consumable-standards-recommended">6.3 Configure
+Consumable Standards (Recommended)</h3>
+<p>Use this when you want standardized/expected usage.</p>
+<ol type="1">
+<li>Open <strong>Asset Management → Consumable Standards</strong>.</li>
+<li>Click <strong>Add / Update Standard</strong>.</li>
+<li>Select a <strong>Consumable</strong> item.</li>
+<li>Enter:
+<ul>
+<li><strong>Per Room/Day</strong> quantity</li>
+<li><strong>Per Stay</strong> quantity</li>
+</ul></li>
+<li>Set <strong>Active</strong> and Save.</li>
+</ol>
+<hr />
+<h3 id="stock-movement-daily-operations">6.4 Stock Movement (Daily
+Operations)</h3>
+<p>Use Stock Movement to add stock (IN) or issue/consume stock (OUT).
+This is the primary daily workflow.</p>
+<h4 id="create-a-stock-movement">6.4.1 Create a Stock Movement</h4>
+<ol type="1">
+<li>Open <strong>Asset Management → Stock Movement</strong>.</li>
+<li>Select <strong>Movement Type</strong>.</li>
+<li>Enter additional fields (shown/hidden based on movement type):
+<ul>
+<li><strong>Custodian Name</strong> (mandatory if any selected item has
+<strong>Requires Custodian = Yes</strong>)</li>
+<li><strong>To Department</strong> (for Department Issue)</li>
+<li><strong>Room</strong> (for Room Allocation)</li>
+<li><strong>Booking Number / Guest Name</strong> (for Guest Issue)</li>
+<li><strong>Notes</strong> (recommended)</li>
+</ul></li>
+<li>Add one or more line items:
+<ul>
+<li>Select <strong>Item</strong></li>
+<li>Enter <strong>Qty</strong> (must be &gt; 0)</li>
+<li>Optional: Serial / Note</li>
+</ul></li>
+<li>Click <strong>Save Movement</strong>.</li>
+</ol>
+<h4 id="movement-types-when-to-use">6.4.2 Movement Types — When to
+Use</h4>
+<p><strong>IN movements</strong></p>
+<ul>
+<li><strong>Opening Stock (IN):</strong> initial stock entry when
+starting the module</li>
+<li><strong>Return (IN):</strong> stock returned back into store</li>
+<li><strong>Damage Recovery (IN):</strong> recovered stock after
+repair/replacement</li>
+</ul>
+<p><strong>OUT movements</strong></p>
+<ul>
+<li><strong>Department Issue (OUT):</strong> issuing items to a
+department</li>
+<li><strong>Room Allocation (OUT):</strong> allocating items to a
+room</li>
+<li><strong>Guest Issue (OUT):</strong> issuing items directly to a
+guest/booking</li>
+<li><strong>Consumable Usage (OUT):</strong> recording consumables
+used</li>
+<li><strong>Auto Checkout Consumables (OUT):</strong> checkout-related
+consumable adjustments (if used)</li>
+</ul>
+<h4 id="stock-rules-compliance">6.4.3 Stock Rules / Compliance</h4>
+<ul>
+<li>Stock will <strong>not</strong> go below zero.</li>
+<li>Exception: <strong>Consumables</strong> can go negative only when
+<strong>Admin</strong> enables <strong>Allow Negative (Admin
+Override)</strong>.</li>
+</ul>
+<hr />
+<h3 id="movement-audit-verification">6.5 Movement Audit
+(Verification)</h3>
+<ol type="1">
+<li>Open <strong>Asset Management → Movement Audit</strong>.</li>
+<li>Verify movements are captured correctly (date, type, items, qty,
+notes).</li>
+<li>Use this for investigations and accountability.</li>
+</ol>
+<hr />
+<h3 id="stock-report-current-balance">6.6 Stock Report (Current
+Balance)</h3>
+<ol type="1">
+<li>Open <strong>Asset Management → Stock Report</strong>.</li>
+<li>Review current balance per item.</li>
+<li>If stock looks incorrect, cross-check <strong>Movement
+Audit</strong>.</li>
+</ol>
+<hr />
+<h3 id="damage-loss-workflow">6.7 Damage / Loss Workflow</h3>
+<p>Use Damage/Loss to record broken/missing items and record
+recoveries.</p>
+<h4 id="create-a-damageloss-record">6.7.1 Create a Damage/Loss
+Record</h4>
+<ol type="1">
+<li>Open <strong>Asset Management → Damage/Loss</strong>.</li>
+<li>Click <strong>Create Damage/Loss</strong>.</li>
+<li>Enter item, qty, notes (and related details).</li>
+<li>Save.</li>
+</ol>
+<h4 id="approve-damageloss">6.7.2 Approve Damage/Loss</h4>
+<ol type="1">
+<li>Open the record.</li>
+<li>Click <strong>Approve</strong> (usually Manager/Admin).</li>
+</ol>
+<h4 id="add-recovery">6.7.3 Add Recovery</h4>
+<ol type="1">
+<li>Open the approved Damage/Loss record.</li>
+<li>Click <strong>Add Recovery</strong>.</li>
+<li>Select recovery type (Cash / Replacement / Staff Deduction / Bill
+Posting).</li>
+<li>Save.</li>
+</ol>
+<blockquote>
+<p>Note: If you select <strong>Bill Posting</strong>, posting the
+recovery into guest billing/receipt may require additional integration
+depending on your setup.</p>
+</blockquote>
+<hr />
+<h2 id="records-to-maintain">7. Records to Maintain</h2>
+<ul>
+<li>Stock Movements (via <strong>Movement Audit</strong>)</li>
+<li>Current stock balances (via <strong>Stock Report</strong>)</li>
+<li>Damage/Loss records and Recovery entries</li>
+</ul>
+<hr />
+<h2 id="troubleshooting">8. Troubleshooting</h2>
+<p><strong>Problem:</strong> “Custodian Name is required” error</p>
+<ul>
+<li>Check the selected items in the movement lines.</li>
+<li>If any item has <strong>Requires Custodian = Yes</strong>, you must
+enter <strong>Custodian Name</strong>.</li>
+</ul>
+<p><strong>Problem:</strong> “Code already exists” when creating/editing
+an item</p>
+<ul>
+<li>Item <strong>Code</strong> must be unique.</li>
+<li>Choose a standardized format (example: <code>HK-SOAP-100</code>,
+<code>RM-TOWEL-BATH</code>).</li>
+</ul>
+<p><strong>Problem:</strong> “Insufficient stock / cannot go below
+zero”</p>
+<ul>
+<li>Verify balance in <strong>Stock Report</strong>.</li>
+<li>Confirm you selected the correct movement type.</li>
+<li>For consumables only, Admin may enable <strong>Allow Negative (Admin
+Override)</strong> if your process allows it.</li>
+</ul>
+<hr />
+<h2 id="change-history">9. Change History</h2>
+<ul>
+<li>v1.0 (16 Jan 2026): Initial SOP created.</li>
+</ul>
+</body>
+</html>

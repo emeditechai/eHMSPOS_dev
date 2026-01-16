@@ -1,0 +1,214 @@
+@model HotelApp.Web.ViewModels.AssetDashboardViewModel
+@{
+    ViewData["Title"] = "Asset Management";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-boxes-stacked"></i> Asset Management</h2>
+</div>
+
+<div class="filters-container" style="margin-bottom: 18px;">
+    <form method="get" action="@Url.Action("Index", "AssetManagement")">
+        <div style="display:flex; gap:12px; flex-wrap: wrap; align-items:flex-end; justify-content: space-between;">
+            <div style="display:flex; gap:12px; flex-wrap: wrap; align-items:flex-end;">
+                <div>
+                    <label class="filter-label">From</label>
+                    <input class="filter-input" type="date" name="fromDate" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div>
+                    <label class="filter-label">To</label>
+                    <input class="filter-input" type="date" name="toDate" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-filter-apply" type="submit">
+                        <i class="fas fa-filter"></i> Apply
+                    </button>
+                    <a class="btn-filter-clear" href="@Url.Action("Index", "AssetManagement")">
+                        <i class="fas fa-undo"></i> Reset
+                    </a>
+                </div>
+            </div>
+
+            <div class="subtext" style="margin-top:4px;">
+                Summary for @Model.FromDate.ToString("dd-MMM-yyyy") to @Model.ToDate.ToString("dd-MMM-yyyy")
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="status-cards booking-status-cards" style="margin-bottom: 26px;">
+    <div class="status-card available">
+        <h3>Movements</h3>
+        <div class="value">@Model.Summary.MovementsCount</div>
+    </div>
+
+    <div class="status-card occupied">
+        <h3>Total IN Qty</h3>
+        <div class="value">@Model.Summary.TotalInQty.ToString("0.##")</div>
+    </div>
+
+    <div class="status-card maintenance">
+        <h3>Total OUT Qty</h3>
+        <div class="value">@Model.Summary.TotalOutQty.ToString("0.##")</div>
+    </div>
+
+    <div class="status-card cleaning">
+        <h3>Damage/Loss (Range)</h3>
+        <div class="value">@Model.Summary.DamageLossCount</div>
+    </div>
+</div>
+
+<div class="status-cards booking-status-cards" style="margin-bottom: 26px;">
+    <div class="status-card maintenance">
+        <h3>Pending Damage/Loss</h3>
+        <div class="value">@Model.Summary.DamageLossPendingCount</div>
+    </div>
+
+    <div class="status-card occupied">
+        <h3>Recoveries (Range)</h3>
+        <div class="value">@Model.Summary.RecoveriesCount</div>
+    </div>
+
+    <div class="status-card available">
+        <h3>Recovery Amount</h3>
+        <div class="value">₹@Model.Summary.RecoveryAmount.ToString("N0")</div>
+    </div>
+
+    <div class="status-card cleaning">
+        <h3>Low Stock Items</h3>
+        <div class="value">@Model.Summary.LowStockItemsCount</div>
+    </div>
+</div>
+
+<div class="table-container" style="padding: 16px;">
+    <div style="display:flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center;">
+        <div>
+            <div style="font-weight:700; color:#1f2937;">Quick Links</div>
+            <div class="subtext" style="margin-top:4px;">Go directly to key pages.</div>
+        </div>
+        <div style="display:flex; gap: 10px; flex-wrap: wrap;">
+            <a class="btn-filter-apply" href="@Url.Action("Items", "AssetManagement")"><i class="fas fa-box"></i> Item Master</a>
+            <a class="btn-filter-apply" href="@Url.Action("CreateMovement", "AssetManagement")"><i class="fas fa-right-left"></i> Stock Movement</a>
+            <a class="btn-filter-apply" href="@Url.Action("StockReport", "AssetManagement")"><i class="fas fa-chart-column"></i> Stock Report</a>
+            <a class="btn-filter-apply" href="@Url.Action("DamageLoss", "AssetManagement")"><i class="fas fa-triangle-exclamation"></i> Damage/Loss</a>
+        </div>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 18px;">
+    <div class="table-container" style="overflow: visible;">
+        <div style="padding: 12px 12px 0 12px;">
+            <div style="font-weight:700; color:#1f2937;">Low Stock (Current)</div>
+            <div class="subtext" style="margin-top:4px;">Top 10 items below threshold.</div>
+        </div>
+
+        @if (Model.LowStockItems.Any())
+        {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th class="text-end">On Hand</th>
+                        <th class="text-end">Threshold</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var row in Model.LowStockItems)
+                {
+                    <tr>
+                        <td><strong>@row.Name</strong> <span class="text-muted">(@row.Code)</span></td>
+                        <td class="text-end">@row.OnHandQty.ToString("0.##")</td>
+                        <td class="text-end">@(row.ThresholdQty?.ToString("0.##") ?? "-")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="text-muted" style="padding: 12px;">No low-stock items.</div>
+        }
+    </div>
+
+    <div class="table-container" style="overflow: visible;">
+        <div style="padding: 12px 12px 0 12px;">
+            <div style="font-weight:700; color:#1f2937;">Recent Movements (Range)</div>
+            <div class="subtext" style="margin-top:4px;">Latest 10 movements in selected range.</div>
+        </div>
+
+        @if (Model.RecentMovements.Any())
+        {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Ref</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var row in Model.RecentMovements)
+                {
+                    <tr>
+                        <td>@row.MovementDate.ToString("dd-MMM-yyyy")</td>
+                        <td>@row.MovementType</td>
+                        <td>
+                            @if (!string.IsNullOrWhiteSpace(row.BookingNumber))
+                            {
+                                <span class="text-muted">Booking:</span> @row.BookingNumber
+                            }
+                            else if (!string.IsNullOrWhiteSpace(row.ToDepartment))
+                            {
+                                <span class="text-muted">Dept:</span> @row.ToDepartment
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="text-muted" style="padding: 12px;">No movements found in the selected range.</div>
+        }
+    </div>
+</div>
+
+@if (Model.NegativeStockItems.Any())
+{
+    <div class="table-container" style="margin-top: 18px; overflow: visible;">
+        <div style="padding: 12px 12px 0 12px; display:flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <div>
+                <div style="font-weight:700; color:#1f2937;">Negative Stock (Attention)</div>
+                <div class="subtext" style="margin-top:4px;">Top 10 items with negative on-hand quantity.</div>
+            </div>
+            <div class="subtext">Count: @Model.Summary.NegativeStockItemsCount</div>
+        </div>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th class="text-end">On Hand</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in Model.NegativeStockItems)
+            {
+                <tr>
+                    <td><strong>@row.Name</strong> <span class="text-muted">(@row.Code)</span></td>
+                    <td class="text-end">@row.OnHandQty.ToString("0.##")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

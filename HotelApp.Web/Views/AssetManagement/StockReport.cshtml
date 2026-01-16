@@ -1,0 +1,58 @@
+@model IEnumerable<HotelApp.Web.ViewModels.AssetStockReportRow>
+@{
+    ViewData["Title"] = "Stock Report";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-chart-column"></i> Stock Report</h2>
+</div>
+
+@if (Model.Any())
+{
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Unit</th>
+                    <th>On Hand</th>
+                    <th>Threshold</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in Model)
+            {
+                <tr>
+                    <td><strong>@row.Code</strong></td>
+                    <td>@row.Name</td>
+                    <td>@row.Category</td>
+                    <td>@row.Unit</td>
+                    <td>@row.OnHandQty.ToString("0.##")</td>
+                    <td>@(row.ThresholdQty?.ToString("0.##") ?? "-")</td>
+                    <td>
+                        @if (row.IsLowStock)
+                        {
+                            <span class="badge badge-maintenance">Low Stock</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-available">OK</span>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="empty-state">
+        <i class="fas fa-chart-column"></i>
+        <h3>No Stock Data</h3>
+        <p>Add items and create movements to see stock balances.</p>
+    </div>
+}
