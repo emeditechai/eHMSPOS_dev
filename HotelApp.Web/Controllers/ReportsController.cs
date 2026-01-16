@@ -142,4 +142,86 @@ public sealed class ReportsController : Controller
         ViewData["Title"] = "GST Report";
         return View(vm);
     }
+
+    [HttpGet]
+    public async Task<IActionResult> BusinessAnalyticsDashboard(DateOnly? fromDate, DateOnly? toDate)
+    {
+        var branchId = HttpContext.Session.GetInt32("BranchID") ?? 1;
+
+        var effectiveFrom = fromDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var effectiveTo = toDate ?? effectiveFrom;
+
+        if (effectiveTo < effectiveFrom)
+        {
+            (effectiveFrom, effectiveTo) = (effectiveTo, effectiveFrom);
+        }
+
+        var data = await _reportsRepository.GetBusinessAnalyticsDashboardAsync(branchId, effectiveFrom, effectiveTo);
+
+        var vm = new BusinessAnalyticsDashboardViewModel
+        {
+            FromDate = effectiveFrom,
+            ToDate = effectiveTo,
+            Summary = data.Summary,
+            Daily = data.Daily,
+            PaymentMethods = data.PaymentMethods
+        };
+
+        ViewData["Title"] = "Business Analytics Dashboard";
+        return View(vm);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> RoomTypePerformance(DateOnly? fromDate, DateOnly? toDate)
+    {
+        var branchId = HttpContext.Session.GetInt32("BranchID") ?? 1;
+
+        var effectiveFrom = fromDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var effectiveTo = toDate ?? effectiveFrom;
+
+        if (effectiveTo < effectiveFrom)
+        {
+            (effectiveFrom, effectiveTo) = (effectiveTo, effectiveFrom);
+        }
+
+        var data = await _reportsRepository.GetRoomTypePerformanceReportAsync(branchId, effectiveFrom, effectiveTo);
+
+        var vm = new RoomTypePerformanceReportViewModel
+        {
+            FromDate = effectiveFrom,
+            ToDate = effectiveTo,
+            Summary = data.Summary,
+            Rows = data.Rows
+        };
+
+        ViewData["Title"] = "Room Type Performance";
+        return View(vm);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> OutstandingBalances(DateOnly? fromDate, DateOnly? toDate)
+    {
+        var branchId = HttpContext.Session.GetInt32("BranchID") ?? 1;
+
+        var effectiveFrom = fromDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var effectiveTo = toDate ?? effectiveFrom;
+
+        if (effectiveTo < effectiveFrom)
+        {
+            (effectiveFrom, effectiveTo) = (effectiveTo, effectiveFrom);
+        }
+
+        var data = await _reportsRepository.GetOutstandingBalanceReportAsync(branchId, effectiveFrom, effectiveTo);
+
+        var vm = new OutstandingBalanceReportViewModel
+        {
+            FromDate = effectiveFrom,
+            ToDate = effectiveTo,
+            Summary = data.Summary,
+            Rows = data.Rows
+        };
+
+        ViewData["Title"] = "Outstanding Balances";
+        return View(vm);
+    }
 }
