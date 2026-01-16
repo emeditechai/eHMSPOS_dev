@@ -1,0 +1,214 @@
+@model HotelApp.Web.ViewModels.ChannelSourcePerformanceReportViewModel
+@{
+    ViewData["Title"] = "Channel & Source Performance";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-diagram-project"></i> Channel &amp; Source Performance</h2>
+</div>
+
+<div class="filters-container" style="margin-bottom: 18px;">
+    <form method="get" action="@Url.Action("ChannelSourcePerformance", "Reports")" style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; justify-content: space-between;">
+        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;">
+            <div>
+                <label for="fromDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">From Date</label>
+                <input id="fromDate" name="fromDate" type="date" class="form-control" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+            </div>
+
+            <div>
+                <label for="toDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">To Date</label>
+                <input id="toDate" name="toDate" type="date" class="form-control" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:flex-end;">
+            <button class="btn-filter-apply" type="submit"><i class="fas fa-filter"></i> Apply</button>
+            <a class="btn-filter-clear" href="@Url.Action("ChannelSourcePerformance", "Reports")"><i class="fas fa-undo"></i> Reset</a>
+        </div>
+    </form>
+</div>
+
+<div class="status-cards booking-status-cards" style="margin-bottom: 26px;">
+    <div class="status-card available">
+        <h3>Total Bookings</h3>
+        <div class="value">@Model.Summary.TotalBookings</div>
+    </div>
+
+    <div class="status-card occupied">
+        <h3>Sold Nights</h3>
+        <div class="value">@Model.Summary.SoldRoomNights</div>
+    </div>
+
+    <div class="status-card maintenance">
+        <h3>Room Revenue</h3>
+        <div class="value">₹@Model.Summary.RoomRevenue.ToString("N0")</div>
+    </div>
+
+    <div class="status-card cleaning">
+        <h3>ADR</h3>
+        <div class="value">₹@Model.Summary.Adr.ToString("N2")</div>
+    </div>
+
+    <div class="status-card occupied">
+        <h3>RevPAR</h3>
+        <div class="value">₹@Model.Summary.RevPar.ToString("N2")</div>
+    </div>
+
+    <div class="status-card maintenance">
+        <h3>Occupancy</h3>
+        <div class="value">@Model.Summary.OccupancyPercent.ToString("N2")%</div>
+    </div>
+</div>
+
+<div class="filters-container" style="margin-bottom: 18px;">
+    <div style="display:flex; gap:12px; flex-wrap: wrap; align-items:center; justify-content: space-between;">
+        <div>
+            <div style="font-weight:700; color:#1f2937;">Channel &amp; Source Mix</div>
+            <div class="subtext" style="margin-top:4px;">@Model.Rows.Count rows</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn-filter-apply" type="button" onclick="exportToCsv()"><i class="fas fa-file-export"></i> CSV</button>
+            <button class="btn-filter-apply" type="button" onclick="exportToExcel()"><i class="fas fa-file-export"></i> Excel</button>
+            <button class="btn-filter-apply" type="button" onclick="exportToPdf()"><i class="fas fa-file-export"></i> PDF</button>
+        </div>
+    </div>
+</div>
+
+<div class="table-container" style="overflow: visible;">
+    <table class="data-table" id="channelSourceTable">
+        <thead>
+            <tr>
+                <th>Channel</th>
+                <th>Source</th>
+                <th class="text-end">Bookings</th>
+                <th class="text-end">Sold Nights</th>
+                <th class="text-end">Room Revenue</th>
+                <th class="text-end">ADR</th>
+                <th class="text-end">Revenue Share %</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var row in Model.Rows)
+        {
+            <tr>
+                <td>@(string.IsNullOrWhiteSpace(row.Channel) ? "Unknown" : row.Channel)</td>
+                <td>@(string.IsNullOrWhiteSpace(row.Source) ? "Unknown" : row.Source)</td>
+                <td class="text-end">@row.BookingCount</td>
+                <td class="text-end">@row.SoldRoomNights</td>
+                <td class="text-end">₹@row.RoomRevenue.ToString("N2")</td>
+                <td class="text-end">₹@row.Adr.ToString("N2")</td>
+                <td class="text-end">@row.RevenueSharePercent.ToString("N2")%</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        const downloadBlob = (blob, filename) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 500);
+        };
+
+        const getRows = () => {
+            const table = document.getElementById('channelSourceTable');
+            const bodyRows = Array.from(table.querySelectorAll('tbody tr'))
+                .filter(tr => tr.style.display !== 'none');
+
+            return bodyRows.map(tr => {
+                const tds = Array.from(tr.querySelectorAll('td'));
+                return {
+                    channel: (tds[0]?.innerText || '').trim(),
+                    source: (tds[1]?.innerText || '').trim(),
+                    bookings: (tds[2]?.innerText || '').trim(),
+                    soldNights: (tds[3]?.innerText || '').trim(),
+                    revenue: (tds[4]?.innerText || '').trim(),
+                    adr: (tds[5]?.innerText || '').trim(),
+                    share: (tds[6]?.innerText || '').trim(),
+                };
+            });
+        };
+
+        const exportToCsv = () => {
+            const rows = getRows();
+            const header = ['Channel','Source','Bookings','Sold Nights','Room Revenue','ADR','Revenue Share %'];
+
+            const escape = (v) => {
+                const s = String(v ?? '');
+                if (/[\n\r,"]/g.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+                return s;
+            };
+
+            const lines = [header.map(escape).join(',')];
+            rows.forEach(r => lines.push([r.channel, r.source, r.bookings, r.soldNights, r.revenue, r.adr, r.share].map(escape).join(',')));
+
+            const from = document.getElementById('fromDate')?.value || '';
+            const to = document.getElementById('toDate')?.value || '';
+            const csv = '\uFEFF' + lines.join('\n');
+            downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `ChannelSourcePerformance_${from}_${to}.csv`);
+        };
+
+        const exportToExcel = () => {
+            const rows = getRows();
+            const escHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+            let html = '<table border="1">';
+            html += '<tr>' + ['Channel','Source','Bookings','Sold Nights','Room Revenue','ADR','Revenue Share %'].map(h => `<th>${escHtml(h)}</th>`).join('') + '</tr>';
+            rows.forEach(r => {
+                html += '<tr>' + [r.channel, r.source, r.bookings, r.soldNights, r.revenue, r.adr, r.share].map(v => `<td>${escHtml(v)}</td>`).join('') + '</tr>';
+            });
+            html += '</table>';
+
+            const content = `<!doctype html><html><head><meta charset="utf-8"></head><body>${html}</body></html>`;
+            const from = document.getElementById('fromDate')?.value || '';
+            const to = document.getElementById('toDate')?.value || '';
+            downloadBlob(new Blob([content], { type: 'application/vnd.ms-excel;charset=utf-8;' }), `ChannelSourcePerformance_${from}_${to}.xls`);
+        };
+
+        const exportToPdf = () => {
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                alert('PDF export library failed to load. Please refresh and try again.');
+                return;
+            }
+
+            const rows = getRows();
+            const from = document.getElementById('fromDate')?.value || '';
+            const to = document.getElementById('toDate')?.value || '';
+
+            const jsPDF = window.jspdf.jsPDF;
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+
+            doc.setFontSize(14);
+            doc.text(`Channel & Source Performance (${from} to ${to})`, 40, 40);
+
+            const autoTableFn = doc.autoTable || (jsPDF.API && jsPDF.API.autoTable);
+            if (!autoTableFn) {
+                alert('PDF table plugin failed to load. Please refresh and try again.');
+                return;
+            }
+
+            (doc.autoTable || autoTableFn).call(doc, {
+                startY: 60,
+                head: [[ 'Channel','Source','Bookings','Sold Nights','Room Revenue','ADR','Revenue Share %' ]],
+                body: rows.map(r => [r.channel, r.source, r.bookings, r.soldNights, r.revenue, r.adr, r.share]),
+                styles: { fontSize: 8 },
+                headStyles: { fillColor: [15, 23, 42] }
+            });
+
+            doc.save(`ChannelSourcePerformance_${from}_${to}.pdf`);
+        };
+    </script>
+}

@@ -9,10 +9,15 @@ This document describes the **new business analytics reports** added under the *
 - Page: `ReportsController.BusinessAnalyticsDashboard`
 - Filter: Date range (`fromDate`, `toDate`)
 - UI:
-  - KPI cards: Total Bookings, Total Collected, Occupancy %, Outstanding Balance
+  - KPI cards: Total Bookings, Room Revenue, ADR, RevPAR, Total Collected, Occupancy %, Outstanding Balance
   - Daily trend table (day-by-day)
   - Payment-method summary table
 - Export: CSV / Excel / PDF (client-side export from rendered tables)
+
+**Notes:**
+- Room Revenue is based on `BookingRoomNights.RateAmount` within the date range.
+- ADR = Room Revenue / Sold room-nights.
+- RevPAR = Room Revenue / (Active rooms × total days).
 
 ### 2) Room Type Performance
 - Menu: **Reports → Room Type Performance**
@@ -32,10 +37,21 @@ This document describes the **new business analytics reports** added under the *
   - Table: Booking-wise outstanding balances
 - Export: CSV / Excel / PDF (client-side)
 
+### 4) Channel & Source Performance
+- Menu: **Reports → Channel/Source Performance**
+- Page: `ReportsController.ChannelSourcePerformance`
+- Filter: Date range
+- UI:
+  - KPI cards: Total Bookings, Sold Nights, Room Revenue, ADR, RevPAR, Occupancy %
+  - Table: Channel + Source mix with revenue share
+- Export: CSV / Excel / PDF (client-side)
+
 ## Database (Stored Procedures)
 
-Run the SQL script:
+Run the SQL scripts:
 - `Database/Scripts/82_CreateBusinessAnalyticsReports.sql`
+- `Database/Scripts/83_EnhanceBusinessAnalyticsDashboard_AdrRevpar.sql`
+- `Database/Scripts/84_CreateChannelSourcePerformanceReport.sql`
 
 It creates these stored procedures:
 
@@ -45,6 +61,12 @@ It creates these stored procedures:
      - Summary KPIs
      - Daily Trend
      - Payment Method Summary
+
+4. `sp_GetChannelSourcePerformanceReport`
+   - Params: `@BranchID`, `@FromDate`, `@ToDate`
+   - Result sets:
+     - Summary
+     - Channel+Source rows
 
 2. `sp_GetRoomTypePerformanceReport`
    - Params: `@BranchID`, `@FromDate`, `@ToDate`
@@ -70,6 +92,7 @@ It creates these stored procedures:
   - `HotelApp.Web/Views/Reports/BusinessAnalyticsDashboard.cshtml`
   - `HotelApp.Web/Views/Reports/RoomTypePerformance.cshtml`
   - `HotelApp.Web/Views/Reports/OutstandingBalances.cshtml`
+  - `HotelApp.Web/Views/Reports/ChannelSourcePerformance.cshtml`
 
 - Navigation:
   - `HotelApp.Web/Views/Shared/_Layout.cshtml`

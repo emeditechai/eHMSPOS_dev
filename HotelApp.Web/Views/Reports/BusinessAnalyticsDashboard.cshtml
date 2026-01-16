@@ -43,6 +43,21 @@
     </div>
 
     <div class="status-card occupied">
+        <h3>Room Revenue</h3>
+        <div class="value">₹@Model.Summary.TotalRoomRevenue.ToString("N0")</div>
+    </div>
+
+    <div class="status-card maintenance">
+        <h3>ADR</h3>
+        <div class="value">₹@Model.Summary.Adr.ToString("N2")</div>
+    </div>
+
+    <div class="status-card cleaning">
+        <h3>RevPAR</h3>
+        <div class="value">₹@Model.Summary.RevPar.ToString("N2")</div>
+    </div>
+
+    <div class="status-card occupied">
         <h3>Total Collected</h3>
         <div class="value">₹@Model.Summary.TotalCollected.ToString("N0")</div>
     </div>
@@ -63,7 +78,7 @@
         <div>
             <div style="font-weight:700; color:#1f2937;">Daily Trend</div>
             <div class="subtext" style="margin-top:4px;">
-                @Model.Summary.TotalDays days • Rooms: @Model.Summary.TotalRooms • Sold nights: @Model.Summary.SoldRoomNights / @Model.Summary.AvailableRoomNights • GST: ₹@Model.Summary.TotalGST.ToString("N0")
+                @Model.Summary.TotalDays days • Rooms: @Model.Summary.TotalRooms • Sold nights: @Model.Summary.SoldRoomNights / @Model.Summary.AvailableRoomNights • Room Rev: ₹@Model.Summary.TotalRoomRevenue.ToString("N0") • ADR: ₹@Model.Summary.Adr.ToString("N2") • RevPAR: ₹@Model.Summary.RevPar.ToString("N2") • GST: ₹@Model.Summary.TotalGST.ToString("N0")
             </div>
         </div>
         <div style="display:flex; gap:10px;">
@@ -82,6 +97,9 @@
                 <th class="text-end">Bookings</th>
                 <th class="text-end">Sold Nights</th>
                 <th class="text-end">Occupancy %</th>
+                <th class="text-end">Room Revenue</th>
+                <th class="text-end">ADR</th>
+                <th class="text-end">RevPAR</th>
                 <th class="text-end">Receipts</th>
                 <th class="text-end">Collected</th>
             </tr>
@@ -94,6 +112,9 @@
                 <td class="text-end">@row.TotalBookings</td>
                 <td class="text-end">@row.SoldRoomNights</td>
                 <td class="text-end">@row.OccupancyPercent.ToString("N2")%</td>
+                <td class="text-end">₹@row.RoomRevenue.ToString("N2")</td>
+                <td class="text-end">₹@row.Adr.ToString("N2")</td>
+                <td class="text-end">₹@row.RevPar.ToString("N2")</td>
                 <td class="text-end">@row.ReceiptCount</td>
                 <td class="text-end">₹@row.CollectedAmount.ToString("N2")</td>
             </tr>
@@ -159,8 +180,11 @@
                     bookings: (tds[1]?.innerText || '').trim(),
                     soldNights: (tds[2]?.innerText || '').trim(),
                     occupancy: (tds[3]?.innerText || '').trim(),
-                    receipts: (tds[4]?.innerText || '').trim(),
-                    collected: (tds[5]?.innerText || '').trim(),
+                    roomRevenue: (tds[4]?.innerText || '').trim(),
+                    adr: (tds[5]?.innerText || '').trim(),
+                    revpar: (tds[6]?.innerText || '').trim(),
+                    receipts: (tds[7]?.innerText || '').trim(),
+                    collected: (tds[8]?.innerText || '').trim(),
                 };
             });
         };
@@ -191,9 +215,9 @@
 
             const lines = [];
             lines.push('Daily Trend');
-            lines.push(['Date','Bookings','Sold Nights','Occupancy %','Receipts','Collected'].map(escape).join(','));
+            lines.push(['Date','Bookings','Sold Nights','Occupancy %','Room Revenue','ADR','RevPAR','Receipts','Collected'].map(escape).join(','));
             daily.forEach(r => {
-                lines.push([r.date, r.bookings, r.soldNights, r.occupancy, r.receipts, r.collected].map(escape).join(','));
+                lines.push([r.date, r.bookings, r.soldNights, r.occupancy, r.roomRevenue, r.adr, r.revpar, r.receipts, r.collected].map(escape).join(','));
             });
 
             lines.push('');
@@ -215,13 +239,13 @@
             const escHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
             let html = '<table border="1">';
-            html += '<tr><th colspan="6">Daily Trend</th></tr>';
-            html += '<tr>' + ['Date','Bookings','Sold Nights','Occupancy %','Receipts','Collected'].map(h => `<th>${escHtml(h)}</th>`).join('') + '</tr>';
+            html += '<tr><th colspan="9">Daily Trend</th></tr>';
+            html += '<tr>' + ['Date','Bookings','Sold Nights','Occupancy %','Room Revenue','ADR','RevPAR','Receipts','Collected'].map(h => `<th>${escHtml(h)}</th>`).join('') + '</tr>';
             daily.forEach(r => {
-                html += '<tr>' + [r.date, r.bookings, r.soldNights, r.occupancy, r.receipts, r.collected].map(v => `<td>${escHtml(v)}</td>`).join('') + '</tr>';
+                html += '<tr>' + [r.date, r.bookings, r.soldNights, r.occupancy, r.roomRevenue, r.adr, r.revpar, r.receipts, r.collected].map(v => `<td>${escHtml(v)}</td>`).join('') + '</tr>';
             });
 
-            html += '<tr><td colspan="6">&nbsp;</td></tr>';
+            html += '<tr><td colspan="9">&nbsp;</td></tr>';
             html += '<tr><th colspan="3">Payment Method Summary</th></tr>';
             html += '<tr>' + ['Payment Method','Receipts','Collected'].map(h => `<th>${escHtml(h)}</th>`).join('') + '</tr>';
             methods.forEach(r => {
@@ -259,8 +283,8 @@
 
             (doc.autoTable || autoTableFn).call(doc, {
                 startY: 60,
-                head: [[ 'Date','Bookings','Sold Nights','Occupancy %','Receipts','Collected' ]],
-                body: daily.map(r => [r.date, r.bookings, r.soldNights, r.occupancy, r.receipts, r.collected]),
+                head: [[ 'Date','Bookings','Sold Nights','Occupancy %','Room Revenue','ADR','RevPAR','Receipts','Collected' ]],
+                body: daily.map(r => [r.date, r.bookings, r.soldNights, r.occupancy, r.roomRevenue, r.adr, r.revpar, r.receipts, r.collected]),
                 styles: { fontSize: 8 },
                 headStyles: { fillColor: [15, 23, 42] }
             });

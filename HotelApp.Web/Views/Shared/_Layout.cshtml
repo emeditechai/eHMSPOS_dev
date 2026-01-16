@@ -196,6 +196,12 @@
                                 <i class="fas fa-arrow-right dropdown-arrow"></i>
                             </a>
 
+                            <a asp-controller="Reports" asp-action="ChannelSourcePerformance" class="@(controller == "Reports" && action == "ChannelSourcePerformance" ? "active" : string.Empty)">
+                                <i class="fas fa-diagram-project"></i>
+                                <span>Channel/Source Performance</span>
+                                <i class="fas fa-arrow-right dropdown-arrow"></i>
+                            </a>
+
                             <a asp-controller="Reports" asp-action="RoomPriceDetails" class="@(controller == "Reports" && action == "RoomPriceDetails" ? "active" : string.Empty)">
                                 <i class="fas fa-rupee-sign"></i>
                                 <span>Room Price Details</span>

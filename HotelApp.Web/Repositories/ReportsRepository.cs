@@ -42,6 +42,12 @@ public interface IReportsRepository
         DateOnly fromDate,
         DateOnly toDate
     );
+
+    Task<ChannelSourcePerformanceReportData> GetChannelSourcePerformanceReportAsync(
+        int branchId,
+        DateOnly fromDate,
+        DateOnly toDate
+    );
 }
 
 public sealed class ReportsRepository : IReportsRepository
@@ -265,6 +271,42 @@ public sealed class ReportsRepository : IReportsRepository
             Rows = rows
         };
     }
+
+    public async Task<ChannelSourcePerformanceReportData> GetChannelSourcePerformanceReportAsync(
+        int branchId,
+        DateOnly fromDate,
+        DateOnly toDate
+    )
+    {
+        if (_dbConnection.State != ConnectionState.Open)
+        {
+            _dbConnection.Open();
+        }
+
+        var from = fromDate.ToDateTime(TimeOnly.MinValue);
+        var to = toDate.ToDateTime(TimeOnly.MinValue);
+
+        using var grid = await _dbConnection.QueryMultipleAsync(
+            "sp_GetChannelSourcePerformanceReport",
+            new
+            {
+                BranchID = branchId,
+                FromDate = from,
+                ToDate = to
+            },
+            commandType: CommandType.StoredProcedure
+        );
+
+        var summary = (await grid.ReadAsync<ChannelSourcePerformanceSummaryRow>()).FirstOrDefault()
+            ?? new ChannelSourcePerformanceSummaryRow();
+        var rows = (await grid.ReadAsync<ChannelSourcePerformanceRow>()).ToList();
+
+        return new ChannelSourcePerformanceReportData
+        {
+            Summary = summary,
+            Rows = rows
+        };
+    }
 }
 
 public sealed class BusinessAnalyticsDashboardData
@@ -282,6 +324,10 @@ public sealed class BusinessAnalyticsDashboardSummaryRow
     public int AvailableRoomNights { get; set; }
     public decimal OccupancyPercent { get; set; }
     public int TotalBookings { get; set; }
+    public decimal TotalRoomRevenue { get; set; }
+    public decimal TotalRoomTax { get; set; }
+    public decimal Adr { get; set; }
+    public decimal RevPar { get; set; }
     public decimal TotalCollected { get; set; }
     public decimal TotalGST { get; set; }
     public decimal TotalBalance { get; set; }
@@ -293,6 +339,9 @@ public sealed class BusinessAnalyticsDashboardDailyRow
     public int TotalBookings { get; set; }
     public int SoldRoomNights { get; set; }
     public decimal OccupancyPercent { get; set; }
+    public decimal RoomRevenue { get; set; }
+    public decimal Adr { get; set; }
+    public decimal RevPar { get; set; }
     public int ReceiptCount { get; set; }
     public decimal CollectedAmount { get; set; }
 }
@@ -322,6 +371,36 @@ public sealed class RoomTypePerformanceRow
     public int SoldNights { get; set; }
     public decimal Revenue { get; set; }
     public decimal AvgNightRevenue { get; set; }
+}
+
+public sealed class ChannelSourcePerformanceReportData
+{
+    public ChannelSourcePerformanceSummaryRow Summary { get; set; } = new();
+    public List<ChannelSourcePerformanceRow> Rows { get; set; } = new();
+}
+
+public sealed class ChannelSourcePerformanceSummaryRow
+{
+    public int TotalBookings { get; set; }
+    public int SoldRoomNights { get; set; }
+    public int AvailableRoomNights { get; set; }
+    public decimal OccupancyPercent { get; set; }
+    public decimal RoomRevenue { get; set; }
+    public decimal RoomTax { get; set; }
+    public decimal Adr { get; set; }
+    public decimal RevPar { get; set; }
+}
+
+public sealed class ChannelSourcePerformanceRow
+{
+    public string? Channel { get; set; }
+    public string? Source { get; set; }
+    public int BookingCount { get; set; }
+    public int SoldRoomNights { get; set; }
+    public decimal RoomRevenue { get; set; }
+    public decimal RoomTax { get; set; }
+    public decimal Adr { get; set; }
+    public decimal RevenueSharePercent { get; set; }
 }
 
 public sealed class OutstandingBalanceReportData
