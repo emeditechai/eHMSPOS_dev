@@ -20,8 +20,15 @@ builder.Services.Configure<HotelApp.Web.Models.PaymentQrOptions>(
 
 // Persist DataProtection keys so signed public links (e.g., Guest Feedback tokens)
 // remain valid across app restarts after publish.
-var dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "DataProtectionKeys");
-Directory.CreateDirectory(dataProtectionKeysPath);
+var configuredDataProtectionKeysPath =
+    builder.Configuration["DataProtection:KeysPath"] ??
+    Environment.GetEnvironmentVariable("HOTELAPP_DATAPROTECTION_KEYS");
+
+var dataProtectionKeysPath = !string.IsNullOrWhiteSpace(configuredDataProtectionKeysPath)
+    ? configuredDataProtectionKeysPath
+    : Path.Combine(builder.Environment.ContentRootPath, "App_Data", "DataProtectionKeys");
+
+Exception? dataProtectionInitError = null;
 
 static void TryMigrateLegacyDataProtectionKeys(string newKeyRingPath)
 {
@@ -82,12 +89,26 @@ static void TryMigrateLegacyDataProtectionKeys(string newKeyRingPath)
     }
 }
 
-TryMigrateLegacyDataProtectionKeys(dataProtectionKeysPath);
+try
+{
+    Directory.CreateDirectory(dataProtectionKeysPath);
+    TryMigrateLegacyDataProtectionKeys(dataProtectionKeysPath);
 
-builder.Services
-    .AddDataProtection()
-    .SetApplicationName("HotelApp")
-    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
+    builder.Services
+        .AddDataProtection()
+        .SetApplicationName("HotelApp")
+        .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
+}
+catch (Exception ex)
+{
+    dataProtectionInitError = ex;
+
+    // Fall back to default key storage. This avoids failing startup under locked-down
+    // IIS/AppPool identities that can't write to the app directory.
+    builder.Services
+        .AddDataProtection()
+        .SetApplicationName("HotelApp");
+}
 
 // Database connection factory
 builder.Services.AddScoped<IDbConnection>(_ => new SqlConnection(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -176,6 +197,14 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 
 var app = builder.Build();
 
+if (dataProtectionInitError is not null)
+{
+    app.Logger.LogWarning(
+        dataProtectionInitError,
+        "DataProtection keys couldn't be persisted to '{KeysPath}'. Falling back to default key storage.",
+        dataProtectionKeysPath);
+}
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -185,18 +214,17 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.UseRouting();
 
 app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapStaticAssets();
-
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Dashboard}/{action=Index}/{id?}")
-    .WithStaticAssets();
+    ;
 
 
 app.Run();
