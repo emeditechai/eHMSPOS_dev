@@ -251,4 +251,31 @@ public sealed class ReportsController : Controller
         ViewData["Title"] = "Channel & Source Performance";
         return View(vm);
     }
+
+    [HttpGet]
+    public async Task<IActionResult> GuestDetails(DateOnly? fromDate, DateOnly? toDate)
+    {
+        var branchId = HttpContext.Session.GetInt32("BranchID") ?? 1;
+
+        var effectiveFrom = fromDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var effectiveTo = toDate ?? effectiveFrom;
+
+        if (effectiveTo < effectiveFrom)
+        {
+            (effectiveFrom, effectiveTo) = (effectiveTo, effectiveFrom);
+        }
+
+        var data = await _reportsRepository.GetGuestDetailsReportAsync(branchId, effectiveFrom, effectiveTo);
+
+        var vm = new GuestDetailsReportViewModel
+        {
+            FromDate = effectiveFrom,
+            ToDate = effectiveTo,
+            Summary = data.Summary,
+            Rows = data.Rows
+        };
+
+        ViewData["Title"] = "Guest Details";
+        return View(vm);
+    }
 }

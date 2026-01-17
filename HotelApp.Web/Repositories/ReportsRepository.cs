@@ -48,6 +48,12 @@ public interface IReportsRepository
         DateOnly fromDate,
         DateOnly toDate
     );
+
+    Task<GuestDetailsReportData> GetGuestDetailsReportAsync(
+        int branchId,
+        DateOnly fromDate,
+        DateOnly toDate
+    );
 }
 
 public sealed class ReportsRepository : IReportsRepository
@@ -307,6 +313,42 @@ public sealed class ReportsRepository : IReportsRepository
             Rows = rows
         };
     }
+
+    public async Task<GuestDetailsReportData> GetGuestDetailsReportAsync(
+        int branchId,
+        DateOnly fromDate,
+        DateOnly toDate
+    )
+    {
+        if (_dbConnection.State != ConnectionState.Open)
+        {
+            _dbConnection.Open();
+        }
+
+        var from = fromDate.ToDateTime(TimeOnly.MinValue);
+        var to = toDate.ToDateTime(TimeOnly.MinValue);
+
+        using var grid = await _dbConnection.QueryMultipleAsync(
+            "sp_GetGuestDetailsReport",
+            new
+            {
+                BranchID = branchId,
+                FromDate = from,
+                ToDate = to
+            },
+            commandType: CommandType.StoredProcedure
+        );
+
+        var summary = (await grid.ReadAsync<GuestDetailsReportSummaryRow>()).FirstOrDefault()
+            ?? new GuestDetailsReportSummaryRow();
+        var rows = (await grid.ReadAsync<GuestDetailsReportRow>()).ToList();
+
+        return new GuestDetailsReportData
+        {
+            Summary = summary,
+            Rows = rows
+        };
+    }
 }
 
 public sealed class BusinessAnalyticsDashboardData
@@ -401,6 +443,37 @@ public sealed class ChannelSourcePerformanceRow
     public decimal RoomTax { get; set; }
     public decimal Adr { get; set; }
     public decimal RevenueSharePercent { get; set; }
+}
+
+public sealed class GuestDetailsReportData
+{
+    public GuestDetailsReportSummaryRow Summary { get; set; } = new();
+    public List<GuestDetailsReportRow> Rows { get; set; } = new();
+}
+
+public sealed class GuestDetailsReportSummaryRow
+{
+    public int TotalGuests { get; set; }
+    public int TotalBookings { get; set; }
+    public int TotalNights { get; set; }
+    public decimal TotalRevenue { get; set; }
+    public decimal TotalBalance { get; set; }
+}
+
+public sealed class GuestDetailsReportRow
+{
+    public string? GuestName { get; set; }
+    public string? Phone { get; set; }
+    public string? Email { get; set; }
+    public string? Address { get; set; }
+    public string? City { get; set; }
+    public string? State { get; set; }
+    public string? Country { get; set; }
+    public int BookingCount { get; set; }
+    public int TotalNights { get; set; }
+    public decimal TotalRevenue { get; set; }
+    public decimal TotalBalance { get; set; }
+    public DateTime LastStayDate { get; set; }
 }
 
 public sealed class OutstandingBalanceReportData

@@ -46,12 +46,22 @@ This document describes the **new business analytics reports** added under the *
   - Table: Channel + Source mix with revenue share
 - Export: CSV / Excel / PDF (client-side)
 
+### 5) Guest Details
+- Menu: **Reports → Guest Details**
+- Page: `ReportsController.GuestDetails`
+- Filter: Date range (filters by booking `CheckInDate`)
+- UI:
+  - KPI cards: Total Guests, Total Bookings, Total Nights, Revenue, Outstanding
+  - Table: Guest-wise bookings/nights/revenue with last stay date
+- Export: CSV / Excel / PDF (client-side)
+
 ## Database (Stored Procedures)
 
 Run the SQL scripts:
 - `Database/Scripts/82_CreateBusinessAnalyticsReports.sql`
 - `Database/Scripts/83_EnhanceBusinessAnalyticsDashboard_AdrRevpar.sql`
 - `Database/Scripts/84_CreateChannelSourcePerformanceReport.sql`
+- `Database/Scripts/85_CreateGuestDetailsReport.sql`
 
 It creates these stored procedures:
 
@@ -67,6 +77,12 @@ It creates these stored procedures:
    - Result sets:
      - Summary
      - Channel+Source rows
+
+5. `sp_GetGuestDetailsReport`
+   - Params: `@BranchID`, `@FromDate`, `@ToDate`
+   - Result sets:
+     - Summary
+     - Guest rows
 
 2. `sp_GetRoomTypePerformanceReport`
    - Params: `@BranchID`, `@FromDate`, `@ToDate`
@@ -93,6 +109,7 @@ It creates these stored procedures:
   - `HotelApp.Web/Views/Reports/RoomTypePerformance.cshtml`
   - `HotelApp.Web/Views/Reports/OutstandingBalances.cshtml`
   - `HotelApp.Web/Views/Reports/ChannelSourcePerformance.cshtml`
+  - `HotelApp.Web/Views/Reports/GuestDetails.cshtml`
 
 - Navigation:
   - `HotelApp.Web/Views/Shared/_Layout.cshtml`
