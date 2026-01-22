@@ -48,6 +48,7 @@ namespace HotelApp.Web.ViewModels
         public int ItemId { get; set; }
         public decimal Qty { get; set; }
         public string? SerialNumber { get; set; }
+        public string? AssetTag { get; set; }
         public string? LineNote { get; set; }
     }
 

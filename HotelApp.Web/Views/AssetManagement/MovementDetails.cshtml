@@ -1,0 +1,76 @@
+@model HotelApp.Web.Models.AssetMovement
+@{
+    ViewData["Title"] = "Movement Details";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-receipt"></i> Movement Details</h2>
+    <a asp-action="MovementAudit" class="btn-cancel">
+        <i class="fas fa-arrow-left"></i> Back
+    </a>
+</div>
+
+<div class="master-form-container" style="margin-bottom: 12px;">
+    <div class="form-grid">
+        <div class="form-group">
+            <label class="form-label">Movement ID</label>
+            <div class="form-control" style="background:#f8f9fa;">@Model.Id</div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Date</label>
+            <div class="form-control" style="background:#f8f9fa;">@Model.MovementDate.ToLocalTime().ToString("dd-MMM-yyyy HH:mm")</div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Type</label>
+            <div class="form-control" style="background:#f8f9fa;">@Model.MovementType</div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Booking</label>
+            <div class="form-control" style="background:#f8f9fa;">@(string.IsNullOrWhiteSpace(Model.BookingNumber) ? "-" : Model.BookingNumber)</div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Guest</label>
+            <div class="form-control" style="background:#f8f9fa;">@(string.IsNullOrWhiteSpace(Model.GuestName) ? "-" : Model.GuestName)</div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Custodian</label>
+            <div class="form-control" style="background:#f8f9fa;">@(string.IsNullOrWhiteSpace(Model.CustodianName) ? "-" : Model.CustodianName)</div>
+        </div>
+
+        <div class="form-group" style="grid-column: 1 / -1;">
+            <label class="form-label">Notes</label>
+            <div class="form-control" style="background:#f8f9fa;">@(string.IsNullOrWhiteSpace(Model.Notes) ? "-" : Model.Notes)</div>
+        </div>
+    </div>
+</div>
+
+<div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th class="text-end">Qty</th>
+                <th>Serial</th>
+                <th>Asset Tag</th>
+                <th>Note</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var l in Model.Lines)
+        {
+            <tr>
+                <td>@l.ItemName (@l.ItemCode) - @l.UnitName</td>
+                <td class="text-end">@l.Qty.ToString("0.##")</td>
+                <td>@(string.IsNullOrWhiteSpace(l.SerialNumber) ? "-" : l.SerialNumber)</td>
+                <td>@(string.IsNullOrWhiteSpace(l.AssetTag) ? "-" : l.AssetTag)</td>
+                <td>@(string.IsNullOrWhiteSpace(l.LineNote) ? "-" : l.LineNote)</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

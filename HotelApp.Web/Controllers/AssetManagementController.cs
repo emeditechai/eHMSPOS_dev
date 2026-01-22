@@ -634,6 +634,7 @@ namespace HotelApp.Web.Controllers
                     ItemId = l.ItemId,
                     Qty = l.Qty,
                     SerialNumber = l.SerialNumber,
+                    AssetTag = l.AssetTag,
                     LineNote = l.LineNote
                 }).ToList()
             };
@@ -657,6 +658,18 @@ namespace HotelApp.Web.Controllers
             ViewBag.FromDate = fromDate;
             ViewBag.ToDate = toDate;
             return View(rows);
+        }
+
+        public async Task<IActionResult> MovementDetails(int id)
+        {
+            ViewData["Title"] = "Movement Details";
+            var movement = await _assets.GetMovementByIdAsync(id, CurrentBranchID);
+            if (movement == null)
+            {
+                return NotFound();
+            }
+
+            return View(movement);
         }
 
         public async Task<IActionResult> StockReport()

@@ -158,6 +158,7 @@ BEGIN
         ItemId INT NOT NULL,
         Qty DECIMAL(18,2) NOT NULL,
         SerialNumber NVARCHAR(100) NULL,
+        AssetTag NVARCHAR(100) NULL,
         LineNote NVARCHAR(250) NULL,
         CONSTRAINT FK_AssetMovementLines_Movement FOREIGN KEY (MovementId) REFERENCES dbo.AssetMovements(Id) ON DELETE CASCADE,
         CONSTRAINT FK_AssetMovementLines_Item FOREIGN KEY (ItemId) REFERENCES dbo.AssetItems(Id)

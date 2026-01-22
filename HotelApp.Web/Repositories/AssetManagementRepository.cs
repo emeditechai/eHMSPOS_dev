@@ -538,8 +538,8 @@ namespace HotelApp.Web.Repositories
                     tx)).ToDictionary(x => x.Id, x => (Category: (AssetItemCategory)x.Category, x.Code, x.Name));
 
                 const string insertLineSql = @"
-                    INSERT INTO AssetMovementLines (MovementId, ItemId, Qty, SerialNumber, LineNote)
-                    VALUES (@MovementId, @ItemId, @Qty, @SerialNumber, @LineNote);
+                    INSERT INTO AssetMovementLines (MovementId, ItemId, Qty, SerialNumber, AssetTag, LineNote)
+                    VALUES (@MovementId, @ItemId, @Qty, @SerialNumber, @AssetTag, @LineNote);
                     SELECT CAST(SCOPE_IDENTITY() AS INT);";
 
                 foreach (var line in movement.Lines)
@@ -556,6 +556,7 @@ namespace HotelApp.Web.Repositories
                         line.ItemId,
                         line.Qty,
                         line.SerialNumber,
+                        line.AssetTag,
                         LineNote = line.LineNote
                     }, tx);
 
@@ -771,7 +772,7 @@ namespace HotelApp.Web.Repositories
             }
 
             const string linesSql = @"
-                SELECT l.Id, l.MovementId, l.ItemId, l.Qty, l.SerialNumber, l.LineNote,
+                SELECT l.Id, l.MovementId, l.ItemId, l.Qty, l.SerialNumber, l.AssetTag, l.LineNote,
                        i.Code AS ItemCode, i.[Name] AS ItemName, u.[Name] AS UnitName
                 FROM AssetMovementLines l
                 INNER JOIN AssetItems i ON i.Id = l.ItemId

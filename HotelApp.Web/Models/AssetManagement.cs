@@ -208,6 +208,7 @@ namespace HotelApp.Web.Models
         public int ItemId { get; set; }
         public decimal Qty { get; set; }
         public string? SerialNumber { get; set; }
+        public string? AssetTag { get; set; }
         public string? LineNote { get; set; }
 
         public string? ItemCode { get; set; }

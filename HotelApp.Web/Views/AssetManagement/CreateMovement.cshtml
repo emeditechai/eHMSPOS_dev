@@ -112,6 +112,7 @@
                         <th style="width: 45%;">Item</th>
                         <th style="width: 12%;">Qty</th>
                         <th style="width: 18%;">Serial</th>
+                        <th class="col-assetTag" style="width: 18%; display:none;">Asset Tag</th>
                         <th>Note</th>
                         <th style="width: 80px;">Remove</th>
                     </tr>
@@ -125,7 +126,7 @@
                                 <option value="">-- Select Item --</option>
                                 @foreach (var it in Model.Items)
                                 {
-                                    <option value="@it.Id">@it.Name (@it.Code) - @it.UnitName</option>
+                                    <option value="@it.Id" data-category="@((int)it.Category)" data-assettag="@((it.AssetTag ?? string.Empty).Replace("\"", "&quot;"))">@it.Name (@it.Code) - @it.UnitName</option>
                                 }
                             </select>
                         </td>
@@ -134,6 +135,9 @@
                         </td>
                         <td>
                             <input asp-for="Lines[i].SerialNumber" class="form-control" />
+                        </td>
+                        <td class="col-assetTag" style="display:none;">
+                            <input asp-for="Lines[i].AssetTag" class="form-control" />
                         </td>
                         <td>
                             <input asp-for="Lines[i].LineNote" class="form-control" />
@@ -173,6 +177,69 @@
     <script>
         let lineIndex = @Model.Lines.Count;
 
+        const ASSET_CATEGORY = 1;
+        const OUT_MOVEMENT_TYPES = new Set([10, 11, 12, 13, 20]);
+
+        function isOutMovementType(t) {
+            return OUT_MOVEMENT_TYPES.has(t);
+        }
+
+        function getSelectedItemMeta(selectEl) {
+            if (!selectEl || !selectEl.selectedOptions || selectEl.selectedOptions.length === 0) {
+                return { category: 0, assetTag: '' };
+            }
+            const opt = selectEl.selectedOptions[0];
+            const category = parseInt(opt.dataset.category || '0', 10);
+            const assetTag = (opt.dataset.assettag || '').trim();
+            return { category, assetTag };
+        }
+
+        function updateAssetTagUi() {
+            const t = parseInt(document.getElementById('movementType').value, 10);
+            const showForMovement = isOutMovementType(t);
+
+            const header = document.querySelector('th.col-assetTag');
+            const rows = document.querySelectorAll('#linesBody tr');
+
+            let anyAssetRow = false;
+            rows.forEach(row => {
+                const selectEl = row.querySelector('select[name$=".ItemId"]');
+                const td = row.querySelector('td.col-assetTag');
+                const input = td ? td.querySelector('input') : null;
+
+                if (!showForMovement) {
+                    if (td) td.style.display = 'none';
+                    if (input) {
+                        input.value = '';
+                        input.disabled = true;
+                    }
+                    return;
+                }
+
+                const meta = getSelectedItemMeta(selectEl);
+                const isAsset = meta.category === ASSET_CATEGORY;
+                anyAssetRow = anyAssetRow || isAsset;
+
+                if (td) td.style.display = isAsset ? '' : 'none';
+                if (input) {
+                    input.disabled = !isAsset;
+                    if (!isAsset) {
+                        input.value = '';
+                    } else if (!input.value && meta.assetTag) {
+                        input.value = meta.assetTag;
+                    }
+                }
+            });
+
+            if (header) {
+                header.style.display = showForMovement && anyAssetRow ? '' : 'none';
+            }
+
+            if (!showForMovement || !anyAssetRow) {
+                document.querySelectorAll('td.col-assetTag').forEach(td => td.style.display = 'none');
+            }
+        }
+
         function reindexLines() {
             const rows = document.querySelectorAll('#linesBody tr');
             let idx = 0;
@@ -204,6 +271,9 @@
                 <td>
                     <input name="Lines[${lineIndex}].SerialNumber" class="form-control" />
                 </td>
+                <td class="col-assetTag" style="display:none;">
+                    <input name="Lines[${lineIndex}].AssetTag" class="form-control" />
+                </td>
                 <td>
                     <input name="Lines[${lineIndex}].LineNote" class="form-control" />
                 </td>
@@ -216,6 +286,7 @@
 
             tbody.appendChild(tr);
             reindexLines();
+            updateAssetTagUi();
         }
 
         function removeLine(btn) {
@@ -225,13 +296,14 @@
                 addLine();
             }
             reindexLines();
+            updateAssetTagUi();
         }
 
         function getItemsOptionsHtml() {
             const options = [];
             @foreach (var it in Model.Items)
             {
-                <text>options.push(`<option value="@it.Id">@it.Name (@it.Code) - @it.UnitName</option>`);</text>
+                <text>options.push(`<option value="@it.Id" data-category="@((int)it.Category)" data-assettag="@((it.AssetTag ?? string.Empty).Replace("\"", "&quot;"))">@it.Name (@it.Code) - @it.UnitName</option>`);</text>
             }
             return options.join('');
         }
@@ -256,11 +328,21 @@
                 document.getElementById('bookingGroup').style.display = '';
                 document.getElementById('guestGroup').style.display = '';
             }
+
+            updateAssetTagUi();
         }
 
         document.addEventListener('DOMContentLoaded', function () {
             applyMovementTypeRules();
             document.getElementById('movementType').addEventListener('change', applyMovementTypeRules);
+
+            document.getElementById('linesBody').addEventListener('change', function (e) {
+                if (e.target && e.target.matches('select[name$=".ItemId"]')) {
+                    updateAssetTagUi();
+                }
+            });
+
+            updateAssetTagUi();
 
             // Ensure model binder receives continuous indices
             document.querySelector('form').addEventListener('submit', function () {
