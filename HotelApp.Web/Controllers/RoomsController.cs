@@ -922,7 +922,7 @@ public class RoomsController : BaseController
         return (fallbackRate.BaseRate, fallbackRate.ExtraPaxRate, "Standard", null, EffectiveTaxPercentage(fallbackRate));
     }
 
-    private int GetCurrentUserId()
+    private new int GetCurrentUserId()
     {
         var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
         return userIdClaim != null ? int.Parse(userIdClaim.Value) : 0;

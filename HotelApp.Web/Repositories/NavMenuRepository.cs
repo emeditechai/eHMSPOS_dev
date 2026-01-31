@@ -26,7 +26,7 @@ public class NavMenuRepository : INavMenuRepository
         return (await connection.QueryAsync<NavMenuItem>(sql)).ToList();
     }
 
-    public async Task<IReadOnlyList<NavMenuItem>> GetActiveForUserAsync(int userId, bool isAdmin)
+    public async Task<IReadOnlyList<NavMenuItem>> GetActiveForUserAsync(int userId, bool isAdmin, int? selectedRoleId = null)
     {
         var allActive = (await GetAllActiveAsync()).ToList();
         if (isAdmin)
@@ -40,9 +40,10 @@ public class NavMenuRepository : INavMenuRepository
             FROM NavMenuItems mi
             INNER JOIN RoleNavMenuItems rmi ON rmi.NavMenuItemId = mi.Id AND rmi.IsActive = 1
             INNER JOIN UserRoles ur ON ur.RoleId = rmi.RoleId AND ur.UserId = @UserId AND ur.IsActive = 1
-            WHERE mi.IsActive = 1";
+            WHERE mi.IsActive = 1
+              AND (@SelectedRoleId IS NULL OR ur.RoleId = @SelectedRoleId)";
 
-        var allowedIds = (await connection.QueryAsync<int>(allowedSql, new { UserId = userId })).ToHashSet();
+        var allowedIds = (await connection.QueryAsync<int>(allowedSql, new { UserId = userId, SelectedRoleId = selectedRoleId })).ToHashSet();
         if (allowedIds.Count == 0)
         {
             return new List<NavMenuItem>();

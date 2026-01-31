@@ -1,0 +1,18 @@
+@model HotelApp.Web.ViewModels.RoleSwitcherViewModel
+
+<form asp-controller="Account" asp-action="SwitchRole" method="post" class="navbar-role-form">
+    @Html.AntiForgeryToken()
+    <select name="roleId" class="navbar-pill navbar-role-select" onchange="this.form.submit()" title="Switch Role" aria-label="Switch Role">
+        @foreach (var r in Model.Roles)
+        {
+            if (r.Id == Model.SelectedRoleId)
+            {
+                <option value="@r.Id" selected>@r.Name</option>
+            }
+            else
+            {
+                <option value="@r.Id">@r.Name</option>
+            }
+        }
+    </select>
+</form>

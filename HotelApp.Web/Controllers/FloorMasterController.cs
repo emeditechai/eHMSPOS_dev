@@ -107,7 +107,7 @@ namespace HotelApp.Web.Controllers
 
         // Delete functionality removed (business rule: no deletions)
 
-        private int? GetCurrentUserId()
+        private new int? GetCurrentUserId()
         {
             // This would typically get the user ID from the authentication system
             // For now, returning null as we don't have user IDs in the current auth

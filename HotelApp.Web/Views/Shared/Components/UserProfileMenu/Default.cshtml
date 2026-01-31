@@ -1,0 +1,75 @@
+@model HotelApp.Web.ViewModels.UserProfileMenuViewModel
+
+@{
+    var initials = "U";
+    if (!string.IsNullOrWhiteSpace(Model.DisplayName))
+    {
+        var parts = Model.DisplayName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1)
+        {
+            initials = parts[0].Substring(0, 1).ToUpperInvariant();
+        }
+        else
+        {
+            initials = (parts[0].Substring(0, 1) + parts[^1].Substring(0, 1)).ToUpperInvariant();
+        }
+    }
+}
+
+<div class="profile-menu" id="profileMenu">
+    <button type="button" class="profile-trigger" id="profileMenuBtn" aria-haspopup="true" aria-expanded="false">
+        <span class="profile-avatar">@initials</span>
+        <span class="profile-trigger-text">
+            <span class="profile-trigger-name">@Model.DisplayName</span>
+            @if (!string.IsNullOrWhiteSpace(Model.ActiveRoleName))
+            {
+                <span class="profile-trigger-role">@Model.ActiveRoleName</span>
+            }
+        </span>
+        <span class="profile-online" title="Online"></span>
+        <i class="fas fa-chevron-down profile-caret"></i>
+    </button>
+
+    <div class="profile-dropdown" id="profileMenuDropdown" style="display:none" role="menu">
+        <div class="profile-dropdown-header">
+            <div class="profile-dropdown-name">@Model.DisplayName</div>
+            @if (!string.IsNullOrWhiteSpace(Model.Email))
+            {
+                <div class="profile-dropdown-email">@Model.Email</div>
+            }
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.ActiveRoleName))
+        {
+            <div class="profile-section">
+                <div class="profile-section-title">ACTIVE ROLE</div>
+                <div class="profile-section-value">@Model.ActiveRoleName</div>
+            </div>
+        }
+
+        <div class="profile-actions">
+            @if (Model.CanSwitchRole)
+            {
+                <a class="profile-action" asp-controller="Account" asp-action="SelectRole">
+                    <span class="profile-action-icon"><i class="fas fa-random"></i></span>
+                    <span>Switch Role</span>
+                </a>
+            }
+
+            <a class="profile-action" asp-controller="Account" asp-action="ChangePassword">
+                <span class="profile-action-icon"><i class="fas fa-key"></i></span>
+                <span>Change Password</span>
+            </a>
+
+            <div class="profile-divider"></div>
+
+            <form asp-controller="Account" asp-action="Logout" method="post">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="profile-action profile-action-danger">
+                    <span class="profile-action-icon"><i class="fas fa-sign-out-alt"></i></span>
+                    <span>Logout</span>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>

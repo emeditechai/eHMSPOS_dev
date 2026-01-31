@@ -52,11 +52,7 @@
                     <span class="navbar-pill">
                         <i class="fas fa-building"></i> @ViewBag.CurrentBranchName
                     </span>
-                    <span class="navbar-user-name"><i class="fas fa-user-circle"></i> @displayName</span>
-                    <form asp-controller="Account" asp-action="Logout" method="post">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="navbar-logout"><i class="fas fa-sign-out-alt"></i> Logout</button>
-                    </form>
+                    @await Component.InvokeAsync("UserProfileMenu")
                 </div>
             </div>
         </nav>
@@ -238,6 +234,38 @@
                     }
                 });
             }
+        });
+    </script>
+
+    <script>
+        // Profile menu dropdown
+        document.addEventListener('DOMContentLoaded', function() {
+            const btn = document.getElementById('profileMenuBtn');
+            const dd = document.getElementById('profileMenuDropdown');
+            if (!btn || !dd) return;
+
+            function close() {
+                dd.style.display = 'none';
+                btn.setAttribute('aria-expanded', 'false');
+            }
+
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const open = dd.style.display !== 'none';
+                dd.style.display = open ? 'none' : 'block';
+                btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+            });
+
+            document.addEventListener('click', function(e) {
+                if (dd.style.display === 'none') return;
+                if (e.target.closest('#profileMenu')) return;
+                close();
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') close();
+            });
         });
     </script>
     

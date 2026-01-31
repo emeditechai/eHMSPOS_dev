@@ -2571,7 +2571,7 @@ namespace HotelApp.Web.Controllers
             return $"BK-{DateTime.UtcNow:yyyyMMddHHmmss}-{Random.Shared.Next(100, 999)}";
         }
 
-        private int? GetCurrentUserId()
+        private new int? GetCurrentUserId()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (int.TryParse(userId, out var id))

@@ -15,6 +15,8 @@ namespace HotelApp.Web.Controllers
             // Get BranchID from session
             CurrentBranchID = HttpContext.Session.GetInt32("BranchID") ?? 1; // Default to HO branch
             CurrentUserId = HttpContext.Session.GetInt32("UserId");
+            var currentRoleId = HttpContext.Session.GetInt32("SelectedRoleId") ?? HttpContext.Session.GetInt32("RoleId");
+            var currentRoleName = HttpContext.Session.GetString("SelectedRoleName");
             
             var branchName = HttpContext.Session.GetString("BranchName") ?? "Head Office";
 
@@ -22,6 +24,9 @@ namespace HotelApp.Web.Controllers
             ViewBag.CurrentBranchID = CurrentBranchID;
             ViewBag.CurrentUserId = CurrentUserId;
             ViewBag.CurrentBranchName = branchName;
+            ViewBag.CurrentRoleId = currentRoleId;
+            ViewBag.SelectedRoleId = currentRoleId;
+            ViewBag.SelectedRoleName = currentRoleName;
         }
 
         protected int GetCurrentBranchID()
@@ -33,5 +38,6 @@ namespace HotelApp.Web.Controllers
         {
             return CurrentUserId;
         }
+
     }
 }

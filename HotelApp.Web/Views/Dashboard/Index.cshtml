@@ -2,6 +2,9 @@
 @{
     ViewData["Title"] = "Dashboard";
     var displayName = User.Claims.FirstOrDefault(c => c.Type == "displayName")?.Value ?? User.Identity?.Name ?? "User";
+    var selectedRoleName = ViewBag.SelectedRoleName as string
+        ?? User.Claims.FirstOrDefault(c => c.Type == "SelectedRoleName")?.Value
+        ?? "";
     var statistics = ViewBag.Statistics as DashboardStatistics;
     var revenueData = ViewBag.RevenueData as IEnumerable<RevenueData>;
     var roomTypeDistribution = ViewBag.RoomTypeDistribution as IEnumerable<RoomTypeDistribution>;
@@ -15,10 +18,12 @@
             <p>Welcome back, @displayName! Here's what's happening today.</p>
         </div>
         <div class="user-info">
-            <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="User Profile">
             <div class="user-details">
                 <div class="user-name">@displayName</div>
-                <div class="user-role">Hotel Manager</div>
+                @if (!string.IsNullOrWhiteSpace(selectedRoleName))
+                {
+                    <div class="user-role">@selectedRoleName</div>
+                }
             </div>
         </div>
     </div>

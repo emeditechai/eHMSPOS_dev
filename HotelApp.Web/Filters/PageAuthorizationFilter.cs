@@ -44,6 +44,7 @@ public class PageAuthorizationFilter : IAsyncActionFilter
 
         var userId = http.Session.GetInt32("UserId") ?? 0;
         var branchId = http.Session.GetInt32("BranchID") ?? 0;
+        var selectedRoleId = http.Session.GetInt32("SelectedRoleId");
 
         if (userId <= 0)
         {
@@ -51,10 +52,11 @@ public class PageAuthorizationFilter : IAsyncActionFilter
             return;
         }
 
-        var allowed = await _authorization.CanAccessPageAsync(userId, branchId, controller, action);
+        var allowed = await _authorization.CanAccessPageAsync(userId, branchId, controller, action, selectedRoleId);
         if (!allowed)
         {
-            var acceptsJson = http.Request.Headers.Accept.Any(h => h.Contains("application/json", StringComparison.OrdinalIgnoreCase));
+            var acceptHeader = http.Request.Headers.Accept.ToString();
+            var acceptsJson = acceptHeader.Contains("application/json", StringComparison.OrdinalIgnoreCase);
             if (acceptsJson)
             {
                 context.Result = new ForbidResult();

@@ -34,12 +34,13 @@ public class AuthVisibleTagHelper : TagHelper
 
         var userId = http.Session.GetInt32("UserId") ?? 0;
         var branchId = http.Session.GetInt32("BranchID") ?? 0;
+        var selectedRoleId = http.Session.GetInt32("SelectedRoleId");
         if (userId <= 0)
         {
             return;
         }
 
-        var allowed = await _authorization.CanAccessResourceKeyAsync(userId, branchId, AuthKey);
+        var allowed = await _authorization.CanAccessResourceKeyAsync(userId, branchId, AuthKey, selectedRoleId);
         if (!allowed)
         {
             output.SuppressOutput();

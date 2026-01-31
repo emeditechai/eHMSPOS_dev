@@ -21,7 +21,7 @@ public class AuthorizationMatrixService : IAuthorizationMatrixService
     // Default behavior: allow when no explicit rule exists.
     // (We only enforce deny/allow when permissions exist.)
 
-    public async Task<bool> CanAccessPageAsync(int userId, int branchId, string controller, string action)
+    public async Task<bool> CanAccessPageAsync(int userId, int branchId, string controller, string action, int? selectedRoleId = null)
     {
         var resource = await _resourceRepository.GetPageResourceAsync(controller, action);
         if (resource is null)
@@ -29,11 +29,11 @@ public class AuthorizationMatrixService : IAuthorizationMatrixService
             return true;
         }
 
-        var decision = await EvaluatePermissionAsync(userId, branchId, resource.Id);
+        var decision = await EvaluatePermissionAsync(userId, branchId, resource.Id, selectedRoleId);
         return decision ?? true;
     }
 
-    public async Task<bool> CanAccessResourceKeyAsync(int userId, int branchId, string resourceKey)
+    public async Task<bool> CanAccessResourceKeyAsync(int userId, int branchId, string resourceKey, int? selectedRoleId = null)
     {
         if (string.IsNullOrWhiteSpace(resourceKey))
         {
@@ -47,11 +47,11 @@ public class AuthorizationMatrixService : IAuthorizationMatrixService
             return true;
         }
 
-        var decision = await EvaluatePermissionAsync(userId, branchId, resource.Id);
+        var decision = await EvaluatePermissionAsync(userId, branchId, resource.Id, selectedRoleId);
         return decision ?? true;
     }
 
-    private async Task<bool?> EvaluatePermissionAsync(int userId, int branchId, int resourceId)
+    private async Task<bool?> EvaluatePermissionAsync(int userId, int branchId, int resourceId, int? selectedRoleId)
     {
         // 1) User overrides (branch-specific, then global)
         var userBranchRules = await _permissionRepository.GetUserPermissionsAsync(userId, branchId);
@@ -68,11 +68,17 @@ public class AuthorizationMatrixService : IAuthorizationMatrixService
             return userGlobalRule.IsAllowed;
         }
 
-        // 2) Role rules: deny wins, then allow
+        // 2) Role rules: when selectedRoleId is provided, evaluate only that role.
+        // Otherwise evaluate across all roles (deny wins, then allow).
         var roles = (await _userRoleRepository.GetRolesByUserIdAsync(userId)).Select(r => r.Id).ToList();
         if (roles.Count == 0)
         {
             return null;
+        }
+
+        if (selectedRoleId.HasValue && selectedRoleId.Value > 0 && roles.Contains(selectedRoleId.Value))
+        {
+            roles = new List<int> { selectedRoleId.Value };
         }
 
         var roleBranchDecisions = new List<bool>();

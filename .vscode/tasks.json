@@ -33,7 +33,7 @@
                 "watch",
                 "run",
                 "--project",
-                "${workspaceFolder}/HotelApp.sln"
+                "${workspaceFolder}/HotelApp.Web/HotelApp.Web.csproj"
             ],
             "problemMatcher": "$msCompile"
         }

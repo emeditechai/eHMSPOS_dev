@@ -1,0 +1,136 @@
+@model HotelApp.Web.ViewModels.SelectRoleViewModel
+@{
+    ViewData["Title"] = "Select Role";
+}
+
+<style>
+    .role-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        padding: 24px;
+    }
+
+    .role-modal {
+        width: 100%;
+        max-width: 720px;
+        background: #ffffff;
+        border-radius: 14px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+        overflow: hidden;
+    }
+
+    .role-modal-header {
+        padding: 18px 22px;
+        background: linear-gradient(135deg, #8e24aa, #4a148c);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .role-modal-header h2 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .role-modal-body {
+        padding: 18px 22px 22px 22px;
+    }
+
+    .role-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 14px;
+        margin-top: 14px;
+    }
+
+    .role-card {
+        border: 1px solid #e6e6e6;
+        border-radius: 12px;
+        padding: 14px;
+        background: #fafafa;
+        transition: transform .08s ease, box-shadow .08s ease;
+    }
+
+    .role-card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 24px rgba(0,0,0,0.12);
+    }
+
+    .role-name {
+        font-weight: 700;
+        margin-bottom: 6px;
+        color: #222;
+    }
+
+    .role-desc {
+        color: #666;
+        font-size: 12px;
+        margin-bottom: 12px;
+        min-height: 16px;
+    }
+
+    .role-btn {
+        width: 100%;
+        border: none;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: #4a148c;
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .role-btn:hover { background: #3b0f73; }
+
+    .role-hint {
+        color: #eee;
+        font-size: 12px;
+        opacity: 0.95;
+    }
+
+    .role-meta {
+        font-size: 13px;
+        color: #333;
+    }
+</style>
+
+<div class="role-modal-backdrop" role="dialog" aria-modal="true" aria-label="Select Role">
+    <div class="role-modal">
+        <div class="role-modal-header">
+            <div>
+                <h2>Select Role</h2>
+                <div class="role-hint">Choose a role to continue</div>
+            </div>
+            <div class="role-hint">@Model.DisplayName</div>
+        </div>
+        <div class="role-modal-body">
+            <div class="role-meta">
+                Multiple roles are assigned to your user. Select one to proceed to the dashboard.
+            </div>
+
+            <div class="role-grid">
+                @foreach (var role in Model.AvailableRoles)
+                {
+                    <div class="role-card">
+                        <div class="role-name">@role.Name</div>
+                        <div class="role-desc">@(string.IsNullOrWhiteSpace(role.Description) ? "" : role.Description)</div>
+                        <form asp-controller="Account" asp-action="SelectRole" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="SelectedRoleId" value="@role.Id" />
+                            <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+                            <button type="submit" class="role-btn">Continue as @role.Name</button>
+                        </form>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

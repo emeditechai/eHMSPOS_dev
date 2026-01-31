@@ -43,7 +43,7 @@ public class NavBarMenuViewComponent : ViewComponent
         }
 
         var items = userId > 0
-            ? await _navMenuRepository.GetActiveForUserAsync(userId, isAdmin: false)
+            ? await _navMenuRepository.GetActiveForUserAsync(userId, isAdmin: false, selectedRoleId: HttpContext.Session.GetInt32("SelectedRoleId"))
             : new List<NavMenuItem>();
 
         return View(items);
