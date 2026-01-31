@@ -27,8 +27,8 @@ cd /Users/abhikporel/dev/Hotelapp/Database/Scripts
 
 sqlcmd -S tcp:198.38.81.123,1433 \
        -d HMS_dev \
-       -U HMS_SA \
-       -P 'HMS_root_123' \
+    -U <db_user> \
+    -P '<db_password>' \
        -i 26_AddGenderColumn.sql
 ```
 
@@ -39,7 +39,7 @@ cd /Users/abhikporel/dev/Hotelapp/Database/Scripts
 
 for script in *.sql; do
     echo "Running $script..."
-    sqlcmd -S tcp:198.38.81.123,1433 -d HMS_dev -U HMS_SA -P 'HMS_root_123' -i "$script"
+    sqlcmd -S <server> -d <database> -U <db_user> -P '<db_password>' -i "$script"
 done
 ```
 

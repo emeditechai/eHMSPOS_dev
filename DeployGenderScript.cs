@@ -5,7 +5,14 @@ class Program
 {
     static void Main()
     {
-        string connectionString = "Server=tcp:198.38.81.123,1433;Database=HMS_dev;User Id=HMS_SA;Password=HMS_root_123;TrustServerCertificate=True;";
+        var connectionString = Environment.GetEnvironmentVariable("HMS_CONNECTION_STRING");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            Console.WriteLine("❌ Missing HMS_CONNECTION_STRING env var.");
+            Console.WriteLine("Example:");
+            Console.WriteLine("  export HMS_CONNECTION_STRING='Server=...;Database=...;User Id=...;Password=...;TrustServerCertificate=True;'");
+            return;
+        }
         
         string sql = @"
 -- Add Gender column to Guests table

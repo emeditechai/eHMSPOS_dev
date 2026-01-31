@@ -1,0 +1,80 @@
+@using HotelApp.Web.Models
+@model IReadOnlyList<NavMenuItem>
+@{
+    var controller = (string?)ViewContext.RouteData.Values["Controller"] ?? string.Empty;
+    var action = (string?)ViewContext.RouteData.Values["Action"] ?? string.Empty;
+
+    var items = (Model ?? new List<NavMenuItem>()).OrderBy(x => x.SortOrder).ThenBy(x => x.Title).ToList();
+    var byParent = items.GroupBy(x => x.ParentId ?? 0).ToDictionary(g => g.Key, g => g.ToList());
+
+    bool IsActive(NavMenuItem item)
+    {
+        if (!string.IsNullOrWhiteSpace(item.Controller) && !string.IsNullOrWhiteSpace(item.Action))
+        {
+            return controller.Equals(item.Controller, StringComparison.OrdinalIgnoreCase)
+                   && action.Equals(item.Action, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Parent: active if any child active
+        if (byParent.TryGetValue(item.Id, out var children))
+        {
+            return children.Any(IsActive);
+        }
+
+        return false;
+    }
+
+    var rootItems = byParent.TryGetValue(0, out var roots)
+        ? roots.OrderBy(x => x.SortOrder).ThenBy(x => x.Title).ToList()
+        : new List<NavMenuItem>();
+}
+
+@foreach (var root in rootItems)
+{
+    var childItems = byParent.TryGetValue(root.Id, out var children) ? children : new List<NavMenuItem>();
+    var hasChildren = childItems.Count > 0;
+    if (!hasChildren)
+    {
+        if (string.IsNullOrWhiteSpace(root.Controller) || string.IsNullOrWhiteSpace(root.Action))
+        {
+            continue;
+        }
+
+        <a asp-controller="@root.Controller" asp-action="@root.Action" class="menu-item @(IsActive(root) ? "active" : string.Empty)">
+            @if (!string.IsNullOrWhiteSpace(root.IconClass))
+            {
+                <i class="@root.IconClass"></i>
+            }
+            <span>@root.Title</span>
+        </a>
+
+        continue;
+    }
+
+    <div class="menu-item has-dropdown @(IsActive(root) ? "active" : string.Empty)">
+        @if (!string.IsNullOrWhiteSpace(root.IconClass))
+        {
+            <i class="@root.IconClass"></i>
+        }
+        <span>@root.Title</span>
+        <i class="fas fa-chevron-down dropdown-icon"></i>
+        <div class="dropdown-menu">
+            @foreach (var child in childItems.OrderBy(x => x.SortOrder).ThenBy(x => x.Title))
+            {
+                if (string.IsNullOrWhiteSpace(child.Controller) || string.IsNullOrWhiteSpace(child.Action))
+                {
+                    continue;
+                }
+
+                <a asp-controller="@child.Controller" asp-action="@child.Action" class="@(IsActive(child) ? "active" : string.Empty)">
+                    @if (!string.IsNullOrWhiteSpace(child.IconClass))
+                    {
+                        <i class="@child.IconClass"></i>
+                    }
+                    <span>@child.Title</span>
+                    <i class="fas fa-arrow-right dropdown-arrow"></i>
+                </a>
+            }
+        </div>
+    </div>
+}

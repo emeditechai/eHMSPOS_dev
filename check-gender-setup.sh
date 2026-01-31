@@ -8,7 +8,21 @@ echo ""
 echo "📋 Step 1: Checking if Gender column exists in database..."
 echo ""
 
-sqlcmd -S tcp:198.38.81.123,1433 -d HMS_dev -U HMS_SA -P 'HMS_root_123' -Q "
+SERVER=${DB_SERVER:-"tcp:127.0.0.1,1433"}
+DATABASE=${DB_NAME:-"HotelApp"}
+USERNAME=${DB_USER:-"sa"}
+PASSWORD=${DB_PASSWORD:-""}
+
+if [ -z "$PASSWORD" ]; then
+    echo "❌ DB_PASSWORD is not set. Example:"
+    echo "  export DB_SERVER='tcp:127.0.0.1,1433'"
+    echo "  export DB_NAME='HotelApp'"
+    echo "  export DB_USER='sa'"
+    echo "  export DB_PASSWORD='your_password'"
+    exit 1
+fi
+
+sqlcmd -C -S "$SERVER" -d "$DATABASE" -U "$USERNAME" -P "$PASSWORD" -Q "
 SELECT 
     'Guests' AS TableName,
     CASE WHEN EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Guests]') AND name = 'Gender')
@@ -30,7 +44,7 @@ if [ $? -ne 0 ]; then
     echo ""
     echo "To run the migration manually:"
     echo "  cd /Users/abhikporel/dev/Hotelapp/Database/Scripts"
-    echo "  sqlcmd -S tcp:198.38.81.123,1433 -d HMS_dev -U HMS_SA -P 'HMS_root_123' -i 26_AddGenderColumn.sql"
+    echo "  sqlcmd -C -S \"$SERVER\" -d \"$DATABASE\" -U \"$USERNAME\" -P '<db_password>' -i 26_AddGenderColumn.sql"
     exit 1
 fi
 

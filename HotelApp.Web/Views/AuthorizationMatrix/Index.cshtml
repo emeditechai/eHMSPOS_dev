@@ -1,0 +1,131 @@
+@model HotelApp.Web.ViewModels.AuthorizationMatrixViewModel
+@{
+    ViewData["Title"] = "Authorization Matrix";
+}
+
+<div class="container-fluid" style="padding: 20px; max-width: 1200px; margin: 0 auto;">
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+        <div>
+            <h2 style="margin:0;">Authorization Matrix</h2>
+            <div class="text-muted" style="margin-top:4px;">Page + Button (UI) access by Role/User and Branch.</div>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success" style="margin-top: 12px;">@TempData["SuccessMessage"]</div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger" style="margin-top: 12px;">@TempData["ErrorMessage"]</div>
+    }
+
+    <div class="card" style="border:1px solid #e5e5e5; border-radius:10px; overflow:hidden; margin-top: 12px;">
+        <div class="card-body" style="padding: 16px;">
+            <form method="get" asp-controller="AuthorizationMatrix" asp-action="Index" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+                <div>
+                    <label style="font-weight:600;">Scope</label>
+                    <select name="scopeType" class="form-control" style="min-width: 160px;" onchange="this.form.submit()">
+                        <option value="Role" selected="@(Model.ScopeType == "Role")">Role</option>
+                        <option value="User" selected="@(Model.ScopeType == "User")">User</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label style="font-weight:600;">@((Model.ScopeType == "User") ? "User" : "Role")</label>
+                    @if (Model.ScopeType == "User")
+                    {
+                        <select name="scopeId" class="form-control" style="min-width: 260px;" onchange="this.form.submit()">
+                            @foreach (var u in Model.Users)
+                            {
+                                <option value="@u.Id" selected="@(u.Id == Model.ScopeId)">@u.Username (@u.Email)</option>
+                            }
+                        </select>
+                    }
+                    else
+                    {
+                        <select name="scopeId" class="form-control" style="min-width: 260px;" onchange="this.form.submit()">
+                            @foreach (var r in Model.Roles)
+                            {
+                                <option value="@r.Id" selected="@(r.Id == Model.ScopeId)">@r.Name</option>
+                            }
+                        </select>
+                    }
+                </div>
+
+                <div>
+                    <label style="font-weight:600;">Branch</label>
+                    <select name="branchId" class="form-control" style="min-width: 220px;" onchange="this.form.submit()">
+                        <option value="" selected="@(Model.BranchId is null)">All Branches (Global)</option>
+                        @foreach (var b in Model.Branches)
+                        {
+                            <option value="@b.BranchID" selected="@(Model.BranchId == b.BranchID)">@b.BranchName</option>
+                        }
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card" style="border:1px solid #e5e5e5; border-radius:10px; overflow:hidden; margin-top: 12px;">
+        <div class="card-body" style="padding: 16px;">
+            <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom: 12px;">
+                <div>
+                    <div style="font-weight:700;">Permissions</div>
+                    <div class="text-muted" style="font-size:12px;">Decision: Inherit (no rule) | Allow | Deny</div>
+                </div>
+            </div>
+
+            <form method="post" asp-controller="AuthorizationMatrix" asp-action="Save">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="ScopeType" value="@Model.ScopeType" />
+                <input type="hidden" name="ScopeId" value="@Model.ScopeId" />
+                <input type="hidden" name="BranchId" value="@(Model.BranchId?.ToString() ?? string.Empty)" />
+
+                <div>
+                    <partial name="_ResourceTree" model="Model.ResourceTree" />
+                </div>
+
+                <div style="margin-top: 12px; display:flex; gap:10px;">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <a class="btn btn-secondary" href="@Url.Action("Index", "AuthorizationMatrix", new { scopeType = Model.ScopeType, scopeId = Model.ScopeId, branchId = Model.BranchId })">Refresh</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card" style="border:1px solid #e5e5e5; border-radius:10px; overflow:hidden; margin-top: 12px;">
+        <div class="card-body" style="padding: 16px;">
+            <div style="font-weight:700; margin-bottom: 8px;">Add UI Element Key (for Button Visibility)</div>
+            <form method="post" asp-controller="AuthorizationMatrix" asp-action="AddUiResource" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="ScopeType" value="@Model.ScopeType" />
+                <input type="hidden" name="ScopeId" value="@Model.ScopeId" />
+                <input type="hidden" name="BranchId" value="@(Model.BranchId?.ToString() ?? string.Empty)" />
+
+                <div style="min-width: 260px;">
+                    <label style="font-weight:600;">UI Key</label>
+                    <input class="form-control" name="NewUiKey" placeholder="UI:Booking.Create.Save" />
+                </div>
+                <div style="min-width: 260px;">
+                    <label style="font-weight:600;">Title</label>
+                    <input class="form-control" name="NewUiTitle" placeholder="Save Button" />
+                </div>
+                <div style="min-width: 260px;">
+                    <label style="font-weight:600;">Parent (optional)</label>
+                    <select class="form-control" name="NewUiParentResourceId">
+                        <option value="">(No Parent)</option>
+                        @foreach (var g in Model.ResourceTree)
+                        {
+                            <option value="@g.Id">@g.Title (@g.ResourceType)</option>
+                        }
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-secondary">Add</button>
+            </form>
+            <div class="text-muted" style="margin-top:8px; font-size:12px;">
+                Use in Razor: add attribute <code>auth-key="UI:Your.Key"</code> on any button/link/div.
+            </div>
+        </div>
+    </div>
+</div>

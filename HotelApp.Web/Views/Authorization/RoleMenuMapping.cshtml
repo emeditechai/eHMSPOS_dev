@@ -1,0 +1,82 @@
+@model HotelApp.Web.ViewModels.RoleMenuMappingViewModel
+@{
+    ViewData["Title"] = "Role Menu Mapping";
+}
+
+<div class="container-fluid" style="padding: 20px; max-width: 1100px; margin: 0 auto;">
+    <div class="page-header" style="margin-bottom: 16px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <div>
+            <h2 style="margin:0;">Role Menu Mapping</h2>
+            <div class="text-muted" style="margin-top:4px;">Map roles to navbar menus and sub-menus (dynamic).</div>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success" style="margin-bottom: 16px;">@TempData["SuccessMessage"]</div>
+    }
+
+    @if (Model.Roles == null || !Model.Roles.Any())
+    {
+        <div class="alert alert-warning">No roles found.</div>
+    }
+    else
+    {
+        <form asp-controller="Authorization" asp-action="RoleMenuMapping" method="post">
+            @Html.AntiForgeryToken()
+
+            <div style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap; margin-bottom: 16px;">
+                <div style="min-width: 300px;">
+                    <label style="font-weight:600;">Role</label>
+                    <select id="roleId" name="RoleId" class="form-control" style="width:100%;">
+                        @foreach (var role in Model.Roles)
+                        {
+                            <option value="@role.Id" selected="@(role.Id == Model.RoleId)">@role.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="height: 38px;">Save Mapping</button>
+                <button type="button" class="btn btn-secondary" style="height: 38px;" onclick="checkAll(true)">Check All</button>
+                <button type="button" class="btn btn-secondary" style="height: 38px;" onclick="checkAll(false)">Uncheck All</button>
+            </div>
+
+            <div class="card" style="border:1px solid #e5e5e5; border-radius:10px; overflow:hidden;">
+                <div class="card-body" style="padding: 16px;">
+                    <div style="font-weight:600; margin-bottom:8px;">Menus</div>
+                    <div id="menuTree">
+                        <partial name="_MenuTree" model="Model.MenuTree" />
+                    </div>
+                </div>
+            </div>
+
+            @* SelectedMenuIds come from checkbox names *@
+        </form>
+
+        <script>
+            document.getElementById('roleId')?.addEventListener('change', function() {
+                const rid = this.value;
+                const url = '@Url.Action("RoleMenuMapping", "Authorization")' + '?roleId=' + encodeURIComponent(rid);
+                window.location.href = url;
+            });
+
+            function checkAll(value) {
+                document.querySelectorAll('#menuTree input[type="checkbox"]').forEach(cb => cb.checked = value);
+            }
+
+            // Parent/child toggle behavior
+            document.addEventListener('change', function(e) {
+                const cb = e.target;
+                if (!cb || cb.type !== 'checkbox' || !cb.closest('#menuTree')) return;
+
+                const container = cb.closest('[data-menu-node]');
+                if (!container) return;
+
+                // Toggle children checkboxes
+                container.querySelectorAll('[data-menu-children] input[type="checkbox"]').forEach(child => {
+                    child.checked = cb.checked;
+                });
+            });
+        </script>
+    }
+</div>

@@ -9,7 +9,10 @@ using System.IO;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllersWithViews()
+builder.Services.AddControllersWithViews(options =>
+    {
+        options.Filters.Add<HotelApp.Web.Filters.PageAuthorizationFilter>();
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
@@ -113,11 +116,18 @@ catch (Exception ex)
 // Database connection factory
 builder.Services.AddScoped<IDbConnection>(_ => new SqlConnection(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddHttpContextAccessor();
+
 // Repositories & services
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUserBranchRepository, UserBranchRepository>();
 builder.Services.AddScoped<IUserRoleRepository, UserRoleRepository>();
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
+builder.Services.AddScoped<INavMenuRepository, NavMenuRepository>();
+builder.Services.AddScoped<IRoleNavMenuRepository, RoleNavMenuRepository>();
+builder.Services.AddScoped<IAuthorizationResourceRepository, AuthorizationResourceRepository>();
+builder.Services.AddScoped<IAuthorizationPermissionRepository, AuthorizationPermissionRepository>();
+builder.Services.AddScoped<IAuthorizationMatrixService, AuthorizationMatrixService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IRoomRepository, RoomRepository>();
 builder.Services.AddScoped<IRateMasterRepository, RateMasterRepository>();

@@ -1,6 +1,13 @@
 using System.Data.SqlClient;
 
-string connectionString = "Server=tcp:198.38.81.123,1433;Database=HMS_dev;User Id=HMS_SA;Password=HMS_root_123;TrustServerCertificate=True;";
+var connectionString = Environment.GetEnvironmentVariable("HMS_CONNECTION_STRING");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    Console.WriteLine("❌ Missing HMS_CONNECTION_STRING env var.");
+    Console.WriteLine("Example:");
+    Console.WriteLine("  export HMS_CONNECTION_STRING='Server=...;Database=...;User Id=...;Password=...;TrustServerCertificate=True;'");
+    Environment.Exit(1);
+}
 
 string sql = @"
 -- Add Gender column to Guests table
@@ -38,8 +45,6 @@ try
     {
         connection.Open();
         Console.WriteLine("✓ Connected to database successfully.");
-        Console.WriteLine($"✓ Server: 198.38.81.123");
-        Console.WriteLine($"✓ Database: HMS_dev");
         Console.WriteLine();
         
         using (SqlCommand command = new SqlCommand(sql, connection))

@@ -4,10 +4,19 @@
 # Usage: ./run-migration.sh 26_AddGenderColumn.sql
 
 SCRIPT_FILE=${1:-"26_AddGenderColumn.sql"}
-SERVER="tcp:198.38.81.123,1433"
-DATABASE="HMS_dev"
-USERNAME="sa"
-PASSWORD="asdf@1234"
+SERVER=${DB_SERVER:-"tcp:127.0.0.1,1433"}
+DATABASE=${DB_NAME:-"HotelApp"}
+USERNAME=${DB_USER:-"sa"}
+PASSWORD=${DB_PASSWORD:-""}
+
+if [ -z "$PASSWORD" ]; then
+    echo "❌ DB_PASSWORD is not set. Example:"
+    echo "   export DB_SERVER='tcp:127.0.0.1,1433'"
+    echo "   export DB_NAME='HotelApp'"
+    echo "   export DB_USER='sa'"
+    echo "   export DB_PASSWORD='your_password'"
+    exit 1
+fi
 
 echo "🔄 Running SQL migration: $SCRIPT_FILE"
 echo "📦 Database: $DATABASE"
