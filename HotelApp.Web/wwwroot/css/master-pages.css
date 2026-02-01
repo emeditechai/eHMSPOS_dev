@@ -70,12 +70,48 @@
     background: white;
     border-radius: 10px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    overflow: visible;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
 }
 
 .data-table {
     width: 100%;
     border-collapse: collapse;
+}
+
+@media (max-width: 992px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    .page-header {
+        margin-bottom: 18px;
+        padding-bottom: 14px;
+    }
+
+    .page-header h2 {
+        font-size: 22px;
+    }
+
+    .btn-create {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .data-table thead th {
+        padding: 12px;
+        font-size: 12px;
+    }
+
+    .data-table tbody td {
+        padding: 12px;
+        font-size: 13px;
+    }
 }
 
 .data-table thead {
