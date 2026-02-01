@@ -18,7 +18,7 @@ public class UserRoleRepository : IUserRoleRepository
     {
         using var connection = new SqlConnection(_connectionString);
         const string sql = @"
-            SELECT ur.*, r.Name, r.Description 
+            SELECT ur.*, r.Name, r.Description, r.IconClass 
             FROM UserRoles ur
             INNER JOIN Roles r ON ur.RoleId = r.Id
             WHERE ur.UserId = @UserId AND ur.IsActive = 1

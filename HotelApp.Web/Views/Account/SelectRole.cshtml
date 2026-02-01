@@ -65,9 +65,24 @@
     }
 
     .role-name {
+        display: flex;
+        align-items: center;
+        gap: 10px;
         font-weight: 700;
         margin-bottom: 6px;
         color: #222;
+    }
+
+    .role-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(74, 20, 140, 0.08);
+        color: #4a148c;
+        flex: 0 0 auto;
     }
 
     .role-desc {
@@ -120,7 +135,13 @@
                 @foreach (var role in Model.AvailableRoles)
                 {
                     <div class="role-card">
-                        <div class="role-name">@role.Name</div>
+                        <div class="role-name">
+                            @if (!string.IsNullOrWhiteSpace(role.IconClass))
+                            {
+                                <span class="role-icon"><i class="@role.IconClass"></i></span>
+                            }
+                            <span>@role.Name</span>
+                        </div>
                         <div class="role-desc">@(string.IsNullOrWhiteSpace(role.Description) ? "" : role.Description)</div>
                         <form asp-controller="Account" asp-action="SelectRole" method="post">
                             @Html.AntiForgeryToken()
