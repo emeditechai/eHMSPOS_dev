@@ -37,6 +37,18 @@ namespace HotelApp.Web.ViewModels
         public string Channel { get; set; } = string.Empty;
 
         [Required]
+        [StringLength(20)]
+        [Display(Name = "Rate Type")]
+        public string RateType { get; set; } = "Standard";
+
+        public int? CancellationPolicyId { get; set; }
+
+        public string? CancellationPolicySnapshot { get; set; }
+
+        [Display(Name = "I accept the cancellation policy")]
+        public bool CancellationPolicyAccepted { get; set; }
+
+        [Required]
         [StringLength(100)]
         public string PrimaryGuestFirstName { get; set; } = string.Empty;
 

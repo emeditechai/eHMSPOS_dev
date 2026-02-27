@@ -51,6 +51,8 @@ namespace HotelApp.Web.Repositories
             parameters.Add("@DiscountApprovalRequired", settings.DiscountApprovalRequired, DbType.Boolean);
             parameters.Add("@MinimumBookingAmountRequired", settings.MinimumBookingAmountRequired, DbType.Boolean);
             parameters.Add("@MinimumBookingAmount", settings.MinimumBookingAmount, DbType.Decimal);
+            parameters.Add("@NoShowGraceHours", settings.NoShowGraceHours, DbType.Int32);
+            parameters.Add("@CancellationRefundApprovalThreshold", settings.CancellationRefundApprovalThreshold, DbType.Decimal);
             parameters.Add("@ModifiedBy", modifiedBy, DbType.Int32);
 
             var result = await connection.ExecuteAsync(

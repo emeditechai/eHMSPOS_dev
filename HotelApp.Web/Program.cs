@@ -142,6 +142,7 @@ builder.Services.AddScoped<IBankRepository, BankRepository>();
 builder.Services.AddScoped<IHotelSettingsRepository, HotelSettingsRepository>();
 builder.Services.AddScoped<ILocationRepository, LocationRepository>();
 builder.Services.AddScoped<IReportsRepository, ReportsRepository>();
+builder.Services.AddScoped<ICancellationPolicyRepository, CancellationPolicyRepository>();
 builder.Services.AddScoped<IOtherChargeRepository, OtherChargeRepository>();
 builder.Services.AddScoped<IBookingOtherChargeRepository, BookingOtherChargeRepository>();
 builder.Services.AddScoped<IRoomServiceRepository, RoomServiceRepository>();
@@ -152,6 +153,7 @@ builder.Services.AddScoped<IMailConfigurationRepository, MailConfigurationReposi
 builder.Services.AddScoped<IBookingReceiptTemplateRepository, BookingReceiptTemplateRepository>();
 builder.Services.AddScoped<IGuestFeedbackRepository, GuestFeedbackRepository>();
 builder.Services.AddScoped<IAssetManagementRepository, AssetManagementRepository>();
+builder.Services.AddScoped<IRefundRepository, RefundRepository>();
 
 builder.Services.AddScoped<IMailPasswordProtector, MailPasswordProtector>();
 builder.Services.AddScoped<IMailSender, MailSender>();

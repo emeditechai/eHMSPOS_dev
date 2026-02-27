@@ -1,0 +1,156 @@
+@model HotelApp.Web.ViewModels.CancellationRegisterReportViewModel
+@{
+    ViewData["Title"] = "Cancellation Register";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-receipt"></i> Cancellation Register</h2>
+</div>
+
+<div class="filters-container" style="margin-bottom: 18px;">
+    <form method="get" action="@Url.Action("CancellationRegister", "Reports")" style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; justify-content: space-between;">
+        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;">
+            <div>
+                <label for="fromDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">From Date</label>
+                <input id="fromDate" name="fromDate" type="date" class="form-control" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+            </div>
+
+            <div>
+                <label for="toDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">To Date</label>
+                <input id="toDate" name="toDate" type="date" class="form-control" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:flex-end;">
+            <button class="btn-filter-apply" type="submit">
+                <i class="fas fa-filter"></i> Apply
+            </button>
+            <a class="btn-filter-clear" href="@Url.Action("CancellationRegister", "Reports")">
+                <i class="fas fa-undo"></i> Reset
+            </a>
+        </div>
+    </form>
+</div>
+
+<div class="status-cards booking-status-cards" style="margin-bottom: 26px;">
+    <div class="status-card available">
+        <h3>Total Cancellations</h3>
+        <div class="value">@Model.Summary.TotalCancellations</div>
+    </div>
+
+    <div class="status-card occupied">
+        <h3>Total Paid</h3>
+        <div class="value">₹@Model.Summary.TotalPaid.ToString("N0")</div>
+    </div>
+
+    <div class="status-card maintenance">
+        <h3>Total Refund</h3>
+        <div class="value">₹@Model.Summary.TotalRefund.ToString("N0")</div>
+    </div>
+
+    <div class="status-card cleaning">
+        <h3>Pending Approvals</h3>
+        <div class="value">@Model.Summary.PendingApprovals</div>
+    </div>
+</div>
+
+<div class="filters-container" style="margin-bottom: 18px;">
+    <div style="display:flex; gap:12px; flex-wrap: wrap; align-items:center; justify-content: space-between;">
+        <div>
+            <div style="font-weight:700; color:#1f2937;">Register</div>
+            <div class="subtext" style="margin-top:4px;">@Model.Rows.Count records</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn-filter-apply" type="button" title="Export CSV" onclick="exportCancellationRegisterToCsv()">
+                <i class="fas fa-file-export"></i> CSV
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="table-container" style="overflow: visible;">
+    <table class="data-table" id="cancellationRegisterTable">
+        <thead>
+            <tr>
+                <th>Cancelled At</th>
+                <th>Booking No</th>
+                <th>Guest</th>
+                <th>Phone</th>
+                <th>Check-In</th>
+                <th>Rate Type</th>
+                <th>Type</th>
+                <th class="text-end">Paid</th>
+                <th class="text-end">Refund</th>
+                <th>Status</th>
+                <th>Requested By</th>
+                <th>Reason</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var row in Model.Rows)
+        {
+            <tr>
+                <td>@row.CancelRequestedAt.ToString("dd MMM yyyy HH:mm")</td>
+                <td><strong>@(string.IsNullOrWhiteSpace(row.BookingNumber) ? "-" : row.BookingNumber)</strong></td>
+                <td>@(string.IsNullOrWhiteSpace(row.GuestName) ? "-" : row.GuestName)</td>
+                <td>@(string.IsNullOrWhiteSpace(row.GuestPhone) ? "-" : row.GuestPhone)</td>
+                <td>@(row.CheckInDate.HasValue ? row.CheckInDate.Value.ToString("dd MMM yyyy") : "-")</td>
+                <td>@(string.IsNullOrWhiteSpace(row.RateType) ? "-" : row.RateType)</td>
+                <td>@(string.IsNullOrWhiteSpace(row.CancellationType) ? "-" : row.CancellationType)</td>
+                <td class="text-end">₹@row.AmountPaid.ToString("N2")</td>
+                <td class="text-end">₹@row.RefundAmount.ToString("N2")</td>
+                <td>@(string.IsNullOrWhiteSpace(row.ApprovalStatus) ? "-" : row.ApprovalStatus)</td>
+                <td>@(string.IsNullOrWhiteSpace(row.RequestedBy) ? "-" : row.RequestedBy)</td>
+                <td>
+                    @if (!string.IsNullOrWhiteSpace(row.Reason))
+                    {
+                        <span title="@row.Reason">@row.Reason</span>
+                    }
+                    else
+                    {
+                        <span>-</span>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+@section Scripts {
+    <script>
+        function downloadBlob(blob, filename) {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        }
+
+        function exportCancellationRegisterToCsv() {
+            const table = document.getElementById('cancellationRegisterTable');
+            if (!table) return;
+
+            const rows = Array.from(table.querySelectorAll('tr'));
+            const csv = rows.map(r => {
+                const cols = Array.from(r.querySelectorAll('th,td')).map(c => {
+                    const text = (c.innerText || '').replace(/\s+/g, ' ').trim();
+                    const escaped = '"' + text.replace(/"/g, '""') + '"';
+                    return escaped;
+                });
+                return cols.join(',');
+            }).join('\n');
+
+            const from = '@Model.FromDate.ToString("yyyyMMdd")';
+            const to = '@Model.ToDate.ToString("yyyyMMdd")';
+            downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `CancellationRegister_${from}_${to}.csv`);
+        }
+    </script>
+}

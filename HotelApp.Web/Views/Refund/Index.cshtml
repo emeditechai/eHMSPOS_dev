@@ -1,0 +1,606 @@
+@model IEnumerable<HotelApp.Web.Models.RefundListItem>
+@{
+    ViewData["Title"] = "Refunds";
+    var banks = ViewBag.Banks as IEnumerable<HotelApp.Web.Models.Bank> ?? Enumerable.Empty<HotelApp.Web.Models.Bank>();
+    var pendingList = Model?.ToList() ?? new List<HotelApp.Web.Models.RefundListItem>();
+}
+
+<style>
+    /* ── Container ── */
+    .refund-container {
+        display: flex;
+        gap: 14px;
+        height: calc(100vh - 148px);
+        min-height: 480px;
+    }
+
+    /* ── Sidebar ── */
+    .refund-sidebar {
+        width: 300px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .refund-sidebar-header {
+        padding: 10px 13px;
+        background: linear-gradient(135deg, #2c3e50, #34495e);
+        color: #fff;
+        flex-shrink: 0;
+    }
+
+    .refund-sidebar-header h6 { margin: 0; font-size: 13px; font-weight: 600; }
+    .refund-sidebar-header small { opacity: 0.75; font-size: 11px; }
+
+    .refund-list { flex: 1; overflow-y: auto; padding: 6px; }
+
+    .refund-list-item {
+        padding: 9px 11px;
+        border: 1px solid #e9ecef;
+        border-radius: 5px;
+        margin-bottom: 6px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        background: #fff;
+    }
+
+    .refund-list-item:hover { background: #f8f9fa; border-color: #0d6efd; box-shadow: 0 1px 4px rgba(13,110,253,.12); }
+    .refund-list-item.active { background: #e8f0fe; border-color: #0d6efd; }
+    .refund-list-item .booking-no { font-weight: 700; font-size: 12px; color: #0d6efd; }
+    .refund-list-item .guest-name { font-size: 12px; color: #343a40; font-weight: 500; margin-top: 1px; }
+    .refund-list-item .meta { font-size: 10px; color: #6c757d; margin-top: 3px; }
+
+    .refund-amount-badge {
+        background: #d4edda; color: #155724; font-weight: 700;
+        font-size: 12px; padding: 2px 7px; border-radius: 10px; white-space: nowrap;
+    }
+
+    /* ── Detail Panel ── */
+    .refund-detail-panel {
+        flex: 1; overflow-y: auto; background: #fff;
+        border: 1px solid #dee2e6; border-radius: 6px;
+        display: flex; flex-direction: column;
+    }
+
+    .refund-detail-placeholder {
+        flex: 1; display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        color: #adb5bd; padding: 30px;
+    }
+
+    .refund-detail-placeholder i { font-size: 46px; margin-bottom: 12px; }
+
+    .refund-detail-content { padding: 16px 18px; }
+
+    /* ── Info sections (top of detail) ── */
+    .info-card {
+        background: #f8f9fa; border: 1px solid #e9ecef;
+        border-radius: 6px; padding: 10px 14px; margin-bottom: 10px;
+    }
+
+    .info-card .card-heading {
+        font-size: 11px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.5px; color: #6c757d;
+        margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #dee2e6;
+    }
+
+    .info-row {
+        display: flex; justify-content: space-between;
+        align-items: baseline; padding: 2px 0; font-size: 12px; gap: 6px;
+    }
+
+    .info-row .lbl { color: #6c757d; flex-shrink: 0; }
+    .info-row .val { font-weight: 600; color: #212529; text-align: right; }
+    .info-row .val.primary { color: #0d6efd; }
+    .info-row .val.danger  { color: #c62828; }
+    .info-row .val.success { color: #198754; }
+
+    .info-row.hl {
+        background: #e8f5e9; padding: 4px 8px; border-radius: 4px; margin: 3px -8px;
+    }
+    .info-row.hl .lbl { color: #2e7d32; font-weight: 600; }
+    .info-row.hl .val  { color: #1b5e20; font-size: 13px; }
+
+    /* ── Refund Amount Banner ── */
+    .refund-banner {
+        background: linear-gradient(135deg, #e8f5e9, #f1f8e9);
+        border: 2px solid #66bb6a; border-radius: 6px;
+        padding: 10px 14px; margin-bottom: 10px;
+        display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .refund-banner .banner-label {
+        font-size: 12px; color: #388e3c; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.4px;
+    }
+
+    .refund-banner .banner-amount {
+        font-size: 22px; font-weight: 800; color: #1b5e20;
+    }
+
+    /* ── Payment Form ── */
+    .payment-card {
+        background: #fff; border: 1px solid #dee2e6;
+        border-radius: 6px; padding: 12px 14px; margin-bottom: 10px;
+    }
+
+    .payment-card .card-heading {
+        font-size: 11px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.5px; color: #495057;
+        margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #dee2e6;
+    }
+
+    /* Vertical stacked fields grid */
+    .pf-field label {
+        font-size: 11px; font-weight: 600; color: #6c757d;
+        margin-bottom: 3px; display: block; text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .pf-field .form-control,
+    .pf-field .form-select {
+        font-size: 12px; padding: 5px 9px; height: auto;
+    }
+
+    .pf-field textarea.form-control { resize: vertical; min-height: 54px; }
+
+    .empty-state { text-align: center; padding: 30px 20px; color: #6c757d; }
+    .empty-state i { font-size: 36px; margin-bottom: 8px; opacity: 0.4; }
+
+    @@media (max-width: 768px) {
+        .refund-container { flex-direction: column; height: auto; }
+        .refund-sidebar { width: 100%; max-height: 260px; }
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div>
+        <h5 class="mb-0 fw-bold"><i class="fas fa-undo-alt me-2 text-primary"></i>Refunds</h5>
+        <small class="text-muted">Process pending refunds for cancelled bookings</small>
+    </div>
+    <span class="badge bg-warning text-dark">@pendingList.Count Pending</span>
+</div>
+
+@if (!pendingList.Any())
+{
+    <div class="section-card">
+        <div class="empty-state">
+            <i class="fas fa-check-circle text-success"></i>
+            <h6 class="text-success mt-2">All Clear!</h6>
+            <p class="mb-0 small">No pending refunds at this time.</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="refund-container">
+        <!-- Left Sidebar -->
+        <div class="refund-sidebar">
+            <div class="refund-sidebar-header">
+                <h6><i class="fas fa-list me-2"></i>Pending Refunds</h6>
+                <small>@pendingList.Count booking(s) awaiting refund</small>
+            </div>
+            <div class="refund-list">
+                @foreach (var item in pendingList)
+                {
+                    <div class="refund-list-item"
+                         id="refund-item-@item.CancellationId"
+                         onclick="selectRefund(@item.CancellationId)">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1 me-2">
+                                <div class="booking-no">@item.BookingNumber</div>
+                                <div class="guest-name">@item.GuestName</div>
+                                <div class="meta">
+                                    @if (!string.IsNullOrEmpty(item.RoomType))
+                                    {
+                                        <span><i class="fas fa-bed me-1"></i>@item.RoomType &middot; </span>
+                                    }
+                                    <span><i class="fas fa-calendar-times me-1"></i>@item.CancelledOn.ToString("dd MMM yy")</span>
+                                </div>
+                                <div class="meta mt-1">
+                                    @if (item.DaysSinceCancellation == 0)
+                                    {
+                                        <span class="badge bg-danger" style="font-size:9px;">Today</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@item.DaysSinceCancellation day(s) ago</span>
+                                    }
+                                    @if (item.ApprovalStatus == "Approved")
+                                    {
+                                        <span class="badge bg-success ms-1" style="font-size:9px;">Approved</span>
+                                    }
+                                    else if (item.ApprovalStatus == "Pending")
+                                    {
+                                        <span class="badge bg-warning text-dark ms-1" style="font-size:9px;">Pending</span>
+                                    }
+                                </div>
+                            </div>
+                            <div class="text-end flex-shrink-0">
+                                <span class="refund-amount-badge">₹@item.RefundAmount.ToString("N0")</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Right Detail Panel -->
+        <div class="refund-detail-panel" id="refundDetailPanel">
+            <!-- Placeholder -->
+            <div class="refund-detail-placeholder" id="refundPlaceholder">
+                <i class="fas fa-hand-point-left"></i>
+                <h6 class="mb-1">Select a Booking</h6>
+                <p class="text-center mb-0 small">Click a booking from the list to view<br>details and process refund.</p>
+            </div>
+
+            <!-- Detail Content -->
+            <div id="refundDetailContent" class="refund-detail-content d-none">
+                <form id="refundForm">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" id="fld_cancellationId" name="CancellationId" value="0" />
+                    <input type="hidden" id="fld_bookingId" name="BookingId" value="0" />
+
+                    <div class="row g-2 mb-2">
+                        <!-- Booking & Guest Info -->
+                        <div class="col-md-6">
+                            <div class="info-card h-100">
+                                <div class="card-heading"><i class="fas fa-user me-1"></i>Booking &amp; Guest</div>
+                                <div class="info-row"><span class="lbl">Booking #</span><span class="val primary" id="inf_bookingNumber">—</span></div>
+                                <div class="info-row"><span class="lbl">Guest Name</span><span class="val" id="inf_guestName">—</span></div>
+                                <div class="info-row"><span class="lbl">Phone</span><span class="val" id="inf_guestPhone">—</span></div>
+                                <div class="info-row"><span class="lbl">Email</span><span class="val" id="inf_guestEmail" style="font-size:11px;">—</span></div>
+                                <div class="info-row"><span class="lbl">Room Type</span><span class="val" id="inf_roomType">—</span></div>
+                                <div class="info-row"><span class="lbl">Room No.</span><span class="val" id="inf_roomNumber">—</span></div>
+                                <div class="info-row"><span class="lbl">Check-in</span><span class="val" id="inf_checkIn">—</span></div>
+                                <div class="info-row"><span class="lbl">Check-out</span><span class="val" id="inf_checkOut">—</span></div>
+                                <div class="info-row"><span class="lbl">Nights</span><span class="val" id="inf_nights">—</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Financial Summary -->
+                        <div class="col-md-6">
+                            <div class="info-card h-100">
+                                <div class="card-heading"><i class="fas fa-rupee-sign me-1"></i>Financial Summary</div>
+                                <div class="info-row"><span class="lbl">Booking Total</span><span class="val" id="inf_bookingTotal">—</span></div>
+                                <div class="info-row"><span class="lbl">Amount Paid</span><span class="val primary" id="inf_amountPaid">—</span></div>
+                                <div class="info-row"><span class="lbl">Deduction</span><span class="val danger" id="inf_deductionAmount">—</span></div>
+                                <div class="info-row"><span class="lbl">Deduction %</span><span class="val danger" id="inf_refundPercent">—</span></div>
+                                <div class="info-row hl"><span class="lbl"><i class="fas fa-hand-holding-usd me-1"></i>Eligible Refund</span><span class="val" id="inf_refundAmount">—</span></div>
+                                <div class="card-heading mt-2"><i class="fas fa-percentage me-1"></i>GST Adjustment</div>
+                                <div class="info-row"><span class="lbl">Base Amount</span><span class="val" id="inf_refundBase">—</span></div>
+                                <div class="info-row"><span class="lbl">CGST Reversal</span><span class="val" id="inf_cgst">—</span></div>
+                                <div class="info-row"><span class="lbl">SGST Reversal</span><span class="val" id="inf_sgst">—</span></div>
+                                <div class="info-row hl"><span class="lbl">Total Tax Reversal</span><span class="val" id="inf_tax">—</span></div>
+                                <!-- Cancellation inline -->
+                                <div class="card-heading mt-2"><i class="fas fa-ban me-1 text-danger"></i>Cancellation</div>
+                                <div class="info-row"><span class="lbl">Cancelled On</span><span class="val" id="inf_cancelledOn">—</span></div>
+                                <div class="info-row"><span class="lbl">Hrs Before Check-in</span><span class="val" id="inf_hoursBeforeCheckIn">—</span></div>
+                                <div class="info-row"><span class="lbl">Reason</span><span class="val" id="inf_reason" style="max-width:55%;text-align:right;word-break:break-word;font-size:11px;">—</span></div>
+                                <div class="info-row d-none" id="row_overrideReason">
+                                    <span class="lbl">Override Reason</span><span class="val" id="inf_overrideReason" style="max-width:55%;text-align:right;word-break:break-word;font-size:11px;">—</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Refund Banner -->
+                    <div class="refund-banner">
+                        <div>
+                            <div class="banner-label"><i class="fas fa-undo-alt me-1"></i>Refund Amount</div>
+                            <small class="text-muted" style="font-size:10px;">To be returned to guest</small>
+                        </div>
+                        <div class="banner-amount" id="inf_refundAmountBig">₹0</div>
+                    </div>
+
+                    <!-- Payment Details Card -->
+                    <div class="payment-card">
+                        <div class="card-heading"><i class="fas fa-credit-card me-1"></i>Refund Payment Details</div>
+
+                        <div class="row g-2">
+                            <!-- Row 1: Method + Reference + Notes -->
+                            <div class="col-sm-4 pf-field">
+                                <label>Payment Method <span class="text-danger">*</span></label>
+                                <select class="form-select" id="fld_paymentMethod" name="PaymentMethod" onchange="onPaymentMethodChange()" required>
+                                    <option value="">— Select Method —</option>
+                                    <option value="Cash">Cash</option>
+                                    <option value="Card">Card</option>
+                                    <option value="UPI">UPI</option>
+                                    <option value="Bank Transfer">Bank Transfer</option>
+                                    <option value="Cheque">Cheque</option>
+                                    <option value="Online">Online</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-4 pf-field">
+                                <label>Reference / Txn No.</label>
+                                <input type="text" class="form-control" id="fld_reference" name="PaymentReference"
+                                       placeholder="Optional" maxlength="100" />
+                            </div>
+                            <div class="col-sm-4 pf-field">
+                                <label>Notes</label>
+                                <input type="text" class="form-control" id="fld_notes" name="Notes"
+                                       placeholder="Short note (optional)" maxlength="200" />
+                            </div>
+
+                            <!-- Row 2: Conditional — Bank (Cheque / Bank Transfer) -->
+                            <div class="col-sm-4 pf-field d-none" id="grp_bank">
+                                <label>Bank</label>
+                                <select class="form-select" id="fld_bankId" name="BankId">
+                                    <option value="">— Select Bank —</option>
+                                    @foreach (var bank in banks)
+                                    {
+                                        <option value="@bank.Id">@bank.BankName</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <!-- Row 2: Conditional — Card Type + Last 4 -->
+                            <div class="col-sm-4 pf-field d-none" id="grp_cardType">
+                                <label>Card Type</label>
+                                <select class="form-select" id="fld_cardType" name="CardType">
+                                    <option value="">— Select Card Type —</option>
+                                    <option value="Visa">Visa</option>
+                                    <option value="MasterCard">MasterCard</option>
+                                    <option value="Rupay">RuPay</option>
+                                    <option value="Amex">Amex</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-3 pf-field d-none" id="grp_cardLast4">
+                                <label>Card Last 4 Digits</label>
+                                <input type="text" class="form-control" id="fld_cardLastFour" name="CardLastFourDigits"
+                                       maxlength="4" pattern="[0-9]{4}" placeholder="XXXX" />
+                            </div>
+
+                            <!-- Row 2: Conditional — Cheque Date -->
+                            <div class="col-sm-3 pf-field d-none" id="grp_cheque">
+                                <label>Cheque Date</label>
+                                <input type="date" class="form-control" id="fld_chequeDate" name="ChequeDate" />
+                            </div>
+
+                            <!-- Row 3: Remarks full width -->
+                            <div class="col-12 pf-field">
+                                <label>Remarks</label>
+                                <textarea class="form-control" id="fld_remarks" name="Remarks"
+                                          rows="2" placeholder="Additional remarks (optional)" maxlength="500"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <button type="button" class="btn btn-success fw-bold" onclick="processRefund()" style="min-width:220px;">
+                                <i class="fas fa-check-circle me-2"></i>Process Refund &mdash; <span id="btn_refundAmount">₹0</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+<script>
+    var _activeCancellationId = null;
+
+    function selectRefund(cancellationId) {
+        // Highlight selected item
+        document.querySelectorAll('.refund-list-item').forEach(el => el.classList.remove('active'));
+        var el = document.getElementById('refund-item-' + cancellationId);
+        if (el) el.classList.add('active');
+
+        _activeCancellationId = cancellationId;
+
+        // Show loading state
+        document.getElementById('refundPlaceholder').classList.add('d-none');
+        document.getElementById('refundDetailContent').classList.remove('d-none');
+
+        fetch('/Refund/Detail?cancellationId=' + cancellationId)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to load refund details.' });
+                    return;
+                }
+                populateDetail(data);
+            })
+            .catch(err => {
+                Swal.fire({ icon: 'error', title: 'Network Error', text: 'Could not load refund details. Please try again.' });
+            });
+    }
+
+    function populateDetail(d) {
+        document.getElementById('fld_cancellationId').value = d.cancellationId;
+        document.getElementById('fld_bookingId').value = d.bookingId;
+
+        document.getElementById('inf_bookingNumber').textContent = d.bookingNumber;
+        document.getElementById('inf_guestName').textContent = d.guestName;
+        document.getElementById('inf_guestPhone').textContent = d.guestPhone || '—';
+        document.getElementById('inf_guestEmail').textContent = d.guestEmail || '—';
+        document.getElementById('inf_roomType').textContent = d.roomType || '—';
+        document.getElementById('inf_roomNumber').textContent = d.roomNumber || '—';
+        document.getElementById('inf_checkIn').textContent = d.checkInDate;
+        document.getElementById('inf_checkOut').textContent = d.checkOutDate;
+        document.getElementById('inf_nights').textContent = d.nights + (d.nights === 1 ? ' night' : ' nights');
+
+        document.getElementById('inf_cancelledOn').textContent = d.cancelledOn;
+        document.getElementById('inf_hoursBeforeCheckIn').textContent = d.hoursBeforeCheckIn + ' hours';
+        document.getElementById('inf_reason').textContent = d.reason || '—';
+        var overrideRow = document.getElementById('row_overrideReason');
+        if (d.isOverride && d.overrideReason) {
+            document.getElementById('inf_overrideReason').textContent = d.overrideReason;
+            overrideRow.classList.remove('d-none');
+        } else {
+            overrideRow.classList.add('d-none');
+        }
+
+        document.getElementById('inf_bookingTotal').textContent = '₹' + fmtNum(d.bookingTotalAmount);
+        document.getElementById('inf_amountPaid').textContent = '₹' + fmtNum(d.amountPaid);
+        document.getElementById('inf_deductionAmount').textContent = '₹' + fmtNum(d.deductionAmount);
+        document.getElementById('inf_refundPercent').textContent = d.refundPercent + '%';
+        document.getElementById('inf_refundAmount').textContent = '₹' + fmtNum(d.refundAmount);
+
+        document.getElementById('inf_refundBase').textContent = '₹' + fmtNum(d.refundBaseAmount);
+        document.getElementById('inf_cgst').textContent = '₹' + fmtNum(d.refundCGSTAmount);
+        document.getElementById('inf_sgst').textContent = '₹' + fmtNum(d.refundSGSTAmount);
+        document.getElementById('inf_tax').textContent = '₹' + fmtNum(d.refundTaxAmount);
+
+        var refundStr = '₹' + fmtNum(d.refundAmount);
+        document.getElementById('inf_refundAmountBig').textContent = refundStr;
+        document.getElementById('btn_refundAmount').textContent = refundStr;
+
+        // Reset form fields
+        document.getElementById('fld_paymentMethod').value = '';
+        document.getElementById('fld_reference').value = '';
+        document.getElementById('fld_notes').value = '';
+        document.getElementById('fld_remarks').value = '';
+        document.getElementById('fld_bankId').value = '';
+        document.getElementById('fld_cardType').value = '';
+        document.getElementById('fld_cardLastFour').value = '';
+        document.getElementById('fld_chequeDate').value = '';
+        onPaymentMethodChange();
+
+        // Scroll the detail panel to top
+        document.getElementById('refundDetailPanel').scrollTop = 0;
+    }
+
+    function onPaymentMethodChange() {
+        var method = document.getElementById('fld_paymentMethod').value;
+        var bankGrp    = document.getElementById('grp_bank');
+        var cardTypeGrp = document.getElementById('grp_cardType');
+        var cardLast4Grp = document.getElementById('grp_cardLast4');
+        var chequeGrp  = document.getElementById('grp_cheque');
+
+        bankGrp.classList.add('d-none');
+        cardTypeGrp.classList.add('d-none');
+        cardLast4Grp.classList.add('d-none');
+        chequeGrp.classList.add('d-none');
+
+        if (method === 'Cheque' || method === 'Bank Transfer') {
+            bankGrp.classList.remove('d-none');
+        }
+        if (method === 'Card') {
+            cardTypeGrp.classList.remove('d-none');
+            cardLast4Grp.classList.remove('d-none');
+        }
+        if (method === 'Cheque') {
+            chequeGrp.classList.remove('d-none');
+        }
+    }
+
+    function processRefund() {
+        var cancellationId = parseInt(document.getElementById('fld_cancellationId').value);
+        var bookingId = parseInt(document.getElementById('fld_bookingId').value);
+        var paymentMethod = document.getElementById('fld_paymentMethod').value;
+
+        if (!paymentMethod) {
+            Swal.fire({ icon: 'warning', title: 'Required', text: 'Please select a refund payment method.' });
+            document.getElementById('fld_paymentMethod').focus();
+            return;
+        }
+
+        if (cancellationId <= 0 || bookingId <= 0) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Invalid booking selection. Please re-select from the list.' });
+            return;
+        }
+
+        var refundAmountText = document.getElementById('inf_refundAmountBig').textContent;
+
+        Swal.fire({
+            title: 'Confirm Refund',
+            html: 'Are you sure you want to process a refund of <strong>' + refundAmountText + '</strong> via <strong>' + paymentMethod + '</strong>?<br><br>This action cannot be undone.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#198754',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, Process Refund',
+            cancelButtonText: 'Cancel'
+        }).then(result => {
+            if (!result.isConfirmed) return;
+
+            var token = document.querySelector('input[name="__RequestVerificationToken"]');
+
+            var payload = {
+                CancellationId: cancellationId,
+                BookingId: bookingId,
+                PaymentMethod: paymentMethod,
+                PaymentReference: document.getElementById('fld_reference').value.trim(),
+                Notes: document.getElementById('fld_notes').value.trim(),
+                Remarks: document.getElementById('fld_remarks').value.trim(),
+                BankId: parseInt(document.getElementById('fld_bankId').value) || null,
+                CardType: document.getElementById('fld_cardType').value.trim() || null,
+                CardLastFourDigits: document.getElementById('fld_cardLastFour').value.trim() || null,
+                ChequeDate: document.getElementById('fld_chequeDate').value || null
+            };
+
+            Swal.fire({
+                title: 'Processing...',
+                text: 'Please wait while we process the refund.',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            fetch('/Refund/Process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token ? token.value : ''
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    // Remove item from sidebar list
+                    var listItem = document.getElementById('refund-item-' + cancellationId);
+                    if (listItem) listItem.remove();
+
+                    // Update counter badge
+                    var remaining = document.querySelectorAll('.refund-list-item').length;
+                    var badge = document.querySelector('.badge.bg-warning');
+                    if (badge) badge.textContent = remaining + ' Pending';
+
+                    // Reset detail panel
+                    document.getElementById('refundDetailContent').classList.add('d-none');
+                    document.getElementById('refundPlaceholder').classList.remove('d-none');
+                    _activeCancellationId = null;
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Refund Processed!',
+                        html: '<p>Refund of <strong>₹' + fmtNum(data.refundAmount) + '</strong> processed successfully.</p>'
+                            + (data.receiptNumber ? '<p>Receipt No: <strong>' + data.receiptNumber + '</strong></p>' : ''),
+                        confirmButtonColor: '#198754',
+                        confirmButtonText: 'OK'
+                    });
+
+                    if (remaining === 0) {
+                        setTimeout(() => { location.reload(); }, 2500);
+                    }
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Refund Failed',
+                        text: data.message || 'An unexpected error occurred.'
+                    });
+                }
+            })
+            .catch(err => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Network Error',
+                    text: 'Failed to communicate with the server. Please try again.'
+                });
+            });
+        });
+    }
+
+    function fmtNum(n) {
+        return parseFloat(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+</script>
+}

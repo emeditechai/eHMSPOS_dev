@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace HotelApp.Web.Models
 {
     public class HotelSettings
@@ -18,6 +20,12 @@ namespace HotelApp.Web.Models
         public bool DiscountApprovalRequired { get; set; } = false;
         public bool MinimumBookingAmountRequired { get; set; } = false;
         public decimal? MinimumBookingAmount { get; set; }
+
+        [Range(0, 72)]
+        public int NoShowGraceHours { get; set; } = 6;
+
+        [Range(0, 1000000000)]
+        public decimal? CancellationRefundApprovalThreshold { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime CreatedDate { get; set; }
         public int? CreatedBy { get; set; }

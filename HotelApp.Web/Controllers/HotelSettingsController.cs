@@ -37,6 +37,8 @@ namespace HotelApp.Web.Controllers
                     DiscountApprovalRequired = false,
                     MinimumBookingAmountRequired = false,
                     MinimumBookingAmount = null,
+                    NoShowGraceHours = 6,
+                    CancellationRefundApprovalThreshold = null,
                     IsActive = true
                 };
             }
@@ -66,6 +68,8 @@ namespace HotelApp.Web.Controllers
                     DiscountApprovalRequired = false,
                     MinimumBookingAmountRequired = false,
                     MinimumBookingAmount = null,
+                    NoShowGraceHours = 6,
+                    CancellationRefundApprovalThreshold = null,
                     IsActive = true
                 };
             }
@@ -109,6 +113,16 @@ namespace HotelApp.Web.Controllers
                 {
                     ModelState.AddModelError(nameof(model.MinimumBookingAmount), "Minimum Booking Percentage must be between 0 and 100.");
                 }
+            }
+
+            if (model.NoShowGraceHours < 0 || model.NoShowGraceHours > 72)
+            {
+                ModelState.AddModelError(nameof(model.NoShowGraceHours), "No-show grace hours must be between 0 and 72.");
+            }
+
+            if (model.CancellationRefundApprovalThreshold.HasValue && model.CancellationRefundApprovalThreshold.Value < 0)
+            {
+                ModelState.AddModelError(nameof(model.CancellationRefundApprovalThreshold), "Cancellation refund approval threshold cannot be negative.");
             }
             
             if (!ModelState.IsValid)

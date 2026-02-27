@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Cancellation Policy & Refund — SOP</title>
+  <style>
+    html { color: #1a1a1a; background-color: #fdfdfd; }
+    body {
+      margin: 0 auto;
+      max-width: 42em;
+      padding: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+      line-height: 1.45;
+    }
+    @media (max-width: 600px) {
+      body { font-size: 0.95em; padding: 14px; }
+      h1 { font-size: 1.8em; }
+    }
+    @media print {
+      html { background-color: white; }
+      body { background-color: transparent; color: black; font-size: 12pt; padding: 0; max-width: none; }
+      a { color: black; text-decoration: none; }
+      p, h2, h3 { orphans: 3; widows: 3; }
+      h2, h3, h4 { page-break-after: avoid; }
+      .page-break { page-break-before: always; }
+      .no-print { display: none !important; }
+    }
+    h1, h2, h3, h4 { margin-top: 1.4em; }
+    h1 { margin-top: 0.2em; }
+    p { margin: 0.8em 0; }
+    a { color: #1a1a1a; }
+    code { font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace; font-size: 85%; }
+    hr { border: none; border-top: 1px solid #1a1a1a; height: 1px; margin: 1.2em 0; }
+    ul, ol { padding-left: 1.7em; margin-top: 0.6em; }
+    li { margin: 0.25em 0; }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    table { margin: 1em 0; border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 8px 10px; vertical-align: top; }
+    th { background: #f5f5f5; text-align: left; }
+
+    .doc-meta {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      padding: 14px 16px;
+      border: 1px solid #e6e6e6;
+      border-radius: 10px;
+      background: #fafafa;
+      margin: 18px 0 16px;
+    }
+    .doc-meta strong { display: inline-block; min-width: 140px; }
+
+    .callout {
+      border: 1px solid #e6e6e6;
+      border-left: 4px solid #111;
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: #fcfcfc;
+      margin: 14px 0;
+    }
+
+    .badge {
+      display: inline-block;
+      border: 1px solid #ddd;
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: 12px;
+      background: #f7f7f7;
+      margin-left: 6px;
+    }
+
+    .toc a { text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .step { margin: 0.55em 0; }
+    .step b { font-weight: 700; }
+
+    .kbd { font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace; font-size: 85%; border: 1px solid #ddd; padding: 1px 6px; border-radius: 6px; background: #f7f7f7; }
+  </style>
+</head>
+<body>
+
+<h1>Cancellation Policy &amp; Refund — SOP</h1>
+<p><span class="badge">HotelApp</span> <span class="badge">Settings</span> <span class="badge">Reports</span></p>
+
+<div class="doc-meta">
+  <div><strong>Document Type:</strong> Standard Operating Procedure (SOP)</div>
+  <div><strong>Module:</strong> Cancellation Policies &amp; Refund / Cancellation Register</div>
+  <div><strong>Effective Date:</strong> 08 Feb 2026</div>
+  <div><strong>Audience:</strong> Admin / Manager / Front Desk / Accounts</div>
+  <div><strong>Goal:</strong> Configure cancellation rules and track refunds consistently.</div>
+</div>
+
+<div class="callout no-print">
+  <b>How to get a PDF:</b>
+  <ol>
+    <li>Open this file in a browser (double-click it from the project folder).</li>
+    <li>Press <span class="kbd">Cmd</span> + <span class="kbd">P</span> (Print).</li>
+    <li>Select <b>Save as PDF</b>.</li>
+  </ol>
+</div>
+
+<hr />
+
+<h2 id="toc">Contents</h2>
+<ol class="toc">
+  <li><a href="#overview">Overview</a></li>
+  <li><a href="#roles">Roles &amp; responsibilities</a></li>
+  <li><a href="#prerequisites">Prerequisites (before you start)</a></li>
+  <li><a href="#where-ui">Where is the UI?</a></li>
+  <li><a href="#create-policy">Create a cancellation policy</a></li>
+  <li><a href="#configure-rules">Configure rule slabs (Min/Max hours)</a></li>
+  <li><a href="#activate">Activate / inactivate a policy</a></li>
+  <li><a href="#booking-flow">How the policy is applied during booking</a></li>
+  <li><a href="#cancel-booking">Cancel a booking (staff process)</a></li>
+  <li><a href="#register">View the Cancellation Register report</a></li>
+  <li><a href="#troubleshooting">Troubleshooting</a></li>
+  <li><a href="#appendix">Appendix: Definitions &amp; calculation</a></li>
+</ol>
+
+<hr />
+
+<h2 id="overview">1) Overview</h2>
+<p>This SOP explains how to:</p>
+<ul>
+  <li>Create and maintain <b>Cancellation Policies</b> (Settings).</li>
+  <li>Define time-based refund rules (called <b>rule slabs</b>).</li>
+  <li>Ensure the policy is <b>captured at booking time</b> (policy snapshot).</li>
+  <li>Cancel bookings and track refunds using the <b>Cancellation Register</b> (Reports).</li>
+</ul>
+
+<div class="callout">
+  <b>Important:</b> HotelApp stores a <b>policy snapshot</b> in the booking at the time the booking is created.
+  This prevents future policy edits from changing old bookings unexpectedly.
+</div>
+
+<h2 id="roles">2) Roles &amp; responsibilities</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Role</th>
+      <th>Responsibilities</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>Admin</b></td>
+      <td>Create/modify cancellation policies and grant menu access via role mapping.</td>
+    </tr>
+    <tr>
+      <td><b>Manager</b></td>
+      <td>Review refund outcomes, handle exceptions, and ensure policies are correct for each branch.</td>
+    </tr>
+    <tr>
+      <td><b>Front Desk</b></td>
+      <td>Create bookings and ensure the cancellation policy is accepted when required.</td>
+    </tr>
+    <tr>
+      <td><b>Accounts</b></td>
+      <td>Use Cancellation Register for refund tracking and reconciliation (CSV export).</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="prerequisites">3) Prerequisites (before you start)</h2>
+<ol>
+  <li class="step"><b>Menu access:</b> Your user role must have access to Settings and the new Cancellation Policies menu.</li>
+  <li class="step"><b>Branch context:</b> Policies are configured per <b>Branch</b>. Ensure you are logged into the correct branch.</li>
+  <li class="step"><b>Hotel settings:</b> Confirm Hotel Settings are configured (especially check-in time). Optional: set <b>No-Show Grace Hours</b> and <b>Refund Approval Threshold</b>.</li>
+  <li class="step"><b>Rate types:</b> Decide which Rate Types you use operationally (e.g., Standard, Discounted, NonRefundable).</li>
+</ol>
+
+<h2 id="where-ui">4) Where is the UI?</h2>
+<ul>
+  <li><b>Cancellation Policies list:</b> <code>/CancellationPolicy/Index</code> (Settings → Cancellation Policies)</li>
+  <li><b>Create policy:</b> <code>/CancellationPolicy/Create</code></li>
+  <li><b>Edit policy:</b> <code>/CancellationPolicy/Edit/{id}</code></li>
+  <li><b>Cancellation Register report:</b> <code>/Reports/CancellationRegister</code> (Reports → Cancellation Register)</li>
+</ul>
+
+<div class="callout">
+  <b>If the menu is missing:</b>
+  <ol>
+    <li>Run DB script: <code>Database/Scripts/100_SeedCancellationMenus.sql</code></li>
+    <li>Then map access for your role in your Menu/Role mapping screen.</li>
+  </ol>
+</div>
+
+<h2 id="create-policy">5) Create a cancellation policy</h2>
+<p>Use this when you want to define refund rules for a specific combination like <b>Website + B2C + Standard</b>.</p>
+
+<ol>
+  <li class="step"><b>Open</b> Settings → Cancellation Policies.</li>
+  <li class="step"><b>Click</b> “Add Policy”.</li>
+  <li class="step"><b>Fill Policy fields:</b>
+    <ul>
+      <li><b>Policy Name:</b> a meaningful name (example: “Website B2C Standard Policy”).</li>
+      <li><b>Source:</b> WalkIn / Phone / Website / OTA / Reference</li>
+      <li><b>Customer Type:</b> B2C or B2B</li>
+      <li><b>Rate Type:</b> Standard / Discounted / NonRefundable</li>
+      <li><b>Valid From / Valid To (optional):</b> use if rules change by season.</li>
+      <li><b>Gateway Fee Deduction % (optional):</b> default gateway deduction percentage.</li>
+      <li><b>Status:</b> Active (recommended if you want it to apply immediately).</li>
+      <li><b>No-Show Refund Allowed:</b> typically No.</li>
+      <li><b>Approval Required:</b> set Yes only if you want approvals enforced for this policy (workflow UI may be added later).</li>
+    </ul>
+  </li>
+  <li class="step"><b>Add Rules (slabs)</b> (see next section) and click <b>Save Policy</b>.</li>
+</ol>
+
+<h2 id="configure-rules">6) Configure rule slabs (Min/Max hours)</h2>
+<p>Rule slabs are used to choose refund behavior based on <b>hours before check-in</b>.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Meaning</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>Min Hours</b></td>
+      <td>Lower limit for hours before check-in</td>
+      <td>24</td>
+    </tr>
+    <tr>
+      <td><b>Max Hours</b></td>
+      <td>Upper limit for hours before check-in</td>
+      <td>71</td>
+    </tr>
+    <tr>
+      <td><b>Refund %</b></td>
+      <td>Percent of paid amount eligible for refund</td>
+      <td>50%</td>
+    </tr>
+    <tr>
+      <td><b>Flat Deduction</b></td>
+      <td>Fixed amount deducted from refund</td>
+      <td>₹200</td>
+    </tr>
+    <tr>
+      <td><b>Gateway Fee %</b></td>
+      <td>Optional override per slab; if empty uses policy-level gateway fee %</td>
+      <td>2.0%</td>
+    </tr>
+    <tr>
+      <td><b>Sort</b></td>
+      <td>Controls priority if slabs overlap (lower runs first)</td>
+      <td>10, 20, 30…</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><b>Recommended baseline slabs:</b></p>
+<ul>
+  <li><b>72+ hours:</b> 100% refund (minus gateway fee)</li>
+  <li><b>24–71 hours:</b> 50% refund</li>
+  <li><b>0–23 hours:</b> 0% refund</li>
+</ul>
+
+<div class="callout">
+  <b>Best practice:</b> Avoid overlapping ranges. If overlaps are unavoidable, use Sort Order to ensure the correct slab is selected.
+</div>
+
+<h2 id="activate">7) Activate / inactivate a policy</h2>
+<ol>
+  <li class="step">Go to Settings → Cancellation Policies.</li>
+  <li class="step">Open the policy in Edit.</li>
+  <li class="step">Set <b>Status</b> to Active or Inactive and Save.</li>
+</ol>
+<p><b>Note:</b> Only <b>Active</b> policies are used for new bookings.</p>
+
+<h2 id="booking-flow">8) How the policy is applied during booking</h2>
+<p>When creating a booking, the system selects the applicable policy based on:</p>
+<ul>
+  <li>Branch</li>
+  <li>Source</li>
+  <li>Customer Type</li>
+  <li>Rate Type</li>
+  <li>Check-in date (for Valid From/To matching)</li>
+</ul>
+
+<ol>
+  <li class="step">Open Booking → Create.</li>
+  <li class="step">Select/confirm: <b>Source</b>, <b>Channel</b>, <b>Customer Type</b>, <b>Rate Type</b>, and <b>Check-in date</b>.</li>
+  <li class="step">The <b>Cancellation Policy</b> panel loads and shows the policy rules.</li>
+  <li class="step"><b>Acceptance required:</b> If <b>Source = Website</b> OR <b>Channel = DirectWeb</b>, check <b>“I accept the cancellation policy”</b> to proceed.</li>
+</ol>
+
+<div class="callout">
+  <b>What is saved:</b> The booking stores Policy Id + a JSON snapshot of the policy and rules at booking time.
+</div>
+
+<h2 id="cancel-booking">9) Cancel a booking (staff process)</h2>
+<ol>
+  <li class="step">Open Bookings Dashboard / Bookings List.</li>
+  <li class="step">Click <b>Cancel</b> for the booking.</li>
+  <li class="step">Enter the cancellation reason (optional) when prompted.</li>
+  <li class="step">Confirm cancellation.</li>
+</ol>
+
+<p>When you cancel, the system will:</p>
+<ul>
+  <li>Calculate refund based on the booking’s paid amount and the stored (or applicable) policy.</li>
+  <li>Insert a record into <b>BookingCancellations</b> (register).</li>
+  <li>Release rooms back to Available.</li>
+  <li>Mark booking status as Cancelled and write an audit log entry.</li>
+</ul>
+
+<div class="callout">
+  <b>Approval note:</b> If your branch has a Refund Approval Threshold configured, cancellations may be recorded with <b>ApprovalStatus = Pending</b>. The manager approval UI may be implemented in a later iteration.
+</div>
+
+<h2 id="register">10) View the Cancellation Register report</h2>
+<ol>
+  <li class="step">Open Reports → Cancellation Register.</li>
+  <li class="step">Select <b>From Date</b> and <b>To Date</b>, then click <b>Apply</b>.</li>
+  <li class="step">Review summary cards: Total cancellations, total paid, total refund, pending approvals.</li>
+  <li class="step">Review the detail table for each cancellation record.</li>
+  <li class="step">Click <b>CSV</b> to export for accounts reconciliation.</li>
+</ol>
+
+<h2 id="troubleshooting">11) Troubleshooting</h2>
+<ul>
+  <li><b>Menu not visible:</b> Run <code>Database/Scripts/100_SeedCancellationMenus.sql</code> and grant role access in menu-role mapping.</li>
+  <li><b>Policy panel says “Not configured” during booking:</b>
+    <ul>
+      <li>Make sure there is an <b>Active</b> policy for the exact combination (Source + Customer Type + Rate Type) for that branch.</li>
+      <li>Check Valid From/To includes the booking check-in date.</li>
+    </ul>
+  </li>
+  <li><b>Acceptance checkbox blocks progress:</b> For Website/DirectWeb bookings, acceptance is mandatory.</li>
+  <li><b>Unexpected slab selected:</b> Check for overlapping Min/Max ranges and adjust Sort Order.</li>
+</ul>
+
+<h2 id="appendix">12) Appendix: Definitions &amp; calculation</h2>
+
+<h3>Rate Types</h3>
+<ul>
+  <li><b>Standard:</b> normal refundable rate (subject to slabs).</li>
+  <li><b>Discounted:</b> refundable rate with special pricing (subject to slabs).</li>
+  <li><b>NonRefundable:</b> refund is always <b>0</b> (even if slabs exist).</li>
+</ul>
+
+<h3>Refund calculation (high-level)</h3>
+<ul>
+  <li><code>refundRaw = amountPaid × (refundPercent / 100)</code></li>
+  <li><code>deduction = flatDeduction + (amountPaid × gatewayFeePercent / 100)</code></li>
+  <li><code>refundFinal = max(0, min(amountPaid, refundRaw − deduction))</code></li>
+</ul>
+
+<blockquote>
+  This SOP describes operational usage. Technical implementation details are tracked separately in the implementation reference document.
+</blockquote>
+
+</body>
+</html>

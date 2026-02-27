@@ -409,6 +409,26 @@
                             <div class="parameter-value">@(Model.MinimumBookingAmount.HasValue ? $"{Model.MinimumBookingAmount.Value:N2}%" : "Not Set")</div>
                         </div>
                     </div>
+
+                    <div class="parameter-item">
+                        <div class="parameter-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="parameter-text">
+                            <div class="parameter-label">No-Show Grace Hours</div>
+                            <div class="parameter-value">@Model.NoShowGraceHours</div>
+                        </div>
+                    </div>
+
+                    <div class="parameter-item">
+                        <div class="parameter-icon">
+                            <i class="fas fa-undo"></i>
+                        </div>
+                        <div class="parameter-text">
+                            <div class="parameter-label">Refund Approval Threshold</div>
+                            <div class="parameter-value">@(Model.CancellationRefundApprovalThreshold.HasValue ? $"₹{Model.CancellationRefundApprovalThreshold.Value:N2}" : "Disabled")</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

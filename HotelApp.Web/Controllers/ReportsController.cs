@@ -113,6 +113,33 @@ public sealed class ReportsController : Controller
     }
 
     [HttpGet]
+    public async Task<IActionResult> CancellationRegister(DateOnly? fromDate, DateOnly? toDate)
+    {
+        var branchId = HttpContext.Session.GetInt32("BranchID") ?? 1;
+
+        var effectiveFrom = fromDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var effectiveTo = toDate ?? effectiveFrom;
+
+        if (effectiveTo < effectiveFrom)
+        {
+            (effectiveFrom, effectiveTo) = (effectiveTo, effectiveFrom);
+        }
+
+        var data = await _reportsRepository.GetCancellationRegisterAsync(branchId, effectiveFrom, effectiveTo);
+
+        var vm = new CancellationRegisterReportViewModel
+        {
+            FromDate = effectiveFrom,
+            ToDate = effectiveTo,
+            Summary = data.Summary,
+            Rows = data.Rows
+        };
+
+        ViewData["Title"] = "Cancellation Register";
+        return View(vm);
+    }
+
+    [HttpGet]
     public async Task<IActionResult> GstReport(DateOnly? fromDate, DateOnly? toDate)
     {
         var branchId = HttpContext.Session.GetInt32("BranchID") ?? 1;

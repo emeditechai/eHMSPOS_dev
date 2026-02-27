@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using System.Security.Claims;
 
 namespace HotelApp.Web.Controllers
 {
@@ -12,15 +13,53 @@ namespace HotelApp.Web.Controllers
         {
             base.OnActionExecuting(context);
 
-            // Get BranchID from session
-            CurrentBranchID = HttpContext.Session.GetInt32("BranchID") ?? 1; // Default to HO branch
-            CurrentUserId = HttpContext.Session.GetInt32("UserId");
-            var currentRoleId = HttpContext.Session.GetInt32("SelectedRoleId") ?? HttpContext.Session.GetInt32("RoleId");
-            var currentRoleName = HttpContext.Session.GetString("SelectedRoleName");
-            
-            var branchName = HttpContext.Session.GetString("BranchName") ?? "Head Office";
+            // --- UserId: session first, fall back to auth claim ---
+            var sessionUserId = HttpContext.Session.GetInt32("UserId");
+            if (sessionUserId.HasValue && sessionUserId.Value > 0)
+            {
+                CurrentUserId = sessionUserId.Value;
+            }
+            else
+            {
+                var claimValue = HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (int.TryParse(claimValue, out var claimUserId) && claimUserId > 0)
+                {
+                    CurrentUserId = claimUserId;
+                    // Re-hydrate session so subsequent requests don't need the fallback
+                    HttpContext.Session.SetInt32("UserId", claimUserId);
+                }
+            }
 
-            // Store in ViewBag for use in views
+            // --- BranchID: session first, fall back to auth claim ---
+            var sessionBranchId = HttpContext.Session.GetInt32("BranchID");
+            if (sessionBranchId.HasValue && sessionBranchId.Value > 0)
+            {
+                CurrentBranchID = sessionBranchId.Value;
+            }
+            else
+            {
+                var claimBranch = HttpContext.User.FindFirstValue("BranchID");
+                if (int.TryParse(claimBranch, out var claimBranchId) && claimBranchId > 0)
+                {
+                    CurrentBranchID = claimBranchId;
+                    HttpContext.Session.SetInt32("BranchID", claimBranchId);
+                }
+                else
+                {
+                    CurrentBranchID = 1; // Default to Head Office
+                }
+            }
+
+            // --- Role / Branch name ---
+            var currentRoleId = HttpContext.Session.GetInt32("SelectedRoleId")
+                ?? HttpContext.Session.GetInt32("RoleId")
+                ?? (int.TryParse(HttpContext.User.FindFirstValue("SelectedRoleId"), out var cr) ? cr : (int?)null);
+            var currentRoleName = HttpContext.Session.GetString("SelectedRoleName")
+                ?? HttpContext.User.FindFirstValue("SelectedRoleName");
+            var branchName = HttpContext.Session.GetString("BranchName")
+                ?? HttpContext.User.FindFirstValue("BranchName")
+                ?? "Head Office";
+
             ViewBag.CurrentBranchID = CurrentBranchID;
             ViewBag.CurrentUserId = CurrentUserId;
             ViewBag.CurrentBranchName = branchName;

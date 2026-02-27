@@ -14,6 +14,8 @@
     </a>
 </div>
 
+<form style="display:none;">@Html.AntiForgeryToken()</form>
+
 @{
     var successMessage = TempData["SuccessMessage"] as string;
     var errorMessage = TempData["ErrorMessage"] as string;
@@ -353,8 +355,8 @@
                                         <i class="fas fa-eye"></i> View Details
                                     </a>
 
-                                    @* Only show other options if booking is NOT checked out *@
-                                    @if (!booking.ActualCheckOutDate.HasValue)
+                                    @* Only show other options if booking is NOT checked out and NOT cancelled *@
+                                    @if (!booking.ActualCheckOutDate.HasValue && booking.Status != "Cancelled")
                                     {
                                         <a href="#" onclick="openOtherChargesModal('@booking.BookingNumber'); return false;" class="dropdown-item">
                                             <i class="fas fa-receipt"></i> Other Charges
@@ -1102,29 +1104,125 @@ else
         window.location.href = '/Booking/EditDates?bookingNumber=' + bookingNumber;
     }
 
-    function cancelBooking(bookingNumber) {
-        if (confirm('Are you sure you want to cancel booking: ' + bookingNumber + '?\n\nThis action cannot be undone.')) {
-            fetch('/Booking/Cancel', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
-                },
-                body: JSON.stringify({ bookingNumber: bookingNumber })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Booking cancelled successfully');
-                    window.location.reload();
-                } else {
-                    alert('Error: ' + data.message);
+    async function cancelBooking(bookingNumber) {
+        const antiForgeryToken = () => document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+
+        // ── Step 1: Fetch cancellation preview ────────────────────────────────
+        Swal.fire({ title: 'Loading Preview…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        let preview = null;
+        try {
+            const r = await fetch('/Booking/CancellationPreview?bookingNumber=' + encodeURIComponent(bookingNumber));
+            const d = await r.json();
+            if (d.success) preview = d;
+        } catch (e) { console.error('Preview error:', e); }
+
+        // ── Step 2: Build preview card ────────────────────────────────────────
+        function buildPreviewHtml(title) {
+            let html = `<p style="margin-bottom:10px;">${title}</p>`;
+            if (preview) {
+                const hrs  = preview.hoursBeforeCheckIn != null ? `${Math.round(preview.hoursBeforeCheckIn)} hrs before check-in` : '—';
+                const paid = preview.amountPaid   != null ? '₹' + Number(preview.amountPaid).toLocaleString('en-IN',{minimumFractionDigits:2})   : '—';
+                const ref  = preview.refundAmount != null ? '₹' + Number(preview.refundAmount).toLocaleString('en-IN',{minimumFractionDigits:2}) : '—';
+                const refColor = (preview.refundAmount > 0) ? '#059669' : '#dc2626';
+                const pctLabel = preview.refundPercent != null && preview.refundPercent > 0 ? ` (${preview.refundPercent}%)` : '';
+                html += `<div style="background:#f8f9fa;border-radius:8px;padding:12px 16px;margin:10px 0;text-align:left;font-size:0.9rem;border:1px solid #e5e7eb;">
+                    <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e5e7eb;"><span style="color:#6b7280;">Amount Paid</span><strong>${paid}</strong></div>
+                    <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e5e7eb;"><span style="color:#6b7280;">Eligible Refund</span><strong style="color:${refColor};">${ref}${pctLabel}</strong></div>
+                    <div style="display:flex;justify-content:space-between;padding:5px 0;"><span style="color:#6b7280;">Time to Check-in</span><span>${hrs}</span></div>
+                </div>`;
+                if (preview.policyName) {
+                    html += `<p style="font-size:0.82rem;color:#6b7280;margin:4px 0 6px;"><i class="fas fa-file-alt"></i>&nbsp;Policy: <strong>${preview.policyName}</strong></p>`;
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while cancelling the booking');
+                if (preview.refundBreakdownNote) {
+                    html += `<p style="font-size:0.82rem;color:#6b7280;margin:4px 0 6px;"><i class="fas fa-info-circle"></i>&nbsp;${preview.refundBreakdownNote}</p>`;
+                }
+                if (preview.approvalStatus === 'Pending') {
+                    html += `<p style="color:#d97706;font-size:0.83rem;margin:6px 0;"><i class="fas fa-clock"></i>&nbsp;Refund requires manager approval before processing.</p>`;
+                }
+            }
+            html += `<div style="margin-top:12px;text-align:left;">
+                <label style="font-size:0.85rem;color:#6b7280;display:block;margin-bottom:4px;">Reason for cancellation <span style="opacity:.6;">(optional)</span></label>
+                <textarea id="swal-cancel-reason" class="swal2-textarea" placeholder="Enter reason…" style="margin:0;width:100%;box-sizing:border-box;font-size:0.9rem;min-height:64px;"></textarea>
+            </div>
+            <p style="margin-top:10px;color:#ef4444;font-size:0.8rem;">⚠️ This action cannot be undone.</p>`;
+            return html;
+        }
+
+        // ── Step 3: Confirmation dialog ───────────────────────────────────────
+        const confirm1 = await Swal.fire({
+            title: 'Cancel Booking?',
+            html: buildPreviewHtml(`You are about to cancel booking <strong>${bookingNumber}</strong>.`),
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-times-circle"></i>&nbsp;Yes, Cancel Booking',
+            cancelButtonText: 'Go Back',
+            width: 520,
+            preConfirm: () => document.getElementById('swal-cancel-reason')?.value?.trim() || ''
+        });
+        if (!confirm1.isConfirmed) return;
+        const reason = confirm1.value || '';
+
+        // ── Step 4: POST cancel request ───────────────────────────────────────
+        async function doCancel(isOverride, overrideReason) {
+            Swal.fire({ title: 'Processing Cancellation…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const resp = await fetch('/Booking/Cancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': antiForgeryToken() },
+                body: JSON.stringify({ bookingNumber, reason, isOverride, overrideReason: overrideReason || '' })
             });
+            return resp.json();
+        }
+
+        try {
+            let data = await doCancel(false, '');
+
+            // ── Step 5: Handle checked-in override scenario ───────────────────
+            if (!data.success && data.requiresOverride) {
+                const overrideResult = await Swal.fire({
+                    title: '⚠️ Guest Is Currently Checked In',
+                    html: `<p style="color:#dc2626;font-weight:600;margin-bottom:10px;">This guest has already checked in.</p>
+                           <p>Cancelling an active stay is a non-standard operation and requires manager authorisation.</p>
+                           <div style="margin-top:12px;text-align:left;">
+                               <label style="font-size:0.85rem;color:#6b7280;display:block;margin-bottom:4px;">Override reason <span style="color:#ef4444;">*</span></label>
+                               <textarea id="swal-override-reason" class="swal2-textarea" placeholder="e.g. Guest requested early departure, emergency…" style="margin:0;width:100%;box-sizing:border-box;font-size:0.9rem;min-height:72px;"></textarea>
+                           </div>`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: '<i class="fas fa-exclamation-triangle"></i>&nbsp;Force Cancel (Override)',
+                    cancelButtonText: 'Abort',
+                    width: 520,
+                    preConfirm: () => {
+                        const val = document.getElementById('swal-override-reason')?.value?.trim() || '';
+                        if (!val) { Swal.showValidationMessage('An override reason is required.'); return false; }
+                        return val;
+                    }
+                });
+                if (!overrideResult.isConfirmed) return;
+                data = await doCancel(true, overrideResult.value);
+            }
+
+            // ── Step 6: Result feedback ───────────────────────────────────────
+            if (data.success) {
+                let successHtml = `<p>${data.message || 'Booking cancelled successfully.'}</p>`;
+                if (data.refundAmount != null && data.refundAmount > 0) {
+                    successHtml += `<p>Refund of <strong>₹${Number(data.refundAmount).toLocaleString('en-IN',{minimumFractionDigits:2})}</strong> is applicable.</p>`;
+                }
+                if (data.approvalStatus === 'Pending') {
+                    successHtml += `<p style="color:#d97706;font-size:0.85rem;">⏳ Awaiting manager approval to process refund.</p>`;
+                }
+                await Swal.fire({ icon: 'success', title: 'Booking Cancelled', html: successHtml, confirmButtonColor: '#059669', timer: 3500, timerProgressBar: true });
+                window.location.reload();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Cancellation Failed', text: data.message || 'An unexpected error occurred.', confirmButtonColor: '#ef4444' });
+            }
+        } catch (err) {
+            console.error('Cancel error:', err);
+            Swal.fire({ icon: 'error', title: 'Request Failed', text: 'Unable to reach the server. Please try again.', confirmButtonColor: '#ef4444' });
         }
     }
 

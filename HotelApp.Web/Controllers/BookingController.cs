@@ -19,6 +19,7 @@ namespace HotelApp.Web.Controllers
         private static readonly IReadOnlyList<string> CustomerTypes = new[] { "B2C", "B2B" };
         private static readonly IReadOnlyList<string> Sources = new[] { "WalkIn", "Phone", "Website", "OTA", "Reference" };
         private static readonly IReadOnlyList<string> Channels = new[] { "FrontDesk", "CallCenter", "DirectWeb", "Corporate", "OTA" };
+        private static readonly IReadOnlyList<string> RateTypes = new[] { "Standard", "Discounted", "NonRefundable" };
         private static readonly IReadOnlyDictionary<string, string> PaymentMethods = new Dictionary<string, string>
         {
             { "Cash", "Cash" },
@@ -43,6 +44,7 @@ namespace HotelApp.Web.Controllers
         private readonly IMailSender _mailSender;
         private readonly IRazorViewToStringRenderer _razorViewToStringRenderer;
         private readonly IBookingReceiptTemplateRepository _bookingReceiptTemplateRepository;
+        private readonly ICancellationPolicyRepository _cancellationPolicyRepository;
 
         public BookingController(
             IBookingRepository bookingRepository,
@@ -59,7 +61,8 @@ namespace HotelApp.Web.Controllers
             IUpiSettingsRepository upiSettingsRepository,
             IMailSender mailSender,
             IRazorViewToStringRenderer razorViewToStringRenderer,
-            IBookingReceiptTemplateRepository bookingReceiptTemplateRepository)
+            IBookingReceiptTemplateRepository bookingReceiptTemplateRepository,
+            ICancellationPolicyRepository cancellationPolicyRepository)
         {
             _bookingRepository = bookingRepository;
             _roomRepository = roomRepository;
@@ -76,6 +79,7 @@ namespace HotelApp.Web.Controllers
             _mailSender = mailSender;
             _razorViewToStringRenderer = razorViewToStringRenderer;
             _bookingReceiptTemplateRepository = bookingReceiptTemplateRepository;
+            _cancellationPolicyRepository = cancellationPolicyRepository;
         }
 
         private static string GetFriendlyMailErrorMessage(Exception ex)
@@ -923,6 +927,19 @@ namespace HotelApp.Web.Controllers
                 ViewBag.SGSTPercentage = sgstPercentage;
             }
 
+            // Load cancellation record for cancelled bookings (shows refund info on Details page)
+            if (booking.Status == "Cancelled")
+            {
+                try
+                {
+                    ViewBag.CancellationRecord = await _bookingRepository.GetBookingCancellationRecordAsync(bookingNumber, CurrentBranchID);
+                }
+                catch
+                {
+                    ViewBag.CancellationRecord = null;
+                }
+            }
+
             return View(booking);
         }
 
@@ -1582,7 +1599,8 @@ namespace HotelApp.Web.Controllers
                 Adults = 2,
                 CustomerType = CustomerTypes.First(),
                 Source = Sources.First(),
-                Channel = Channels.First()
+                Channel = Channels.First(),
+                RateType = RateTypes.First()
             };
 
             await PopulateLookupsAsync(model);
@@ -1617,6 +1635,14 @@ namespace HotelApp.Web.Controllers
             if (model.CheckOutDate <= model.CheckInDate)
             {
                 ModelState.AddModelError(nameof(model.CheckOutDate), "Check-out date must be after check-in date.");
+            }
+
+            var isWebBooking = string.Equals(model.Source, "Website", StringComparison.OrdinalIgnoreCase)
+                               || string.Equals(model.Channel, "DirectWeb", StringComparison.OrdinalIgnoreCase);
+
+            if (isWebBooking && !model.CancellationPolicyAccepted)
+            {
+                ModelState.AddModelError(nameof(model.CancellationPolicyAccepted), "Cancellation policy must be accepted for website bookings.");
             }
 
             if (!ModelState.IsValid)
@@ -1680,6 +1706,20 @@ namespace HotelApp.Web.Controllers
 
             var bookingNumber = GenerateBookingNumber();
             var createdBy = GetCurrentUserId();
+
+            // Attach applicable cancellation policy snapshot at booking time (prevents retroactive changes).
+            var (policyId, snapshotJson) = await _cancellationPolicyRepository.GetApplicablePolicySnapshotAsync(
+                CurrentBranchID,
+                model.Source,
+                model.CustomerType,
+                model.RateType,
+                model.CheckInDate);
+
+            if (isWebBooking && !policyId.HasValue)
+            {
+                ModelState.AddModelError(string.Empty, "No cancellation policy configured for the selected combination (Source/Customer Type/Rate Type). Please configure one in Settings → Cancellation Policies.");
+                return View(model);
+            }
             // Persist consistent monetary totals from the start:
             // - BaseAmount: amount AFTER discount (what we charge for rooms)
             // - DiscountAmount: total discount across all nights/rooms
@@ -1700,6 +1740,11 @@ namespace HotelApp.Web.Controllers
                 Channel = model.Channel,
                 Source = model.Source,
                 CustomerType = model.CustomerType,
+                RateType = model.RateType,
+                CancellationPolicyId = policyId,
+                CancellationPolicySnapshot = snapshotJson,
+                CancellationPolicyAccepted = model.CancellationPolicyAccepted,
+                CancellationPolicyAcceptedAt = model.CancellationPolicyAccepted ? DateTime.UtcNow : null,
                 CheckInDate = model.CheckInDate,
                 CheckOutDate = model.CheckOutDate,
                 Nights = quote.Nights,
@@ -2543,6 +2588,7 @@ namespace HotelApp.Web.Controllers
             ViewBag.CustomerTypes = CustomerTypes;
             ViewBag.Sources = Sources;
             ViewBag.Channels = Channels;
+            ViewBag.RateTypes = RateTypes;
 
             var countries = await _locationRepository.GetCountriesAsync();
             ViewBag.Countries = countries;
@@ -2943,21 +2989,60 @@ namespace HotelApp.Web.Controllers
                 return Json(new { success = false, message = "Invalid booking number" });
             }
 
-            var booking = await _bookingRepository.GetByBookingNumberAsync(request.BookingNumber);
-            if (booking == null)
+            if (CurrentUserId == null || CurrentUserId.Value <= 0)
             {
-                return Json(new { success = false, message = "Booking not found" });
+                return Json(new { success = false, message = "Unable to identify user. Please refresh the page and try again." });
             }
 
-            if (booking.Status == "Cancelled")
+            var performedBy = CurrentUserId.Value;
+            var result = await _bookingRepository.CancelBookingAsync(
+                new BookingCancellationCommand
+                {
+                    BookingNumber = request.BookingNumber,
+                    CancellationType = "Staff",
+                    Reason = request.Reason,
+                    IsOverride = request.IsOverride,
+                    OverrideReason = request.OverrideReason,
+                    IsNoShow = false
+                },
+                CurrentBranchID,
+                performedBy);
+
+            if (!result.Success)
             {
-                return Json(new { success = false, message = "Booking is already cancelled" });
+                return Json(new { success = false, message = result.Message, requiresOverride = result.RequiresOverride });
             }
 
-            // Update booking status to Cancelled
-            // TODO: Implement CancelBooking method in repository
-            TempData["SuccessMessage"] = $"Booking {request.BookingNumber} cancelled successfully";
-            return Json(new { success = true });
+            TempData["SuccessMessage"] = result.Message;
+            return Json(new { success = true, message = result.Message, refundAmount = result.Preview?.RefundAmount, approvalStatus = result.Preview?.ApprovalStatus });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> CancellationPreview(string bookingNumber)
+        {
+            if (string.IsNullOrWhiteSpace(bookingNumber))
+            {
+                return Json(new { success = false, message = "Invalid booking number" });
+            }
+
+            var preview = await _bookingRepository.GetCancellationPreviewAsync(bookingNumber, CurrentBranchID, isNoShow: false);
+            if (preview == null)
+            {
+                return Json(new { success = false, message = "Unable to calculate cancellation preview" });
+            }
+
+            return Json(new
+            {
+                success = true,
+                bookingNumber = preview.BookingNumber,
+                amountPaid = preview.AmountPaid,
+                refundAmount = preview.RefundAmount,
+                refundPercent = preview.RefundPercent,
+                hoursBeforeCheckIn = preview.HoursBeforeCheckIn,
+                approvalStatus = preview.ApprovalStatus,
+                policyName = preview.PolicyName,
+                refundBreakdownNote = preview.RefundBreakdownNote
+            });
         }
 
         [HttpGet]
@@ -3067,5 +3152,8 @@ namespace HotelApp.Web.Controllers
     public class CancelBookingRequest
     {
         public string BookingNumber { get; set; } = string.Empty;
+        public string? Reason { get; set; }
+        public bool IsOverride { get; set; }
+        public string? OverrideReason { get; set; }
     }
 }

@@ -7,6 +7,7 @@
     var customerTypes = ViewBag.CustomerTypes as IEnumerable<string> ?? Enumerable.Empty<string>();
     var sources = ViewBag.Sources as IEnumerable<string> ?? Enumerable.Empty<string>();
     var channels = ViewBag.Channels as IEnumerable<string> ?? Enumerable.Empty<string>();
+    var rateTypes = ViewBag.RateTypes as IEnumerable<string> ?? Enumerable.Empty<string>();
 }
 
 <style>
@@ -694,15 +695,44 @@
                     </div>
                 </div>
 
-                <div class="form-field">
-                    <label asp-for="Channel">Channel <span style="color: #e53e3e;">*</span></label>
-                    <select asp-for="Channel">
-                        @foreach (var channel in channels)
-                        {
-                            <option value="@channel">@channel</option>
-                        }
-                    </select>
-                    <span asp-validation-for="Channel" class="text-danger"></span>
+                <div class="form-row-inline">
+                    <div class="form-field">
+                        <label asp-for="Channel">Channel <span style="color: #e53e3e;">*</span></label>
+                        <select asp-for="Channel">
+                            @foreach (var channel in channels)
+                            {
+                                <option value="@channel">@channel</option>
+                            }
+                        </select>
+                        <span asp-validation-for="Channel" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-field">
+                        <label asp-for="RateType">Rate Type <span style="color: #e53e3e;">*</span></label>
+                        <select asp-for="RateType">
+                            @foreach (var rt in rateTypes)
+                            {
+                                <option value="@rt">@rt</option>
+                            }
+                        </select>
+                        <span asp-validation-for="RateType" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <input type="hidden" asp-for="CancellationPolicyId" />
+                <input type="hidden" asp-for="CancellationPolicySnapshot" />
+
+                <div class="form-field" id="cancellationPolicyBox" style="margin-top: 8px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc;">
+                    <div style="display:flex; align-items:center; justify-content: space-between; gap: 10px;">
+                        <div style="font-weight:700; color:#1f2937;">Cancellation Policy</div>
+                        <div id="policyStatus" style="font-size: 12px; color:#6b7280;">Loading…</div>
+                    </div>
+                    <div id="policyDetails" style="margin-top:8px; font-size: 13px; color:#374151;">Select dates/source/customer/rate type to load policy.</div>
+                    <div style="margin-top: 10px; display:flex; align-items:center; gap:10px;">
+                        <input asp-for="CancellationPolicyAccepted" type="checkbox" />
+                        <label asp-for="CancellationPolicyAccepted" style="margin:0; cursor:pointer;">I accept the cancellation policy</label>
+                    </div>
+                    <span asp-validation-for="CancellationPolicyAccepted" class="text-danger"></span>
                 </div>
             </div>
 
@@ -1042,7 +1072,9 @@
 
             function updateSteps() {
                 const guestOk = isFilled('#guestPhone') && isFilled('#guestFirstName') && isFilled('#guestLastName');
-                const stayOk = isFilled('#CheckInDate') && isFilled('#CheckOutDate') && isFilled('#RoomTypeId') && isFilled('#RequiredRooms') && isFilled('#Adults') && isFilled('#CustomerType') && isFilled('#Source') && isFilled('#Channel');
+                const requiresPolicyAcceptance = ($('#Source').val() === 'Website' || $('#Channel').val() === 'DirectWeb');
+                const acceptanceOk = !requiresPolicyAcceptance || $('#CancellationPolicyAccepted').is(':checked');
+                const stayOk = isFilled('#CheckInDate') && isFilled('#CheckOutDate') && isFilled('#RoomTypeId') && isFilled('#RequiredRooms') && isFilled('#Adults') && isFilled('#CustomerType') && isFilled('#Source') && isFilled('#Channel') && isFilled('#RateType') && acceptanceOk;
 
                 setStepCompleted(1, guestOk);
                 setStepCompleted(2, stayOk);
@@ -1105,7 +1137,8 @@
             const lsKeys = {
                 customerType: 'hotelapp.createBooking.customerType',
                 source: 'hotelapp.createBooking.source',
-                channel: 'hotelapp.createBooking.channel'
+                channel: 'hotelapp.createBooking.channel',
+                rateType: 'hotelapp.createBooking.rateType'
             };
 
             function trySetSelectValue(selectId, value) {
@@ -1120,11 +1153,87 @@
                 trySetSelectValue('#CustomerType', localStorage.getItem(lsKeys.customerType));
                 trySetSelectValue('#Source', localStorage.getItem(lsKeys.source));
                 trySetSelectValue('#Channel', localStorage.getItem(lsKeys.channel));
+                trySetSelectValue('#RateType', localStorage.getItem(lsKeys.rateType));
             }
 
             $('#CustomerType').on('change', function(){ localStorage.setItem(lsKeys.customerType, $(this).val()); });
             $('#Source').on('change', function(){ localStorage.setItem(lsKeys.source, $(this).val()); });
             $('#Channel').on('change', function(){ localStorage.setItem(lsKeys.channel, $(this).val()); });
+            $('#RateType').on('change', function(){ localStorage.setItem(lsKeys.rateType, $(this).val()); });
+
+            async function loadCancellationPolicy() {
+                const source = ($('#Source').val() || '').toString();
+                const customerType = ($('#CustomerType').val() || '').toString();
+                const rateType = ($('#RateType').val() || '').toString();
+                const checkIn = ($('#CheckInDate').val() || '').toString();
+
+                const $status = $('#policyStatus');
+                const $details = $('#policyDetails');
+                $status.text('Loading…');
+
+                if (!source || !customerType || !rateType || !checkIn) {
+                    $('#CancellationPolicyId').val('');
+                    $('#CancellationPolicySnapshot').val('');
+                    $status.text('Not ready');
+                    $details.text('Select dates/source/customer/rate type to load policy.');
+                    return;
+                }
+
+                try {
+                    const url = '@Url.Action("Applicable", "CancellationPolicy")'
+                        + `?branchId=@ViewBag.CurrentBranchID&source=${encodeURIComponent(source)}`
+                        + `&customerType=${encodeURIComponent(customerType)}`
+                        + `&rateType=${encodeURIComponent(rateType)}`
+                        + `&checkInDate=${encodeURIComponent(checkIn)}`;
+
+                    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                    const data = await res.json();
+                    if (!data || data.success !== true) {
+                        throw new Error(data?.message || 'Failed to load policy');
+                    }
+
+                    if (!data.found) {
+                        $('#CancellationPolicyId').val('');
+                        $('#CancellationPolicySnapshot').val('');
+                        $status.text('Not configured');
+                        $details.text('No policy found for the selected combination.');
+                        return;
+                    }
+
+                    $('#CancellationPolicyId').val(data.policyId);
+                    $('#CancellationPolicySnapshot').val(data.snapshotJson || '');
+                    $status.text('Loaded');
+
+                    try {
+                        const snap = JSON.parse(data.snapshotJson || '{}');
+                        const name = snap.PolicyName || snap.policyName || 'Policy';
+                        const rules = snap.Rules || snap.rules || [];
+                        const ruleLines = rules.map(r => {
+                            const min = r.MinHoursBeforeCheckIn ?? r.minHoursBeforeCheckIn;
+                            const max = r.MaxHoursBeforeCheckIn ?? r.maxHoursBeforeCheckIn;
+                            const pct = r.RefundPercent ?? r.refundPercent;
+                            const flat = r.FlatDeduction ?? r.flatDeduction;
+                            return `${min}-${max} hrs: ${pct}% refund, flat deduction ₹${(flat ?? 0).toString()}`;
+                        });
+
+                        $details.html(`<div style="font-weight:700;">${name}</div>` + (ruleLines.length ? `<ul style="margin:8px 0 0 16px;">${ruleLines.map(l => `<li>${l}</li>`).join('')}</ul>` : '<div style="margin-top:6px;">No rules defined.</div>'));
+                    } catch {
+                        $details.text('Policy loaded.');
+                    }
+                } catch (e) {
+                    $('#CancellationPolicyId').val('');
+                    $('#CancellationPolicySnapshot').val('');
+                    $status.text('Error');
+                    $details.text(e?.message || 'Failed to load policy');
+                }
+            }
+
+            $('#CustomerType, #Source, #RateType, #CheckInDate, #Channel').on('change', function() {
+                loadCancellationPolicy();
+                updateSteps();
+            });
+
+            loadCancellationPolicy();
 
             // Function to fetch and display room type rate
             function updateRoomTypeRate() {

@@ -54,6 +54,12 @@ public interface IReportsRepository
         DateOnly fromDate,
         DateOnly toDate
     );
+
+    Task<CancellationRegisterReportData> GetCancellationRegisterAsync(
+        int branchId,
+        DateOnly fromDate,
+        DateOnly toDate
+    );
 }
 
 public sealed class ReportsRepository : IReportsRepository
@@ -349,6 +355,73 @@ public sealed class ReportsRepository : IReportsRepository
             Rows = rows
         };
     }
+
+    public async Task<CancellationRegisterReportData> GetCancellationRegisterAsync(int branchId, DateOnly fromDate, DateOnly toDate)
+    {
+        if (_dbConnection.State != ConnectionState.Open)
+        {
+            _dbConnection.Open();
+        }
+
+        var from = fromDate.ToDateTime(TimeOnly.MinValue);
+        var to = toDate.ToDateTime(TimeOnly.MinValue);
+
+        using var grid = await _dbConnection.QueryMultipleAsync(
+            "sp_GetCancellationRegister",
+            new
+            {
+                BranchID = branchId,
+                FromDate = from,
+                ToDate = to
+            },
+            commandType: CommandType.StoredProcedure);
+
+        var summary = (await grid.ReadAsync<CancellationRegisterSummaryRow>()).FirstOrDefault()
+            ?? new CancellationRegisterSummaryRow();
+        var rows = (await grid.ReadAsync<CancellationRegisterDetailRow>()).ToList();
+
+        return new CancellationRegisterReportData
+        {
+            Summary = summary,
+            Rows = rows
+        };
+    }
+}
+
+public sealed class CancellationRegisterReportData
+{
+    public CancellationRegisterSummaryRow Summary { get; set; } = new();
+    public List<CancellationRegisterDetailRow> Rows { get; set; } = new();
+}
+
+public sealed class CancellationRegisterSummaryRow
+{
+    public int TotalCancellations { get; set; }
+    public decimal TotalPaid { get; set; }
+    public decimal TotalRefund { get; set; }
+    public int PendingApprovals { get; set; }
+}
+
+public sealed class CancellationRegisterDetailRow
+{
+    public DateTime CancelRequestedAt { get; set; }
+    public string? BookingNumber { get; set; }
+    public string? GuestName { get; set; }
+    public string? GuestPhone { get; set; }
+    public DateTime? CheckInDate { get; set; }
+    public DateTime? CheckOutDate { get; set; }
+    public string? RateType { get; set; }
+    public string? CancellationType { get; set; }
+    public decimal AmountPaid { get; set; }
+    public decimal RefundPercent { get; set; }
+    public decimal FlatDeduction { get; set; }
+    public decimal DeductionAmount { get; set; }
+    public decimal RefundAmount { get; set; }
+    public string? ApprovalStatus { get; set; }
+    public string? Reason { get; set; }
+    public bool IsOverride { get; set; }
+    public string? OverrideReason { get; set; }
+    public string? RequestedBy { get; set; }
 }
 
 public sealed class BusinessAnalyticsDashboardData

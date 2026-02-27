@@ -1,4 +1,6 @@
 using System.Data;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Linq;
 using Dapper;
 using HotelApp.Web.Models;
@@ -502,6 +504,7 @@ namespace HotelApp.Web.Repositories
             const string insertBookingSql = @"
                 INSERT INTO Bookings (
                     BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
+                    RateType, CancellationPolicyId, CancellationPolicySnapshot, CancellationPolicyAccepted, CancellationPolicyAcceptedAt,
                     CheckInDate, CheckOutDate, Nights, RoomTypeId, RequiredRooms, RoomId, RatePlanId,
                     BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
                     BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
@@ -509,6 +512,7 @@ namespace HotelApp.Web.Repositories
                     LastModifiedBy)
                 VALUES (
                     @BookingNumber, @Status, @PaymentStatus, @Channel, @Source, @CustomerType,
+                    @RateType, @CancellationPolicyId, @CancellationPolicySnapshot, @CancellationPolicyAccepted, @CancellationPolicyAcceptedAt,
                     @CheckInDate, @CheckOutDate, @Nights, @RoomTypeId, @RequiredRooms, @RoomId, @RatePlanId,
                     @BaseAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @DiscountAmount, @TotalAmount, @DepositAmount,
                     @BalanceAmount, @Adults, @Children, @PrimaryGuestFirstName, @PrimaryGuestLastName,
@@ -807,6 +811,7 @@ namespace HotelApp.Web.Repositories
             const string sql = @"
                 SELECT
                     Id, BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
+                    RateType, CancellationPolicyId, CancellationPolicySnapshot, CancellationPolicyAccepted, CancellationPolicyAcceptedAt,
                     CheckInDate, CheckOutDate, ActualCheckInDate, ActualCheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
                     BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
                     BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
@@ -823,6 +828,497 @@ namespace HotelApp.Web.Repositories
 
             await PopulateRelatedCollectionsAsync(new List<Booking> { booking });
             return booking;
+        }
+
+        public async Task<BookingCancellationPreview?> GetCancellationPreviewAsync(string bookingNumber, int requestingBranchId, bool isNoShow = false)
+        {
+            if (string.IsNullOrWhiteSpace(bookingNumber))
+            {
+                return null;
+            }
+
+            var booking = await GetByBookingNumberAsync(bookingNumber);
+            if (booking == null)
+            {
+                return null;
+            }
+
+            if (booking.BranchID != requestingBranchId)
+            {
+                return null;
+            }
+
+            return await ComputeCancellationPreviewAsync(booking, isNoShow, transaction: null);
+        }
+
+        public async Task<BookingCancellationResult> CancelBookingAsync(BookingCancellationCommand command, int requestingBranchId, int performedBy)
+        {
+            if (string.IsNullOrWhiteSpace(command?.BookingNumber))
+            {
+                return new BookingCancellationResult { Success = false, Message = "Invalid booking number" };
+            }
+
+            if (_dbConnection.State != ConnectionState.Open)
+            {
+                _dbConnection.Open();
+            }
+
+            using var transaction = _dbConnection.BeginTransaction();
+
+            try
+            {
+                // Normalize: FK columns (LastModifiedBy, CancelRequestedBy, PerformedBy) reference Users.Id.
+                // 0 is never a valid user ID — use null instead to avoid FK violations.
+                int? performedByNullable = performedBy > 0 ? (int?)performedBy : null;
+
+                // Re-fetch within the transaction for consistency.
+                const string bookingSql = @"
+                    SELECT
+                        Id, BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
+                        RateType, CancellationPolicyId, CancellationPolicySnapshot, CancellationPolicyAccepted, CancellationPolicyAcceptedAt,
+                        CheckInDate, CheckOutDate, ActualCheckInDate, ActualCheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
+                        BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
+                        BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
+                        PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, RequiredRooms, BranchID,
+                        CreatedDate, CreatedBy, LastModifiedDate, LastModifiedBy
+                    FROM Bookings
+                    WHERE BookingNumber = @BookingNumber";
+
+                var booking = await _dbConnection.QueryFirstOrDefaultAsync<Booking>(bookingSql, new { BookingNumber = command.BookingNumber }, transaction);
+                if (booking == null)
+                {
+                    transaction.Rollback();
+                    return new BookingCancellationResult { Success = false, Message = "Booking not found" };
+                }
+
+                if (booking.BranchID != requestingBranchId)
+                {
+                    transaction.Rollback();
+                    return new BookingCancellationResult { Success = false, Message = "Access denied for this branch" };
+                }
+
+                if (string.Equals(booking.Status, "Cancelled", StringComparison.OrdinalIgnoreCase))
+                {
+                    transaction.Rollback();
+                    return new BookingCancellationResult { Success = false, Message = "Booking is already cancelled" };
+                }
+
+                if (booking.ActualCheckOutDate.HasValue || string.Equals(booking.Status, "CheckedOut", StringComparison.OrdinalIgnoreCase))
+                {
+                    transaction.Rollback();
+                    return new BookingCancellationResult { Success = false, Message = "Checked-out bookings cannot be cancelled. Please process checkout first." };
+                }
+
+                // Industry-standard: warn if guest is currently checked in but allow cancel (force checkout path)
+                if (booking.ActualCheckInDate.HasValue || string.Equals(booking.Status, "CheckedIn", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!command.IsOverride)
+                    {
+                        transaction.Rollback();
+                        return new BookingCancellationResult
+                        {
+                            Success = false,
+                            Message = "Guest is currently checked in. Use 'Force Cancel' (override) to cancel an active stay.",
+                            RequiresOverride = true
+                        };
+                    }
+                }
+
+                // Fetch payments WITHIN the same transaction to avoid "connection in pending local transaction" error.
+                booking.Payments = (await _dbConnection.QueryAsync<BookingPayment>(
+                    "SELECT * FROM BookingPayments WHERE BookingId = @BookingId ORDER BY PaidOn DESC",
+                    new { BookingId = booking.Id },
+                    transaction)).ToList();
+
+                var preview = await ComputeCancellationPreviewAsync(booking, command.IsNoShow, transaction);
+                if (preview == null)
+                {
+                    transaction.Rollback();
+                    return new BookingCancellationResult { Success = false, Message = "Unable to calculate refund for cancellation" };
+                }
+
+                // Determine approval status based on hotel settings / override.
+                var approvalStatus = preview.ApprovalStatus;
+                if (command.IsOverride)
+                {
+                    approvalStatus = "Pending";
+                }
+
+                // Insert cancellation register entry.
+                const string insertCancellationSql = @"
+                    INSERT INTO BookingCancellations (
+                        BookingId, BookingNumber, BranchID,
+                        Channel, Source, CustomerType, RateType,
+                        CancellationType, Reason, IsOverride, OverrideReason,
+                        CancelRequestedBy,
+                        CheckInAt, HoursBeforeCheckIn,
+                        AmountPaid, RefundPercent, FlatDeduction, GatewayFeeDeductionPercent, DeductionAmount, RefundAmount,
+                        ApprovalStatus,
+                        PolicyId, PolicySnapshot
+                    )
+                    VALUES (
+                        @BookingId, @BookingNumber, @BranchID,
+                        @Channel, @Source, @CustomerType, @RateType,
+                        @CancellationType, @Reason, @IsOverride, @OverrideReason,
+                        @CancelRequestedBy,
+                        @CheckInAt, @HoursBeforeCheckIn,
+                        @AmountPaid, @RefundPercent, @FlatDeduction, @GatewayFeeDeductionPercent, @DeductionAmount, @RefundAmount,
+                        @ApprovalStatus,
+                        @PolicyId, @PolicySnapshot
+                    );
+                    SELECT CAST(SCOPE_IDENTITY() as int);";
+
+                _ = await _dbConnection.ExecuteScalarAsync<int>(
+                    insertCancellationSql,
+                    new
+                    {
+                        BookingId = booking.Id,
+                        BookingNumber = booking.BookingNumber,
+                        BranchID = booking.BranchID,
+                        Channel = booking.Channel,
+                        Source = booking.Source,
+                        CustomerType = booking.CustomerType,
+                        RateType = booking.RateType,
+                        CancellationType = string.IsNullOrWhiteSpace(command.CancellationType) ? "Staff" : command.CancellationType,
+                        Reason = (command.Reason ?? string.Empty).Trim(),
+                        IsOverride = command.IsOverride,
+                        OverrideReason = (command.OverrideReason ?? string.Empty).Trim(),
+                        CancelRequestedBy = performedByNullable,
+                        CheckInAt = preview.CheckInAt,
+                        HoursBeforeCheckIn = preview.HoursBeforeCheckIn,
+                        AmountPaid = preview.AmountPaid,
+                        RefundPercent = preview.RefundPercent,
+                        FlatDeduction = preview.FlatDeduction,
+                        GatewayFeeDeductionPercent = preview.GatewayFeeDeductionPercent,
+                        DeductionAmount = preview.DeductionAmount,
+                        RefundAmount = preview.RefundAmount,
+                        ApprovalStatus = approvalStatus,
+                        PolicyId = preview.PolicyId,
+                        PolicySnapshot = preview.PolicySnapshotJson
+                    },
+                    transaction);
+
+                // Release any assigned rooms.
+                var activeRoomIds = (await _dbConnection.QueryAsync<int>(
+                    "SELECT RoomId FROM BookingRooms WHERE BookingId = @BookingId AND IsActive = 1",
+                    new { BookingId = booking.Id },
+                    transaction)).ToList();
+
+                if (booking.RoomId.HasValue && booking.RoomId.Value > 0)
+                {
+                    activeRoomIds.Add(booking.RoomId.Value);
+                }
+
+                var roomIdsToRelease = activeRoomIds.Where(x => x > 0).Distinct().ToArray();
+
+                if (roomIdsToRelease.Length > 0)
+                {
+                    await _dbConnection.ExecuteAsync(
+                        "UPDATE Rooms SET Status = 'Available', LastModifiedDate = GETDATE() WHERE Id IN @Ids",
+                        new { Ids = roomIdsToRelease },
+                        transaction);
+                }
+
+                await _dbConnection.ExecuteAsync(
+                    "UPDATE BookingRooms SET IsActive = 0, UnassignedDate = GETUTCDATE() WHERE BookingId = @BookingId AND IsActive = 1",
+                    new { BookingId = booking.Id },
+                    transaction);
+
+                // Update booking status.
+                await _dbConnection.ExecuteAsync(
+                    "UPDATE Bookings SET Status = 'Cancelled', LastModifiedDate = GETDATE(), LastModifiedBy = @UserId WHERE Id = @BookingId",
+                    new { BookingId = booking.Id, UserId = performedByNullable },
+                    transaction);
+
+                var approvalNote = approvalStatus == "Pending" ? " (approval pending)" : string.Empty;
+                await AddAuditLogAsync(
+                    booking.Id,
+                    booking.BookingNumber,
+                    command.IsNoShow ? "NoShowCancelled" : "Cancelled",
+                    $"Booking cancelled. Refund: ₹{preview.RefundAmount:N2}{approvalNote}",
+                    booking.Status,
+                    "Cancelled",
+                    performedByNullable,
+                    transaction);
+
+                transaction.Commit();
+
+                preview.ApprovalStatus = approvalStatus;
+
+                return new BookingCancellationResult
+                {
+                    Success = true,
+                    Message = approvalStatus == "Pending"
+                        ? $"Booking cancelled. Refund ₹{preview.RefundAmount:N2} is pending approval."
+                        : $"Booking cancelled. Refund ₹{preview.RefundAmount:N2}.",
+                    Preview = preview
+                };
+            }
+            catch (Exception ex)
+            {
+                try { transaction.Rollback(); } catch { /* best-effort */ }
+                return new BookingCancellationResult { Success = false, Message = ex.GetBaseException().Message };
+            }
+        }
+
+        private async Task<BookingCancellationPreview?> ComputeCancellationPreviewAsync(Booking booking, bool isNoShow, IDbTransaction? transaction)
+        {
+            // Pull check-in time + approval threshold from HotelSettings.
+            var hotel = await _dbConnection.QueryFirstOrDefaultAsync<HotelSettings>(
+                "SELECT TOP 1 CheckInTime, NoShowGraceHours, CancellationRefundApprovalThreshold FROM HotelSettings WHERE BranchID = @BranchID AND IsActive = 1",
+                new { booking.BranchID },
+                transaction);
+
+            var checkInTime = hotel?.CheckInTime ?? new TimeSpan(14, 0, 0);
+            var checkInAt = booking.CheckInDate.Date.Add(checkInTime);
+            var hoursBefore = (int)Math.Floor((checkInAt - DateTime.Now).TotalHours);
+            if (hoursBefore < 0) hoursBefore = 0;
+
+            var amountPaid = Math.Max(0m, Math.Round((booking.Payments?.Sum(p => p.Amount) ?? 0m), 2, MidpointRounding.AwayFromZero));
+            var rateType = string.IsNullOrWhiteSpace(booking.RateType) ? "Standard" : booking.RateType.Trim();
+
+            // Non-refundable/no-show shortcuts.
+            if (isNoShow)
+            {
+                return new BookingCancellationPreview
+                {
+                    BookingNumber = booking.BookingNumber,
+                    BookingId = booking.Id,
+                    BranchID = booking.BranchID,
+                    CheckInAt = checkInAt,
+                    HoursBeforeCheckIn = hoursBefore,
+                    RateType = rateType,
+                    IsNoShow = true,
+                    AmountPaid = amountPaid,
+                    RefundPercent = 0,
+                    FlatDeduction = 0,
+                    GatewayFeeDeductionPercent = 0,
+                    DeductionAmount = 0,
+                    RefundAmount = 0,
+                    PolicyId = booking.CancellationPolicyId,
+                    PolicySnapshotJson = booking.CancellationPolicySnapshot,
+                    ApprovalThreshold = hotel?.CancellationRefundApprovalThreshold,
+                    ApprovalStatus = "None"
+                };
+            }
+
+            var upperRate = rateType.Replace("_", "-").ToUpperInvariant();
+            if (upperRate is "NONREFUNDABLE" or "NON-REFUNDABLE")
+            {
+                return new BookingCancellationPreview
+                {
+                    BookingNumber = booking.BookingNumber,
+                    BookingId = booking.Id,
+                    BranchID = booking.BranchID,
+                    CheckInAt = checkInAt,
+                    HoursBeforeCheckIn = hoursBefore,
+                    RateType = rateType,
+                    IsNoShow = false,
+                    AmountPaid = amountPaid,
+                    RefundPercent = 0,
+                    FlatDeduction = 0,
+                    GatewayFeeDeductionPercent = 0,
+                    DeductionAmount = 0,
+                    RefundAmount = 0,
+                    PolicyId = booking.CancellationPolicyId,
+                    PolicySnapshotJson = booking.CancellationPolicySnapshot,
+                    ApprovalThreshold = hotel?.CancellationRefundApprovalThreshold,
+                    ApprovalStatus = "None"
+                };
+            }
+
+            // Resolve the applicable policy (booking-time snapshot is preferred).
+            var policyId = booking.CancellationPolicyId;
+            CancellationPolicy? policy = null;
+            List<CancellationPolicyRule> rules = new();
+
+            if (policyId.HasValue && policyId.Value > 0)
+            {
+                policy = await _dbConnection.QueryFirstOrDefaultAsync<CancellationPolicy>(
+                    "SELECT TOP 1 * FROM CancellationPolicies WHERE Id = @Id AND IsActive = 1",
+                    new { Id = policyId.Value },
+                    transaction);
+            }
+
+            if (policy == null)
+            {
+                // 1st fallback: exact match on Source + CustomerType + RateType
+                policy = await _dbConnection.QueryFirstOrDefaultAsync<CancellationPolicy>(
+                    @"SELECT TOP 1 *
+                      FROM CancellationPolicies
+                      WHERE BranchID = @BranchID
+                        AND IsActive = 1
+                        AND BookingSource = @Source
+                        AND CustomerType = @CustomerType
+                        AND RateType = @RateType
+                        AND (ValidFrom IS NULL OR ValidFrom <= CAST(@CheckInDate AS DATE))
+                        AND (ValidTo IS NULL OR ValidTo >= CAST(@CheckInDate AS DATE))
+                      ORDER BY COALESCE(ValidFrom, '1900-01-01') DESC, Id DESC",
+                    new
+                    {
+                        BranchID = booking.BranchID,
+                        Source = booking.Source,
+                        CustomerType = booking.CustomerType,
+                        RateType = rateType,
+                        CheckInDate = booking.CheckInDate
+                    },
+                    transaction);
+
+                // 2nd fallback: ignore RateType (covers bookings created before RateType column existed)
+                if (policy == null)
+                {
+                    policy = await _dbConnection.QueryFirstOrDefaultAsync<CancellationPolicy>(
+                        @"SELECT TOP 1 *
+                          FROM CancellationPolicies
+                          WHERE BranchID = @BranchID
+                            AND IsActive = 1
+                            AND BookingSource = @Source
+                            AND CustomerType = @CustomerType
+                            AND (ValidFrom IS NULL OR ValidFrom <= CAST(@CheckInDate AS DATE))
+                            AND (ValidTo IS NULL OR ValidTo >= CAST(@CheckInDate AS DATE))
+                          ORDER BY COALESCE(ValidFrom, '1900-01-01') DESC, Id DESC",
+                        new
+                        {
+                            BranchID = booking.BranchID,
+                            Source = booking.Source,
+                            CustomerType = booking.CustomerType,
+                            CheckInDate = booking.CheckInDate
+                        },
+                        transaction);
+                }
+
+                // 3rd fallback: any active policy for the branch matching just Source
+                if (policy == null && !string.IsNullOrWhiteSpace(booking.Source))
+                {
+                    policy = await _dbConnection.QueryFirstOrDefaultAsync<CancellationPolicy>(
+                        @"SELECT TOP 1 *
+                          FROM CancellationPolicies
+                          WHERE BranchID = @BranchID
+                            AND IsActive = 1
+                            AND BookingSource = @Source
+                            AND (ValidFrom IS NULL OR ValidFrom <= CAST(@CheckInDate AS DATE))
+                            AND (ValidTo IS NULL OR ValidTo >= CAST(@CheckInDate AS DATE))
+                          ORDER BY COALESCE(ValidFrom, '1900-01-01') DESC, Id DESC",
+                        new { BranchID = booking.BranchID, Source = booking.Source, CheckInDate = booking.CheckInDate },
+                        transaction);
+                }
+
+                policyId = policy?.Id;
+            }
+
+            if (policyId.HasValue && policyId.Value > 0)
+            {
+                rules = (await _dbConnection.QueryAsync<CancellationPolicyRule>(
+                    "SELECT * FROM CancellationPolicyRules WHERE PolicyId = @PolicyId AND IsActive = 1 ORDER BY SortOrder, MinHoursBeforeCheckIn DESC",
+                    new { PolicyId = policyId.Value },
+                    transaction)).ToList();
+            }
+
+            var matchedRule = rules.FirstOrDefault(r => hoursBefore >= r.MinHoursBeforeCheckIn && hoursBefore <= r.MaxHoursBeforeCheckIn);
+
+            // Best-fit fallback: if no exact bracket matches (e.g. hours > all MaxHoursBeforeCheckIn defined),
+            // use the rule whose MinHoursBeforeCheckIn is highest but still <= hoursBefore.
+            // This handles policies where the top slab has a finite MaxHoursBeforeCheckIn.
+            if (matchedRule == null && rules.Count > 0)
+            {
+                matchedRule = rules
+                    .Where(r => hoursBefore >= r.MinHoursBeforeCheckIn)
+                    .OrderByDescending(r => r.MinHoursBeforeCheckIn)
+                    .FirstOrDefault();
+            }
+
+            var refundPercent = matchedRule?.RefundPercent ?? 0m;
+            var flatDeduction = matchedRule?.FlatDeduction ?? 0m;
+            var gatewayPct = matchedRule?.GatewayFeeDeductionPercent ?? policy?.GatewayFeeDeductionPercent ?? 0m;
+
+            var refundRaw = Math.Round(amountPaid * (refundPercent / 100m), 2, MidpointRounding.AwayFromZero);
+            var gatewayDeduction = Math.Round(amountPaid * (gatewayPct / 100m), 2, MidpointRounding.AwayFromZero);
+            var deduction = Math.Round(flatDeduction + gatewayDeduction, 2, MidpointRounding.AwayFromZero);
+
+            var refundFinal = refundRaw - deduction;
+            if (refundFinal < 0m) refundFinal = 0m;
+            if (refundFinal > amountPaid) refundFinal = amountPaid;
+            refundFinal = Math.Round(refundFinal, 2, MidpointRounding.AwayFromZero);
+
+            var threshold = hotel?.CancellationRefundApprovalThreshold;
+            var approvalStatus = (threshold.HasValue && refundFinal > threshold.Value) ? "Pending" : "Approved";
+
+            // Build human-readable breakdown note.
+            string breakdownNote;
+            if (policy == null)
+                breakdownNote = "No matching cancellation policy found for this booking.";
+            else if (matchedRule == null)
+                breakdownNote = $"Policy '{policy.PolicyName}' found but no rule covers {hoursBefore} hrs before check-in.";
+            else
+                breakdownNote = $"Policy '{policy.PolicyName}': {matchedRule.RefundPercent:0.##}% refund (rule: {matchedRule.MinHoursBeforeCheckIn}–{matchedRule.MaxHoursBeforeCheckIn} hrs).";
+            if (flatDeduction > 0) breakdownNote += $" Flat deduction: ₹{flatDeduction:N2}.";
+            if (gatewayPct > 0) breakdownNote += $" Gateway fee: {gatewayPct:0.##}%.";
+
+            string? snapshotJson = booking.CancellationPolicySnapshot;
+            if (string.IsNullOrWhiteSpace(snapshotJson) && policy != null)
+            {
+                var snapshot = new
+                {
+                    policy.Id,
+                    policy.PolicyName,
+                    policy.BranchID,
+                    policy.BookingSource,
+                    policy.CustomerType,
+                    policy.RateType,
+                    policy.ValidFrom,
+                    policy.ValidTo,
+                    policy.NoShowRefundAllowed,
+                    policy.ApprovalRequired,
+                    policy.GatewayFeeDeductionPercent,
+                    Rules = rules.Select(r => new
+                    {
+                        r.Id,
+                        r.MinHoursBeforeCheckIn,
+                        r.MaxHoursBeforeCheckIn,
+                        r.RefundPercent,
+                        r.FlatDeduction,
+                        r.GatewayFeeDeductionPercent,
+                        r.SortOrder
+                    }).ToList()
+                };
+
+                snapshotJson = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions
+                {
+                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                });
+
+                // Persist snapshot back to booking for audit safety.
+                await _dbConnection.ExecuteAsync(
+                    "UPDATE Bookings SET CancellationPolicyId = @PolicyId, CancellationPolicySnapshot = @Snapshot WHERE Id = @BookingId",
+                    new { PolicyId = policy.Id, Snapshot = snapshotJson, BookingId = booking.Id },
+                    transaction);
+
+                booking.CancellationPolicyId = policy.Id;
+                booking.CancellationPolicySnapshot = snapshotJson;
+            }
+
+            return new BookingCancellationPreview
+            {
+                BookingNumber = booking.BookingNumber,
+                BookingId = booking.Id,
+                BranchID = booking.BranchID,
+                CheckInAt = checkInAt,
+                HoursBeforeCheckIn = hoursBefore,
+                RateType = rateType,
+                IsNoShow = false,
+                AmountPaid = amountPaid,
+                RefundPercent = refundPercent,
+                FlatDeduction = flatDeduction,
+                GatewayFeeDeductionPercent = gatewayPct,
+                DeductionAmount = Math.Round(deduction, 2, MidpointRounding.AwayFromZero),
+                RefundAmount = refundFinal,
+                PolicyId = policyId,
+                PolicyName = policy?.PolicyName,
+                PolicySnapshotJson = snapshotJson,
+                ApprovalThreshold = threshold,
+                ApprovalStatus = approvalStatus,
+                RefundBreakdownNote = breakdownNote
+            };
         }
 
         private async Task PopulateRelatedCollectionsAsync(IList<Booking> bookings)
@@ -3327,6 +3823,37 @@ WHERE BookingID = @BookingID
                 // DB hasn't run the migration yet.
                 return null;
             }
+        }
+
+        public async Task<BookingCancellationRecord?> GetBookingCancellationRecordAsync(string bookingNumber, int branchId)
+        {
+            const string sql = @"
+                SELECT TOP 1
+                    bc.Id,
+                    bc.BookingId,
+                    b.BookingNumber,
+                    bc.AmountPaid,
+                    bc.RefundPercent,
+                    ISNULL(bc.FlatDeduction, 0)              AS FlatDeduction,
+                    ISNULL(bc.GatewayFeeDeductionPercent, 0) AS GatewayFeeDeductionPercent,
+                    ISNULL(bc.DeductionAmount, 0)            AS DeductionAmount,
+                    bc.RefundAmount,
+                    ISNULL(bc.ApprovalStatus, 'None')        AS ApprovalStatus,
+                    bc.Reason,
+                    ISNULL(bc.CancellationType, 'Staff')     AS CancellationType,
+                    ISNULL(bc.IsOverride, 0)                 AS IsOverride,
+                    bc.OverrideReason,
+                    bc.HoursBeforeCheckIn,
+                    bc.CreatedDate
+                FROM BookingCancellations bc
+                INNER JOIN Bookings b ON b.Id = bc.BookingId
+                WHERE b.BookingNumber = @BookingNumber
+                  AND b.BranchID      = @BranchId
+                ORDER BY bc.Id DESC";
+
+            return await _dbConnection.QueryFirstOrDefaultAsync<BookingCancellationRecord>(
+                sql,
+                new { BookingNumber = bookingNumber, BranchId = branchId });
         }
     }
 }

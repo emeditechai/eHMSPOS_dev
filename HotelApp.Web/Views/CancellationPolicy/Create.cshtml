@@ -1,0 +1,342 @@
+@model HotelApp.Web.ViewModels.CancellationPolicyEditViewModel
+@{
+    ViewData["Title"] = "Create Cancellation Policy";
+    var rateTypes = ViewBag.RateTypes as IEnumerable<string> ?? Enumerable.Empty<string>();
+    var customerTypes = ViewBag.CustomerTypes as IEnumerable<string> ?? Enumerable.Empty<string>();
+    var sources = ViewBag.Sources as IEnumerable<string> ?? Enumerable.Empty<string>();
+}
+
+<style>
+    .master-create-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        padding: 30px 50px;
+        max-width: 95%;
+        width: 100%;
+        margin: 0 auto;
+    }
+
+    .master-create-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .master-create-header h3 {
+        margin: 0;
+        color: var(--primary);
+        font-size: 24px;
+        font-weight: 600;
+    }
+
+    .master-form-section {
+        margin-bottom: 25px;
+    }
+
+    .section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .section-title i {
+        color: var(--primary);
+    }
+
+    .master-form-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px 25px;
+    }
+
+    .master-form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .master-form-group label {
+        font-weight: 500;
+        margin-bottom: 8px;
+        color: #333;
+        font-size: 14px;
+    }
+
+    .master-form-group input,
+    .master-form-group select,
+    .master-form-group textarea {
+        padding: 12px 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .master-form-group input:focus,
+    .master-form-group select:focus,
+    .master-form-group textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(26, 42, 108, 0.1);
+    }
+
+    .master-form-group-full {
+        grid-column: 1 / -1;
+    }
+
+    .master-form-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: flex-end;
+        padding-top: 25px;
+        border-top: 2px solid #f0f0f0;
+    }
+
+    .master-form-actions .btn-save,
+    .master-form-actions .btn-cancel {
+        padding: 12px 30px;
+        font-size: 15px;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+
+    .page-header {
+        max-width: 95%;
+        margin: 0 auto 20px;
+    }
+
+    @@media (max-width: 1400px) {
+        .master-form-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .master-form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="page-header">
+    <h2><i class="fas fa-ban"></i> Cancellation Policies</h2>
+</div>
+
+<div class="master-create-container">
+    <div class="master-create-header">
+        <h3><i class="fas fa-plus-circle"></i> Add Policy</h3>
+    </div>
+
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+        <div class="master-form-section">
+            <div class="section-title">
+                <i class="fas fa-info-circle"></i>
+                Policy
+            </div>
+
+            <div class="master-form-grid">
+                <div class="master-form-group master-form-group-full">
+                    <label asp-for="PolicyName">Policy Name <span class="text-danger">*</span></label>
+                    <input asp-for="PolicyName" type="text" placeholder="e.g., Standard - Website - B2C" required />
+                    <span asp-validation-for="PolicyName" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="BookingSource">Source <span class="text-danger">*</span></label>
+                    <select asp-for="BookingSource">
+                        @foreach (var s in sources)
+                        {
+                            <option value="@s">@s</option>
+                        }
+                    </select>
+                    <span asp-validation-for="BookingSource" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="CustomerType">Customer Type <span class="text-danger">*</span></label>
+                    <select asp-for="CustomerType">
+                        @foreach (var ct in customerTypes)
+                        {
+                            <option value="@ct">@ct</option>
+                        }
+                    </select>
+                    <span asp-validation-for="CustomerType" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="RateType">Rate Type <span class="text-danger">*</span></label>
+                    <select asp-for="RateType">
+                        @foreach (var rt in rateTypes)
+                        {
+                            <option value="@rt">@rt</option>
+                        }
+                    </select>
+                    <span asp-validation-for="RateType" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="ValidFrom">Valid From</label>
+                    <input asp-for="ValidFrom" type="date" />
+                    <span asp-validation-for="ValidFrom" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="ValidTo">Valid To</label>
+                    <input asp-for="ValidTo" type="date" />
+                    <span asp-validation-for="ValidTo" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="GatewayFeeDeductionPercent">Gateway Fee Deduction %</label>
+                    <input asp-for="GatewayFeeDeductionPercent" type="number" step="0.01" min="0" max="100" placeholder="0" />
+                    <span asp-validation-for="GatewayFeeDeductionPercent" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="IsActive">Status</label>
+                    <select asp-for="IsActive">
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
+                    </select>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="NoShowRefundAllowed">No-Show Refund Allowed</label>
+                    <select asp-for="NoShowRefundAllowed">
+                        <option value="false">No</option>
+                        <option value="true">Yes</option>
+                    </select>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="ApprovalRequired">Approval Required</label>
+                    <select asp-for="ApprovalRequired">
+                        <option value="false">No</option>
+                        <option value="true">Yes</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="master-form-section">
+            <div class="section-title">
+                <i class="fas fa-list"></i>
+                Rules (slabs)
+            </div>
+
+            <div class="table-container" style="overflow: visible;">
+                <table class="data-table" id="rulesTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 120px;">Min Hours</th>
+                            <th style="width: 120px;">Max Hours</th>
+                            <th style="width: 140px;">Refund %</th>
+                            <th style="width: 160px;">Flat Deduction</th>
+                            <th style="width: 180px;">Gateway Fee %</th>
+                            <th style="width: 120px;">Active</th>
+                            <th style="width: 120px;">Sort</th>
+                            <th style="width: 120px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @for (var i = 0; i < Model.Rules.Count; i++)
+                    {
+                        <tr>
+                            <td><input class="form-control" type="number" min="0" asp-for="Rules[i].MinHoursBeforeCheckIn" /></td>
+                            <td><input class="form-control" type="number" min="0" asp-for="Rules[i].MaxHoursBeforeCheckIn" /></td>
+                            <td><input class="form-control" type="number" step="0.01" min="0" max="100" asp-for="Rules[i].RefundPercent" /></td>
+                            <td><input class="form-control" type="number" step="0.01" min="0" asp-for="Rules[i].FlatDeduction" /></td>
+                            <td><input class="form-control" type="number" step="0.01" min="0" max="100" asp-for="Rules[i].GatewayFeeDeductionPercent" /></td>
+                            <td>
+                                <select class="form-control" asp-for="Rules[i].IsActive">
+                                    <option value="true">Yes</option>
+                                    <option value="false">No</option>
+                                </select>
+                            </td>
+                            <td><input class="form-control" type="number" step="1" asp-for="Rules[i].SortOrder" /></td>
+                            <td>
+                                <button type="button" class="btn-filter-clear" onclick="removeRuleRow(this)">
+                                    <i class="fas fa-trash"></i> Remove
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top: 12px; display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" class="btn-filter-apply" onclick="addRuleRow()">
+                    <i class="fas fa-plus"></i> Add Rule
+                </button>
+            </div>
+            <span asp-validation-for="Rules" class="text-danger"></span>
+        </div>
+
+        <div class="master-form-actions">
+            <a asp-action="Index" class="btn-cancel">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+            <button type="submit" class="btn-save">
+                <i class="fas fa-save"></i> Save Policy
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        function addRuleRow() {
+            const tbody = document.querySelector('#rulesTable tbody');
+            const index = tbody.querySelectorAll('tr').length;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input class="form-control" type="number" min="0" name="Rules[${index}].MinHoursBeforeCheckIn" value="0" /></td>
+                <td><input class="form-control" type="number" min="0" name="Rules[${index}].MaxHoursBeforeCheckIn" value="0" /></td>
+                <td><input class="form-control" type="number" step="0.01" min="0" max="100" name="Rules[${index}].RefundPercent" value="0" /></td>
+                <td><input class="form-control" type="number" step="0.01" min="0" name="Rules[${index}].FlatDeduction" value="0" /></td>
+                <td><input class="form-control" type="number" step="0.01" min="0" max="100" name="Rules[${index}].GatewayFeeDeductionPercent" value="" /></td>
+                <td>
+                    <select class="form-control" name="Rules[${index}].IsActive">
+                        <option value="true" selected>Yes</option>
+                        <option value="false">No</option>
+                    </select>
+                </td>
+                <td><input class="form-control" type="number" step="1" name="Rules[${index}].SortOrder" value="${(index + 1) * 10}" /></td>
+                <td>
+                    <button type="button" class="btn-filter-clear" onclick="removeRuleRow(this)">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                </td>`;
+            tbody.appendChild(tr);
+        }
+
+        function removeRuleRow(btn) {
+            const tr = btn.closest('tr');
+            if (!tr) return;
+            const tbody = tr.closest('tbody');
+            tr.remove();
+
+            // Renumber names so model binder binds correctly.
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            rows.forEach((row, idx) => {
+                row.querySelectorAll('input, select').forEach(el => {
+                    const name = el.getAttribute('name');
+                    if (!name) return;
+                    el.setAttribute('name', name.replace(/Rules\[\d+\]/g, `Rules[${idx}]`));
+                });
+            });
+        }
+    </script>
+}

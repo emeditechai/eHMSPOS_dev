@@ -11,6 +11,7 @@ namespace HotelApp.Web.Models
         public string Channel { get; set; } = string.Empty;
         public string Source { get; set; } = string.Empty;
         public string CustomerType { get; set; } = string.Empty;
+        public string RateType { get; set; } = "Standard";
         public DateTime CheckInDate { get; set; }
         public DateTime CheckOutDate { get; set; }
         public DateTime? ActualCheckInDate { get; set; }
@@ -41,6 +42,11 @@ namespace HotelApp.Web.Models
         public int? CreatedBy { get; set; }
         public DateTime LastModifiedDate { get; set; }
         public int? LastModifiedBy { get; set; }
+
+        public int? CancellationPolicyId { get; set; }
+        public string? CancellationPolicySnapshot { get; set; }
+        public bool CancellationPolicyAccepted { get; set; }
+        public DateTime? CancellationPolicyAcceptedAt { get; set; }
 
         public RoomType? RoomType { get; set; }
         public Room? Room { get; set; }
@@ -112,6 +118,7 @@ namespace HotelApp.Web.Models
         public int? BankId { get; set; }
         public DateTime? ChequeDate { get; set; }
         public bool IsAdvancePayment { get; set; } = false;
+        public bool IsRefund { get; set; } = false;
     }
 
     public class BookingRoomNight
