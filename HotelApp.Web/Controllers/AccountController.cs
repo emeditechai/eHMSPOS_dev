@@ -186,6 +186,7 @@ public class AccountController : Controller
         HttpContext.Session.SetString("BranchName", selectedBranch.BranchName);
         HttpContext.Session.SetInt32("SelectedRoleId", selectedRoleId);
         HttpContext.Session.SetString("SelectedRoleName", selectedRoleName);
+        HttpContext.Session.SetString("IsHOBranch", selectedBranch.IsHOBranch ? "1" : "0");
 
         // If multiple roles, go to role selection screen first
         if (roles.Count > 1)

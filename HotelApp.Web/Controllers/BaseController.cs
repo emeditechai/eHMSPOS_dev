@@ -66,7 +66,17 @@ namespace HotelApp.Web.Controllers
             ViewBag.CurrentRoleId = currentRoleId;
             ViewBag.SelectedRoleId = currentRoleId;
             ViewBag.SelectedRoleName = currentRoleName;
+
+            var isHO = HttpContext.Session.GetString("IsHOBranch");
+            ViewBag.CurrentBranchIsHO = isHO == "1";
+            ViewBag.CurrentRoleIsAdmin = currentRoleName?.Equals("Administrator", StringComparison.OrdinalIgnoreCase) == true;
         }
+
+        /// <summary>True when logged-in branch is marked IsHOBranch AND active role is Administrator.</summary>
+        protected bool IsHOBranchAdmin =>
+            (HttpContext.Session.GetString("IsHOBranch") == "1") &&
+            (HttpContext.Session.GetString("SelectedRoleName")
+                ?.Equals("Administrator", StringComparison.OrdinalIgnoreCase) == true);
 
         protected int GetCurrentBranchID()
         {

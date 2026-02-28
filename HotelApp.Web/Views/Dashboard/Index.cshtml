@@ -9,20 +9,30 @@
     var revenueData = ViewBag.RevenueData as IEnumerable<RevenueData>;
     var roomTypeDistribution = ViewBag.RoomTypeDistribution as IEnumerable<RoomTypeDistribution>;
     var recentBookings = ViewBag.RecentBookings as IEnumerable<RecentBooking>;
+    var currentBranchName = ViewBag.CurrentBranchName as string ?? "Head Office";
+    var isHOBranch = (bool)(ViewBag.CurrentBranchIsHO ?? false);
+    var hotelName = ViewBag.HotelName as string;
+    var displayTitle = !string.IsNullOrWhiteSpace(hotelName) ? hotelName : currentBranchName;
 }
 
 <div class="main-content dashboard-main-content">
     <div class="top-bar">
         <div class="page-title">
-            <h1>Dashboard Overview</h1>
-            <p>Welcome back, @displayName! Here's what's happening today.</p>
-        </div>
-        <div class="user-info">
-            <div class="user-details">
-                <div class="user-name">@displayName</div>
+            <h1>@displayTitle</h1>
+            <div class="dashboard-branch-row">
+                <span class="db-branch-label"><i class="fas fa-building"></i> Active Branch:</span>
+                <span class="db-branch-name">@currentBranchName</span>
+                @if (isHOBranch)
+                {
+                    <span class="db-branch-badge db-badge-ho"><i class="fas fa-star"></i> Head Office</span>
+                }
+                else
+                {
+                    <span class="db-branch-badge db-badge-branch"><i class="fas fa-map-marker-alt"></i> Branch</span>
+                }
                 @if (!string.IsNullOrWhiteSpace(selectedRoleName))
                 {
-                    <div class="user-role">@selectedRoleName</div>
+                    <span class="db-role-badge"><i class="fas fa-user-shield"></i> @selectedRoleName</span>
                 }
             </div>
         </div>

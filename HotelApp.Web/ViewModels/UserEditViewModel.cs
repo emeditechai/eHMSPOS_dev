@@ -24,4 +24,8 @@ public class UserEditViewModel
     public List<Role> AvailableRoles { get; set; } = new();
     public IFormFile? ProfilePictureFile { get; set; }
     public string? ProfilePicturePath { get; set; }
+    /// <summary>When set, user is locked to this branch only (non-HO-Admin).</summary>
+    public int? RestrictToBranchId { get; set; }
+    /// <summary>Whether multi-branch assignment is allowed (HO-Admin only).</summary>
+    public bool IsMultiBranchAllowed { get; set; } = true;
 }

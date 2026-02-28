@@ -19,4 +19,8 @@ public class UserCreateViewModel
     public List<HotelApp.Web.Models.Branch> AvailableBranches { get; set; } = new();
     public List<HotelApp.Web.Models.Role> AvailableRoles { get; set; } = new();
     public IFormFile? ProfilePictureFile { get; set; }
+    /// <summary>When set, user is locked to this branch only (non-HO-Admin).</summary>
+    public int? RestrictToBranchId { get; set; }
+    /// <summary>Whether multi-branch assignment is allowed (HO-Admin only).</summary>
+    public bool IsMultiBranchAllowed { get; set; } = true;
 }

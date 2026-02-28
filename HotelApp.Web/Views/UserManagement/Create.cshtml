@@ -140,6 +140,14 @@
         <!-- Branch Access & Roles -->
         <div class="uc-section">
             <div class="uc-section-title"><i class="fas fa-building"></i> Branch Access &amp; Roles <span class="text-danger">*</span></div>
+            @if (!Model.IsMultiBranchAllowed && Model.RestrictToBranchId.HasValue)
+            {
+                var lockedBranch = Model.AvailableBranches.FirstOrDefault(b => b.BranchID == Model.RestrictToBranchId.Value);
+                <div style="background:#f0f4ff;border:1px solid #c8d3f5;border-radius:8px;padding:10px 16px;margin-bottom:14px;font-size:13px;color:#1a2a6c;">
+                    <i class="fas fa-lock" style="margin-right:6px;"></i>
+                    Users can only be created for your branch: <strong>@(lockedBranch?.BranchCode) – @(lockedBranch?.BranchName)</strong>
+                </div>
+            }
             <div class="bwr-grid">
                 <div class="uc-field">
                     <label>Branch Access <span class="text-danger">*</span></label>
@@ -187,12 +195,14 @@ function previewProfilePic(input, previewId) {
         reader.readAsDataURL(input.files[0]);
     }
 }
- = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+var braAllBranches = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
     Model.AvailableBranches.Select(b => new { id = b.BranchID, name = b.BranchName, code = b.BranchCode })
 ));
 var braAllRoles = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
     Model.AvailableRoles.Select(r => new { id = r.Id, name = r.Name })
 ));
+var braRestrictToBranchId = @(Model.RestrictToBranchId.HasValue ? Model.RestrictToBranchId.Value.ToString() : "null");
+var braIsMultiBranchAllowed = @(Model.IsMultiBranchAllowed ? "true" : "false");
 var braSelectedBranches = new Set();
 var braState = {};
 
@@ -289,6 +299,21 @@ document.addEventListener('click', function() {
 
 buildBranchDropdown();
 buildRolesDropdown();
+
+// If restricted to a single branch, auto-select it and disable the dropdown
+if (!braIsMultiBranchAllowed && braRestrictToBranchId !== null) {
+    braSelectedBranches.add(braRestrictToBranchId);
+    updateBranchTrigger();
+    buildRolesDropdown();
+    braSyncJson();
+    // Disable branch trigger so user cannot change it
+    var braTrg = document.getElementById('branchTrigger');
+    braTrg.style.pointerEvents = 'none';
+    braTrg.style.opacity = '0.75';
+    braTrg.style.cursor = 'not-allowed';
+    braTrg.style.background = '#f5f5f5';
+}
+
 setupDropdown('branchTrigger', 'branchPanel');
 setupDropdown('rolesTrigger', 'rolesPanel');
 

@@ -163,6 +163,14 @@
         <!-- Branch Access & Roles -->
         <div class="uc-section">
             <div class="uc-section-title"><i class="fas fa-building"></i> Branch Access &amp; Roles <span class="text-danger">*</span></div>
+            @if (!Model.IsMultiBranchAllowed && Model.RestrictToBranchId.HasValue)
+            {
+                var lockedBranch = Model.AvailableBranches.FirstOrDefault(b => b.BranchID == Model.RestrictToBranchId.Value);
+                <div style="background:#f0f4ff;border:1px solid #c8d3f5;border-radius:8px;padding:10px 16px;margin-bottom:14px;font-size:13px;color:#1a2a6c;">
+                    <i class="fas fa-lock" style="margin-right:6px;"></i>
+                    Branch assignment is limited to your branch: <strong>@(lockedBranch?.BranchCode) – @(lockedBranch?.BranchName)</strong>
+                </div>
+            }
             <div class="bwr-grid">
                 <div class="uc-field">
                     <label>Branch Access <span class="text-danger">*</span></label>
@@ -219,6 +227,8 @@ var braAllRoles = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
 var braPreState = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
     Model.ExistingBranchRoleAssignments.ToDictionary(a => a.BranchId.ToString(), a => a.RoleIds)
 ));
+var braRestrictToBranchId = @(Model.RestrictToBranchId.HasValue ? Model.RestrictToBranchId.Value.ToString() : "null");
+var braIsMultiBranchAllowed = @(Model.IsMultiBranchAllowed ? "true" : "false");
 var braSelectedBranches = new Set();
 var braState = {};
 
@@ -323,6 +333,32 @@ buildBranchDropdown();
 buildRolesDropdown();
 updateBranchTrigger();
 updateRolesTrigger();
+braSyncJson();
+
+// If restricted to a single branch, ensure only that branch is selected and lock dropdown
+if (!braIsMultiBranchAllowed && braRestrictToBranchId !== null) {
+    // Remove any branches not matching the restriction (shouldn't happen from server, extra safety)
+    Array.from(braSelectedBranches).forEach(function(id) {
+        if (id !== braRestrictToBranchId) {
+            braSelectedBranches.delete(id);
+            delete braState[String(id)];
+        }
+    });
+    if (!braSelectedBranches.has(braRestrictToBranchId)) {
+        braSelectedBranches.add(braRestrictToBranchId);
+    }
+    buildBranchDropdown();
+    buildRolesDropdown();
+    updateBranchTrigger();
+    updateRolesTrigger();
+    braSyncJson();
+    var braTrg = document.getElementById('branchTrigger');
+    braTrg.style.pointerEvents = 'none';
+    braTrg.style.opacity = '0.75';
+    braTrg.style.cursor = 'not-allowed';
+    braTrg.style.background = '#f5f5f5';
+}
+
 setupDropdown('branchTrigger', 'branchPanel');
 setupDropdown('rolesTrigger', 'rolesPanel');
 braSyncJson();

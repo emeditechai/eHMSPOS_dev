@@ -8,10 +8,12 @@ namespace HotelApp.Web.Controllers;
 public class DashboardController : BaseController
 {
     private readonly IDashboardRepository _dashboardRepository;
+    private readonly IHotelSettingsRepository _hotelSettingsRepository;
 
-    public DashboardController(IDashboardRepository dashboardRepository)
+    public DashboardController(IDashboardRepository dashboardRepository, IHotelSettingsRepository hotelSettingsRepository)
     {
         _dashboardRepository = dashboardRepository;
+        _hotelSettingsRepository = hotelSettingsRepository;
     }
 
     public async Task<IActionResult> Index()
@@ -23,11 +25,13 @@ public class DashboardController : BaseController
         var revenueData = await _dashboardRepository.GetRevenueOverviewAsync(CurrentBranchID, 7);
         var roomTypeDistribution = await _dashboardRepository.GetRoomTypeDistributionAsync(CurrentBranchID);
         var recentBookings = await _dashboardRepository.GetRecentBookingsAsync(CurrentBranchID, 5);
+        var hotelSettings = await _hotelSettingsRepository.GetByBranchAsync(CurrentBranchID);
         
         ViewBag.Statistics = statistics;
         ViewBag.RevenueData = revenueData;
         ViewBag.RoomTypeDistribution = roomTypeDistribution;
         ViewBag.RecentBookings = recentBookings;
+        ViewBag.HotelName = hotelSettings?.HotelName;
         
         return View();
     }

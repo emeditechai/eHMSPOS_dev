@@ -14,4 +14,5 @@ public interface IUserRepository
     Task<bool> EmailExistsAsync(string email, int? excludeUserId = null);
     Task UpdateLoginInfoAsync(int userId, bool success);
     Task UpdatePasswordAsync(int userId, string passwordHash, string salt);
+    Task<IEnumerable<User>> GetUsersByBranchAsync(int branchId);
 }

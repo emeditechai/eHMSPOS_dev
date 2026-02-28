@@ -104,6 +104,18 @@ public class UserRepository : IUserRepository
         return result > 0;
     }
 
+    public async Task<IEnumerable<User>> GetUsersByBranchAsync(int branchId)
+    {
+        const string sql = @"
+            SELECT DISTINCT u.Id, u.Username, u.Email, u.FirstName, u.LastName, u.FullName,
+                u.Role, u.IsActive, u.LastLoginDate, u.CreatedDate
+            FROM Users u
+            INNER JOIN UserBranches ub ON u.Id = ub.UserId
+            WHERE ub.BranchID = @BranchId AND ub.IsActive = 1 AND u.IsActive = 1
+            ORDER BY u.CreatedDate DESC";
+        return await _connection.QueryAsync<User>(sql, new { BranchId = branchId });
+    }
+
     public async Task<bool> UsernameExistsAsync(string username, int? excludeUserId = null)
     {
         const string sql = "SELECT COUNT(1) FROM Users WHERE Username = @Username AND (@ExcludeUserId IS NULL OR Id != @ExcludeUserId)";

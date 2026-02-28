@@ -38,9 +38,30 @@ public class UserManagementController : BaseController
         _env = env;
     }
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(int? filterBranchId = null)
     {
-        var users = await _userRepository.GetAllUsersAsync();
+        // Determine which branch's users to show
+        IEnumerable<User> users;
+        int effectiveBranchId;
+
+        if (IsHOBranchAdmin)
+        {
+            // HO + Administrator: can filter by branch
+            effectiveBranchId = filterBranchId ?? CurrentBranchID;
+            users = effectiveBranchId > 0
+                ? await _userRepository.GetUsersByBranchAsync(effectiveBranchId)
+                : await _userRepository.GetAllUsersAsync();
+
+            var allBranches = await _branchRepository.GetActiveBranchesAsync();
+            ViewBag.AllBranches      = allBranches.ToList();
+            ViewBag.FilterBranchId   = effectiveBranchId;
+        }
+        else
+        {
+            // Non-HO or non-Admin: show own branch only
+            effectiveBranchId = CurrentBranchID;
+            users = await _userRepository.GetUsersByBranchAsync(effectiveBranchId);
+        }
 
         var usersWithBranchesAndRoles = new List<(User user, List<Branch> branches, List<Role> roles)>();
         foreach (var user in users)
@@ -51,18 +72,60 @@ public class UserManagementController : BaseController
         }
 
         ViewBag.UsersWithBranchesAndRoles = usersWithBranchesAndRoles;
+        ViewBag.IsHOBranchAdmin = IsHOBranchAdmin;
         return View(users);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetUsersByBranch(int branchId)
+    {
+        if (!IsHOBranchAdmin)
+            return Json(new { success = false, message = "Access denied" });
+
+        var users = branchId == 0
+            ? await _userRepository.GetAllUsersAsync()
+            : await _userRepository.GetUsersByBranchAsync(branchId);
+        var result = new List<object>();
+        foreach (var user in users)
+        {
+            var branches = (await _userBranchRepository.GetBranchesByUserIdAsync(user.Id)).ToList();
+            var roles    = (await _userRoleRepository.GetRolesByUserIdAsync(user.Id)).ToList();
+            result.Add(new
+            {
+                id        = user.Id,
+                username  = user.Username,
+                fullName  = user.FullName ?? $"{user.FirstName} {user.LastName}",
+                email     = user.Email,
+                isActive  = user.IsActive,
+                lastLogin = user.LastLoginDate.HasValue ? user.LastLoginDate.Value.ToString("dd MMM yyyy") : "Never",
+                roles     = roles.Select(r => r.Name).ToList(),
+                branches  = branches.Select(b => b.BranchCode).ToList()
+            });
+        }
+        return Json(new { success = true, users = result });
     }
 
     [HttpGet]
     public async Task<IActionResult> Create()
     {
-        var branches = await _branchRepository.GetActiveBranchesAsync();
-        var roles    = await _roleRepository.GetAllRolesAsync();
+        IEnumerable<Branch> branches;
+        if (IsHOBranchAdmin)
+        {
+            branches = await _branchRepository.GetActiveBranchesAsync();
+        }
+        else
+        {
+            // Restrict to own branch only
+            var ownBranch = await _branchRepository.GetBranchByIdAsync(CurrentBranchID);
+            branches = ownBranch != null ? new[] { ownBranch } : Enumerable.Empty<Branch>();
+        }
+        var roles = await _roleRepository.GetAllRolesAsync();
         var model = new UserCreateViewModel
         {
-            AvailableBranches = branches.ToList(),
-            AvailableRoles    = roles.ToList()
+            AvailableBranches    = branches.ToList(),
+            AvailableRoles       = roles.ToList(),
+            RestrictToBranchId   = IsHOBranchAdmin ? (int?)null : CurrentBranchID,
+            IsMultiBranchAllowed = IsHOBranchAdmin
         };
         return View(model);
     }
@@ -82,34 +145,60 @@ public class UserManagementController : BaseController
         model.SelectedBranchIds = branchRoleAssignments.Select(a => a.BranchId).Distinct().ToList();
         model.SelectedRoleIds   = branchRoleAssignments.SelectMany(a => a.RoleIds).Distinct().ToList();
 
+        // Enforce: non-HO-Admin can only create users for their own branch
+        if (!IsHOBranchAdmin && model.SelectedBranchIds.Any(b => b != CurrentBranchID))
+        {
+            ModelState.AddModelError("BranchRolesJson", "You can only create users for your own branch.");
+        }
+
+        async Task<(IEnumerable<Branch>, IEnumerable<Role>)> GetFormDataAsync()
+        {
+            IEnumerable<Branch> b = IsHOBranchAdmin
+                ? await _branchRepository.GetActiveBranchesAsync()
+                : new[] { (await _branchRepository.GetBranchByIdAsync(CurrentBranchID))! }.Where(x => x != null);
+            var r = await _roleRepository.GetAllRolesAsync();
+            return (b, r);
+        }
         if (!ModelState.IsValid)
         {
-            model.AvailableBranches = (await _branchRepository.GetActiveBranchesAsync()).ToList();
-            model.AvailableRoles    = (await _roleRepository.GetAllRolesAsync()).ToList();
+            var (bList, rList) = await GetFormDataAsync();
+            model.AvailableBranches    = bList.ToList();
+            model.AvailableRoles       = rList.ToList();
+            model.RestrictToBranchId   = IsHOBranchAdmin ? (int?)null : CurrentBranchID;
+            model.IsMultiBranchAllowed = IsHOBranchAdmin;
             return View(model);
         }
 
         if (await _userRepository.UsernameExistsAsync(model.Username))
         {
             ModelState.AddModelError("Username", "Username already exists");
-            model.AvailableBranches = (await _branchRepository.GetActiveBranchesAsync()).ToList();
-            model.AvailableRoles    = (await _roleRepository.GetAllRolesAsync()).ToList();
+            var (bList, rList) = await GetFormDataAsync();
+            model.AvailableBranches    = bList.ToList();
+            model.AvailableRoles       = rList.ToList();
+            model.RestrictToBranchId   = IsHOBranchAdmin ? (int?)null : CurrentBranchID;
+            model.IsMultiBranchAllowed = IsHOBranchAdmin;
             return View(model);
         }
 
         if (await _userRepository.EmailExistsAsync(model.Email))
         {
             ModelState.AddModelError("Email", "Email already exists");
-            model.AvailableBranches = (await _branchRepository.GetActiveBranchesAsync()).ToList();
-            model.AvailableRoles    = (await _roleRepository.GetAllRolesAsync()).ToList();
+            var (bList, rList) = await GetFormDataAsync();
+            model.AvailableBranches    = bList.ToList();
+            model.AvailableRoles       = rList.ToList();
+            model.RestrictToBranchId   = IsHOBranchAdmin ? (int?)null : CurrentBranchID;
+            model.IsMultiBranchAllowed = IsHOBranchAdmin;
             return View(model);
         }
 
         if (model.Password != model.ConfirmPassword)
         {
             ModelState.AddModelError("ConfirmPassword", "Passwords do not match");
-            model.AvailableBranches = (await _branchRepository.GetActiveBranchesAsync()).ToList();
-            model.AvailableRoles    = (await _roleRepository.GetAllRolesAsync()).ToList();
+            var (bList, rList) = await GetFormDataAsync();
+            model.AvailableBranches    = bList.ToList();
+            model.AvailableRoles       = rList.ToList();
+            model.RestrictToBranchId   = IsHOBranchAdmin ? (int?)null : CurrentBranchID;
+            model.IsMultiBranchAllowed = IsHOBranchAdmin;
             return View(model);
         }
 
@@ -163,11 +252,27 @@ public class UserManagementController : BaseController
         var user = await _userRepository.GetByIdAsync(id);
         if (user == null) return NotFound();
 
+        // Non-HO-Admin can only edit users belonging to their own branch
+        if (!IsHOBranchAdmin)
+        {
+            var userBranchList = (await _userBranchRepository.GetBranchesByUserIdAsync(id)).ToList();
+            if (!userBranchList.Any(b => b.BranchID == CurrentBranchID))
+                return Forbid();
+        }
+
         var userBranches   = await _userBranchRepository.GetBranchesByUserIdAsync(id);
         var userRoles      = await _userRoleRepository.GetRolesByUserIdAsync(id);
         var allBranchRoles = (await _userBranchRoleRepository.GetByUserIdAsync(id)).ToList();
-        var branches = await _branchRepository.GetActiveBranchesAsync();
-        var roles    = await _roleRepository.GetAllRolesAsync();
+
+        IEnumerable<Branch> branches;
+        if (IsHOBranchAdmin)
+            branches = await _branchRepository.GetActiveBranchesAsync();
+        else
+        {
+            var ownBranch = await _branchRepository.GetBranchByIdAsync(CurrentBranchID);
+            branches = ownBranch != null ? new[] { ownBranch } : Enumerable.Empty<Branch>();
+        }
+        var roles = await _roleRepository.GetAllRolesAsync();
 
         // Build existing branch-role assignments
         var existingAssignments = allBranchRoles
@@ -208,8 +313,10 @@ public class UserManagementController : BaseController
             ExistingBranchRoleAssignments = existingAssignments,
             BranchRolesJson   = branchRolesJson,
             ProfilePicturePath = user.ProfilePicturePath,
-            AvailableBranches = branches.ToList(),
-            AvailableRoles    = roles.ToList()
+            AvailableBranches    = branches.ToList(),
+            AvailableRoles       = roles.ToList(),
+            RestrictToBranchId   = IsHOBranchAdmin ? (int?)null : CurrentBranchID,
+            IsMultiBranchAllowed = IsHOBranchAdmin
         };
 
         return View(model);
@@ -229,11 +336,29 @@ public class UserManagementController : BaseController
         model.SelectedBranchIds = branchRoleAssignments.Select(a => a.BranchId).Distinct().ToList();
         model.SelectedRoleIds   = branchRoleAssignments.SelectMany(a => a.RoleIds).Distinct().ToList();
 
+        // Enforce: non-HO-Admin can only assign own branch
+        if (!IsHOBranchAdmin && model.SelectedBranchIds.Any(b => b != CurrentBranchID))
+        {
+            ModelState.AddModelError("BranchRolesJson", "You can only assign your own branch to this user.");
+        }
+
+        async Task<(IEnumerable<Branch>, IEnumerable<Role>)> GetEditFormDataAsync()
+        {
+            IEnumerable<Branch> b = IsHOBranchAdmin
+                ? await _branchRepository.GetActiveBranchesAsync()
+                : new[] { (await _branchRepository.GetBranchByIdAsync(CurrentBranchID))! }.Where(x => x != null);
+            var r = await _roleRepository.GetAllRolesAsync();
+            return (b, r);
+        }
+
         if (!ModelState.IsValid)
         {
-            model.AvailableBranches = (await _branchRepository.GetActiveBranchesAsync()).ToList();
-            model.AvailableRoles    = (await _roleRepository.GetAllRolesAsync()).ToList();
+            var (bList, rList) = await GetEditFormDataAsync();
+            model.AvailableBranches    = bList.ToList();
+            model.AvailableRoles       = rList.ToList();
             model.ExistingBranchRoleAssignments = branchRoleAssignments;
+            model.RestrictToBranchId   = IsHOBranchAdmin ? (int?)null : CurrentBranchID;
+            model.IsMultiBranchAllowed = IsHOBranchAdmin;
             return View(model);
         }
 
@@ -243,18 +368,24 @@ public class UserManagementController : BaseController
         if (await _userRepository.UsernameExistsAsync(model.Username, model.Id))
         {
             ModelState.AddModelError("Username", "Username already exists");
-            model.AvailableBranches = (await _branchRepository.GetActiveBranchesAsync()).ToList();
-            model.AvailableRoles    = (await _roleRepository.GetAllRolesAsync()).ToList();
+            var (bList, rList) = await GetEditFormDataAsync();
+            model.AvailableBranches    = bList.ToList();
+            model.AvailableRoles       = rList.ToList();
             model.ExistingBranchRoleAssignments = branchRoleAssignments;
+            model.RestrictToBranchId   = IsHOBranchAdmin ? (int?)null : CurrentBranchID;
+            model.IsMultiBranchAllowed = IsHOBranchAdmin;
             return View(model);
         }
 
         if (await _userRepository.EmailExistsAsync(model.Email, model.Id))
         {
             ModelState.AddModelError("Email", "Email already exists");
-            model.AvailableBranches = (await _branchRepository.GetActiveBranchesAsync()).ToList();
-            model.AvailableRoles    = (await _roleRepository.GetAllRolesAsync()).ToList();
+            var (bList, rList) = await GetEditFormDataAsync();
+            model.AvailableBranches    = bList.ToList();
+            model.AvailableRoles       = rList.ToList();
             model.ExistingBranchRoleAssignments = branchRoleAssignments;
+            model.RestrictToBranchId   = IsHOBranchAdmin ? (int?)null : CurrentBranchID;
+            model.IsMultiBranchAllowed = IsHOBranchAdmin;
             return View(model);
         }
 
@@ -263,9 +394,12 @@ public class UserManagementController : BaseController
             if (model.Password != model.ConfirmPassword)
             {
                 ModelState.AddModelError("ConfirmPassword", "Passwords do not match");
-                model.AvailableBranches = (await _branchRepository.GetActiveBranchesAsync()).ToList();
-                model.AvailableRoles    = (await _roleRepository.GetAllRolesAsync()).ToList();
+                var (bList, rList) = await GetEditFormDataAsync();
+                model.AvailableBranches    = bList.ToList();
+                model.AvailableRoles       = rList.ToList();
                 model.ExistingBranchRoleAssignments = branchRoleAssignments;
+                model.RestrictToBranchId   = IsHOBranchAdmin ? (int?)null : CurrentBranchID;
+                model.IsMultiBranchAllowed = IsHOBranchAdmin;
                 return View(model);
             }
             var salt = BCrypt.Net.BCrypt.GenerateSalt(12);
