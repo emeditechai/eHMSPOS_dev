@@ -63,6 +63,11 @@ public class UserManagementController : BaseController
             users = await _userRepository.GetUsersByBranchAsync(effectiveBranchId);
         }
 
+        // Hide the superuser "admin" account from everyone except admin themselves
+        var currentUsername = User.Identity?.Name ?? "";
+        if (!currentUsername.Equals("admin", StringComparison.OrdinalIgnoreCase))
+            users = users.Where(u => !u.Username.Equals("admin", StringComparison.OrdinalIgnoreCase));
+
         var usersWithBranchesAndRoles = new List<(User user, List<Branch> branches, List<Role> roles)>();
         foreach (var user in users)
         {
@@ -85,6 +90,12 @@ public class UserManagementController : BaseController
         var users = branchId == 0
             ? await _userRepository.GetAllUsersAsync()
             : await _userRepository.GetUsersByBranchAsync(branchId);
+
+        // Hide the superuser "admin" from everyone except admin themselves
+        var currentUsername = User.Identity?.Name ?? "";
+        if (!currentUsername.Equals("admin", StringComparison.OrdinalIgnoreCase))
+            users = users.Where(u => !u.Username.Equals("admin", StringComparison.OrdinalIgnoreCase));
+
         var result = new List<object>();
         foreach (var user in users)
         {

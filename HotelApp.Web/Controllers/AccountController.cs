@@ -194,7 +194,9 @@ public class AccountController : Controller
         HttpContext.Session.SetString("IsHOBranch", selectedBranch.IsHOBranch ? "1" : "0");
 
         // If multiple roles, go to role selection screen first
-        if (roles.Count > 1)
+        // Exception: "admin" superuser bypasses role selection and always proceeds directly
+        bool isAdminUser = username.Equals("admin", StringComparison.OrdinalIgnoreCase);
+        if (roles.Count > 1 && !isAdminUser)
         {
             TempData["ReturnUrl"] = returnUrl;
             return RedirectToAction(nameof(SelectRole));
@@ -221,6 +223,13 @@ public class AccountController : Controller
         if (userId <= 0)
         {
             return RedirectToAction(nameof(Login));
+        }
+
+        // Admin superuser bypasses role selection
+        var currentUsername = User.Identity?.Name ?? "";
+        if (currentUsername.Equals("admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return RedirectToAction("Index", "Dashboard");
         }
 
         var branchSpecificRoles = branchId > 0
