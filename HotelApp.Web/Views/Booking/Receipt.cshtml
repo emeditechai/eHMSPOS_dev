@@ -479,6 +479,91 @@
             color: #dc2626;
         }
 
+        .receipt-status.cancelled {
+            color: #dc2626;
+            font-size: 12px;
+            padding: 2px 8px;
+            background: #fef2f2;
+            border: 1px solid #fca5a5;
+            border-radius: 4px;
+        }
+
+        /* CANCELLED diagonal watermark */
+        .watermark-cancelled {
+            position: fixed;
+            top: 30%;
+            right: 5%;
+            transform: rotate(-15deg);
+            width: 210px;
+            height: 210px;
+            border: 6px solid rgba(220, 38, 38, 0.35);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+            pointer-events: none;
+        }
+        .watermark-cancelled::before {
+            content: 'CANCELLED';
+            font-size: 28px;
+            font-weight: 900;
+            color: rgba(220, 38, 38, 0.35);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .watermark-cancelled::after {
+            content: '';
+            position: absolute;
+            width: 195px;
+            height: 195px;
+            border: 2px dashed rgba(220, 38, 38, 0.25);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Cancellation summary card */
+        .cancellation-card {
+            border: 1px solid #fca5a5;
+            border-radius: 10px;
+            background: #fff9f9;
+            padding: 14px 16px;
+            margin-top: 16px;
+        }
+        .cancellation-card .section-title {
+            color: #dc2626;
+            margin-bottom: 10px;
+        }
+        .cancellation-card .summary-row.refund-highlight .value {
+            color: #16a34a;
+            font-weight: 800;
+        }
+        .cancellation-card .summary-row.deduct-highlight .value {
+            color: #dc2626;
+        }
+        .refunded-badge {
+            display: inline-block;
+            background: #0369a1;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 10px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+        .refund-pending-badge {
+            display: inline-block;
+            background: #d97706;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 10px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
         .assigned-rooms-section {
             display: inline-block;
             margin: 8px 0;
@@ -831,14 +916,20 @@
 <body>
     @{
         var isCheckedOut = Model.ActualCheckOutDate != null || Model.Status == "CheckedOut";
+        var isCancelled = string.Equals(Model.Status, "Cancelled", StringComparison.OrdinalIgnoreCase);
         var isFullyPaid = receiptAdjustedBalanceDue <= 0;
         var showWatermark = isCheckedOut && isFullyPaid;
         var isFinalBill = showWatermark; // Can add more conditions here if needed
+        var cancellationRecord = ViewBag.CancellationRecord as HotelApp.Web.Models.BookingCancellationRecord;
     }
     
     @if (showWatermark)
     {
         <div class="watermark"></div>
+    }
+    @if (isCancelled)
+    {
+        <div class="watermark-cancelled"></div>
     }
     
     <div class="receipt-container">
@@ -891,7 +982,16 @@
                     <div class="subtitle">@(isFinalBill ? "Final Bill" : "Booking Receipt")</div>
                     <div class="meta-row"><span class="label">Booking No.</span> <span class="mono"><strong>@Model.BookingNumber</strong></span></div>
                     <div class="meta-row"><span class="label">Issue</span> <span class="mono">@receiptIssueDate.ToString("dd MMM yyyy hh:mm tt")</span></div>
-                    <div class="meta-row"><span class="label">Status</span> <span class="mono receipt-status @(receiptAdjustedBalanceDue <= 0 ? "paid" : "due")">@(receiptAdjustedBalanceDue <= 0 ? "Paid" : "Due")</span></div>
+                    <div class="meta-row"><span class="label">Status</span>
+                        @if (isCancelled)
+                        {
+                            <span class="mono receipt-status cancelled">Cancelled</span>
+                        }
+                        else
+                        {
+                            <span class="mono receipt-status @(receiptAdjustedBalanceDue <= 0 ? "paid" : "due")">@(receiptAdjustedBalanceDue <= 0 ? "Paid" : "Due")</span>
+                        }
+                    </div>
                 </div>
             </div>
 
@@ -911,6 +1011,53 @@
                         <span class="label">Issue Date</span>
                         <span class="value mono">@receiptIssueDate.ToString("dd MMM yyyy hh:mm tt")</span>
                     </div>
+
+                    @* Cancellation Summary – placed under Booking Details *@
+                    @if (isCancelled && cancellationRecord != null)
+                    {
+                        var crAmtPaid = cancellationRecord.AmountPaid;
+                        var crRefund = cancellationRecord.RefundAmount;
+                        var crDeduct = crAmtPaid - crRefund;
+                        <div style="margin-top:10px; border-top:1px solid #fca5a5; padding-top:10px;">
+                            <div class="section-title small" style="color:#dc2626; margin-bottom:8px;">Cancellation Summary</div>
+                            <div class="summary-row">
+                                <span class="label">Cancelled On</span>
+                                <span class="value mono">@cancellationRecord.CreatedDate.ToString("dd MMM yyyy hh:mm tt")</span>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(cancellationRecord.Reason))
+                            {
+                                <div class="summary-row">
+                                    <span class="label">Reason</span>
+                                    <span class="value">@cancellationRecord.Reason</span>
+                                </div>
+                            }
+                            <div class="summary-row">
+                                <span class="label">Amount Paid</span>
+                                <span class="value mono">₹ @crAmtPaid.ToString("N2")</span>
+                            </div>
+                            <div class="summary-row deduct-highlight">
+                                <span class="label">Deducted</span>
+                                <span class="value mono">₹ @crDeduct.ToString("N2")</span>
+                            </div>
+                            <div class="summary-row refund-highlight">
+                                <span class="label">Refund Amount</span>
+                                <span class="value mono">₹ @crRefund.ToString("N2")</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="label">Refund Status</span>
+                                <span class="value">
+                                    @if (cancellationRecord.IsRefunded)
+                                    {
+                                        <span class="refunded-badge">Refunded</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="refund-pending-badge">Pending</span>
+                                    }
+                                </span>
+                            </div>
+                        </div>
+                    }
                 </div>
                 <div class="summary-right-stack">
                     @if (showDueQrBlock)
@@ -952,10 +1099,13 @@
                             <span class="label">Round Off Applied</span>
                             <span class="value mono">₹ @totalRoundOffApplied.ToString("N2")</span>
                         </div>
-                        <div class="summary-row due">
-                            <span class="label">Balance Due</span>
-                            <span class="value mono">₹ @receiptAdjustedBalanceDue.ToString("N2")</span>
-                        </div>
+                        @if (!isCancelled)
+                        {
+                            <div class="summary-row due">
+                                <span class="label">Balance Due</span>
+                                <span class="value mono">₹ @receiptAdjustedBalanceDue.ToString("N2")</span>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>

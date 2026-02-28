@@ -3,6 +3,15 @@
     ViewData["Title"] = "Refunds";
     var banks = ViewBag.Banks as IEnumerable<HotelApp.Web.Models.Bank> ?? Enumerable.Empty<HotelApp.Web.Models.Bank>();
     var pendingList = Model?.ToList() ?? new List<HotelApp.Web.Models.RefundListItem>();
+
+    // Dashboard stat computations
+    var totalPending       = pendingList.Count;
+    var totalRefundAmt     = pendingList.Sum(x => x.RefundAmount);
+    var totalDeductedAmt   = pendingList.Sum(x => x.DeductionAmount);
+    var totalAmountPaid    = pendingList.Sum(x => x.AmountPaid);
+    var approvedCount      = pendingList.Count(x => x.ApprovalStatus == "Approved");
+    var waitingCount       = pendingList.Count(x => x.ApprovalStatus != "Approved");
+    var urgentCount        = pendingList.Count(x => x.DaysSinceCancellation >= 3);
 }
 
 <style>
@@ -10,7 +19,7 @@
     .refund-container {
         display: flex;
         gap: 14px;
-        height: calc(100vh - 148px);
+        height: calc(100vh - 290px);
         min-height: 480px;
     }
 
@@ -169,30 +178,164 @@
     .empty-state { text-align: center; padding: 30px 20px; color: #6c757d; }
     .empty-state i { font-size: 36px; margin-bottom: 8px; opacity: 0.4; }
 
+    /* ── Dashboard Stat Cards ── */
+    .refund-dashboard {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .stat-card {
+        border-radius: 10px;
+        padding: 14px 16px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,.08);
+        transition: transform .15s ease, box-shadow .15s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(0,0,0,.12);
+    }
+
+    .stat-card .sc-icon {
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 32px;
+        opacity: 0.15;
+    }
+
+    .stat-card .sc-label {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.7px;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+    }
+
+    .stat-card .sc-value {
+        font-size: 22px;
+        font-weight: 800;
+        line-height: 1.1;
+        margin-bottom: 3px;
+    }
+
+    .stat-card .sc-sub {
+        font-size: 10px;
+        opacity: 0.75;
+    }
+
+    /* Card colour themes */
+    .stat-card.sc-amber  { background: linear-gradient(135deg, #fff8e1, #fff3cd); border-left: 4px solid #ffc107; color: #7c4a00; }
+    .stat-card.sc-green  { background: linear-gradient(135deg, #e8f5e9, #f1f8e9); border-left: 4px solid #43a047; color: #1b5e20; }
+    .stat-card.sc-red    { background: linear-gradient(135deg, #fce4ec, #ffeef4); border-left: 4px solid #e53935; color: #8b0000; }
+    .stat-card.sc-blue   { background: linear-gradient(135deg, #e3f2fd, #ede7f6); border-left: 4px solid #1e88e5; color: #0d47a1; }
+    .stat-card.sc-teal   { background: linear-gradient(135deg, #e0f2f1, #e8f5e9); border-left: 4px solid #00897b; color: #004d40; }
+    .stat-card.sc-purple { background: linear-gradient(135deg, #f3e5f5, #ede7f6); border-left: 4px solid #8e24aa; color: #4a148c; }
+
+    /* Urgent pulse for cards with urgentCount > 0 */
+    .stat-card .sc-pulse {
+        display: inline-block;
+        width: 7px; height: 7px;
+        background: #e53935;
+        border-radius: 50%;
+        margin-right: 4px;
+        animation: pulse-ring 1.4s ease-in-out infinite;
+    }
+
+    @@keyframes pulse-ring {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(1.5); }
+    }
+
+    @@media (max-width: 900px) {
+        .refund-dashboard { grid-template-columns: repeat(2, 1fr); }
+    }
+
     @@media (max-width: 768px) {
         .refund-container { flex-direction: column; height: auto; }
         .refund-sidebar { width: 100%; max-height: 260px; }
         .pf-item { flex-wrap: wrap; }
         .pf-item .ctrl-md, .pf-item .ctrl-sm, .pf-item .ctrl-xs,
         .pf-item .ctrl-lg, .pf-item .ctrl-xl { width: 100%; }
+        .refund-dashboard { grid-template-columns: repeat(2, 1fr); }
     }
 </style>
 
-<div class="d-flex justify-content-between align-items-center mb-2">
+<div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h5 class="mb-0 fw-bold"><i class="fas fa-undo-alt me-2 text-primary"></i>Refunds</h5>
         <small class="text-muted">Process pending refunds for cancelled bookings</small>
     </div>
-    <span class="badge bg-warning text-dark">@pendingList.Count Pending</span>
+    <div class="d-flex align-items-center gap-2">
+        @if (urgentCount > 0)
+        {
+            <span class="badge bg-danger"><i class="fas fa-exclamation-circle me-1"></i>@urgentCount Overdue</span>
+        }
+        <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>@totalPending Pending</span>
+    </div>
+</div>
+
+<!-- ── Dashboard Stat Cards ── -->
+<div class="refund-dashboard">
+    <!-- Pending Refunds -->
+    <div class="stat-card sc-amber">
+        <i class="fas fa-hourglass-half sc-icon"></i>
+        <div class="sc-label">Pending Refunds</div>
+        <div class="sc-value">@totalPending</div>
+        <div class="sc-sub">
+            @if (urgentCount > 0)
+            {
+                <span class="sc-pulse"></span><span class="text-danger fw-semibold">@urgentCount overdue &gt;3 days</span>
+            }
+            else
+            {
+                <span>@approvedCount approved &middot; @waitingCount awaiting</span>
+            }
+        </div>
+    </div>
+
+    <!-- Total Refund Amount -->
+    <div class="stat-card sc-green">
+        <i class="fas fa-hand-holding-usd sc-icon"></i>
+        <div class="sc-label">Total Refund Amount</div>
+        <div class="sc-value">₹@totalRefundAmt.ToString("N0")</div>
+        <div class="sc-sub">Across @totalPending booking(s)</div>
+    </div>
+
+    <!-- Total Deducted -->
+    <div class="stat-card sc-red">
+        <i class="fas fa-minus-circle sc-icon"></i>
+        <div class="sc-label">Total Deducted</div>
+        <div class="sc-value">₹@totalDeductedAmt.ToString("N0")</div>
+        <div class="sc-sub">Cancellation charges</div>
+    </div>
+
+    <!-- Approved / Awaiting -->
+    <div class="stat-card sc-blue">
+        <i class="fas fa-check-double sc-icon"></i>
+        <div class="sc-label">Approval Status</div>
+        <div class="sc-value">@approvedCount <span style="font-size:13px;font-weight:500;">/ @totalPending</span></div>
+        <div class="sc-sub">
+            <span class="text-success fw-semibold">@approvedCount approved</span>
+            &bull;
+            <span>@waitingCount pending</span>
+        </div>
+    </div>
 </div>
 
 @if (!pendingList.Any())
 {
+    <!-- All Clear empty state (stat cards stay but all 0) -->
     <div class="section-card">
         <div class="empty-state">
             <i class="fas fa-check-circle text-success"></i>
             <h6 class="text-success mt-2">All Clear!</h6>
-            <p class="mb-0 small">No pending refunds at this time.</p>
+            <p class="mb-0 small">No pending refunds at this time. All refunds have been processed.</p>
         </div>
     </div>
 }

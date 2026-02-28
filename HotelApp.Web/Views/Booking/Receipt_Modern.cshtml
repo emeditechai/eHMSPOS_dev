@@ -54,6 +54,8 @@
     var assignedRooms = ViewBag.AssignedRooms as IEnumerable<string> ?? Enumerable.Empty<string>();
     var roomLabel = string.Join(", ", assignedRooms.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()));
     var guestName = ($"{Model.PrimaryGuestFirstName} {Model.PrimaryGuestLastName}").Trim();
+    var isCancelled = string.Equals(Model.Status, "Cancelled", StringComparison.OrdinalIgnoreCase);
+    var cancellationRecord = ViewBag.CancellationRecord as HotelApp.Web.Models.BookingCancellationRecord;
 }
 
 <!DOCTYPE html>
@@ -182,7 +184,16 @@
 
             <div class="section">
                 <div class="chips">
-                    <div class="chip"><span>Status</span>@(string.IsNullOrWhiteSpace(Model.Status) ? "-" : Model.Status)</div>
+                    <div class="chip"><span>Status</span>
+                        @if (isCancelled)
+                        {
+                            <span style="color:#dc2626;font-weight:800;">Cancelled</span>
+                        }
+                        else
+                        {
+                            @(string.IsNullOrWhiteSpace(Model.Status) ? "-" : Model.Status)
+                        }
+                    </div>
                     <div class="chip"><span>Payment</span>@(string.IsNullOrWhiteSpace(Model.PaymentStatus) ? "-" : Model.PaymentStatus)</div>
                     <div class="chip"><span>Guests</span>@Model.Adults A / @Model.Children C</div>
                     @if (!string.IsNullOrWhiteSpace(Model.Channel))
@@ -263,7 +274,24 @@
                     </div>
                     <div class="totals">
                         <div class="totals-row"><span>Total Paid</span><strong>₹@totalPaid.ToString("N2")</strong></div>
-                        <div class="totals-row"><span>Balance Due</span><strong>₹@receiptAdjustedBalanceDue.ToString("N2")</strong></div>
+                        @if (isCancelled && cancellationRecord != null)
+                        {
+                            var crAmtPaid = cancellationRecord.AmountPaid;
+                            var crRefund = cancellationRecord.RefundAmount;
+                            var crDeduct = crAmtPaid - crRefund;
+                            <div class="totals-row" style="color:#dc2626;"><span>Deducted</span><strong>₹@crDeduct.ToString("N2")</strong></div>
+                            <div class="totals-row" style="color:#16a34a;"><span>Refund Amount</span><strong>₹@crRefund.ToString("N2")</strong></div>
+                            <div class="totals-row">
+                                <span>Refund Status</span>
+                                <strong style="color:@(cancellationRecord.IsRefunded ? "#0369a1" : "#d97706")">
+                                    @(cancellationRecord.IsRefunded ? "Refunded" : "Pending")
+                                </strong>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="totals-row"><span>Balance Due</span><strong>₹@receiptAdjustedBalanceDue.ToString("N2")</strong></div>
+                        }
                         @if (showDueQr && showDueQrBlock && !string.IsNullOrWhiteSpace(dueQrUrl))
                         {
                             <div style="margin-top: 10px;" class="muted">Scan QR to pay due amount.</div>

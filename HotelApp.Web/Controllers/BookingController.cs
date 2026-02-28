@@ -1032,6 +1032,20 @@ namespace HotelApp.Web.Controllers
             var assignedRooms = await _bookingRepository.GetAssignedRoomNumbersAsync(booking.Id);
             ViewBag.AssignedRooms = assignedRooms;
 
+            // If booking is cancelled, fetch the cancellation record for display on receipt
+            if (string.Equals(booking.Status, "Cancelled", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var cancellationRecord = await _bookingRepository.GetBookingCancellationRecordAsync(bookingNumber, CurrentBranchID);
+                    ViewBag.CancellationRecord = cancellationRecord;
+                }
+                catch
+                {
+                    // Best-effort only
+                }
+            }
+
             // Get rate master to determine actual tax percentage (not recalculated from amounts)
             if (booking.RatePlanId.HasValue)
             {

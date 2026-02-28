@@ -37,6 +37,8 @@
         : receiptAdjustedBalanceDueComputed;
 
     var paymentDiscountTotal = payments.Sum(p => p.DiscountAmount);
+    var isCancelled = string.Equals(Model.Status, "Cancelled", StringComparison.OrdinalIgnoreCase);
+    var cancellationRecord = ViewBag.CancellationRecord as HotelApp.Web.Models.BookingCancellationRecord;
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -110,7 +112,7 @@
             <div style="text-align:right;">
                 <div class="v">Receipt: @Model.BookingNumber</div>
                 <div class="muted">@DateTime.Now.ToString("dd MMM yyyy")</div>
-                <div class="muted">Status: @Model.Status • @Model.PaymentStatus</div>
+                <div class="muted">Status: @(isCancelled ? "CANCELLED" : Model.Status) • @Model.PaymentStatus</div>
             </div>
         </div>
 
@@ -161,7 +163,17 @@
                 <tr class="tot"><td>Paid</td><td class="r">₹@totalPaid.ToString("N2")</td></tr>
                 <tr class="tot"><td>Payment Discounts</td><td class="r">₹@paymentDiscountTotal.ToString("N2")</td></tr>
                 <tr class="tot"><td>Round-off</td><td class="r">₹@paymentRoundOffTotal.ToString("N2")</td></tr>
-                <tr class="tot"><td>Due</td><td class="r">₹@receiptAdjustedBalanceDue.ToString("N2")</td></tr>
+                @if (isCancelled && cancellationRecord != null)
+                {
+                    var crDeduct = cancellationRecord.AmountPaid - cancellationRecord.RefundAmount;
+                    <tr class="tot"><td style="color:#dc2626;">Deducted</td><td class="r" style="color:#dc2626;">₹@crDeduct.ToString("N2")</td></tr>
+                    <tr class="tot"><td style="color:#16a34a;">Refund Amount</td><td class="r" style="color:#16a34a;">₹@cancellationRecord.RefundAmount.ToString("N2")</td></tr>
+                    <tr class="tot"><td>Refund Status</td><td class="r" style="color:@(cancellationRecord.IsRefunded ? "#0369a1" : "#d97706");font-weight:700;">@(cancellationRecord.IsRefunded ? "Refunded" : "Pending")</td></tr>
+                }
+                else
+                {
+                    <tr class="tot"><td>Due</td><td class="r">₹@receiptAdjustedBalanceDue.ToString("N2")</td></tr>
+                }
             </tbody>
         </table>
 

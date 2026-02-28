@@ -41,6 +41,8 @@
     var showDueQr = ViewBag.ShowDueQr is bool b && b;
     var dueQrUrl = ViewBag.DueQrUrl as string;
     var showDueQrBlock = receiptAdjustedBalanceDue > 0m;
+    var isCancelled = string.Equals(Model.Status, "Cancelled", StringComparison.OrdinalIgnoreCase);
+    var cancellationRecord = ViewBag.CancellationRecord as HotelApp.Web.Models.BookingCancellationRecord;
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -171,7 +173,19 @@
                 <tr class="b"><td>Paid</td><td class="r">₹@totalPaid.ToString("N2")</td></tr>
                 <tr class="b"><td>Payment Discounts</td><td class="r">₹@paymentDiscountTotal.ToString("N2")</td></tr>
                 <tr class="b"><td>Round-off</td><td class="r">₹@paymentRoundOffTotal.ToString("N2")</td></tr>
-                <tr class="b"><td>Due</td><td class="r">₹@receiptAdjustedBalanceDue.ToString("N2")</td></tr>
+                @if (isCancelled && cancellationRecord != null)
+                {
+                    var crDeduct = cancellationRecord.AmountPaid - cancellationRecord.RefundAmount;
+                    <tr class="b"><td style="color:#dc2626;">Deducted</td><td class="r" style="color:#dc2626;">₹@crDeduct.ToString("N2")</td></tr>
+                    <tr class="b"><td style="color:#16a34a;">Refund Amount</td><td class="r" style="color:#16a34a;">₹@cancellationRecord.RefundAmount.ToString("N2")</td></tr>
+                    <tr class="b"><td>Refund Status</td><td class="r" style="color:@(cancellationRecord.IsRefunded ? "#0369a1" : "#d97706");">
+                        @(cancellationRecord.IsRefunded ? "REFUNDED" : "REFUND PENDING")
+                    </td></tr>
+                }
+                else
+                {
+                    <tr class="b"><td>Due</td><td class="r">₹@receiptAdjustedBalanceDue.ToString("N2")</td></tr>
+                }
             </tbody>
         </table>
 
