@@ -305,54 +305,6 @@
         });
     </script>
     
-    @{
-        var _swalSuccess = TempData["SuccessMessage"] as string;
-        var _swalError   = TempData["ErrorMessage"]   as string;
-    }
-    @if (!string.IsNullOrWhiteSpace(_swalSuccess) || !string.IsNullOrWhiteSpace(_swalError))
-    {
-        <script>
-            (function () {
-                @if (!string.IsNullOrWhiteSpace(_swalSuccess))
-                {
-                    <text>
-                    Swal.fire({
-                        toast: true,
-                        position: 'top-end',
-                        icon: 'success',
-                        title: @Html.Raw(Json.Serialize(_swalSuccess)),
-                        showConfirmButton: false,
-                        timer: 5000,
-                        timerProgressBar: true,
-                        didOpen: (t) => {
-                            t.addEventListener('mouseenter', Swal.stopTimer);
-                            t.addEventListener('mouseleave', Swal.resumeTimer);
-                        }
-                    });
-                    </text>
-                }
-                @if (!string.IsNullOrWhiteSpace(_swalError))
-                {
-                    <text>
-                    Swal.fire({
-                        toast: true,
-                        position: 'top-end',
-                        icon: 'error',
-                        title: @Html.Raw(Json.Serialize(_swalError)),
-                        showConfirmButton: false,
-                        timer: 7000,
-                        timerProgressBar: true,
-                        didOpen: (t) => {
-                            t.addEventListener('mouseenter', Swal.stopTimer);
-                            t.addEventListener('mouseleave', Swal.resumeTimer);
-                        }
-                    });
-                    </text>
-                }
-            })();
-        </script>
-    }
-
     @RenderSection("Scripts", required: false)
 </body>
 </html>

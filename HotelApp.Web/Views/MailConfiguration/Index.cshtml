@@ -10,6 +10,16 @@
     <div></div>
 </div>
 
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+}
+
+
 <div class="page-grid-2">
     <div class="form-container form-container-fluid">
             <h3 style="margin-bottom: 20px;"><i class="fas fa-server"></i> SMTP Server</h3>

@@ -3027,6 +3027,7 @@ namespace HotelApp.Web.Controllers
                 return Json(new { success = false, message = result.Message, requiresOverride = result.RequiresOverride });
             }
 
+            TempData["SuccessMessage"] = result.Message;
             return Json(new { success = true, message = result.Message, refundAmount = result.Preview?.RefundAmount, approvalStatus = result.Preview?.ApprovalStatus });
         }
 

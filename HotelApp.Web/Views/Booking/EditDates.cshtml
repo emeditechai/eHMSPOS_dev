@@ -37,6 +37,14 @@
 
     <h3 style="margin-bottom: 20px;">Modify Stay Dates</h3>
 
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger" style="margin-bottom: 20px;">
+            <i class="fas fa-exclamation-triangle"></i>
+            @TempData["ErrorMessage"]
+        </div>
+    }
+
     <div class="alert alert-warning" style="margin-bottom: 20px;">
         <i class="fas fa-info-circle"></i>
         Changing dates will check room availability and recalculate the booking amount.

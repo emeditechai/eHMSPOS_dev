@@ -9,6 +9,8 @@ public class UserCreateViewModel
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string? FullName { get; set; }
+    public string? PhoneNumber { get; set; }
+    public string BranchRolesJson { get; set; } = "{}";
     public int? Role { get; set; } // Keep for backward compatibility
     public List<int> SelectedRoleIds { get; set; } = new();
     public List<int> SelectedBranchIds { get; set; } = new();

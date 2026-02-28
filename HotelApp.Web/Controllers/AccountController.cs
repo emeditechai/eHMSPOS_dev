@@ -17,14 +17,16 @@ public class AccountController : Controller
     private readonly IUserBranchRepository _userBranchRepository;
     private readonly IUserRoleRepository _userRoleRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IUserBranchRoleRepository _userBranchRoleRepository;
 
-    public AccountController(IAuthService authService, IBranchRepository branchRepository, IUserBranchRepository userBranchRepository, IUserRoleRepository userRoleRepository, IUserRepository userRepository)
+    public AccountController(IAuthService authService, IBranchRepository branchRepository, IUserBranchRepository userBranchRepository, IUserRoleRepository userRoleRepository, IUserRepository userRepository, IUserBranchRoleRepository userBranchRoleRepository)
     {
         _authService = authService;
         _branchRepository = branchRepository;
         _userBranchRepository = userBranchRepository;
         _userRoleRepository = userRoleRepository;
         _userRepository = userRepository;
+        _userBranchRoleRepository = userBranchRoleRepository;
     }
 
     [HttpGet]
@@ -137,11 +139,14 @@ public class AccountController : Controller
             return View(model);
         }
 
-        // Create claims and complete authentication
-        var roles = (await _userRoleRepository.GetRolesByUserIdAsync(userId)).ToList();
+        // Use branch-specific roles, fall back to global if none assigned
+        var branchSpecificRoles = (await _userBranchRoleRepository.GetRolesByUserBranchAsync(userId, model.BranchID)).ToList();
+        var roles = branchSpecificRoles.Any()
+            ? branchSpecificRoles
+            : (await _userRoleRepository.GetRolesByUserIdAsync(userId)).ToList();
         if (roles.Count == 0)
         {
-            ModelState.AddModelError(string.Empty, "No roles are assigned to this user.");
+            ModelState.AddModelError(string.Empty, "No roles are assigned to this user for the selected branch.");
             var branches = await _branchRepository.GetActiveBranchesAsync();
             model.AvailableBranches = branches.ToList();
             return View(model);

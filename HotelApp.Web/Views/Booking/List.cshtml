@@ -16,6 +16,33 @@
 
 <form style="display:none;">@Html.AntiForgeryToken()</form>
 
+@{
+    var successMessage = TempData["SuccessMessage"] as string;
+    var errorMessage = TempData["ErrorMessage"] as string;
+}
+
+@if (!string.IsNullOrWhiteSpace(successMessage) || !string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="toast-stack" aria-live="polite" aria-atomic="true">
+        @if (!string.IsNullOrWhiteSpace(successMessage))
+        {
+            <div class="alert alert-success toast-item" role="status" data-toast>
+                <i class="fas fa-check-circle"></i>
+                <span>@successMessage</span>
+                <button type="button" class="toast-close" aria-label="Close">&times;</button>
+            </div>
+        }
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="alert alert-danger toast-item" role="alert" data-toast>
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>@errorMessage</span>
+                <button type="button" class="toast-close" aria-label="Close">&times;</button>
+            </div>
+        }
+    </div>
+}
+
 <!-- Dashboard Cards (match Rooms Dashboard style) -->
 <div class="status-cards booking-status-cards">
     <div class="status-card available">

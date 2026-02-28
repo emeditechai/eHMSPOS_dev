@@ -5,6 +5,7 @@ using HotelApp.Web.Repositories;
 using HotelApp.Web.ViewModels;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace HotelApp.Web.Controllers;
 
@@ -16,34 +17,36 @@ public class UserManagementController : BaseController
     private readonly IBranchRepository _branchRepository;
     private readonly IUserRoleRepository _userRoleRepository;
     private readonly IRoleRepository _roleRepository;
+    private readonly IUserBranchRoleRepository _userBranchRoleRepository;
 
     public UserManagementController(
         IUserRepository userRepository,
         IUserBranchRepository userBranchRepository,
         IBranchRepository branchRepository,
         IUserRoleRepository userRoleRepository,
-        IRoleRepository roleRepository)
+        IRoleRepository roleRepository,
+        IUserBranchRoleRepository userBranchRoleRepository)
     {
         _userRepository = userRepository;
         _userBranchRepository = userBranchRepository;
         _branchRepository = branchRepository;
         _userRoleRepository = userRoleRepository;
         _roleRepository = roleRepository;
+        _userBranchRoleRepository = userBranchRoleRepository;
     }
 
     public async Task<IActionResult> Index()
     {
         var users = await _userRepository.GetAllUsersAsync();
-        
-        // Get branches and roles for each user
+
         var usersWithBranchesAndRoles = new List<(User user, List<Branch> branches, List<Role> roles)>();
         foreach (var user in users)
         {
             var branches = (await _userBranchRepository.GetBranchesByUserIdAsync(user.Id)).ToList();
-            var roles = (await _userRoleRepository.GetRolesByUserIdAsync(user.Id)).ToList();
+            var roles    = (await _userRoleRepository.GetRolesByUserIdAsync(user.Id)).ToList();
             usersWithBranchesAndRoles.Add((user, branches, roles));
         }
-        
+
         ViewBag.UsersWithBranchesAndRoles = usersWithBranchesAndRoles;
         return View(users);
     }
@@ -52,11 +55,11 @@ public class UserManagementController : BaseController
     public async Task<IActionResult> Create()
     {
         var branches = await _branchRepository.GetActiveBranchesAsync();
-        var roles = await _roleRepository.GetAllRolesAsync();
+        var roles    = await _roleRepository.GetAllRolesAsync();
         var model = new UserCreateViewModel
         {
             AvailableBranches = branches.ToList(),
-            AvailableRoles = roles.ToList()
+            AvailableRoles    = roles.ToList()
         };
         return View(model);
     }
@@ -65,85 +68,72 @@ public class UserManagementController : BaseController
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(UserCreateViewModel model)
     {
+        // Parse branch-wise role assignments from JSON
+        var branchRoleAssignments = ParseBranchRolesJson(model.BranchRolesJson);
+        if (!branchRoleAssignments.Any() || branchRoleAssignments.All(a => !a.RoleIds.Any()))
+        {
+            ModelState.AddModelError("BranchRolesJson", "Please assign at least one role to at least one branch");
+        }
+
+        // Derive flat lists for backward compat
+        model.SelectedBranchIds = branchRoleAssignments.Select(a => a.BranchId).Distinct().ToList();
+        model.SelectedRoleIds   = branchRoleAssignments.SelectMany(a => a.RoleIds).Distinct().ToList();
+
         if (!ModelState.IsValid)
         {
             model.AvailableBranches = (await _branchRepository.GetActiveBranchesAsync()).ToList();
-            model.AvailableRoles = (await _roleRepository.GetAllRolesAsync()).ToList();
+            model.AvailableRoles    = (await _roleRepository.GetAllRolesAsync()).ToList();
             return View(model);
         }
 
-        // Validate username uniqueness
         if (await _userRepository.UsernameExistsAsync(model.Username))
         {
             ModelState.AddModelError("Username", "Username already exists");
             model.AvailableBranches = (await _branchRepository.GetActiveBranchesAsync()).ToList();
-            model.AvailableRoles = (await _roleRepository.GetAllRolesAsync()).ToList();
+            model.AvailableRoles    = (await _roleRepository.GetAllRolesAsync()).ToList();
             return View(model);
         }
 
-        // Validate email uniqueness
         if (await _userRepository.EmailExistsAsync(model.Email))
         {
             ModelState.AddModelError("Email", "Email already exists");
             model.AvailableBranches = (await _branchRepository.GetActiveBranchesAsync()).ToList();
-            model.AvailableRoles = (await _roleRepository.GetAllRolesAsync()).ToList();
+            model.AvailableRoles    = (await _roleRepository.GetAllRolesAsync()).ToList();
             return View(model);
         }
 
-        // Validate password match
         if (model.Password != model.ConfirmPassword)
         {
             ModelState.AddModelError("ConfirmPassword", "Passwords do not match");
             model.AvailableBranches = (await _branchRepository.GetActiveBranchesAsync()).ToList();
-            model.AvailableRoles = (await _roleRepository.GetAllRolesAsync()).ToList();
+            model.AvailableRoles    = (await _roleRepository.GetAllRolesAsync()).ToList();
             return View(model);
         }
 
-        // Validate at least one branch selected
-        if (!model.SelectedBranchIds.Any())
-        {
-            ModelState.AddModelError("SelectedBranchIds", "Please select at least one branch");
-            model.AvailableBranches = (await _branchRepository.GetActiveBranchesAsync()).ToList();
-            model.AvailableRoles = (await _roleRepository.GetAllRolesAsync()).ToList();
-            return View(model);
-        }
-
-        // Validate at least one role selected
-        if (!model.SelectedRoleIds.Any())
-        {
-            ModelState.AddModelError("SelectedRoleIds", "Please select at least one role");
-            model.AvailableBranches = (await _branchRepository.GetActiveBranchesAsync()).ToList();
-            model.AvailableRoles = (await _roleRepository.GetAllRolesAsync()).ToList();
-            return View(model);
-        }
-
-        // Generate salt and hash password using BCrypt
-        var salt = BCrypt.Net.BCrypt.GenerateSalt(12);
+        var salt         = BCrypt.Net.BCrypt.GenerateSalt(12);
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(model.Password, salt);
 
         var user = new User
         {
-            Username = model.Username,
-            Email = model.Email,
+            Username     = model.Username,
+            Email        = model.Email,
             PasswordHash = passwordHash,
-            Salt = salt,
-            FirstName = model.FirstName,
-            LastName = model.LastName,
-            FullName = model.FullName ?? $"{model.FirstName} {model.LastName}",
-            Phone = model.Username, // Default phone
-            PhoneNumber = model.Username,
-            Role = model.SelectedRoleIds.FirstOrDefault(), // Keep first role for backward compatibility
-            BranchID = model.SelectedBranchIds.First(), // Set primary branch
-            IsActive = true
+            Salt         = salt,
+            FirstName    = model.FirstName,
+            LastName     = model.LastName,
+            FullName     = model.FullName ?? $"{model.FirstName} {model.LastName}",
+            Phone        = model.PhoneNumber ?? model.Username,
+            PhoneNumber  = model.PhoneNumber,
+            Role         = model.SelectedRoleIds.FirstOrDefault(),
+            BranchID     = model.SelectedBranchIds.First(),
+            IsActive     = true
         };
 
         var userId = await _userRepository.CreateUserAsync(user);
-        
-        // Assign branches
+
         await _userBranchRepository.AssignBranchesToUserAsync(userId, model.SelectedBranchIds, CurrentUserId);
-        
-        // Assign roles
         await _userRoleRepository.AssignRolesToUserAsync(userId, model.SelectedRoleIds, CurrentUserId ?? 1);
+        await _userBranchRoleRepository.SaveUserBranchRolesAsync(userId, branchRoleAssignments, CurrentUserId);
 
         TempData["SuccessMessage"] = "User created successfully";
         return RedirectToAction(nameof(Index));
@@ -153,30 +143,54 @@ public class UserManagementController : BaseController
     public async Task<IActionResult> Edit(int id)
     {
         var user = await _userRepository.GetByIdAsync(id);
-        if (user == null)
+        if (user == null) return NotFound();
+
+        var userBranches   = await _userBranchRepository.GetBranchesByUserIdAsync(id);
+        var userRoles      = await _userRoleRepository.GetRolesByUserIdAsync(id);
+        var allBranchRoles = (await _userBranchRoleRepository.GetByUserIdAsync(id)).ToList();
+        var branches = await _branchRepository.GetActiveBranchesAsync();
+        var roles    = await _roleRepository.GetAllRolesAsync();
+
+        // Build existing branch-role assignments
+        var existingAssignments = allBranchRoles
+            .GroupBy(ubr => ubr.BranchID)
+            .Select(g => new UserBranchRoleAssignment
+            {
+                BranchId = g.Key,
+                RoleIds  = g.Select(x => x.RoleId).ToList()
+            }).ToList();
+
+        // Fall back to global roles x branches if no branch-wise data yet
+        if (!existingAssignments.Any())
         {
-            return NotFound();
+            var globalRoleIds = userRoles.Select(r => r.Id).ToList();
+            existingAssignments = userBranches.Select(b => new UserBranchRoleAssignment
+            {
+                BranchId = b.BranchID,
+                RoleIds  = new List<int>(globalRoleIds)
+            }).ToList();
         }
 
-        var userBranches = await _userBranchRepository.GetBranchesByUserIdAsync(id);
-        var userRoles = await _userRoleRepository.GetRolesByUserIdAsync(id);
-        var branches = await _branchRepository.GetActiveBranchesAsync();
-        var roles = await _roleRepository.GetAllRolesAsync();
+        var jsonDict     = existingAssignments.ToDictionary(a => a.BranchId.ToString(), a => a.RoleIds);
+        var branchRolesJson = JsonSerializer.Serialize(jsonDict);
 
         var model = new UserEditViewModel
         {
-            Id = user.Id,
-            Username = user.Username,
-            Email = user.Email,
-            FirstName = user.FirstName ?? string.Empty,
-            LastName = user.LastName ?? string.Empty,
-            FullName = user.FullName,
-            Role = user.Role,
-            IsActive = user.IsActive,
+            Id                = user.Id,
+            Username          = user.Username,
+            Email             = user.Email,
+            FirstName         = user.FirstName ?? string.Empty,
+            LastName          = user.LastName  ?? string.Empty,
+            FullName          = user.FullName,
+            PhoneNumber       = user.PhoneNumber,
+            Role              = user.Role,
+            IsActive          = user.IsActive,
             SelectedBranchIds = userBranches.Select(b => b.BranchID).ToList(),
-            SelectedRoleIds = userRoles.Select(r => r.Id).ToList(),
+            SelectedRoleIds   = userRoles.Select(r => r.Id).ToList(),
+            ExistingBranchRoleAssignments = existingAssignments,
+            BranchRolesJson   = branchRolesJson,
             AvailableBranches = branches.ToList(),
-            AvailableRoles = roles.ToList()
+            AvailableRoles    = roles.ToList()
         };
 
         return View(model);
@@ -186,88 +200,74 @@ public class UserManagementController : BaseController
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(UserEditViewModel model)
     {
+        // Parse branch-wise role assignments
+        var branchRoleAssignments = ParseBranchRolesJson(model.BranchRolesJson);
+        if (!branchRoleAssignments.Any() || branchRoleAssignments.All(a => !a.RoleIds.Any()))
+        {
+            ModelState.AddModelError("BranchRolesJson", "Please assign at least one role to at least one branch");
+        }
+
+        model.SelectedBranchIds = branchRoleAssignments.Select(a => a.BranchId).Distinct().ToList();
+        model.SelectedRoleIds   = branchRoleAssignments.SelectMany(a => a.RoleIds).Distinct().ToList();
+
         if (!ModelState.IsValid)
         {
             model.AvailableBranches = (await _branchRepository.GetActiveBranchesAsync()).ToList();
-            model.AvailableRoles = (await _roleRepository.GetAllRolesAsync()).ToList();
+            model.AvailableRoles    = (await _roleRepository.GetAllRolesAsync()).ToList();
+            model.ExistingBranchRoleAssignments = branchRoleAssignments;
             return View(model);
         }
 
         var user = await _userRepository.GetByIdAsync(model.Id);
-        if (user == null)
-        {
-            return NotFound();
-        }
+        if (user == null) return NotFound();
 
-        // Validate username uniqueness
         if (await _userRepository.UsernameExistsAsync(model.Username, model.Id))
         {
             ModelState.AddModelError("Username", "Username already exists");
             model.AvailableBranches = (await _branchRepository.GetActiveBranchesAsync()).ToList();
-            model.AvailableRoles = (await _roleRepository.GetAllRolesAsync()).ToList();
+            model.AvailableRoles    = (await _roleRepository.GetAllRolesAsync()).ToList();
+            model.ExistingBranchRoleAssignments = branchRoleAssignments;
             return View(model);
         }
 
-        // Validate email uniqueness
         if (await _userRepository.EmailExistsAsync(model.Email, model.Id))
         {
             ModelState.AddModelError("Email", "Email already exists");
             model.AvailableBranches = (await _branchRepository.GetActiveBranchesAsync()).ToList();
-            model.AvailableRoles = (await _roleRepository.GetAllRolesAsync()).ToList();
+            model.AvailableRoles    = (await _roleRepository.GetAllRolesAsync()).ToList();
+            model.ExistingBranchRoleAssignments = branchRoleAssignments;
             return View(model);
         }
 
-        // Validate password match if provided
         if (!string.IsNullOrEmpty(model.Password))
         {
             if (model.Password != model.ConfirmPassword)
             {
                 ModelState.AddModelError("ConfirmPassword", "Passwords do not match");
                 model.AvailableBranches = (await _branchRepository.GetActiveBranchesAsync()).ToList();
-                model.AvailableRoles = (await _roleRepository.GetAllRolesAsync()).ToList();
+                model.AvailableRoles    = (await _roleRepository.GetAllRolesAsync()).ToList();
+                model.ExistingBranchRoleAssignments = branchRoleAssignments;
                 return View(model);
             }
-
-            // Update password using BCrypt
             var salt = BCrypt.Net.BCrypt.GenerateSalt(12);
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password, salt);
             user.Salt = salt;
         }
 
-        // Validate at least one branch selected
-        if (!model.SelectedBranchIds.Any())
-        {
-            ModelState.AddModelError("SelectedBranchIds", "Please select at least one branch");
-            model.AvailableBranches = (await _branchRepository.GetActiveBranchesAsync()).ToList();
-            model.AvailableRoles = (await _roleRepository.GetAllRolesAsync()).ToList();
-            return View(model);
-        }
-
-        // Validate at least one role selected
-        if (!model.SelectedRoleIds.Any())
-        {
-            ModelState.AddModelError("SelectedRoleIds", "Please select at least one role");
-            model.AvailableBranches = (await _branchRepository.GetActiveBranchesAsync()).ToList();
-            model.AvailableRoles = (await _roleRepository.GetAllRolesAsync()).ToList();
-            return View(model);
-        }
-
-        user.Username = model.Username;
-        user.Email = model.Email;
-        user.FirstName = model.FirstName;
-        user.LastName = model.LastName;
-        user.FullName = model.FullName ?? $"{model.FirstName} {model.LastName}";
-        user.Role = model.SelectedRoleIds.FirstOrDefault(); // Keep first role for backward compatibility
-        user.IsActive = model.IsActive;
-        user.BranchID = model.SelectedBranchIds.First(); // Update primary branch
+        user.Username    = model.Username;
+        user.Email       = model.Email;
+        user.FirstName   = model.FirstName;
+        user.LastName    = model.LastName;
+        user.FullName    = model.FullName ?? $"{model.FirstName} {model.LastName}";
+        user.PhoneNumber = model.PhoneNumber;
+        user.Role        = model.SelectedRoleIds.FirstOrDefault();
+        user.IsActive    = model.IsActive;
+        user.BranchID    = model.SelectedBranchIds.FirstOrDefault();
 
         await _userRepository.UpdateUserAsync(user);
-        
-        // Update branch assignments
         await _userBranchRepository.AssignBranchesToUserAsync(user.Id, model.SelectedBranchIds, CurrentUserId ?? 1);
-        
-        // Update role assignments
         await _userRoleRepository.AssignRolesToUserAsync(user.Id, model.SelectedRoleIds, CurrentUserId ?? 1);
+        await _userBranchRoleRepository.SaveUserBranchRolesAsync(user.Id, branchRoleAssignments, CurrentUserId);
 
         TempData["SuccessMessage"] = "User updated successfully";
         return RedirectToAction(nameof(Index));
@@ -277,29 +277,44 @@ public class UserManagementController : BaseController
     public async Task<IActionResult> Details(int id)
     {
         var user = await _userRepository.GetByIdAsync(id);
-        if (user == null)
-        {
-            return NotFound();
-        }
+        if (user == null) return NotFound();
 
-        var userBranches = await _userBranchRepository.GetBranchesByUserIdAsync(id);
-        var userRoles = await _userRoleRepository.GetRolesByUserIdAsync(id);
-        
-        ViewBag.UserBranches = userBranches;
-        ViewBag.UserRoles = userRoles;
-
+        var branches        = (await _userBranchRepository.GetBranchesByUserIdAsync(id)).ToList();
+        var roles           = (await _userRoleRepository.GetRolesByUserIdAsync(id)).ToList();
+        var branchRoleItems = (await _userBranchRoleRepository.GetByUserIdAsync(id)).ToList();
+        ViewBag.UserBranches    = branches;
+        ViewBag.UserRoles       = roles;
+        ViewBag.UserBranchRoles = branchRoleItems;
         return View(user);
     }
 
-    private string GetRoleName(int? roleId)
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
     {
-        return roleId switch
+        var user = await _userRepository.GetByIdAsync(id);
+        if (user == null) return NotFound();
+
+        await _userRepository.DeleteUserAsync(id);
+        TempData["SuccessMessage"] = "User deleted successfully";
+        return RedirectToAction(nameof(Index));
+    }
+
+    private static List<UserBranchRoleAssignment> ParseBranchRolesJson(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json) || json.Trim() == "{}") return new();
+        try
         {
-            1 => "Administrator",
-            2 => "Manager",
-            3 => "Receptionist",
-            4 => "Staff",
-            _ => "Unknown"
-        };
+            var dict = JsonSerializer.Deserialize<Dictionary<string, List<int>>>(json);
+            if (dict == null) return new();
+            return dict
+                .Where(kv => int.TryParse(kv.Key, out _) && kv.Value?.Any() == true)
+                .Select(kv => new UserBranchRoleAssignment
+                {
+                    BranchId = int.Parse(kv.Key),
+                    RoleIds  = kv.Value
+                }).ToList();
+        }
+        catch { return new(); }
     }
 }

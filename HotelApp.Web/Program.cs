@@ -122,6 +122,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUserBranchRepository, UserBranchRepository>();
 builder.Services.AddScoped<IUserRoleRepository, UserRoleRepository>();
+builder.Services.AddScoped<IUserBranchRoleRepository, UserBranchRoleRepository>();
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<INavMenuRepository, NavMenuRepository>();
 builder.Services.AddScoped<IRoleNavMenuRepository, RoleNavMenuRepository>();

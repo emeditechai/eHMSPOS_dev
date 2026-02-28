@@ -7,15 +7,18 @@ public class AuthorizationMatrixService : IAuthorizationMatrixService
     private readonly IAuthorizationResourceRepository _resourceRepository;
     private readonly IAuthorizationPermissionRepository _permissionRepository;
     private readonly IUserRoleRepository _userRoleRepository;
+    private readonly IUserBranchRoleRepository _userBranchRoleRepository;
 
     public AuthorizationMatrixService(
         IAuthorizationResourceRepository resourceRepository,
         IAuthorizationPermissionRepository permissionRepository,
-        IUserRoleRepository userRoleRepository)
+        IUserRoleRepository userRoleRepository,
+        IUserBranchRoleRepository userBranchRoleRepository)
     {
         _resourceRepository = resourceRepository;
         _permissionRepository = permissionRepository;
         _userRoleRepository = userRoleRepository;
+        _userBranchRoleRepository = userBranchRoleRepository;
     }
 
     // Default behavior: allow when no explicit rule exists.
@@ -70,7 +73,11 @@ public class AuthorizationMatrixService : IAuthorizationMatrixService
 
         // 2) Role rules: when selectedRoleId is provided, evaluate only that role.
         // Otherwise evaluate across all roles (deny wins, then allow).
-        var roles = (await _userRoleRepository.GetRolesByUserIdAsync(userId)).Select(r => r.Id).ToList();
+        // Use branch-specific roles, fall back to global roles if none assigned
+        var branchRolesList = (await _userBranchRoleRepository.GetRolesByUserBranchAsync(userId, branchId)).ToList();
+        var roles = branchRolesList.Any()
+            ? branchRolesList.Select(r => r.Id).ToList()
+            : (await _userRoleRepository.GetRolesByUserIdAsync(userId)).Select(r => r.Id).ToList();
         if (roles.Count == 0)
         {
             return null;

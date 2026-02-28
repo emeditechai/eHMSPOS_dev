@@ -1,101 +1,189 @@
 @model HotelApp.Web.Models.User
+@using HotelApp.Web.Models
 @{
     ViewData["Title"] = "User Details";
-    var userBranches = ViewBag.UserBranches as IEnumerable<HotelApp.Web.Models.Branch> ?? Enumerable.Empty<HotelApp.Web.Models.Branch>();
-    var userRoles = ViewBag.UserRoles as IEnumerable<HotelApp.Web.Models.Role> ?? Enumerable.Empty<HotelApp.Web.Models.Role>();
-    var displayName = Model.FullName ?? $"{Model.FirstName} {Model.LastName}";
+    var userBranches    = ViewBag.UserBranches    as IEnumerable<Branch>         ?? Enumerable.Empty<Branch>();
+    var userRoles       = ViewBag.UserRoles       as IEnumerable<Role>           ?? Enumerable.Empty<Role>();
+    var branchRoleItems = ViewBag.UserBranchRoles as IEnumerable<UserBranchRole> ?? Enumerable.Empty<UserBranchRole>();
+    var displayName     = !string.IsNullOrWhiteSpace(Model.FullName) ? Model.FullName : $"{Model.FirstName} {Model.LastName}";
+    var initials        = string.Concat((Model.FirstName ?? "?").AsSpan(0,1), (Model.LastName ?? "?").AsSpan(0,1)).ToUpper();
+    var branchRoleGroups = branchRoleItems
+        .GroupBy(r => r.BranchID)
+        .Select(g => new {
+            BranchId   = g.Key,
+            BranchName = g.First().BranchName ?? "Unknown",
+            Roles      = g.Select(r => r.RoleName ?? "").Where(n => !string.IsNullOrEmpty(n)).Distinct().ToList()
+        }).ToList();
+    bool hasBranchRoles = branchRoleGroups.Any();
+}
+
+@section Styles {
+<style>
+    .ud-page { max-width:900px; margin:0 auto; }
+    .ud-profile-card { background:#fff; border-radius:14px; box-shadow:0 2px 14px rgba(0,0,0,.08); padding:28px 36px; display:flex; align-items:center; gap:28px; margin-bottom:22px; }
+    .ud-avatar { width:72px; height:72px; border-radius:50%; background:linear-gradient(135deg,var(--primary) 0%,#2a4494 100%); color:#fff; font-size:26px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; letter-spacing:1px; box-shadow:0 4px 14px rgba(26,42,108,.3); }
+    .ud-profile-info { flex:1; min-width:0; }
+    .ud-name { font-size:21px; font-weight:700; color:#1a2a6c; margin:0 0 5px; }
+    .ud-meta { font-size:13px; color:#888; display:flex; align-items:center; gap:16px; margin-bottom:10px; flex-wrap:wrap; }
+    .ud-meta span { display:flex; align-items:center; gap:5px; }
+    .ud-meta i { color:#bbb; font-size:12px; }
+    .ud-badges { display:flex; gap:7px; flex-wrap:wrap; }
+    .ud-status-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600; }
+    .ud-status-badge.active   { background:#e8f5e9; color:#2e7d32; }
+    .ud-status-badge.inactive { background:#fce4ec; color:#c62828; }
+    .ud-status-badge.locked   { background:#fff3e0; color:#e65100; }
+    .ud-status-badge .dot { width:7px; height:7px; border-radius:50%; }
+    .ud-status-badge.active .dot { background:#2e7d32; }
+    .ud-status-badge.inactive .dot { background:#c62828; }
+    .ud-status-badge.locked .dot { background:#e65100; }
+    .ud-card { background:#fff; border-radius:14px; box-shadow:0 2px 14px rgba(0,0,0,.08); padding:24px 36px; margin-bottom:22px; }
+    .ud-card-title { font-size:14px; font-weight:700; color:#1a2a6c; margin-bottom:18px; padding-bottom:12px; border-bottom:2px solid #f0f0f0; display:flex; align-items:center; gap:8px; }
+    .ud-card-title i { color:var(--primary); }
+    .ud-info-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
+    @@media (max-width:800px) { .ud-info-grid { grid-template-columns:repeat(2,1fr); } .ud-profile-card { flex-wrap:wrap; } }
+    @@media (max-width:500px) { .ud-info-grid { grid-template-columns:1fr; } }
+    .ud-info-item { display:flex; flex-direction:column; gap:4px; }
+    .ud-info-label { font-size:11px; font-weight:700; color:#bbb; text-transform:uppercase; letter-spacing:.6px; }
+    .ud-info-value { font-size:14px; color:#222; font-weight:500; }
+    .ud-info-value.muted { color:#bbb; font-style:italic; font-weight:400; }
+    .ud-branch-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; }
+    .ud-branch-box { border:1px solid #e4e9f4; border-radius:10px; overflow:hidden; }
+    .ud-branch-box-hdr { background:linear-gradient(90deg,var(--primary) 0%,#2a4494 100%); color:#fff; padding:10px 16px; display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; }
+    .ud-branch-box-hdr .ud-branch-code { background:rgba(255,255,255,.2); padding:2px 9px; border-radius:10px; font-size:11px; font-weight:700; letter-spacing:.5px; }
+    .ud-branch-box-body { padding:12px 14px; display:flex; flex-wrap:wrap; gap:6px; background:#fff; min-height:46px; }
+    .ud-role-pill { display:inline-flex; align-items:center; gap:5px; background:#eef1fb; color:#1a2a6c; font-size:12px; font-weight:500; padding:4px 10px; border-radius:12px; }
+    .ud-role-pill i { font-size:10px; color:var(--primary); }
+    .ud-empty-pill { color:#bbb; font-size:12px; font-style:italic; }
+    .ud-no-data { color:#bbb; font-size:13px; font-style:italic; padding:6px 0; }
+</style>
 }
 
 <div class="page-header">
-    <h2><i class="fas fa-info-circle"></i> User Details</h2>
-    <div>
-        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn-create">
-            <i class="fas fa-pen"></i> Edit
-        </a>
-        <a asp-action="Index" class="btn-cancel" style="margin-left: 10px;">
-            <i class="fas fa-arrow-left"></i> Back to List
-        </a>
+    <h2><i class="fas fa-id-card"></i> User Details</h2>
+    <div style="display:flex;gap:10px;">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn-create"><i class="fas fa-pen"></i> Edit</a>
+        <a asp-action="Index" class="btn-cancel"><i class="fas fa-arrow-left"></i> Back</a>
     </div>
 </div>
 
-<div class="form-container form-readonly">
-    <div class="audit-info">
-        <div class="audit-item">
-            <span class="audit-label">Username</span>
-            <span class="audit-value">@Model.Username</span>
-            <span class="audit-subtext">@displayName</span>
-        </div>
-        <div class="audit-item">
-            <span class="audit-label">Status</span>
-            <span class="audit-value">
-                <span class="badge @(Model.IsActive ? "badge-available" : "badge-maintenance")">@(Model.IsActive ? "Active" : "Inactive")</span>
-            </span>
-            <span class="audit-subtext">Last login: @(Model.LastLoginDate.HasValue ? Model.LastLoginDate.Value.ToString("dd MMM yyyy hh:mm tt") : "Never")</span>
-        </div>
-        <div class="audit-item">
-            <span class="audit-label">Created</span>
-            <span class="audit-value">@Model.CreatedDate.ToString("dd MMM yyyy hh:mm tt")</span>
-        </div>
-        <div class="audit-item">
-            <span class="audit-label">Last Modified</span>
-            <span class="audit-value">@(Model.LastModifiedDate != DateTime.MinValue ? Model.LastModifiedDate.ToString("dd MMM yyyy hh:mm tt") : "Never")</span>
+<div class="ud-page">
+
+    <!-- Profile Header Card -->
+    <div class="ud-profile-card">
+        <div class="ud-avatar">@initials</div>
+        <div class="ud-profile-info">
+            <div class="ud-name">@displayName</div>
+            <div class="ud-meta">
+                <span><i class="fas fa-at"></i>@Model.Username</span>
+                <span><i class="fas fa-envelope"></i>@Model.Email</span>
+                @if (!string.IsNullOrWhiteSpace(Model.PhoneNumber)) {
+                    <span><i class="fas fa-phone"></i>@Model.PhoneNumber</span>
+                }
+            </div>
+            <div class="ud-badges">
+                @if (Model.IsLockedOut) {
+                    <span class="ud-status-badge locked"><span class="dot"></span> Locked Out</span>
+                } else if (Model.IsActive) {
+                    <span class="ud-status-badge active"><span class="dot"></span> Active</span>
+                } else {
+                    <span class="ud-status-badge inactive"><span class="dot"></span> Inactive</span>
+                }
+            </div>
         </div>
     </div>
 
-    <div class="form-row">
-        <div class="form-group">
-            <label>First Name</label>
-            <input type="text" value="@Model.FirstName" readonly />
-        </div>
-        <div class="form-group">
-            <label>Last Name</label>
-            <input type="text" value="@Model.LastName" readonly />
-        </div>
-        <div class="form-group">
-            <label>Full Name</label>
-            <input type="text" value="@displayName" readonly />
-        </div>
-        <div class="form-group">
-            <label>Email</label>
-            <input type="text" value="@Model.Email" readonly />
+    <!-- Personal Information -->
+    <div class="ud-card">
+        <div class="ud-card-title"><i class="fas fa-info-circle"></i> Personal Information</div>
+        <div class="ud-info-grid">
+            <div class="ud-info-item">
+                <span class="ud-info-label">First Name</span>
+                <span class="ud-info-value">@(Model.FirstName ?? "—")</span>
+            </div>
+            <div class="ud-info-item">
+                <span class="ud-info-label">Last Name</span>
+                <span class="ud-info-value">@(Model.LastName ?? "—")</span>
+            </div>
+            <div class="ud-info-item">
+                <span class="ud-info-label">Username</span>
+                <span class="ud-info-value">@Model.Username</span>
+            </div>
+            <div class="ud-info-item">
+                <span class="ud-info-label">Email</span>
+                <span class="ud-info-value">@Model.Email</span>
+            </div>
+            <div class="ud-info-item">
+                <span class="ud-info-label">Phone Number</span>
+                <span class="ud-info-value @(string.IsNullOrWhiteSpace(Model.PhoneNumber) ? "muted" : "")">
+                    @(string.IsNullOrWhiteSpace(Model.PhoneNumber) ? "Not provided" : Model.PhoneNumber)
+                </span>
+            </div>
+            <div class="ud-info-item">
+                <span class="ud-info-label">Last Login</span>
+                <span class="ud-info-value @(Model.LastLoginDate == null ? "muted" : "")">
+                    @(Model.LastLoginDate.HasValue ? Model.LastLoginDate.Value.ToString("dd MMM yyyy hh:mm tt") : "Never")
+                </span>
+            </div>
+            <div class="ud-info-item">
+                <span class="ud-info-label">Created</span>
+                <span class="ud-info-value">@Model.CreatedDate.ToString("dd MMM yyyy hh:mm tt")</span>
+            </div>
+            <div class="ud-info-item">
+                <span class="ud-info-label">Last Modified</span>
+                <span class="ud-info-value @(Model.LastModifiedDate == DateTime.MinValue ? "muted" : "")">
+                    @(Model.LastModifiedDate != DateTime.MinValue ? Model.LastModifiedDate.ToString("dd MMM yyyy hh:mm tt") : "Never")
+                </span>
+            </div>
         </div>
     </div>
 
-    <div class="form-row">
-        <div class="form-group form-group-full">
-            <label>Assigned Roles</label>
-            @if (userRoles.Any())
-            {
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                    @foreach (var role in userRoles)
-                    {
-                        <span class="badge badge-active"><i class="fas fa-user-tag"></i> @role.Name</span>
-                    }
-                </div>
-            }
-            else
-            {
-                <span class="badge badge-maintenance">No roles assigned</span>
-            }
-        </div>
+    <!-- Branch-wise Role Assignments -->
+    <div class="ud-card">
+        <div class="ud-card-title"><i class="fas fa-building"></i> Branch-wise Role Assignments</div>
+        @if (hasBranchRoles) {
+            <div class="ud-branch-grid">
+                @foreach (var grp in branchRoleGroups) {
+                    <div class="ud-branch-box">
+                        <div class="ud-branch-box-hdr">
+                            <i class="fas fa-building" style="opacity:.75;font-size:12px;"></i>
+                            <span>@grp.BranchName</span>
+                        </div>
+                        <div class="ud-branch-box-body">
+                            @if (grp.Roles.Any()) {
+                                foreach (var roleName in grp.Roles) {
+                                    <span class="ud-role-pill"><i class="fas fa-shield-alt"></i> @roleName</span>
+                                }
+                            } else {
+                                <span class="ud-empty-pill">No roles assigned</span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        } else if (userBranches.Any()) {
+            <div class="ud-branch-grid">
+                @foreach (var branch in userBranches) {
+                    <div class="ud-branch-box">
+                        <div class="ud-branch-box-hdr">
+                            <i class="fas fa-building" style="opacity:.75;font-size:12px;"></i>
+                            <span style="flex:1;">@branch.BranchName</span>
+                            <span class="ud-branch-code">@branch.BranchCode</span>
+                        </div>
+                        <div class="ud-branch-box-body">
+                            @if (userRoles.Any()) {
+                                foreach (var role in userRoles) {
+                                    <span class="ud-role-pill"><i class="fas fa-shield-alt"></i> @role.Name</span>
+                                }
+                            } else {
+                                <span class="ud-empty-pill">No roles assigned</span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        } else {
+            <div class="ud-no-data">No branch or role assignments found for this user.</div>
+        }
     </div>
 
-    <div class="form-row">
-        <div class="form-group form-group-full">
-            <label>Assigned Branches</label>
-            @if (userBranches.Any())
-            {
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                    @foreach (var branch in userBranches)
-                    {
-                        <span class="badge badge-cleaning"><i class="fas fa-building"></i> @branch.BranchName (@branch.BranchCode)</span>
-                    }
-                </div>
-            }
-            else
-            {
-                <span class="badge badge-maintenance">No branches assigned</span>
-            }
-        </div>
-    </div>
 </div>
