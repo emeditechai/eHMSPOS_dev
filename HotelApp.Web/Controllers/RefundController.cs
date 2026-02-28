@@ -84,6 +84,23 @@ public class RefundController : BaseController
         });
     }
 
+    // POST /Refund/Approve
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Approve([FromBody] ApproveRefundRequest request)
+    {
+        if (request == null || request.CancellationId <= 0)
+            return Json(new { success = false, message = "Invalid request." });
+
+        if (CurrentUserId == null || CurrentUserId.Value <= 0)
+            return Json(new { success = false, message = "Unable to identify user. Please refresh and try again." });
+
+        var (success, message) = await _refundRepository.ApproveRefundAsync(
+            request.CancellationId, CurrentBranchID, CurrentUserId.Value);
+
+        return Json(new { success, message });
+    }
+
     // POST /Refund/Process
     [HttpPost]
     [ValidateAntiForgeryToken]

@@ -204,6 +204,14 @@ public class RefundRepository : IRefundRepository
             if ((bool)canc.IsRefunded)
                 return Fail("This refund has already been processed.");
 
+            // Must be approved before processing
+            const string approvalCheckSql = @"
+                SELECT ISNULL(ApprovalStatus,'None') FROM BookingCancellations WHERE Id = @Id";
+            var approvalStatus = await _db.ExecuteScalarAsync<string>(
+                approvalCheckSql, new { Id = request.CancellationId }, tx);
+            if (approvalStatus != "Approved")
+                return Fail("Refund has not been approved yet. Please get manager approval first.");
+
             decimal refundAmount = (decimal)canc.RefundAmount;
             if (refundAmount <= 0)
                 return Fail("Eligible refund amount is ₹0. No refund to process.");
@@ -393,6 +401,41 @@ public class RefundRepository : IRefundRepository
             try { tx.Rollback(); } catch { /* best-effort */ }
             return Fail(ex.GetBaseException().Message);
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Approve a refund (sets ApprovalStatus = 'Approved')
+    // ─────────────────────────────────────────────────────────────────────────
+    public async Task<(bool Success, string Message)> ApproveRefundAsync(
+        int cancellationId, int branchId, int approvedBy)
+    {
+        const string checkSql = @"
+            SELECT ISNULL(ApprovalStatus,'None') AS ApprovalStatus,
+                   ISNULL(IsRefunded,0)          AS IsRefunded
+            FROM BookingCancellations
+            WHERE Id = @Id AND BranchID = @BranchId";
+
+        var row = await _db.QueryFirstOrDefaultAsync<dynamic>(
+            checkSql, new { Id = cancellationId, BranchId = branchId });
+
+        if (row == null)
+            return (false, "Refund record not found.");
+        if ((bool)row.IsRefunded)
+            return (false, "This refund has already been processed.");
+        if ((string)row.ApprovalStatus == "Approved")
+            return (false, "Refund has already been approved.");
+
+        int? approvedByNullable = approvedBy > 0 ? (int?)approvedBy : null;
+
+        await _db.ExecuteAsync(@"
+            UPDATE BookingCancellations
+            SET ApprovalStatus = 'Approved',
+                ApprovedBy     = @ApprovedBy,
+                ApprovedAt     = GETDATE()
+            WHERE Id = @Id AND BranchID = @BranchId",
+            new { Id = cancellationId, BranchId = branchId, ApprovedBy = approvedByNullable });
+
+        return (true, "Refund approved successfully.");
     }
 
     // ─────────────────────────────────────────────────────────────────────────

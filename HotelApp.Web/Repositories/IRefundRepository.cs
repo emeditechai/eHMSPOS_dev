@@ -9,4 +9,5 @@ public interface IRefundRepository
     Task<(decimal TotalRefunded, int RefundedCount)> GetCompletedRefundsTotalAsync(int branchId, DateTime fromDate, DateTime toDate);
     Task<RefundDetailViewModel?> GetRefundDetailAsync(int cancellationId, int branchId);
     Task<ProcessRefundResult> ProcessRefundAsync(ProcessRefundRequest request, int branchId, int performedBy);
+    Task<(bool Success, string Message)> ApproveRefundAsync(int cancellationId, int branchId, int approvedBy);
 }

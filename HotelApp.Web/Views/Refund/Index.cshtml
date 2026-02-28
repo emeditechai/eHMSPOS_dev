@@ -7,6 +7,11 @@
     string fromDateStr = ViewBag.FromDate ?? DateTime.Today.ToString("yyyy-MM-dd");
     string toDateStr   = ViewBag.ToDate   ?? DateTime.Today.ToString("yyyy-MM-dd");
 
+    // Role-based approval gate
+    var _roleForApprove  = ViewBag.SelectedRoleName as string ?? "";
+    var _canApproveRazor = _roleForApprove.Equals("Administrator", StringComparison.OrdinalIgnoreCase)
+                        || _roleForApprove.Equals("Manager", StringComparison.OrdinalIgnoreCase);
+
     // The model contains pending refunds filtered by date range (for card stats)
     var pendingList = Model?.ToList() ?? new List<HotelApp.Web.Models.RefundListItem>();
 
@@ -498,6 +503,7 @@ else
                     @Html.AntiForgeryToken()
                     <input type="hidden" id="fld_cancellationId" name="CancellationId" value="0" />
                     <input type="hidden" id="fld_bookingId" name="BookingId" value="0" />
+                    <input type="hidden" id="fld_approvalStatus" value="" />
 
                     <div class="row g-2 mb-2">
                         <!-- Booking & Guest Info -->
@@ -551,7 +557,27 @@ else
                         <div class="banner-amount" id="inf_refundAmountBig">₹0</div>
                     </div>
 
-                    <!-- Payment Details Card -->
+                    <!-- Approval Status Bar -->
+                    <div id="approvalStatusBar" class="d-flex align-items-center justify-content-between px-3 py-2 rounded mb-2" style="background:#fff3cd;border:1px solid #ffc107;">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-shield-alt" style="color:#856404;"></i>
+                            <span style="font-size:13px;font-weight:600;color:#856404;">Approval Status:</span>
+                            <span id="inf_approvalStatusBadge" class="badge bg-warning text-dark">Pending</span>
+                        </div>
+                        <button type="button" id="btn_approveRefund"
+                                class="btn btn-warning btn-sm fw-bold@(_canApproveRazor ? "" : " d-none")"
+                                onclick="approveRefund()">
+                            <i class="fas fa-thumbs-up me-1"></i>Approve Refund
+                        </button>
+                    </div>
+
+                    <!-- Payment Details Card (locked until approved) -->
+                    <div id="paymentSection" style="position:relative;">
+                    <!-- Lock overlay shown when not approved -->
+                    <div id="paymentLockOverlay" style="position:absolute;inset:0;z-index:10;background:rgba(255,255,255,0.75);display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;">
+                        <i class="fas fa-lock fa-2x mb-2" style="color:#856404;"></i>
+                        <span style="font-size:13px;font-weight:600;color:#856404;">Approval required before processing refund</span>
+                    </div>
                     <div class="payment-card">
                         <div class="card-heading"><i class="fas fa-credit-card me-1"></i>Refund Payment Details</div>
 
@@ -629,6 +655,7 @@ else
                             </div>
                         </div>
                     </div>
+                    </div><!-- /paymentSection -->
                 </form>
             </div>
         </div>
@@ -638,6 +665,7 @@ else
 @section Scripts {
 <script>
     var _activeCancellationId = null;
+    var _canApproveRefund = @(_canApproveRazor ? "true" : "false");
 
     // ── Date range filter helpers ──────────────────────────────────────────
     function autoSubmitDateFilter() {
@@ -732,8 +760,106 @@ else
         document.getElementById('fld_chequeDate').value = '';
         onPaymentMethodChange();
 
+        // Update approval UI
+        document.getElementById('fld_approvalStatus').value = d.approvalStatus || 'Pending';
+        updateApprovalUI(d.approvalStatus || 'Pending');
+
         // Scroll the detail panel to top
         document.getElementById('refundDetailPanel').scrollTop = 0;
+    }
+
+    function updateApprovalUI(status) {
+        var isApproved = (status === 'Approved');
+        var badge      = document.getElementById('inf_approvalStatusBadge');
+        var bar        = document.getElementById('approvalStatusBar');
+        var approveBtn = document.getElementById('btn_approveRefund');
+        var lockOverlay = document.getElementById('paymentLockOverlay');
+
+        if (isApproved) {
+            badge.textContent = 'Approved';
+            badge.className = 'badge bg-success';
+            bar.style.background = '#d1e7dd';
+            bar.style.borderColor = '#198754';
+            badge.previousElementSibling.style.color = '#0a3622';
+            bar.querySelector('span[style]').style.color = '#0a3622';
+            approveBtn.style.display = 'none';
+            lockOverlay.style.display = 'none';
+        } else {
+            badge.textContent = 'Pending Approval';
+            badge.className = 'badge bg-warning text-dark';
+            bar.style.background = '#fff3cd';
+            bar.style.borderColor = '#ffc107';
+            if (_canApproveRefund) approveBtn.style.display = '';
+            lockOverlay.style.display = 'flex';
+        }
+    }
+
+    function approveRefund() {
+        var cancellationId = parseInt(document.getElementById('fld_cancellationId').value);
+        if (cancellationId <= 0) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'No refund selected.' });
+            return;
+        }
+        Swal.fire({
+            title: 'Approve Refund?',
+            html: 'Approving this refund will allow it to be processed and paid out to the guest.<br><br>Confirm approval?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#ffc107',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, Approve',
+            cancelButtonText: 'Cancel'
+        }).then(result => {
+            if (!result.isConfirmed) return;
+
+            var token = document.querySelector('input[name="__RequestVerificationToken"]');
+
+            Swal.fire({
+                title: 'Approving...',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            fetch('/Refund/Approve', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token ? token.value : ''
+                },
+                body: JSON.stringify({ CancellationId: cancellationId })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    // Update UI to approved state without reloading
+                    document.getElementById('fld_approvalStatus').value = 'Approved';
+                    updateApprovalUI('Approved');
+
+                    // Update sidebar badge for this item
+                    var sidebarBadge = document.querySelector('#refund-item-' + cancellationId + ' .badge.bg-warning');
+                    if (sidebarBadge) {
+                        sidebarBadge.textContent = 'Approved';
+                        sidebarBadge.className = 'badge bg-success ms-1';
+                        sidebarBadge.style.fontSize = '9px';
+                    }
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Refund Approved!',
+                        text: 'The refund has been approved. You can now process the payment.',
+                        confirmButtonColor: '#198754',
+                        timer: 2500,
+                        timerProgressBar: true
+                    });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Approval Failed', text: data.message || 'An unexpected error occurred.' });
+                }
+            })
+            .catch(() => {
+                Swal.fire({ icon: 'error', title: 'Network Error', text: 'Failed to communicate with the server. Please try again.' });
+            });
+        });
     }
 
     function onPaymentMethodChange() {

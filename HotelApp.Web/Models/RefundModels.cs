@@ -89,3 +89,9 @@ public class ProcessRefundResult
     public decimal RefundAmount { get; set; }
     public string? ReceiptNumber { get; set; }
 }
+
+/// <summary>Request body for POST /Refund/Approve.</summary>
+public class ApproveRefundRequest
+{
+    public int CancellationId { get; set; }
+}
