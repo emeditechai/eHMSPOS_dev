@@ -296,7 +296,7 @@ public sealed class ReportsController : BaseController
     [HttpGet]
     public async Task<IActionResult> GuestDetails(DateOnly? fromDate, DateOnly? toDate)
     {
-        var branchId = HttpContext.Session.GetInt32("BranchID") ?? 1;
+        var branchId = CurrentBranchID;
 
         var effectiveFrom = fromDate ?? DateOnly.FromDateTime(DateTime.Today);
         var effectiveTo = toDate ?? effectiveFrom;

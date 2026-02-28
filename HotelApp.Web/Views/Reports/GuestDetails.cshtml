@@ -15,12 +15,12 @@
     <form method="get" action="@Url.Action("GuestDetails", "Reports")" style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; justify-content: space-between;">
         <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;">
             <div>
-                <label for="fromDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">From Date</label>
+                <label for="fromDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">Booking From Date</label>
                 <input id="fromDate" name="fromDate" type="date" class="form-control" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
             </div>
 
             <div>
-                <label for="toDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">To Date</label>
+                <label for="toDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">Booking To Date</label>
                 <input id="toDate" name="toDate" type="date" class="form-control" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
             </div>
         </div>
