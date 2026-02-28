@@ -520,7 +520,10 @@ namespace HotelApp.Web.Controllers
             {
                 var branchId  = CurrentBranchID;
                 var userId    = GetCurrentUserId() ?? 0;
-                var roleName  = HttpContext.Session.GetString("SelectedRoleName") ?? "";
+                // Read role from session, fall back to claims (mirrors BaseController pattern)
+                var roleName  = HttpContext.Session.GetString("SelectedRoleName")
+                             ?? User.FindFirst("SelectedRoleName")?.Value
+                             ?? "";
                 var isAdmin   = roleName.Equals("Administrator", StringComparison.OrdinalIgnoreCase)
                              || roleName.Equals("Manager", StringComparison.OrdinalIgnoreCase);
 
