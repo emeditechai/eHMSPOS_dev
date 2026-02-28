@@ -30,13 +30,18 @@ public class AccountController : Controller
     }
 
     [HttpGet]
-    public IActionResult Login(string? returnUrl = null)
+    public IActionResult Login(string? returnUrl = null, string? reason = null)
     {
         if (User.Identity?.IsAuthenticated == true)
         {
             return RedirectToAction("Index", "Dashboard");
         }
-        
+
+        if (reason == "timeout")
+            TempData["SessionMessage"] = "Your session expired due to inactivity. Please log in again.";
+        else if (reason == "session")
+            TempData["SessionMessage"] = "Your session is incomplete. Please log in and select a branch and role.";
+
         return View(new LoginViewModel 
         { 
             ReturnUrl = returnUrl
@@ -316,6 +321,18 @@ public class AccountController : Controller
 
         var newIdentity = new ClaimsIdentity(newClaims, CookieAuthenticationDefaults.AuthenticationScheme);
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(newIdentity));
+    }
+
+    /// <summary>
+    /// Called by the client-side idle timer to cleanly end the session.
+    /// Accepts GET so the browser can redirect here without needing a CSRF token.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> TimeoutLogout()
+    {
+        HttpContext.Session.Clear();
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return RedirectToAction(nameof(Login), new { reason = "timeout" });
     }
 
     [HttpPost]

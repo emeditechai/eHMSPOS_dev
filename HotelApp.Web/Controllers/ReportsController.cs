@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace HotelApp.Web.Controllers;
 
 [Authorize]
-public sealed class ReportsController : Controller
+public sealed class ReportsController : BaseController
 {
     private readonly IReportsRepository _reportsRepository;
     private readonly IHotelSettingsRepository _hotelSettingsRepository;

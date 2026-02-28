@@ -12,6 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews(options =>
     {
         options.Filters.Add<HotelApp.Web.Filters.PageAuthorizationFilter>();
+        options.Filters.Add<HotelApp.Web.Filters.SessionValidationFilter>();
     })
     .AddJsonOptions(options =>
     {

@@ -305,6 +305,101 @@
         });
     </script>
     
+    @if (!isLoginPage)
+    {
+        <!-- ================================================================
+             SESSION IDLE TIMEOUT
+             After 10 minutes of no user activity, a SweetAlert is shown and
+             the user is redirected to /Account/TimeoutLogout (GET) which
+             clears the auth cookie and session before forwarding to Login.
+             ================================================================ -->
+        <script>
+            (function () {
+                const IDLE_MINUTES = 10;
+                const IDLE_MS = IDLE_MINUTES * 60 * 1000;
+                const WARNING_MS = 30 * 1000; // show alert 30 s before hard redirect
+                const LOGOUT_URL = '/Account/TimeoutLogout';
+
+                let idleTimer = null;
+                let warnTimer = null;
+                let swalInstance = null;
+                let countdownInterval = null;
+
+                function resetTimers() {
+                    // If the warning dialog is already showing, dismiss it and restart.
+                    if (swalInstance) {
+                        swalInstance.close();
+                        swalInstance = null;
+                    }
+                    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+                    clearTimeout(idleTimer);
+                    clearTimeout(warnTimer);
+
+                    // Fire warning at (IDLE_MS - WARNING_MS)
+                    warnTimer = setTimeout(showWarning, IDLE_MS - WARNING_MS);
+                    // Hard redirect at IDLE_MS (in case user ignores the dialog)
+                    idleTimer = setTimeout(doLogout, IDLE_MS);
+                }
+
+                function showWarning() {
+                    let secondsLeft = Math.ceil(WARNING_MS / 1000);
+
+                    swalInstance = Swal.fire({
+                        icon: 'warning',
+                        title: 'Session About to Expire',
+                        html: `You have been idle. You will be logged out in <b id="swal-countdown">${secondsLeft}</b> second(s).<br>Click <b>Stay Logged In</b> to continue.`,
+                        confirmButtonText: 'Stay Logged In',
+                        confirmButtonColor: '#1a2a6c',
+                        showCancelButton: true,
+                        cancelButtonText: 'Logout Now',
+                        cancelButtonColor: '#e74c3c',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        timerProgressBar: true,
+                        timer: WARNING_MS,
+                        didOpen: function () {
+                            countdownInterval = setInterval(function () {
+                                secondsLeft--;
+                                const el = document.getElementById('swal-countdown');
+                                if (el) el.textContent = secondsLeft;
+                                if (secondsLeft <= 0) { clearInterval(countdownInterval); countdownInterval = null; }
+                            }, 1000);
+                        },
+                        willClose: function () {
+                            if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+                        }
+                    }).then(function (result) {
+                        swalInstance = null;
+                        if (result.isConfirmed) {
+                            // User wants to stay — reset timers
+                            resetTimers();
+                        } else {
+                            // Cancelled or timer expired
+                            doLogout();
+                        }
+                    });
+                }
+
+                function doLogout() {
+                    clearTimeout(idleTimer);
+                    clearTimeout(warnTimer);
+                    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+                    // Redirect to the server-side TimeoutLogout action
+                    window.location.href = LOGOUT_URL;
+                }
+
+                // Track any user activity
+                const activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+                activityEvents.forEach(function (evt) {
+                    document.addEventListener(evt, resetTimers, { passive: true });
+                });
+
+                // Start timers on page load
+                resetTimers();
+            })();
+        </script>
+    }
+
     @RenderSection("Scripts", required: false)
 </body>
 </html>
