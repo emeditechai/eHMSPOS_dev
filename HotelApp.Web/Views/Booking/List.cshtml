@@ -149,6 +149,10 @@
                         <td>
                             <strong>@booking.PrimaryGuestFirstName @booking.PrimaryGuestLastName</strong>
                             <div class="subtext">@booking.PrimaryGuestPhone</div>
+                            @if (!string.IsNullOrWhiteSpace(booking.PrimaryGuestEmail))
+                            {
+                                <div class="subtext" style="font-size:11px;">@booking.PrimaryGuestEmail</div>
+                            }
                         </td>
                         <td>
                             <div>@booking.CheckInDate.ToString("dd MMM yyyy") - @booking.CheckOutDate.ToString("dd MMM yyyy")</div>
