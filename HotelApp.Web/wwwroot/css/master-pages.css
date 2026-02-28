@@ -461,6 +461,11 @@
     transform: translateY(-2px);
 }
 
+/* Bootstrap utility fallbacks */
+.text-muted {
+    color: #6c757d !important;
+}
+
 /* Validation Errors */
 .text-danger {
     color: var(--danger);

@@ -1,3 +1,13 @@
+/* CSS variable fallback — ensures variables are available even if dashboard.css load order changes */
+:root {
+    --primary: #1a2a6c;
+    --secondary: #b21f1f;
+    --accent: #fdbb2d;
+    --success: #28a745;
+    --danger: #dc3545;
+    --bs-body-font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
 html {
   font-size: 14px;
 }

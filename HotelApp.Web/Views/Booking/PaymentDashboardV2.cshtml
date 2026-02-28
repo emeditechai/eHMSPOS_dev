@@ -5,7 +5,6 @@
 @section Styles {
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
         .pd-v2 .section-title { font-weight: 700; font-size: 16px; margin-bottom: 10px; }
         .pd-v2 .filter-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06); padding: 16px; }
@@ -31,7 +30,7 @@
 <div class="container-fluid pd-v2">
     <div class="row mb-3">
         <div class="col">
-            <h4 class="mb-1"><i class="bi bi-wallet2"></i> Payment Dashboard</h4>
+            <h4 class="mb-1"><i class="fas fa-wallet"></i> Payment Dashboard</h4>
             <div class="text-muted" style="font-size:12px;">Compact view with clear visibility</div>
         </div>
     </div>
@@ -47,10 +46,10 @@
                 <input type="date" id="toDate" class="form-control" value="@ViewBag.ToDate">
             </div>
             <div class="col-md-3">
-                <button class="btn btn-primary w-100" onclick="loadDashboardData()"><i class="bi bi-search"></i> Apply Filter</button>
+                <button class="btn btn-primary w-100" onclick="loadDashboardData()"><i class="fas fa-search"></i> Apply Filter</button>
             </div>
             <div class="col-md-3">
-                <button class="btn btn-outline-secondary w-100" onclick="resetFilters()"><i class="bi bi-arrow-clockwise"></i> Reset</button>
+                <button class="btn btn-outline-secondary w-100" onclick="resetFilters()"><i class="fas fa-sync-alt"></i> Reset</button>
             </div>
         </div>
     </div>
@@ -61,41 +60,41 @@
             <div class="dashboard-card card-total-payments position-relative">
                 <div class="card-title">Total Payments</div>
                 <h2 class="card-value" id="pdv2-totalPayments">₹0.00</h2>
-                <i class="bi bi-cash-stack card-icon"></i>
+                <i class="fas fa-money-bill-wave card-icon"></i>
             </div>
         </div>
         <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6 col-12">
             <div class="dashboard-card card-total-gst position-relative">
                 <div class="card-title">Total GST</div>
                 <h2 class="card-value" id="pdv2-totalGst">₹0.00</h2>
-                <i class="bi bi-receipt card-icon"></i>
+                <i class="fas fa-receipt card-icon"></i>
             </div>
         </div>
         <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6 col-12">
             <div class="dashboard-card card-total-tips position-relative">
                 <div class="card-title">Total Tips</div>
                 <h2 class="card-value" id="pdv2-totalTips">₹0.00</h2>
-                <i class="bi bi-star card-icon"></i>
+                <i class="fas fa-star card-icon"></i>
             </div>
         </div>
         <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6 col-12">
             <div class="dashboard-card card-avg-payment position-relative">
                 <div class="card-title">Average Payment</div>
                 <h2 class="card-value" id="pdv2-avgPayment">₹0.00</h2>
-                <i class="bi bi-graph-up card-icon"></i>
+                <i class="fas fa-chart-line card-icon"></i>
             </div>
         </div>
     </div>
 
     <!-- Methods -->
     <div class="row mt-3">
-        <div class="col-12"><div class="section-title"><i class="bi bi-credit-card"></i> Payment Methods</div></div>
+        <div class="col-12"><div class="section-title"><i class="fas fa-credit-card"></i> Payment Methods</div></div>
         <div class="row g-2" id="pdv2-methods"></div>
     </div>
 
     <!-- Table -->
     <div class="table-card mt-3">
-        <div class="section-title"><i class="bi bi-table"></i> Payment History</div>
+        <div class="section-title"><i class="fas fa-table"></i> Payment History</div>
         <div class="table-responsive">
             <table class="table table-hover table-sm" id="pdv2-paymentsTable">
                 <thead>
@@ -156,8 +155,8 @@
                                 <div class="method-name">${m.paymentMethod}</div>
                                 <div class="method-amount">₹${formatNumber(m.totalAmount)}</div>
                                 <div class="method-stats">
-                                    <span><i class="bi bi-receipt"></i> ${m.transactionCount}</span>
-                                    <span><i class="bi bi-bar-chart"></i> ₹${formatNumber(m.averageAmount)}</span>
+                                    <span><i class="fas fa-receipt"></i> ${m.transactionCount}</span>
+                                    <span><i class="fas fa-chart-bar"></i> ₹${formatNumber(m.averageAmount)}</span>
                                 </div>
                             </div>
                         </div>
