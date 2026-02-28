@@ -13,6 +13,13 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 </head>
 <body>
+    <!-- Background slideshow (max 3 images, shuffles every 3 s) -->
+    <div class="bg-slideshow" id="bgSlideshow">
+        <div class="bg-slide active" style="background-image: url('/images/login-bg1.jpeg');"></div>
+        <div class="bg-slide" style="background-image: url('/images/login-bg2.jpeg');"></div>
+        <div class="bg-slide" style="background-image: url('/images/login-bg3.jpeg');"></div>
+    </div>
+
     <div class="container">
         <div class="welcome-section">
             <h1>Welcome to eLUX Stay</h1>
@@ -82,26 +89,34 @@
                     <button type="submit" class="login-btn">Sign In</button>
                 </form>
                 
-                <div class="divider">
-                    <span>Or sign in with</span>
-                </div>
-                
-                <div class="social-login">
-                    <div class="social-btn facebook">
-                        <i class="fab fa-facebook-f"></i>
-                    </div>
-                    <div class="social-btn google">
-                        <i class="fab fa-google"></i>
-                    </div>
-                    <div class="social-btn twitter">
-                        <i class="fab fa-twitter"></i>
-                    </div>
-                </div>
-                
-                
             </div>
         </div>
     </div>
+
+    <!-- Background slideshow script -->
+    <script>
+        (function () {
+            var slides = document.querySelectorAll('#bgSlideshow .bg-slide');
+            if (!slides.length) return;
+            var current = 0;
+            setInterval(function () {
+                var prev = current;
+                current = (current + 1) % slides.length;
+
+                // Slide current out to the left
+                slides[prev].classList.add('exit');
+                slides[prev].classList.remove('active');
+
+                // Slide next in from the right
+                slides[current].classList.add('active');
+
+                // After transition, reset the exited slide back off-screen right
+                setTimeout(function () {
+                    slides[prev].classList.remove('exit');
+                }, 1000);
+            }, 10000);
+        })();
+    </script>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>

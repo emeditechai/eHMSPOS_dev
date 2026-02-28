@@ -5,23 +5,63 @@
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+html, body {
+    height: 100%;
+}
+
 body {
-    background-color: #f5f5f5;
+    background-color: #111;
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');
+    min-height: 100dvh;
+    position: relative;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+/* ── Background slideshow ── */
+.bg-slideshow {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+}
+
+.bg-slide {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     background-size: cover;
     background-position: center;
+    background-repeat: no-repeat;
+    transform: translateX(100%);
+    transition: transform 1s ease-in-out;
+}
+
+.bg-slide::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.50);
+}
+
+.bg-slide.active {
+    transform: translateX(0);
+}
+
+.bg-slide.exit {
+    transform: translateX(-100%);
 }
 
 .container {
     display: flex;
-    width: 900px;
-    height: 550px;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
-    border-radius: 15px;
+    width: min(820px, 100%);
+    min-height: unset;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+    border-radius: 18px;
     overflow: hidden;
 }
 
@@ -29,20 +69,21 @@ body {
     flex: 1;
     background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
     color: white;
-    padding: 40px;
+    padding: 36px 30px;
     display: flex;
     flex-direction: column;
     justify-content: center;
 }
 
 .welcome-section h1 {
-    font-size: 2.5rem;
-    margin-bottom: 20px;
+    font-size: 1.9rem;
+    margin-bottom: 12px;
 }
 
 .welcome-section p {
-    line-height: 1.6;
-    margin-bottom: 30px;
+    line-height: 1.55;
+    margin-bottom: 20px;
+    font-size: 0.91rem;
 }
 
 .features {
@@ -50,9 +91,10 @@ body {
 }
 
 .features li {
-    margin-bottom: 15px;
+    margin-bottom: 10px;
     display: flex;
     align-items: center;
+    font-size: 0.91rem;
 }
 
 .features i {
@@ -63,7 +105,7 @@ body {
 .login-section {
     flex: 1;
     background-color: white;
-    padding: 40px;
+    padding: 32px 34px 28px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -71,12 +113,12 @@ body {
 
 .logo {
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 14px;
 }
 
 .logo h2 {
     color: #1a2a6c;
-    font-size: 2rem;
+    font-size: 1.65rem;
     font-weight: 700;
 }
 
@@ -86,20 +128,21 @@ body {
 
 .login-form h3 {
     text-align: center;
-    margin-bottom: 25px;
+    margin-bottom: 18px;
     color: #333;
-    font-size: 1.5rem;
+    font-size: 1.25rem;
 }
 
 .form-group {
-    margin-bottom: 20px;
+    margin-bottom: 13px;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 5px;
     color: #555;
     font-weight: 500;
+    font-size: 0.9rem;
 }
 
 .input-with-icon {
@@ -117,10 +160,10 @@ body {
 .input-with-icon input,
 .input-with-icon select {
     width: 100%;
-    padding: 12px 15px 12px 45px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 1rem;
+    padding: 10px 15px 10px 40px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 0.95rem;
     transition: all 0.3s;
 }
 
@@ -165,8 +208,8 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 25px;
-    font-size: 0.9rem;
+    margin-bottom: 16px;
+    font-size: 0.88rem;
 }
 
 .remember-me {
@@ -189,15 +232,16 @@ body {
 
 .login-btn {
     width: 100%;
-    padding: 12px;
+    padding: 11px;
     background: linear-gradient(to right, #1a2a6c, #b21f1f);
     color: white;
     border: none;
-    border-radius: 5px;
-    font-size: 1rem;
+    border-radius: 8px;
+    font-size: 0.97rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s;
+    letter-spacing: 0.4px;
 }
 
 .login-btn:hover {
@@ -296,19 +340,106 @@ body {
     color: #842029;
 }
 
-@media (max-width: 950px) {
+@media (max-width: 960px) {
     .container {
-        width: 90%;
+        width: 100%;
+    }
+
+    .welcome-section h1 {
+        font-size: 2rem;
     }
 }
 
 @media (max-width: 768px) {
+    body {
+        align-items: flex-start;
+        padding: 15px;
+    }
+
     .container {
         flex-direction: column;
-        height: auto;
+        width: 100%;
+        min-height: unset;
+        border-radius: 12px;
     }
-    
-    .welcome-section, .login-section {
-        padding: 30px;
+
+    .welcome-section {
+        padding: 30px 25px;
+    }
+
+    .welcome-section h1 {
+        font-size: 1.8rem;
+        margin-bottom: 12px;
+    }
+
+    .welcome-section p {
+        margin-bottom: 20px;
+        font-size: 0.95rem;
+    }
+
+    .login-section {
+        padding: 30px 25px;
+    }
+
+    .logo {
+        margin-bottom: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+
+    .container {
+        border-radius: 10px;
+    }
+
+    .welcome-section {
+        padding: 25px 20px;
+    }
+
+    .welcome-section h1 {
+        font-size: 1.5rem;
+    }
+
+    .features li {
+        font-size: 0.9rem;
+        margin-bottom: 10px;
+    }
+
+    .login-section {
+        padding: 25px 20px;
+    }
+
+    .logo h2 {
+        font-size: 1.6rem;
+    }
+
+    .login-form h3 {
+        font-size: 1.2rem;
+        margin-bottom: 18px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .input-with-icon input {
+        font-size: 0.95rem;
+        padding: 10px 10px 10px 40px;
+    }
+
+    .login-btn {
+        padding: 10px;
+        font-size: 0.95rem;
+    }
+
+    .divider {
+        margin: 18px 0;
+    }
+
+    .social-login {
+        margin-bottom: 10px;
     }
 }

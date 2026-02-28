@@ -12,6 +12,13 @@
     <link rel="stylesheet" href="~/css/login.css" asp-append-version="true" />
 </head>
 <body>
+    <!-- Background slideshow (same as login) -->
+    <div class="bg-slideshow" id="bgSlideshow">
+        <div class="bg-slide active" style="background-image: url('/images/login-bg1.jpeg');"></div>
+        <div class="bg-slide" style="background-image: url('/images/login-bg2.jpeg');"></div>
+        <div class="bg-slide" style="background-image: url('/images/login-bg3.jpeg');"></div>
+    </div>
+
     <div class="container">
         <div class="welcome-section">
             <h1>Welcome, @Model.Username!</h1>
@@ -80,5 +87,24 @@
             </div>
         </div>
     </div>
+
+    <!-- Background slideshow script -->
+    <script>
+        (function () {
+            var slides = document.querySelectorAll('#bgSlideshow .bg-slide');
+            if (!slides.length) return;
+            var current = 0;
+            setInterval(function () {
+                var prev = current;
+                current = (current + 1) % slides.length;
+                slides[prev].classList.add('exit');
+                slides[prev].classList.remove('active');
+                slides[current].classList.add('active');
+                setTimeout(function () {
+                    slides[prev].classList.remove('exit');
+                }, 1000);
+            }, 10000);
+        })();
+    </script>
 </body>
 </html>

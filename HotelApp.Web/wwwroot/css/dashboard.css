@@ -277,16 +277,16 @@ body {
 .profile-dropdown-avatar {
     display: flex;
     justify-content: center;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .profile-dropdown-avatar img {
-    width: 56px;
-    height: 56px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     object-fit: cover;
-    border: 3px solid rgba(255,255,255,0.25);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    border: 2px solid rgba(255,255,255,0.25);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 
 .profile-trigger-text {
@@ -325,64 +325,64 @@ body {
     position: absolute;
     right: 0;
     top: calc(100% + 10px);
-    width: 320px;
+    width: 255px;
     background: #fff;
     color: #1d2433;
-    border-radius: 18px;
-    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.25);
+    border-radius: 14px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
     border: 1px solid rgba(0, 0, 0, 0.06);
     overflow: hidden;
     z-index: 1200;
 }
 
 .profile-dropdown-header {
-    padding: 18px 18px 10px;
+    padding: 12px 14px 8px;
 }
 
 .profile-dropdown-name {
-    font-size: 1.35rem;
-    font-weight: 800;
+    font-size: 1.05rem;
+    font-weight: 700;
 }
 
 .profile-dropdown-email {
-    margin-top: 4px;
-    font-size: 1.05rem;
+    margin-top: 2px;
+    font-size: 0.82rem;
     opacity: 0.75;
 }
 
 .profile-section {
-    padding: 6px 18px 14px;
+    padding: 4px 14px 10px;
 }
 
 .profile-section-title {
-    font-size: 0.9rem;
+    font-size: 0.72rem;
     letter-spacing: 1px;
-    opacity: 0.65;
-    margin-bottom: 6px;
+    opacity: 0.55;
+    margin-bottom: 3px;
 }
 
 .profile-section-value {
-    font-size: 1.6rem;
-    font-weight: 800;
+    font-size: 1.05rem;
+    font-weight: 700;
 }
 
 .profile-actions {
-    padding: 6px 14px 16px;
+    padding: 4px 10px 10px;
 }
 
 .profile-action {
     width: 100%;
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 14px 14px;
-    border-radius: 14px;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 10px;
     text-decoration: none;
     color: #1d2433;
     background: #f6f7fb;
     border: 1px solid rgba(0, 0, 0, 0.06);
-    margin-top: 10px;
-    font-size: 1.1rem;
+    margin-top: 6px;
+    font-size: 0.88rem;
     font-weight: 600;
 }
 
@@ -391,14 +391,15 @@ body {
 }
 
 .profile-action-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     background: #fff;
     border: 1px solid rgba(0, 0, 0, 0.06);
+    font-size: 0.85rem;
 }
 
 .profile-action-danger {
@@ -408,7 +409,7 @@ body {
 .profile-divider {
     height: 1px;
     background: rgba(0, 0, 0, 0.08);
-    margin: 12px 0 0;
+    margin: 8px 0 0;
 }
 
 .navbar-pill {
