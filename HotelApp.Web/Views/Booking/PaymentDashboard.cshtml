@@ -2,7 +2,8 @@
     ViewData["Title"] = "Payment Dashboard";
     var pdRoleName     = ViewBag.SelectedRoleName as string ?? "";
     var pdBranchName   = ViewBag.CurrentBranchName as string ?? "your branch";
-    var pdIsAdmin      = pdRoleName.Equals("Administrator", StringComparison.OrdinalIgnoreCase);
+    var pdIsAdmin      = pdRoleName.Equals("Administrator", StringComparison.OrdinalIgnoreCase)
+                      || pdRoleName.Equals("Manager", StringComparison.OrdinalIgnoreCase);
 }
 
 @section Styles {

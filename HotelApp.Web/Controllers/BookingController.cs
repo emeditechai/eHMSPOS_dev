@@ -520,11 +520,13 @@ namespace HotelApp.Web.Controllers
             {
                 var branchId  = CurrentBranchID;
                 var userId    = GetCurrentUserId() ?? 0;
-                var isAdmin   = HttpContext.Session.GetString("SelectedRoleName")
-                                    ?.Equals("Administrator", StringComparison.OrdinalIgnoreCase) == true;
+                var roleName  = HttpContext.Session.GetString("SelectedRoleName") ?? "";
+                var isAdmin   = roleName.Equals("Administrator", StringComparison.OrdinalIgnoreCase)
+                             || roleName.Equals("Manager", StringComparison.OrdinalIgnoreCase);
 
                 // User-visibility clause:
-                //   Administrator → sees all payments for this branch
+                //   Administrator / Manager → sees all payments for this branch
+                //   Others                  → sees only their own payments
                 //   Others        → sees only payments they created
                 const string userFilterClause = @"
                     AND (
