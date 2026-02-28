@@ -305,4 +305,36 @@ public sealed class ReportsController : Controller
         ViewData["Title"] = "Guest Details";
         return View(vm);
     }
+
+    [HttpGet]
+    public async Task<IActionResult> CancellationRefundRegister(
+        DateOnly? fromDate, DateOnly? toDate, string? reportType)
+    {
+        var branchId = HttpContext.Session.GetInt32("BranchID") ?? 1;
+
+        var effectiveFrom = fromDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var effectiveTo   = toDate   ?? effectiveFrom;
+
+        if (effectiveTo < effectiveFrom)
+            (effectiveFrom, effectiveTo) = (effectiveTo, effectiveFrom);
+
+        var type = reportType?.Trim() ?? "All";
+        if (!new[] { "All", "Cancelled", "Refunded" }.Contains(type, StringComparer.OrdinalIgnoreCase))
+            type = "All";
+
+        var data = await _reportsRepository.GetCancellationRefundRegisterAsync(
+            branchId, effectiveFrom, effectiveTo, type);
+
+        var vm = new CancellationRefundRegisterReportViewModel
+        {
+            FromDate   = effectiveFrom,
+            ToDate     = effectiveTo,
+            ReportType = type,
+            Summary    = data.Summary,
+            Rows       = data.Rows
+        };
+
+        ViewData["Title"] = "Cancellation & Refund Register";
+        return View(vm);
+    }
 }

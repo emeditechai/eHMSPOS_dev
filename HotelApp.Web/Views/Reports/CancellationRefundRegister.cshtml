@@ -1,0 +1,351 @@
+@model HotelApp.Web.ViewModels.CancellationRefundRegisterReportViewModel
+@using HotelApp.Web.Repositories
+@{
+    ViewData["Title"] = "Cancellation & Refund Register";
+    bool showAll       = Model.ReportType == "All";
+    bool showCancelled = Model.ReportType == "All" || Model.ReportType == "Cancelled";
+    bool showRefunded  = Model.ReportType == "All" || Model.ReportType == "Refunded";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
+    <style>
+        /* ── Type filter pills ── */
+        .type-pills { display:flex; gap:8px; }
+        .type-pill  {
+            padding: 5px 16px; border-radius: 20px; font-size:12px;
+            font-weight:600; border: 1.5px solid #dee2e6;
+            cursor:pointer; text-decoration:none; color:#495057;
+            transition: all .15s;
+        }
+        .type-pill:hover              { background:#f0f0f0; color:#212529; text-decoration:none; }
+        .type-pill.active-all         { background:#0d6efd; border-color:#0d6efd; color:#fff; }
+        .type-pill.active-cancelled   { background:#dc3545; border-color:#dc3545; color:#fff; }
+        .type-pill.active-refunded    { background:#198754; border-color:#198754; color:#fff; }
+
+        /* ── Summary stat cards ── */
+        .crr-cards {
+            display:grid; grid-template-columns: repeat(4,1fr); gap:12px; margin-bottom:20px;
+        }
+        .crr-card {
+            border-radius:10px; padding:14px 16px;
+            box-shadow:0 2px 8px rgba(0,0,0,.07); position:relative; overflow:hidden;
+            transition: transform .15s, box-shadow .15s;
+        }
+        .crr-card:hover { transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,.12); }
+        .crr-card .cc-icon {
+            position:absolute; right:14px; top:50%;
+            transform:translateY(-50%); font-size:30px; opacity:.12;
+        }
+        .crr-card .cc-label { font-size:10px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; margin-bottom:5px; }
+        .crr-card .cc-value { font-size:22px; font-weight:800; line-height:1.1; margin-bottom:3px; }
+        .crr-card .cc-sub   { font-size:10px; opacity:.7; }
+        .crr-card.cc-amber  { background:linear-gradient(135deg,#fff8e1,#fff3cd); border-left:4px solid #ffc107; color:#7c4a00; }
+        .crr-card.cc-blue   { background:linear-gradient(135deg,#e3f2fd,#ede7f6); border-left:4px solid #1e88e5; color:#0d47a1; }
+        .crr-card.cc-red    { background:linear-gradient(135deg,#fce4ec,#ffeef4); border-left:4px solid #e53935; color:#8b0000; }
+        .crr-card.cc-orange { background:linear-gradient(135deg,#fff3e0,#fbe9e7); border-left:4px solid #fb8c00; color:#7c3a00; }
+        .crr-card.cc-green  { background:linear-gradient(135deg,#e8f5e9,#f1f8e9); border-left:4px solid #43a047; color:#1b5e20; }
+
+        @@media (max-width:900px) { .crr-cards { grid-template-columns:repeat(2,1fr); } }
+
+        /* ── Table enhancements ── */
+        .badge-refunded  { background:#d4edda; color:#155724; font-size:10px; padding:2px 8px; border-radius:10px; font-weight:700; }
+        .badge-pending   { background:#fff3cd; color:#856404; font-size:10px; padding:2px 8px; border-radius:10px; font-weight:700; }
+        .badge-cancelled { background:#f8d7da; color:#721c24; font-size:10px; padding:2px 8px; border-radius:10px; font-weight:700; }
+        .badge-approved  { background:#cce5ff; color:#004085; font-size:10px; padding:2px 8px; border-radius:10px; font-weight:700; }
+
+        .text-end { text-align:right; }
+        .text-danger-val { color:#c62828; font-weight:600; }
+        .text-success-val{ color:#2e7d32; font-weight:600; }
+    </style>
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-file-invoice-dollar"></i> Cancellation &amp; Refund Register</h2>
+</div>
+
+<!-- ── Filters ─────────────────────────────────────────────────────────── -->
+<div class="filters-container" style="margin-bottom:18px;">
+    <form method="get" action="@Url.Action("CancellationRefundRegister","Reports")"
+          style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; justify-content:space-between;">
+        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;">
+
+            <div>
+                <label style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">From Date</label>
+                <input name="fromDate" type="date" class="form-control"
+                       value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+            </div>
+
+            <div>
+                <label style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">To Date</label>
+                <input name="toDate" type="date" class="form-control"
+                       value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+            </div>
+
+            <div>
+                <label style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">Type</label>
+                <div class="type-pills">
+                    <a href="@Url.Action("CancellationRefundRegister","Reports", new{fromDate=Model.FromDate.ToString("yyyy-MM-dd"), toDate=Model.ToDate.ToString("yyyy-MM-dd"), reportType="All"})"
+                       class="type-pill @(Model.ReportType=="All" ? "active-all" : "")">
+                        <i class="fas fa-list me-1"></i>All
+                    </a>
+                    <a href="@Url.Action("CancellationRefundRegister","Reports", new{fromDate=Model.FromDate.ToString("yyyy-MM-dd"), toDate=Model.ToDate.ToString("yyyy-MM-dd"), reportType="Cancelled"})"
+                       class="type-pill @(Model.ReportType=="Cancelled" ? "active-cancelled" : "")">
+                        <i class="fas fa-ban me-1"></i>Cancelled
+                    </a>
+                    <a href="@Url.Action("CancellationRefundRegister","Reports", new{fromDate=Model.FromDate.ToString("yyyy-MM-dd"), toDate=Model.ToDate.ToString("yyyy-MM-dd"), reportType="Refunded"})"
+                       class="type-pill @(Model.ReportType=="Refunded" ? "active-refunded" : "")">
+                        <i class="fas fa-check-circle me-1"></i>Refunded
+                    </a>
+                    <input type="hidden" name="reportType" value="@Model.ReportType" />
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:flex-end;">
+            <button class="btn-filter-apply" type="submit">
+                <i class="fas fa-filter"></i> Apply
+            </button>
+            <a class="btn-filter-clear" href="@Url.Action("CancellationRefundRegister","Reports")">
+                <i class="fas fa-undo"></i> Reset
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- ── Summary Cards ────────────────────────────────────────────────────── -->
+<div class="crr-cards">
+    <div class="crr-card cc-amber">
+        <i class="fas fa-list-alt cc-icon"></i>
+        <div class="cc-label">Total Records</div>
+        <div class="cc-value">@Model.Summary.TotalRecords</div>
+        <div class="cc-sub">In selected range</div>
+    </div>
+    <div class="crr-card cc-blue">
+        <i class="fas fa-rupee-sign cc-icon"></i>
+        <div class="cc-label">Total Amount Paid</div>
+        <div class="cc-value">₹@Model.Summary.TotalAmountPaid.ToString("N0")</div>
+        <div class="cc-sub">Across all cancellations</div>
+    </div>
+    <div class="crr-card cc-red">
+        <i class="fas fa-minus-circle cc-icon"></i>
+        <div class="cc-label">Total Deducted</div>
+        <div class="cc-value">₹@Model.Summary.TotalDeducted.ToString("N0")</div>
+        <div class="cc-sub">Cancellation charges</div>
+    </div>
+    @if (Model.ReportType != "Cancelled")
+    {
+        <div class="crr-card cc-green">
+            <i class="fas fa-check-circle cc-icon"></i>
+            <div class="cc-label">Total Refunded</div>
+            <div class="cc-value">₹@Model.Summary.TotalRefunded.ToString("N0")</div>
+            <div class="cc-sub">@Model.Summary.RefundedCount refund(s) processed</div>
+        </div>
+    }
+    else
+    {
+        <div class="crr-card cc-orange">
+            <i class="fas fa-hourglass-half cc-icon"></i>
+            <div class="cc-label">Pending Refunds</div>
+            <div class="cc-value">₹@Model.Summary.TotalRefundPending.ToString("N0")</div>
+            <div class="cc-sub">@Model.Summary.PendingRefundCount awaiting processing</div>
+        </div>
+    }
+</div>
+
+@if (Model.ReportType == "All")
+{
+    <!-- second row of cards for "All" view -->
+    <div class="crr-cards" style="grid-template-columns:repeat(2,1fr); margin-bottom:20px;">
+        <div class="crr-card cc-orange">
+            <i class="fas fa-hourglass-half cc-icon"></i>
+            <div class="cc-label">Refund Pending Amount</div>
+            <div class="cc-value">₹@Model.Summary.TotalRefundPending.ToString("N0")</div>
+            <div class="cc-sub">@Model.Summary.PendingRefundCount booking(s) awaiting</div>
+        </div>
+        <div class="crr-card cc-green" style="grid-column:span 1;">
+            <i class="fas fa-percentage cc-icon"></i>
+            <div class="cc-label">Processed vs Pending</div>
+            <div class="cc-value">
+                @Model.Summary.RefundedCount
+                <span style="font-size:13px; font-weight:500;">/ @(Model.Summary.RefundedCount + Model.Summary.PendingRefundCount)</span>
+            </div>
+            <div class="cc-sub">
+                @{
+                    var total = Model.Summary.RefundedCount + Model.Summary.PendingRefundCount;
+                    var pct = total > 0 ? Math.Round((decimal)Model.Summary.RefundedCount / total * 100, 1) : 0m;
+                }
+                @pct% completion rate
+            </div>
+        </div>
+    </div>
+}
+
+<!-- ── Table Toolbar ─────────────────────────────────────────────────────── -->
+<div class="filters-container" style="margin-bottom:14px;">
+    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+        <div>
+            <div style="font-weight:700; color:#1f2937;">
+                @(Model.ReportType == "All" ? "All Records" : Model.ReportType + " Records")
+                &mdash;
+                @Model.FromDate.ToString("dd MMM yyyy") to @Model.ToDate.ToString("dd MMM yyyy")
+            </div>
+            <div class="subtext" style="margin-top:4px;">@Model.Rows.Count records found</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn-filter-apply" type="button" onclick="exportCsvCRR()">
+                <i class="fas fa-file-export"></i> Export CSV
+            </button>
+            <button class="btn-filter-apply" type="button" onclick="window.print()">
+                <i class="fas fa-print"></i> Print
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Register Table ───────────────────────────────────────────────────── -->
+@if (!Model.Rows.Any())
+{
+    <div class="filters-container" style="text-align:center; padding:40px;">
+        <i class="fas fa-folder-open" style="font-size:40px; color:#adb5bd; margin-bottom:12px;"></i>
+        <div style="font-weight:600; color:#6c757d;">No records found for the selected filters.</div>
+    </div>
+}
+else
+{
+    <div class="table-container" style="overflow:visible;">
+        <table class="data-table" id="crrTable">
+            <thead>
+                <tr>
+                    <th>Cancelled On</th>
+                    <th>Booking No</th>
+                    <th>Guest</th>
+                    <th>Phone</th>
+                    <th>Check-In</th>
+                    <th>Check-Out</th>
+                    <th>Nights</th>
+                    <th>Room</th>
+                    <th class="text-end">Paid</th>
+                    <th class="text-end">Deducted</th>
+                    <th class="text-end">Refund Amt</th>
+                    <th>Status</th>
+                    @if (showRefunded)
+                    {
+                        <th>Refunded On</th>
+                        <th>Refund Method</th>
+                    }
+                    <th>Approval</th>
+                    <th>Reason</th>
+                    <th>Requested By</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <td style="white-space:nowrap;">@row.CancelRequestedAt.ToString("dd MMM yyyy HH:mm")</td>
+                    <td><strong>@(row.BookingNumber ?? "-")</strong></td>
+                    <td>@(row.GuestName ?? "-")</td>
+                    <td>@(row.GuestPhone ?? "-")</td>
+                    <td style="white-space:nowrap;">@(row.CheckInDate.HasValue ? row.CheckInDate.Value.ToString("dd MMM yyyy") : "-")</td>
+                    <td style="white-space:nowrap;">@(row.CheckOutDate.HasValue ? row.CheckOutDate.Value.ToString("dd MMM yyyy") : "-")</td>
+                    <td style="text-align:center;">@row.Nights</td>
+                    <td>
+                        @if (!string.IsNullOrWhiteSpace(row.RoomType))
+                        {
+                            <span>@row.RoomType</span>
+                            if (!string.IsNullOrWhiteSpace(row.RoomNumber))
+                            {
+                                <br /><small class="text-muted">@row.RoomNumber</small>
+                            }
+                        }
+                        else { <span>-</span> }
+                    </td>
+                    <td class="text-end">₹@row.AmountPaid.ToString("N2")</td>
+                    <td class="text-end text-danger-val">₹@row.DeductionAmount.ToString("N2")</td>
+                    <td class="text-end text-success-val">₹@row.RefundAmount.ToString("N2")</td>
+                    <td>
+                        @if (row.IsRefunded)
+                        {
+                            <span class="badge-refunded"><i class="fas fa-check me-1"></i>Refunded</span>
+                        }
+                        else if (row.RefundAmount > 0)
+                        {
+                            <span class="badge-pending"><i class="fas fa-clock me-1"></i>Pending</span>
+                        }
+                        else
+                        {
+                            <span class="badge-cancelled"><i class="fas fa-ban me-1"></i>No Refund</span>
+                        }
+                    </td>
+                    @if (showRefunded)
+                    {
+                        <td style="white-space:nowrap;">
+                            @(row.RefundedAt.HasValue ? row.RefundedAt.Value.ToString("dd MMM yyyy") : "-")
+                        </td>
+                        <td>@(row.RefundPaymentMethod ?? "-")</td>
+                    }
+                    <td>
+                        @if (string.Equals(row.ApprovalStatus, "Approved", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <span class="badge-approved">Approved</span>
+                        }
+                        else if (string.Equals(row.ApprovalStatus, "Pending", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <span class="badge-pending">Pending</span>
+                        }
+                        else
+                        {
+                            <span>@(row.ApprovalStatus ?? "-")</span>
+                        }
+                    </td>
+                    <td>
+                        @if (!string.IsNullOrWhiteSpace(row.Reason))
+                        {
+                            <span title="@row.Reason" style="cursor:help;">
+                                @(row.Reason.Length > 30 ? row.Reason[..30] + "…" : row.Reason)
+                            </span>
+                        }
+                        else { <span>-</span> }
+                    </td>
+                    <td>@(row.RequestedBy ?? "-")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+
+@section Scripts {
+<script>
+    function downloadBlobCRR(blob, filename) {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click();
+        a.remove(); window.URL.revokeObjectURL(url);
+    }
+
+    function exportCsvCRR() {
+        const table = document.getElementById('crrTable');
+        if (!table) return;
+
+        const rows = Array.from(table.querySelectorAll('tr'));
+        const csv = rows.map(r => {
+            const cols = Array.from(r.querySelectorAll('th,td')).map(c => {
+                const text = (c.innerText || '').replace(/\s+/g, ' ').trim();
+                return '"' + text.replace(/"/g, '""') + '"';
+            });
+            return cols.join(',');
+        }).join('\n');
+
+        const from = '@Model.FromDate.ToString("yyyyMMdd")';
+        const to   = '@Model.ToDate.ToString("yyyyMMdd")';
+        const type = '@Model.ReportType';
+        downloadBlobCRR(
+            new Blob([csv], { type: 'text/csv;charset=utf-8;' }),
+            `CancellationRefundRegister_${type}_${from}_${to}.csv`
+        );
+    }
+</script>
+}

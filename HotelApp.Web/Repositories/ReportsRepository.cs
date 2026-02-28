@@ -60,6 +60,13 @@ public interface IReportsRepository
         DateOnly fromDate,
         DateOnly toDate
     );
+
+    Task<CancellationRefundRegisterReportData> GetCancellationRefundRegisterAsync(
+        int branchId,
+        DateOnly fromDate,
+        DateOnly toDate,
+        string reportType
+    );
 }
 
 public sealed class ReportsRepository : IReportsRepository
@@ -386,6 +393,37 @@ public sealed class ReportsRepository : IReportsRepository
             Rows = rows
         };
     }
+
+    public async Task<CancellationRefundRegisterReportData> GetCancellationRefundRegisterAsync(
+        int branchId, DateOnly fromDate, DateOnly toDate, string reportType)
+    {
+        if (_dbConnection.State != ConnectionState.Open)
+            _dbConnection.Open();
+
+        var from = fromDate.ToDateTime(TimeOnly.MinValue);
+        var to   = toDate.ToDateTime(TimeOnly.MinValue);
+
+        using var grid = await _dbConnection.QueryMultipleAsync(
+            "sp_GetCancellationRefundRegister",
+            new
+            {
+                BranchID   = branchId,
+                FromDate   = from,
+                ToDate     = to,
+                ReportType = reportType
+            },
+            commandType: CommandType.StoredProcedure);
+
+        var summary = (await grid.ReadAsync<CancellationRefundRegisterSummary>()).FirstOrDefault()
+            ?? new CancellationRefundRegisterSummary();
+        var rows = (await grid.ReadAsync<CancellationRefundRegisterRow>()).ToList();
+
+        return new CancellationRefundRegisterReportData
+        {
+            Summary = summary,
+            Rows    = rows
+        };
+    }
 }
 
 public sealed class CancellationRegisterReportData
@@ -684,4 +722,46 @@ public sealed class RoomPriceDetailRow
     public bool? IsWeekdayRate { get; set; }
     public string? ApplyDiscount { get; set; }
     public bool? IsDynamicRate { get; set; }
+}
+// ─── Cancellation & Refund Register ──────────────────────────────────────────
+
+public sealed class CancellationRefundRegisterReportData
+{
+    public CancellationRefundRegisterSummary     Summary { get; set; } = new();
+    public List<CancellationRefundRegisterRow>   Rows    { get; set; } = new();
+}
+
+public sealed class CancellationRefundRegisterSummary
+{
+    public int     TotalRecords        { get; set; }
+    public decimal TotalAmountPaid     { get; set; }
+    public decimal TotalDeducted       { get; set; }
+    public decimal TotalRefundPending  { get; set; }
+    public decimal TotalRefunded       { get; set; }
+    public int     RefundedCount       { get; set; }
+    public int     PendingRefundCount  { get; set; }
+}
+
+public sealed class CancellationRefundRegisterRow
+{
+    public DateTime   CancelRequestedAt   { get; set; }
+    public string?    BookingNumber        { get; set; }
+    public string?    GuestName            { get; set; }
+    public string?    GuestPhone           { get; set; }
+    public DateTime?  CheckInDate          { get; set; }
+    public DateTime?  CheckOutDate         { get; set; }
+    public int        Nights               { get; set; }
+    public string?    RoomType             { get; set; }
+    public string?    RoomNumber           { get; set; }
+    public decimal    AmountPaid           { get; set; }
+    public decimal    DeductionAmount      { get; set; }
+    public decimal    RefundAmount         { get; set; }
+    public decimal    RefundPercent        { get; set; }
+    public bool       IsRefunded           { get; set; }
+    public DateTime?  RefundedAt           { get; set; }
+    public string?    RefundPaymentMethod  { get; set; }
+    public string?    RefundReference      { get; set; }
+    public string?    ApprovalStatus       { get; set; }
+    public string?    Reason               { get; set; }
+    public string?    RequestedBy          { get; set; }
 }
