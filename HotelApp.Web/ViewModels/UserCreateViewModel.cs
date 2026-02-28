@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Http;
+
 namespace HotelApp.Web.ViewModels;
 
 public class UserCreateViewModel
@@ -16,4 +18,5 @@ public class UserCreateViewModel
     public List<int> SelectedBranchIds { get; set; } = new();
     public List<HotelApp.Web.Models.Branch> AvailableBranches { get; set; } = new();
     public List<HotelApp.Web.Models.Role> AvailableRoles { get; set; } = new();
+    public IFormFile? ProfilePictureFile { get; set; }
 }

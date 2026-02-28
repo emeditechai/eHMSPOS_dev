@@ -20,7 +20,7 @@ public class UserRepository : IUserRepository
                 Id, Username, Email, PasswordHash, Salt, FirstName, LastName, 
                 PhoneNumber, Phone, FullName, Role, BranchID, IsActive, IsLockedOut, 
                 FailedLoginAttempts, LastLoginDate, CreatedDate, LastModifiedDate, 
-                MustChangePassword, PasswordLastChanged, RequiresMFA
+                MustChangePassword, PasswordLastChanged, RequiresMFA, ProfilePicturePath
             FROM Users 
             WHERE (Username = @Username OR Email = @Username) AND IsActive = 1";
         return await _connection.QueryFirstOrDefaultAsync<User>(sql, new { Username = username });
@@ -33,7 +33,7 @@ public class UserRepository : IUserRepository
                 Id, Username, Email, PasswordHash, Salt, FirstName, LastName, 
                 PhoneNumber, Phone, FullName, Role, BranchID, IsActive, IsLockedOut, 
                 FailedLoginAttempts, LastLoginDate, CreatedDate, LastModifiedDate, 
-                MustChangePassword, PasswordLastChanged, RequiresMFA
+                MustChangePassword, PasswordLastChanged, RequiresMFA, ProfilePicturePath
             FROM Users 
             WHERE Id = @Id";
         return await _connection.QueryFirstOrDefaultAsync<User>(sql, new { Id = id });
@@ -56,12 +56,12 @@ public class UserRepository : IUserRepository
             INSERT INTO Users (
                 Username, Email, PasswordHash, Salt, FirstName, LastName, 
                 FullName, PhoneNumber, Phone, Role, BranchID, IsActive, 
-                CreatedDate, FailedLoginAttempts, IsLockedOut, MustChangePassword
+                CreatedDate, FailedLoginAttempts, IsLockedOut, MustChangePassword, ProfilePicturePath
             )
             VALUES (
                 @Username, @Email, @PasswordHash, @Salt, @FirstName, @LastName,
                 @FullName, @PhoneNumber, @Phone, @Role, @BranchID, @IsActive,
-                GETDATE(), 0, 0, 0
+                GETDATE(), 0, 0, 0, @ProfilePicturePath
             );
             SELECT CAST(SCOPE_IDENTITY() as int)";
         
@@ -78,8 +78,8 @@ public class UserRepository : IUserRepository
                 SET Username = @Username, Email = @Email, PasswordHash = @PasswordHash, 
                     Salt = @Salt, FirstName = @FirstName, LastName = @LastName,
                     FullName = @FullName, PhoneNumber = @PhoneNumber, Phone = @Phone,
-                    Role = @Role, IsActive = @IsActive, LastModifiedDate = GETDATE(),
-                    PasswordLastChanged = GETDATE()
+                    Role = @Role, IsActive = @IsActive, ProfilePicturePath = @ProfilePicturePath,
+                    LastModifiedDate = GETDATE(), PasswordLastChanged = GETDATE()
                 WHERE Id = @Id";
         }
         else
@@ -89,7 +89,7 @@ public class UserRepository : IUserRepository
                 SET Username = @Username, Email = @Email, FirstName = @FirstName, 
                     LastName = @LastName, FullName = @FullName, PhoneNumber = @PhoneNumber,
                     Phone = @Phone, Role = @Role, IsActive = @IsActive, 
-                    LastModifiedDate = GETDATE()
+                    ProfilePicturePath = @ProfilePicturePath, LastModifiedDate = GETDATE()
                 WHERE Id = @Id";
         }
         

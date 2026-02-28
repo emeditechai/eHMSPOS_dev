@@ -71,11 +71,36 @@
         <h3><i class="fas fa-user-edit"></i> Edit User</h3>
     </div>
 
-    <form asp-action="Edit" method="post" id="editUserForm">
+    <form asp-action="Edit" method="post" enctype="multipart/form-data" id="editUserForm">
         @Html.AntiForgeryToken()
         <div asp-validation-summary="ModelOnly" class="field-error" style="margin-bottom:12px;"></div>
         <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="ProfilePicturePath" />
         <input type="hidden" name="BranchRolesJson" id="BranchRolesJson" value="@Model.BranchRolesJson" />
+
+        <!-- Profile Picture -->
+        <div class="uc-section">
+            <div class="uc-section-title"><i class="fas fa-camera"></i> Profile Picture <small class="text-muted" style="font-weight:400;font-size:12px;">(optional)</small></div>
+            <div style="display:flex;align-items:center;gap:20px;">
+                <label for="ProfilePictureFile" style="cursor:pointer;" title="Click to change photo">
+                    <div id="ppPreview" style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--primary) 0%,#2a4494 100%);color:#fff;font-size:28px;display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid #e0e6f8;box-shadow:0 2px 8px rgba(26,42,108,.15);">
+                        @if (!string.IsNullOrWhiteSpace(Model.ProfilePicturePath))
+                        {
+                            <img src="@Model.ProfilePicturePath" style="width:80px;height:80px;border-radius:50%;object-fit:cover;display:block;" />
+                        }
+                        else
+                        {
+                            <i class="fas fa-user-circle"></i>
+                        }
+                    </div>
+                </label>
+                <div class="uc-field" style="flex:0 0 auto;">
+                    <label asp-for="ProfilePictureFile" style="font-size:13px;">Upload New Photo</label>
+                    <input asp-for="ProfilePictureFile" type="file" accept="image/*" style="font-size:13px;" onchange="previewProfilePic(this,'ppPreview')" />
+                    <small class="text-muted" style="margin-top:4px;">Leave blank to keep existing photo. JPG, PNG, GIF up to 5 MB.</small>
+                </div>
+            </div>
+        </div>
 
         <!-- Basic Information -->
         <div class="uc-section">
@@ -175,6 +200,16 @@
 @section Scripts {
 @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
 <script>
+function previewProfilePic(input, previewId) {
+    var preview = document.getElementById(previewId);
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            preview.innerHTML = '<img src="' + e.target.result + '" style="width:80px;height:80px;border-radius:50%;object-fit:cover;display:block;" />';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
 var braAllBranches = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
     Model.AvailableBranches.Select(b => new { id = b.BranchID, name = b.BranchName, code = b.BranchCode })
 ));

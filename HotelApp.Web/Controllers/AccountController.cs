@@ -66,6 +66,7 @@ public class AccountController : Controller
         TempData["AuthenticatedUserEmail"] = user.Email;
         TempData["AuthenticatedUserFullName"] = user.FullName ?? $"{user.FirstName} {user.LastName}".Trim();
         TempData["AuthenticatedUserRole"] = user.Role;
+        TempData["AuthenticatedUserProfilePicturePath"] = user.ProfilePicturePath ?? "";
         TempData["ReturnUrl"] = model.ReturnUrl;
 
         // Redirect to branch selection
@@ -119,6 +120,7 @@ public class AccountController : Controller
         var email = TempData["AuthenticatedUserEmail"]?.ToString() ?? "";
         var fullName = TempData["AuthenticatedUserFullName"]?.ToString() ?? "";
         var role = TempData["AuthenticatedUserRole"] as int?;
+        var profilePicturePath = TempData["AuthenticatedUserProfilePicturePath"]?.ToString() ?? "";
         var returnUrl = TempData["ReturnUrl"]?.ToString();
 
         if (model.BranchID == 0)
@@ -166,7 +168,8 @@ public class AccountController : Controller
             new Claim("BranchID", model.BranchID.ToString()),
             new Claim("BranchName", selectedBranch.BranchName),
             new Claim("SelectedRoleId", selectedRoleId.ToString()),
-            new Claim("SelectedRoleName", selectedRoleName)
+            new Claim("SelectedRoleName", selectedRoleName),
+            new Claim("ProfilePicturePath", profilePicturePath)
         };
 
         // Keep ClaimTypes.Role as the currently selected role (int id as string for backward compatibility)

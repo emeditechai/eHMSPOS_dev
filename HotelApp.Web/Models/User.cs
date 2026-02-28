@@ -23,4 +23,5 @@ public class User
     public bool MustChangePassword { get; set; } = false;
     public DateTime? PasswordLastChanged { get; set; }
     public bool RequiresMFA { get; set; } = false;
+    public string? ProfilePicturePath { get; set; }
 }

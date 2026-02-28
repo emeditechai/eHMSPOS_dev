@@ -18,6 +18,7 @@ public class UserManagementController : BaseController
     private readonly IUserRoleRepository _userRoleRepository;
     private readonly IRoleRepository _roleRepository;
     private readonly IUserBranchRoleRepository _userBranchRoleRepository;
+    private readonly IWebHostEnvironment _env;
 
     public UserManagementController(
         IUserRepository userRepository,
@@ -25,7 +26,8 @@ public class UserManagementController : BaseController
         IBranchRepository branchRepository,
         IUserRoleRepository userRoleRepository,
         IRoleRepository roleRepository,
-        IUserBranchRoleRepository userBranchRoleRepository)
+        IUserBranchRoleRepository userBranchRoleRepository,
+        IWebHostEnvironment env)
     {
         _userRepository = userRepository;
         _userBranchRepository = userBranchRepository;
@@ -33,6 +35,7 @@ public class UserManagementController : BaseController
         _userRoleRepository = userRoleRepository;
         _roleRepository = roleRepository;
         _userBranchRoleRepository = userBranchRoleRepository;
+        _env = env;
     }
 
     public async Task<IActionResult> Index()
@@ -131,6 +134,21 @@ public class UserManagementController : BaseController
 
         var userId = await _userRepository.CreateUserAsync(user);
 
+        // Save profile picture if provided
+        if (model.ProfilePictureFile != null && model.ProfilePictureFile.Length > 0)
+        {
+            var ext = Path.GetExtension(model.ProfilePictureFile.FileName).ToLowerInvariant();
+            var fileName = $"{userId}_{Guid.NewGuid():N}{ext}";
+            var uploadDir = Path.Combine(_env.WebRootPath, "uploads", "profiles");
+            Directory.CreateDirectory(uploadDir);
+            var filePath = Path.Combine(uploadDir, fileName);
+            using var stream = new FileStream(filePath, FileMode.Create);
+            await model.ProfilePictureFile.CopyToAsync(stream);
+            user.Id = userId;
+            user.ProfilePicturePath = $"/uploads/profiles/{fileName}";
+            await _userRepository.UpdateUserAsync(user);
+        }
+
         await _userBranchRepository.AssignBranchesToUserAsync(userId, model.SelectedBranchIds, CurrentUserId);
         await _userRoleRepository.AssignRolesToUserAsync(userId, model.SelectedRoleIds, CurrentUserId ?? 1);
         await _userBranchRoleRepository.SaveUserBranchRolesAsync(userId, branchRoleAssignments, CurrentUserId);
@@ -189,6 +207,7 @@ public class UserManagementController : BaseController
             SelectedRoleIds   = userRoles.Select(r => r.Id).ToList(),
             ExistingBranchRoleAssignments = existingAssignments,
             BranchRolesJson   = branchRolesJson,
+            ProfilePicturePath = user.ProfilePicturePath,
             AvailableBranches = branches.ToList(),
             AvailableRoles    = roles.ToList()
         };
@@ -263,6 +282,20 @@ public class UserManagementController : BaseController
         user.Role        = model.SelectedRoleIds.FirstOrDefault();
         user.IsActive    = model.IsActive;
         user.BranchID    = model.SelectedBranchIds.FirstOrDefault();
+
+        // Handle profile picture upload
+        if (model.ProfilePictureFile != null && model.ProfilePictureFile.Length > 0)
+        {
+            var ext = Path.GetExtension(model.ProfilePictureFile.FileName).ToLowerInvariant();
+            var fileName = $"{user.Id}_{Guid.NewGuid():N}{ext}";
+            var uploadDir = Path.Combine(_env.WebRootPath, "uploads", "profiles");
+            Directory.CreateDirectory(uploadDir);
+            var filePath = Path.Combine(uploadDir, fileName);
+            using var stream = new FileStream(filePath, FileMode.Create);
+            await model.ProfilePictureFile.CopyToAsync(stream);
+            user.ProfilePicturePath = $"/uploads/profiles/{fileName}";
+        }
+        // else keep existing ProfilePicturePath already on user object
 
         await _userRepository.UpdateUserAsync(user);
         await _userBranchRepository.AssignBranchesToUserAsync(user.Id, model.SelectedBranchIds, CurrentUserId ?? 1);

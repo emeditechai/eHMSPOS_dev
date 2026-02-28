@@ -70,7 +70,16 @@
 
     <!-- Profile Header Card -->
     <div class="ud-profile-card">
-        <div class="ud-avatar">@initials</div>
+        @if (!string.IsNullOrWhiteSpace(Model.ProfilePicturePath))
+        {
+            <div class="ud-avatar" style="background:none;padding:0;">
+                <img src="@Model.ProfilePicturePath" alt="@displayName" style="width:72px;height:72px;border-radius:50%;object-fit:cover;" />
+            </div>
+        }
+        else
+        {
+            <div class="ud-avatar">@initials</div>
+        }
         <div class="ud-profile-info">
             <div class="ud-name">@displayName</div>
             <div class="ud-meta">

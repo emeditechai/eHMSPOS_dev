@@ -49,7 +49,8 @@ public class UserProfileMenuViewComponent : ViewComponent
             DisplayName = displayName,
             Email = email,
             ActiveRoleName = activeRoleName,
-            CanSwitchRole = canSwitchRole
+            CanSwitchRole = canSwitchRole,
+            ProfilePicturePath = HttpContext.User.FindFirstValue("ProfilePicturePath")
         });
     }
 }

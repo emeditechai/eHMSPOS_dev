@@ -1,4 +1,5 @@
 using HotelApp.Web.Models;
+using Microsoft.AspNetCore.Http;
 
 namespace HotelApp.Web.ViewModels;
 
@@ -21,4 +22,6 @@ public class UserEditViewModel
     public List<UserBranchRoleAssignment> ExistingBranchRoleAssignments { get; set; } = new();
     public List<Branch> AvailableBranches { get; set; } = new();
     public List<Role> AvailableRoles { get; set; } = new();
+    public IFormFile? ProfilePictureFile { get; set; }
+    public string? ProfilePicturePath { get; set; }
 }

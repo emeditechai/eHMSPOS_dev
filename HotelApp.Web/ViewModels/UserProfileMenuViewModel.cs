@@ -6,4 +6,5 @@ public class UserProfileMenuViewModel
     public string Email { get; set; } = string.Empty;
     public string ActiveRoleName { get; set; } = string.Empty;
     public bool CanSwitchRole { get; set; }
+    public string? ProfilePicturePath { get; set; }
 }

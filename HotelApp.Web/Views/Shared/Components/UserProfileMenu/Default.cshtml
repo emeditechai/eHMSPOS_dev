@@ -18,7 +18,14 @@
 
 <div class="profile-menu" id="profileMenu">
     <button type="button" class="profile-trigger" id="profileMenuBtn" aria-haspopup="true" aria-expanded="false">
-        <span class="profile-avatar">@initials</span>
+        @if (!string.IsNullOrWhiteSpace(Model.ProfilePicturePath))
+        {
+            <span class="profile-avatar profile-avatar-img"><img src="@Model.ProfilePicturePath" alt="@Model.DisplayName" /></span>
+        }
+        else
+        {
+            <span class="profile-avatar">@initials</span>
+        }
         <span class="profile-trigger-text">
             <span class="profile-trigger-name">@Model.DisplayName</span>
             @if (!string.IsNullOrWhiteSpace(Model.ActiveRoleName))
@@ -32,6 +39,10 @@
 
     <div class="profile-dropdown" id="profileMenuDropdown" style="display:none" role="menu">
         <div class="profile-dropdown-header">
+            @if (!string.IsNullOrWhiteSpace(Model.ProfilePicturePath))
+            {
+                <div class="profile-dropdown-avatar"><img src="@Model.ProfilePicturePath" alt="@Model.DisplayName" /></div>
+            }
             <div class="profile-dropdown-name">@Model.DisplayName</div>
             @if (!string.IsNullOrWhiteSpace(Model.Email))
             {
