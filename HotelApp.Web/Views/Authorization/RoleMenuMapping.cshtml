@@ -11,11 +11,6 @@
         </div>
     </div>
 
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <div class="alert alert-success" style="margin-bottom: 16px;">@TempData["SuccessMessage"]</div>
-    }
-
     @if (Model.Roles == null || !Model.Roles.Any())
     {
         <div class="alert alert-warning">No roles found.</div>

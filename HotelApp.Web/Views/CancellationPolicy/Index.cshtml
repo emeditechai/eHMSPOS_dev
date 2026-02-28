@@ -10,22 +10,6 @@
     </a>
 </div>
 
-@if (TempData["SuccessMessage"] != null)
-{
-    <div class="alert alert-success">
-        <i class="fas fa-check-circle"></i>
-        @TempData["SuccessMessage"]
-    </div>
-}
-
-@if (TempData["ErrorMessage"] != null)
-{
-    <div class="alert alert-danger">
-        <i class="fas fa-exclamation-circle"></i>
-        @TempData["ErrorMessage"]
-    </div>
-}
-
 @if (Model != null && Model.Count > 0)
 {
     <div class="table-container">
