@@ -217,12 +217,19 @@ public class AccountController : Controller
         }
 
         var userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+        var branchId = HttpContext.Session.GetInt32("BranchID") ?? 0;
         if (userId <= 0)
         {
             return RedirectToAction(nameof(Login));
         }
 
-        var roles = (await _userRoleRepository.GetRolesByUserIdAsync(userId)).ToList();
+        var branchSpecificRoles = branchId > 0
+            ? (await _userBranchRoleRepository.GetRolesByUserBranchAsync(userId, branchId)).ToList()
+            : new List<Role>();
+        var roles = branchSpecificRoles.Any()
+            ? branchSpecificRoles
+            : (await _userRoleRepository.GetRolesByUserIdAsync(userId)).ToList();
+
         if (roles.Count <= 1)
         {
             return RedirectToAction("Index", "Dashboard");
@@ -253,7 +260,11 @@ public class AccountController : Controller
             return RedirectToAction(nameof(Login));
         }
 
-        var roles = (await _userRoleRepository.GetRolesByUserIdAsync(userId)).ToList();
+        var branchSpecificRoles = (await _userBranchRoleRepository.GetRolesByUserBranchAsync(userId, branchId)).ToList();
+        var roles = branchSpecificRoles.Any()
+            ? branchSpecificRoles
+            : (await _userRoleRepository.GetRolesByUserIdAsync(userId)).ToList();
+
         if (!roles.Any(r => r.Id == model.SelectedRoleId))
         {
             ModelState.AddModelError("SelectedRoleId", "Invalid role selection");
@@ -283,12 +294,19 @@ public class AccountController : Controller
         }
 
         var userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+        var branchId = HttpContext.Session.GetInt32("BranchID") ?? 0;
         if (userId <= 0)
         {
             return RedirectToAction(nameof(Login));
         }
 
-        var roles = (await _userRoleRepository.GetRolesByUserIdAsync(userId)).ToList();
+        var branchSpecificRoles = branchId > 0
+            ? (await _userBranchRoleRepository.GetRolesByUserBranchAsync(userId, branchId)).ToList()
+            : new List<Role>();
+        var roles = branchSpecificRoles.Any()
+            ? branchSpecificRoles
+            : (await _userRoleRepository.GetRolesByUserIdAsync(userId)).ToList();
+
         if (!roles.Any(r => r.Id == roleId))
         {
             return RedirectToAction("Index", "Dashboard");
