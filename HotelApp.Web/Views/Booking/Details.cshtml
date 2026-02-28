@@ -1948,7 +1948,7 @@
         </div>
         <h3 class="section-title">Nightly Rate Breakdown</h3>
     </div>
-    @if (Model.RoomNights.Any())
+    @if (Model.RoomNights?.Any() == true)
     {
         <table class="modern-table">
             <thead>

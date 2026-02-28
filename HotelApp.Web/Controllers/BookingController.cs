@@ -817,7 +817,7 @@ namespace HotelApp.Web.Controllers
                     ? $"{fromDate.Value:dd MMM yyyy} to {toDate.Value:dd MMM yyyy}"
                     : fromDate.HasValue
                         ? $"From {fromDate.Value:dd MMM yyyy}"
-                        : $"Until {toDate.Value:dd MMM yyyy}";
+                        : $"Until {toDate!.Value:dd MMM yyyy}";
                 html.AppendLine($"<div class='date-range'>Date Range: {dateRange}</div>");
             }
             html.AppendLine($"<div class='date-range'>Generated: {DateTime.Now:dd MMM yyyy HH:mm}</div>");

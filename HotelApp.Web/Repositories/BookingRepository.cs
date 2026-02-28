@@ -693,7 +693,7 @@ namespace HotelApp.Web.Repositories
                 INSERT INTO BookingRoomNights (BookingId, RoomId, StayDate, RateAmount, ActualBaseRate, DiscountAmount, TaxAmount, CGSTAmount, SGSTAmount, Status)
                 VALUES (@BookingId, @RoomId, @StayDate, @RateAmount, @ActualBaseRate, @DiscountAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @Status);";
 
-            foreach (var night in roomNights)
+            foreach (var night in roomNights ?? [])
             {
                 night.BookingId = bookingId;
                 await _dbConnection.ExecuteAsync(insertNightSql, night, transaction);
@@ -2010,13 +2010,13 @@ WHERE BookingID = @BookingID
                         transaction
                     );
 
-                    if (roomInfo == null || (int)roomInfo.RoomTypeId != (int)booking.RoomTypeId)
+                    if (roomInfo == null || (int)roomInfo!.RoomTypeId != (int)booking.RoomTypeId)
                     {
                         transaction.Rollback();
                         return false;
                     }
 
-                    roomNumbers.Add((string)roomInfo.RoomNumber);
+                    roomNumbers.Add((string)roomInfo!.RoomNumber);
 
                     // Insert into BookingRooms
                     const string insertBookingRoomSql = @"
@@ -2165,7 +2165,7 @@ WHERE BookingID = @BookingID
                         "CheckedIn",
                         $"Actual check-in recorded at {actualCheckInTimestamp:dd MMM yyyy hh:mm tt}",
                         null,
-                        actualCheckInTimestamp.Value.ToString("o"),
+                        actualCheckInTimestamp!.Value.ToString("o"),
                         performedBy,
                         transaction
                     );
@@ -2433,7 +2433,7 @@ WHERE BookingID = @BookingID
                             var sgstPercentageForNights = (ratePlan?.SGSTPercentage > 0 ? ratePlan.SGSTPercentage : taxPercentageForNights / 2);
 
                             var totalGuests = adults + children;
-                            var extraGuests = Math.Max(0, totalGuests - roomType.MaxOccupancy);
+                            var extraGuests = Math.Max(0, totalGuests - roomType!.MaxOccupancy);
 
                             nightlyBreakdown = await BuildRoomNightBreakdownAsync(
                                 rateMasterIdForNights,
