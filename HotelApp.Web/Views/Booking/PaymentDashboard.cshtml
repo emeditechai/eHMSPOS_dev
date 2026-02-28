@@ -1,5 +1,8 @@
 @{
     ViewData["Title"] = "Payment Dashboard";
+    var pdRoleName     = ViewBag.SelectedRoleName as string ?? "";
+    var pdBranchName   = ViewBag.CurrentBranchName as string ?? "your branch";
+    var pdIsAdmin      = pdRoleName.Equals("Administrator", StringComparison.OrdinalIgnoreCase);
 }
 
 @section Styles {
@@ -124,6 +127,18 @@
         <div>
             <div style="font-weight:900; color:#0f172a;">Payment Dashboard</div>
             <div class="subtext" style="margin-top:4px;">Today: @DateTime.Now.ToString("dd MMM yyyy")</div>
+            @if (pdIsAdmin)
+            {
+                <div style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;font-size:0.78rem;font-weight:600;padding:3px 10px;border-radius:20px;background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:#fff;">
+                    <i class="fas fa-shield-alt"></i> Administrator – showing all payments for @pdBranchName
+                </div>
+            }
+            else
+            {
+                <div style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;font-size:0.78rem;font-weight:600;padding:3px 10px;border-radius:20px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;">
+                    <i class="fas fa-user"></i> @pdRoleName – showing your payments for @pdBranchName
+                </div>
+            }
             <div class="pd-loading" id="pdLoading" style="margin-top:6px;"><span class="dot"></span> Loading…</div>
         </div>
 

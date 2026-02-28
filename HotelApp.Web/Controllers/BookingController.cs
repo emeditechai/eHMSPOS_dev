@@ -2,6 +2,7 @@ using System.Linq;
 using System.Globalization;
 using System.Text.Json;
 using System.Security.Claims;
+using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -517,144 +518,169 @@ namespace HotelApp.Web.Controllers
         {
             try
             {
-                using var connection = new Microsoft.Data.SqlClient.SqlConnection(_bookingRepository.ConnectionString);
-                await connection.OpenAsync();
+                var branchId  = CurrentBranchID;
+                var userId    = GetCurrentUserId() ?? 0;
+                var isAdmin   = HttpContext.Session.GetString("SelectedRoleName")
+                                    ?.Equals("Administrator", StringComparison.OrdinalIgnoreCase) == true;
 
-                var command = new Microsoft.Data.SqlClient.SqlCommand("sp_GetPaymentDashboardData", connection)
+                // User-visibility clause:
+                //   Administrator → sees all payments for this branch
+                //   Others        → sees only payments they created
+                const string userFilterClause = @"
+                    AND (
+                        @IsAdmin = 1
+                        OR TRY_CAST(bp.CreatedBy AS INT) = @UserId
+                    )";
+
+                using var conn = new Microsoft.Data.SqlClient.SqlConnection(_bookingRepository.ConnectionString);
+                await conn.OpenAsync();
+
+                var p = new Dapper.DynamicParameters();
+                p.Add("@BranchId",  branchId);
+                p.Add("@FromDate",  fromDate.Date);
+                p.Add("@ToDate",    toDate.Date);
+                p.Add("@UserId",    userId);
+                p.Add("@IsAdmin",   isAdmin ? 1 : 0);
+
+                // ── 1) Summary ──────────────────────────────────────────────────────
+                var summaryRow = await conn.QueryFirstOrDefaultAsync($@"
+                    SELECT
+                        ISNULL(SUM(CASE WHEN ISNULL(bp.IsRefund,0)=0 THEN bp.Amount ELSE 0 END), 0) AS TotalPayments,
+                        ISNULL(SUM(
+                            CASE WHEN ISNULL(bp.IsRefund,0)=0
+                            THEN ROUND(bp.Amount * ISNULL(b.TaxAmount,0) / NULLIF(ISNULL(b.TotalAmount,0),0), 2)
+                            ELSE 0 END), 0) AS TotalGST,
+                        COUNT(CASE WHEN ISNULL(bp.IsRefund,0)=0 THEN 1 END) AS PaymentCount
+                    FROM dbo.BookingPayments bp
+                    INNER JOIN dbo.Bookings b ON bp.BookingId = b.Id
+                    WHERE b.BranchID = @BranchId
+                      AND CAST(bp.PaidOn AS DATE) BETWEEN @FromDate AND @ToDate
+                      AND ISNULL(bp.IsRefund, 0) = 0
+                      {userFilterClause}", p);
+
+                decimal totalCollection    = (decimal)(summaryRow?.TotalPayments ?? 0m);
+                decimal totalGst           = (decimal)(summaryRow?.TotalGST       ?? 0m);
+                int     totalPaymentCount  = (int)(summaryRow?.PaymentCount       ?? 0);
+
+                // ── 2) Payment Method Breakdown ─────────────────────────────────────
+                var methodRows = await conn.QueryAsync($@"
+                    SELECT
+                        ISNULL(bp.PaymentMethod, 'Unknown') AS PaymentMethod,
+                        COUNT(*)        AS TransactionCount,
+                        SUM(bp.Amount)  AS TotalAmount
+                    FROM dbo.BookingPayments bp
+                    INNER JOIN dbo.Bookings b ON bp.BookingId = b.Id
+                    WHERE b.BranchID = @BranchId
+                      AND CAST(bp.PaidOn AS DATE) BETWEEN @FromDate AND @ToDate
+                      AND ISNULL(bp.IsRefund, 0) = 0
+                      {userFilterClause}
+                    GROUP BY bp.PaymentMethod
+                    ORDER BY TotalAmount DESC", p);
+
+                var paymentMethods = methodRows.Select(r => (object)new
                 {
-                    CommandType = System.Data.CommandType.StoredProcedure
-                };
+                    paymentMethod    = (string)(r.PaymentMethod ?? "Unknown"),
+                    totalAmount      = (decimal)(r.TotalAmount ?? 0m),
+                    transactionCount = (int)(r.TransactionCount ?? 0)
+                }).ToList();
 
-                command.Parameters.AddWithValue("@BranchID", CurrentBranchID);
-                command.Parameters.AddWithValue("@FromDate", fromDate.Date);
-                command.Parameters.AddWithValue("@ToDate", toDate.Date);
+                // ── 3) Billing Head Breakdown ────────────────────────────────────────
+                // Use simple CASE (avoid complex dynamic JOIN that may fail on some schemas)
+                var headRows = await conn.QueryAsync($@"
+                    SELECT
+                        ISNULL(
+                            CASE UPPER(LTRIM(RTRIM(CAST(bp.BillingHead AS NVARCHAR(50)))))
+                                WHEN 'S' THEN 'Stay Charges'
+                                WHEN 'R' THEN 'Room Services'
+                                WHEN 'O' THEN 'Other Charges'
+                                ELSE COALESCE(CAST(bp.BillingHead AS NVARCHAR(200)), 'Stay Charges')
+                            END,
+                        'Stay Charges') AS BillingHead,
+                        COUNT(*) AS TransactionCount,
+                        SUM(bp.Amount) AS TotalAmount,
+                        SUM(ROUND(bp.Amount * ISNULL(b.TaxAmount,0) / NULLIF(ISNULL(b.TotalAmount,0),0), 2)) AS TotalGST
+                    FROM dbo.BookingPayments bp
+                    INNER JOIN dbo.Bookings b ON bp.BookingId = b.Id
+                    WHERE b.BranchID = @BranchId
+                      AND CAST(bp.PaidOn AS DATE) BETWEEN @FromDate AND @ToDate
+                      AND ISNULL(bp.IsRefund, 0) = 0
+                      {userFilterClause}
+                    GROUP BY
+                        ISNULL(
+                            CASE UPPER(LTRIM(RTRIM(CAST(bp.BillingHead AS NVARCHAR(50)))))
+                                WHEN 'S' THEN 'Stay Charges'
+                                WHEN 'R' THEN 'Room Services'
+                                WHEN 'O' THEN 'Other Charges'
+                                ELSE COALESCE(CAST(bp.BillingHead AS NVARCHAR(200)), 'Stay Charges')
+                            END,
+                        'Stay Charges')
+                    ORDER BY TotalAmount DESC", p);
 
-                decimal totalCollection = 0m;
-                decimal totalGst = 0m;
-                int totalPaymentCount = 0;
-                decimal totalDueAmount = 0m;
-
-                var paymentMethods = new List<object>();
-                var billingHeads = new List<object>();
-                var payments = new List<object>();
-                var dailyTrend = new List<object>();
-
-                using var reader = await command.ExecuteReaderAsync();
-
-                // 1) Summary
-                if (await reader.ReadAsync())
+                var billingHeads = headRows.Select(r => (object)new
                 {
-                    totalCollection = reader.GetDecimal(reader.GetOrdinal("TotalPayments"));
-                    totalGst = reader.GetDecimal(reader.GetOrdinal("TotalGST"));
-                    totalPaymentCount = reader.GetInt32(reader.GetOrdinal("PaymentCount"));
-                }
+                    billingHead      = (string)(r.BillingHead ?? ""),
+                    totalAmount      = (decimal)(r.TotalAmount ?? 0m),
+                    totalGst         = (decimal)(r.TotalGST    ?? 0m),
+                    transactionCount = (int)(r.TransactionCount ?? 0)
+                }).ToList();
 
-                // 2) Payment methods
-                if (await reader.NextResultAsync())
-                {
-                    while (await reader.ReadAsync())
-                    {
-                        paymentMethods.Add(new
-                        {
-                            paymentMethod = reader.IsDBNull(reader.GetOrdinal("PaymentMethod")) ? "Unknown" : reader.GetString(reader.GetOrdinal("PaymentMethod")),
-                            totalAmount = reader.GetDecimal(reader.GetOrdinal("TotalAmount")),
-                            transactionCount = reader.GetInt32(reader.GetOrdinal("TransactionCount"))
-                        });
-                    }
-                }
+                // ── 4) Payment Details List ─────────────────────────────────────────
+                var detailRows = await conn.QueryAsync($@"
+                    SELECT
+                        b.BookingNumber,
+                        bp.ReceiptNumber,
+                        bp.PaidOn,
+                        ISNULL(bp.PaymentMethod, 'Unknown') AS PaymentMethod,
+                        ISNULL(
+                            CASE UPPER(LTRIM(RTRIM(CAST(bp.BillingHead AS NVARCHAR(50)))))
+                                WHEN 'S' THEN 'Stay Charges'
+                                WHEN 'R' THEN 'Room Services'
+                                WHEN 'O' THEN 'Other Charges'
+                                ELSE COALESCE(CAST(bp.BillingHead AS NVARCHAR(200)), 'Stay Charges')
+                            END,
+                        'Stay Charges') AS BillingHead,
+                        bp.Amount,
+                        ROUND(bp.Amount * ISNULL(b.TaxAmount,0) / NULLIF(ISNULL(b.TotalAmount,0),0), 2) AS GSTAmount,
+                        ISNULL(u.FullName, CAST(bp.CreatedBy AS NVARCHAR(200))) AS CreatedBy,
+                        ISNULL(b.BalanceAmount, 0) AS BookingBalance
+                    FROM dbo.BookingPayments bp
+                    INNER JOIN dbo.Bookings b ON bp.BookingId = b.Id
+                    LEFT JOIN dbo.Users u ON u.Id = TRY_CAST(bp.CreatedBy AS INT)
+                    WHERE b.BranchID = @BranchId
+                      AND CAST(bp.PaidOn AS DATE) BETWEEN @FromDate AND @ToDate
+                      AND ISNULL(bp.IsRefund, 0) = 0
+                      {userFilterClause}
+                    ORDER BY bp.PaidOn DESC", p);
 
-                // 3) Billing head breakdown
-                if (await reader.NextResultAsync())
-                {
-                    while (await reader.ReadAsync())
-                    {
-                        billingHeads.Add(new
-                        {
-                            billingHead = reader.IsDBNull(reader.GetOrdinal("BillingHead")) ? "" : reader.GetString(reader.GetOrdinal("BillingHead")),
-                            totalAmount = reader.IsDBNull(reader.GetOrdinal("TotalAmount")) ? 0m : reader.GetDecimal(reader.GetOrdinal("TotalAmount")),
-                            totalGst = reader.IsDBNull(reader.GetOrdinal("TotalGST")) ? 0m : reader.GetDecimal(reader.GetOrdinal("TotalGST")),
-                            transactionCount = reader.IsDBNull(reader.GetOrdinal("TransactionCount")) ? 0 : reader.GetInt32(reader.GetOrdinal("TransactionCount"))
-                        });
-                    }
-                }
-
-                // 4) Payment details
                 var bookingDueMap = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
-                if (await reader.NextResultAsync())
+                var payments = detailRows.Select(r =>
                 {
-                    while (await reader.ReadAsync())
+                    var bn = (string)(r.BookingNumber ?? "");
+                    var bal = (decimal)(r.BookingBalance ?? 0m);
+                    if (!string.IsNullOrWhiteSpace(bn) && !bookingDueMap.ContainsKey(bn))
+                        bookingDueMap[bn] = bal;
+                    return (object)new
                     {
-                        var bookingNumber = reader.IsDBNull(reader.GetOrdinal("BookingNumber")) ? string.Empty : reader.GetString(reader.GetOrdinal("BookingNumber"));
-                        var receiptNo = reader.IsDBNull(reader.GetOrdinal("ReceiptNumber")) ? string.Empty : reader.GetString(reader.GetOrdinal("ReceiptNumber"));
-                        var amount = reader.GetDecimal(reader.GetOrdinal("Amount"));
+                        receiptNo     = (string)(r.ReceiptNumber  ?? ""),
+                        bookingNo     = bn,
+                        paidOn        = (DateTime?)(r.PaidOn),
+                        paymentMethod = (string)(r.PaymentMethod  ?? ""),
+                        billingHead   = (string)(r.BillingHead    ?? ""),
+                        receiptAmount = (decimal)(r.Amount        ?? 0m),
+                        gstAmount     = (decimal)(r.GSTAmount     ?? 0m),
+                        createdBy     = (string)(r.CreatedBy      ?? "")
+                    };
+                }).ToList();
 
-                        // GST amount is returned from the stored procedure (already allocated).
-                        var gstAmountOrdinal = reader.GetOrdinal("GSTAmount");
-                        var gstAmount = reader.IsDBNull(gstAmountOrdinal) ? 0m : reader.GetDecimal(gstAmountOrdinal);
-
-                        var paidOnOrdinal = reader.GetOrdinal("PaidOn");
-                        var paidOn = reader.IsDBNull(paidOnOrdinal) ? (DateTime?)null : reader.GetDateTime(paidOnOrdinal);
-
-                        var paymentMethodOrdinal = reader.GetOrdinal("PaymentMethod");
-                        var paymentMethod = reader.IsDBNull(paymentMethodOrdinal) ? string.Empty : reader.GetString(paymentMethodOrdinal);
-
-                        var billingHeadOrdinal = reader.GetOrdinal("BillingHead");
-                        var billingHead = reader.IsDBNull(billingHeadOrdinal) ? string.Empty : reader.GetString(billingHeadOrdinal);
-
-                        // Track due (balance) per booking from the result set.
-                        var bookingBalanceOrdinal = reader.GetOrdinal("BookingBalance");
-                        var bookingBalance = reader.IsDBNull(bookingBalanceOrdinal) ? 0m : reader.GetDecimal(bookingBalanceOrdinal);
-                        if (!string.IsNullOrWhiteSpace(bookingNumber) && !bookingDueMap.ContainsKey(bookingNumber))
-                        {
-                            bookingDueMap[bookingNumber] = bookingBalance;
-                        }
-
-                        var createdByOrdinal = reader.GetOrdinal("CreatedBy");
-                        var createdBy = reader.IsDBNull(createdByOrdinal) ? string.Empty : reader.GetString(createdByOrdinal);
-
-                        payments.Add(new
-                        {
-                            receiptNo,
-                            bookingNo = bookingNumber,
-                            paidOn,
-                            paymentMethod,
-                            billingHead,
-                            receiptAmount = amount,
-                            gstAmount,
-                            createdBy
-                        });
-                    }
-                }
-
-                // 5) Daily trend (optional)
-                if (await reader.NextResultAsync())
-                {
-                    while (await reader.ReadAsync())
-                    {
-                        dailyTrend.Add(new
-                        {
-                            paymentDate = reader.IsDBNull(reader.GetOrdinal("PaymentDate")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("PaymentDate")),
-                            transactionCount = reader.IsDBNull(reader.GetOrdinal("TransactionCount")) ? 0 : reader.GetInt32(reader.GetOrdinal("TransactionCount")),
-                            totalAmount = reader.IsDBNull(reader.GetOrdinal("TotalAmount")) ? 0m : reader.GetDecimal(reader.GetOrdinal("TotalAmount"))
-                        });
-                    }
-                }
-
-                // Due amount (sum of booking balances from the filtered result set)
-                totalDueAmount = bookingDueMap.Values.Where(v => v > 0).Sum();
+                var totalDueAmount = bookingDueMap.Values.Where(v => v > 0).Sum();
 
                 return Json(new
                 {
-                    summary = new
-                    {
-                        totalCollection,
-                        totalGst,
-                        totalPaymentCount,
-                        totalDueAmount
-                    },
+                    success = true,
+                    isAdmin,
+                    summary = new { totalCollection, totalGst, totalPaymentCount, totalDueAmount },
                     paymentMethods,
                     billingHeads,
-                    dailyTrend,
                     payments
                 });
             }
