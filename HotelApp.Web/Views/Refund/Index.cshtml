@@ -134,19 +134,37 @@
         margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #dee2e6;
     }
 
-    /* Vertical stacked fields grid */
-    .pf-field label {
-        font-size: 11px; font-weight: 600; color: #6c757d;
-        margin-bottom: 3px; display: block; text-transform: uppercase;
-        letter-spacing: 0.3px;
+    /* Horizontal label + control rows */
+    .pf-line {
+        display: flex; align-items: center; flex-wrap: wrap;
+        gap: 6px 20px; margin-bottom: 7px;
     }
 
-    .pf-field .form-control,
-    .pf-field .form-select {
-        font-size: 12px; padding: 5px 9px; height: auto;
+    .pf-item {
+        display: flex; align-items: center; gap: 7px; flex-shrink: 0;
     }
 
-    .pf-field textarea.form-control { resize: vertical; min-height: 54px; }
+    .pf-item label {
+        font-size: 12px; font-weight: 600; color: #495057;
+        white-space: nowrap; margin: 0;
+    }
+
+    .pf-item label .req { color: #dc3545; }
+
+    .pf-item .form-control,
+    .pf-item .form-select {
+        font-size: 12px; padding: 4px 8px; height: auto;
+    }
+
+    .pf-item .ctrl-md  { width: 160px; }
+    .pf-item .ctrl-sm  { width: 120px; }
+    .pf-item .ctrl-xs  { width: 80px; }
+    .pf-item .ctrl-lg  { width: 220px; }
+    .pf-item .ctrl-xl  { width: 320px; }
+
+    .pf-item textarea.form-control { resize: vertical; min-height: 46px; }
+
+    .pf-divider { border-top: 1px dashed #dee2e6; margin: 6px 0; }
 
     .empty-state { text-align: center; padding: 30px 20px; color: #6c757d; }
     .empty-state i { font-size: 36px; margin-bottom: 8px; opacity: 0.4; }
@@ -154,6 +172,9 @@
     @@media (max-width: 768px) {
         .refund-container { flex-direction: column; height: auto; }
         .refund-sidebar { width: 100%; max-height: 260px; }
+        .pf-item { flex-wrap: wrap; }
+        .pf-item .ctrl-md, .pf-item .ctrl-sm, .pf-item .ctrl-xs,
+        .pf-item .ctrl-lg, .pf-item .ctrl-xl { width: 100%; }
     }
 </style>
 
@@ -301,12 +322,12 @@ else
                     <div class="payment-card">
                         <div class="card-heading"><i class="fas fa-credit-card me-1"></i>Refund Payment Details</div>
 
-                        <div class="row g-2">
-                            <!-- Row 1: Method + Reference + Notes -->
-                            <div class="col-sm-4 pf-field">
-                                <label>Payment Method <span class="text-danger">*</span></label>
-                                <select class="form-select" id="fld_paymentMethod" name="PaymentMethod" onchange="onPaymentMethodChange()" required>
-                                    <option value="">— Select Method —</option>
+                        <!-- Line 1: always-visible fields -->
+                        <div class="pf-line">
+                            <div class="pf-item">
+                                <label>Method <span class="req">*</span></label>
+                                <select class="form-select ctrl-md" id="fld_paymentMethod" name="PaymentMethod" onchange="onPaymentMethodChange()" required>
+                                    <option value="">— Select —</option>
                                     <option value="Cash">Cash</option>
                                     <option value="Card">Card</option>
                                     <option value="UPI">UPI</option>
@@ -315,21 +336,23 @@ else
                                     <option value="Online">Online</option>
                                 </select>
                             </div>
-                            <div class="col-sm-4 pf-field">
+                            <div class="pf-item">
                                 <label>Reference / Txn No.</label>
-                                <input type="text" class="form-control" id="fld_reference" name="PaymentReference"
+                                <input type="text" class="form-control ctrl-lg" id="fld_reference" name="PaymentReference"
                                        placeholder="Optional" maxlength="100" />
                             </div>
-                            <div class="col-sm-4 pf-field">
+                            <div class="pf-item">
                                 <label>Notes</label>
-                                <input type="text" class="form-control" id="fld_notes" name="Notes"
-                                       placeholder="Short note (optional)" maxlength="200" />
+                                <input type="text" class="form-control ctrl-lg" id="fld_notes" name="Notes"
+                                       placeholder="Short note" maxlength="200" />
                             </div>
+                        </div>
 
-                            <!-- Row 2: Conditional — Bank (Cheque / Bank Transfer) -->
-                            <div class="col-sm-4 pf-field d-none" id="grp_bank">
+                        <!-- Line 2: conditional fields (shown by JS) -->
+                        <div class="pf-line" id="grp_conditional" style="display:none!important;">
+                            <div class="pf-item d-none" id="grp_bank">
                                 <label>Bank</label>
-                                <select class="form-select" id="fld_bankId" name="BankId">
+                                <select class="form-select ctrl-md" id="fld_bankId" name="BankId">
                                     <option value="">— Select Bank —</option>
                                     @foreach (var bank in banks)
                                     {
@@ -337,12 +360,10 @@ else
                                     }
                                 </select>
                             </div>
-
-                            <!-- Row 2: Conditional — Card Type + Last 4 -->
-                            <div class="col-sm-4 pf-field d-none" id="grp_cardType">
+                            <div class="pf-item d-none" id="grp_cardType">
                                 <label>Card Type</label>
-                                <select class="form-select" id="fld_cardType" name="CardType">
-                                    <option value="">— Select Card Type —</option>
+                                <select class="form-select ctrl-md" id="fld_cardType" name="CardType">
+                                    <option value="">— Select —</option>
                                     <option value="Visa">Visa</option>
                                     <option value="MasterCard">MasterCard</option>
                                     <option value="Rupay">RuPay</option>
@@ -350,30 +371,29 @@ else
                                     <option value="Other">Other</option>
                                 </select>
                             </div>
-                            <div class="col-sm-3 pf-field d-none" id="grp_cardLast4">
-                                <label>Card Last 4 Digits</label>
-                                <input type="text" class="form-control" id="fld_cardLastFour" name="CardLastFourDigits"
+                            <div class="pf-item d-none" id="grp_cardLast4">
+                                <label>Last 4 Digits</label>
+                                <input type="text" class="form-control ctrl-xs" id="fld_cardLastFour" name="CardLastFourDigits"
                                        maxlength="4" pattern="[0-9]{4}" placeholder="XXXX" />
                             </div>
-
-                            <!-- Row 2: Conditional — Cheque Date -->
-                            <div class="col-sm-3 pf-field d-none" id="grp_cheque">
+                            <div class="pf-item d-none" id="grp_cheque">
                                 <label>Cheque Date</label>
-                                <input type="date" class="form-control" id="fld_chequeDate" name="ChequeDate" />
-                            </div>
-
-                            <!-- Row 3: Remarks full width -->
-                            <div class="col-12 pf-field">
-                                <label>Remarks</label>
-                                <textarea class="form-control" id="fld_remarks" name="Remarks"
-                                          rows="2" placeholder="Additional remarks (optional)" maxlength="500"></textarea>
+                                <input type="date" class="form-control ctrl-sm" id="fld_chequeDate" name="ChequeDate" />
                             </div>
                         </div>
 
-                        <div class="mt-3">
-                            <button type="button" class="btn btn-success fw-bold" onclick="processRefund()" style="min-width:220px;">
-                                <i class="fas fa-check-circle me-2"></i>Process Refund &mdash; <span id="btn_refundAmount">₹0</span>
-                            </button>
+                        <!-- Line 3: remarks + submit -->
+                        <div class="pf-line align-items-start">
+                            <div class="pf-item">
+                                <label style="align-self:flex-start;padding-top:5px;">Remarks</label>
+                                <textarea class="form-control ctrl-xl" id="fld_remarks" name="Remarks"
+                                          rows="2" placeholder="Additional remarks (optional)" maxlength="500"></textarea>
+                            </div>
+                            <div class="pf-item" style="align-self:flex-end;">
+                                <button type="button" class="btn btn-success fw-bold px-4" onclick="processRefund()">
+                                    <i class="fas fa-check-circle me-2"></i>Process Refund &mdash; <span id="btn_refundAmount">₹0</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </form>
@@ -469,10 +489,11 @@ else
 
     function onPaymentMethodChange() {
         var method = document.getElementById('fld_paymentMethod').value;
-        var bankGrp    = document.getElementById('grp_bank');
+        var bankGrp     = document.getElementById('grp_bank');
         var cardTypeGrp = document.getElementById('grp_cardType');
-        var cardLast4Grp = document.getElementById('grp_cardLast4');
-        var chequeGrp  = document.getElementById('grp_cheque');
+        var cardLast4Grp= document.getElementById('grp_cardLast4');
+        var chequeGrp   = document.getElementById('grp_cheque');
+        var condLine    = document.getElementById('grp_conditional');
 
         bankGrp.classList.add('d-none');
         cardTypeGrp.classList.add('d-none');
@@ -489,6 +510,9 @@ else
         if (method === 'Cheque') {
             chequeGrp.classList.remove('d-none');
         }
+
+        var anyVisible = (method === 'Card' || method === 'Cheque' || method === 'Bank Transfer');
+        condLine.style.cssText = anyVisible ? 'display:flex!important;' : 'display:none!important;';
     }
 
     function processRefund() {

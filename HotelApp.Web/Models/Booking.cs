@@ -53,6 +53,11 @@ namespace HotelApp.Web.Models
         public RateMaster? RatePlan { get; set; }
         public List<BookingGuest> Guests { get; set; } = new();
         public List<BookingPayment> Payments { get; set; } = new();
+
+        // Cancellation / Refund info (populated for list view)
+        public decimal? CancellationAmountPaid { get; set; }
+        public decimal? CancellationRefundAmount { get; set; }
+        public bool? CancellationIsRefunded { get; set; }
         public List<BookingRoomNight> RoomNights { get; set; } = new();
         public List<ReservationRoomNight> ReservationRoomNights { get; set; } = new();
         public List<BookingRoom> AssignedRooms { get; set; } = new();

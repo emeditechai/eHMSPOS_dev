@@ -58,6 +58,7 @@ public class BookingCancellationRecord
     public decimal GatewayFeeDeductionPercent { get; set; }
     public decimal DeductionAmount { get; set; }
     public decimal RefundAmount { get; set; }
+    public bool IsRefunded { get; set; }
     public string ApprovalStatus { get; set; } = "None";
     public string? Reason { get; set; }
     public string CancellationType { get; set; } = "Staff";

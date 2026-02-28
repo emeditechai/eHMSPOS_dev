@@ -307,9 +307,32 @@
                                     @booking.Status
                                 }
                             </span>
+
+                            @* Refund Info (for cancelled bookings) *@
+                            @if (booking.Status?.ToLower() == "cancelled" && booking.CancellationRefundAmount.HasValue)
+                            {
+                                var refundAmt = booking.CancellationRefundAmount.Value;
+                                var paidAmt = booking.CancellationAmountPaid ?? 0m;
+                                var deductAmt = paidAmt - refundAmt;
+                                var isRefunded = booking.CancellationIsRefunded == true;
+                                <div style="margin-top:4px; display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:10px; font-weight:600;">
+                                    <span style="color:#dc3545;"><i class="fas fa-minus-circle"></i> Deducted: ₹@deductAmt.ToString("N0")</span>
+                                    <span style="color:#6b7280;">|</span>
+                                    <span style="color:#28a745;"><i class="fas fa-undo-alt"></i> Refund: ₹@refundAmt.ToString("N0")</span>
+                                    <span style="color:#6b7280;">|</span>
+                                    @if (isRefunded)
+                                    {
+                                        <span style="color:#0369a1;"><i class="fas fa-check-circle"></i> Refunded</span>
+                                    }
+                                    else
+                                    {
+                                        <span style="color:#d97706;"><i class="fas fa-clock"></i> Pending</span>
+                                    }
+                                </div>
+                            }
                             
                             @* Payment Status Badge *@
-                            <div class="payment-status-badge @paymentStatusClass" style="margin-top: 6px;">
+                            <div class="payment-status-badge @paymentStatusClass" style="margin-top: 4px;">
                                 <i class="@paymentStatusIcon"></i>
                                 <span>@paymentStatusText</span>
                                 @if (paymentStatusClass == "payment-badge-partial")
@@ -513,6 +536,22 @@ else
 
     /* Note: We intentionally reuse global `.status-cards`/`.status-card` styles */
 
+    /* Compact row override */
+    .data-table tbody td {
+        padding: 7px 10px !important;
+        font-size: 13px;
+        vertical-align: middle;
+    }
+    .data-table thead th {
+        padding: 10px 10px !important;
+        font-size: 12px;
+    }
+    .subtext {
+        font-size: 11px;
+        color: #6b7280;
+        margin-top: 1px;
+    }
+
     .data-table .dropdown {
         position: relative;
         display: inline-block;
@@ -631,14 +670,14 @@ else
     .status-badge {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-size: 11px;
+        gap: 3px;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 10px;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        letter-spacing: 0.4px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         transition: all 0.3s;
     }
     
@@ -691,16 +730,16 @@ else
     .payment-status-badge {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        padding: 5px 10px;
-        border-radius: 6px;
+        gap: 4px;
+        padding: 3px 7px;
+        border-radius: 4px;
         font-size: 10px;
         font-weight: 600;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
     }
     
     .payment-status-badge i {
-        font-size: 11px;
+        font-size: 10px;
     }
     
     /* Green with checkmark - Fully Paid */
@@ -765,21 +804,21 @@ else
     .urgency-flags {
         display: flex;
         flex-wrap: wrap;
-        gap: 4px;
-        margin-bottom: 6px;
+        gap: 3px;
+        margin-bottom: 4px;
     }
     
     .urgency-flag {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
-        padding: 4px 8px;
-        border-radius: 4px;
+        gap: 3px;
+        padding: 2px 6px;
+        border-radius: 3px;
         font-size: 9px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.3px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
     
     .urgency-flag i {
@@ -847,12 +886,12 @@ else
     
     .timeline-bar {
         width: 100%;
-        height: 8px;
+        height: 5px;
         background: linear-gradient(90deg, #e5e7eb 0%, #d1d5db 100%);
-        border-radius: 4px;
+        border-radius: 3px;
         overflow: hidden;
         position: relative;
-        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
     }
     
     .timeline-progress {

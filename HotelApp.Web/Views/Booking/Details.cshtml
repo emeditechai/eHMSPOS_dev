@@ -883,15 +883,18 @@
                 else
                 {
                     <text>Not Assigned</text>
-                    <a asp-action="AssignRoom"
-                       asp-controller="Booking"
-                       asp-route-bookingNumber="@Model.BookingNumber"
-                       class="btn-modern btn-secondary btn-icon"
-                       style="margin-left: 8px;"
-                       title="Assign Room"
-                       aria-label="Assign Room">
-                        <i class="fas fa-bed" aria-hidden="true"></i>
-                    </a>
+                    @if (Model.Status?.ToLower() != "cancelled")
+                    {
+                        <a asp-action="AssignRoom"
+                           asp-controller="Booking"
+                           asp-route-bookingNumber="@Model.BookingNumber"
+                           class="btn-modern btn-secondary btn-icon"
+                           style="margin-left: 8px;"
+                           title="Assign Room"
+                           aria-label="Assign Room">
+                            <i class="fas fa-bed" aria-hidden="true"></i>
+                        </a>
+                    }
                 }
             </span>
         </div>
@@ -1221,7 +1224,8 @@
                 </div>
                 <div style="background: #fafafa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem;">
                     <div style="font-size: 0.75rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Deduction</div>
-                    <div style="font-size: 1.25rem; font-weight: 700; color: #dc2626;">- ₹@cr.DeductionAmount.ToString("N2")</div>
+                    @{ var displayDeduction = cr.AmountPaid - cr.RefundAmount; }
+                    <div style="font-size: 1.25rem; font-weight: 700; color: #dc2626;">- ₹@displayDeduction.ToString("N2")</div>
                     @if (cr.RefundPercent > 0)
                     {
                         <div style="font-size: 0.8rem; color: #6b7280; margin-top: 2px;">
@@ -1237,13 +1241,34 @@
                     <div style="font-size: 0.75rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Refund Status</div>
                     <div style="margin-top: 4px;">
                         @{
-                            var statusColor = cr.ApprovalStatus == "Approved" ? "#16a34a" : cr.ApprovalStatus == "Rejected" ? "#dc2626" : "#d97706";
-                            var statusBg    = cr.ApprovalStatus == "Approved" ? "#f0fdf4"  : cr.ApprovalStatus == "Rejected" ? "#fef2f2"  : "#fffbeb";
-                            var statusBorder= cr.ApprovalStatus == "Approved" ? "#bbf7d0"  : cr.ApprovalStatus == "Rejected" ? "#fecaca"  : "#fde68a";
+                            string statusColor, statusBg, statusBorder, statusIcon, statusText;
+                            if (cr.IsRefunded)
+                            {
+                                statusColor  = "#0369a1"; statusBg = "#e0f2fe";
+                                statusBorder = "#7dd3fc"; statusIcon = "fa-check-double";
+                                statusText   = "Refunded";
+                            }
+                            else if (cr.ApprovalStatus == "Approved")
+                            {
+                                statusColor  = "#16a34a"; statusBg = "#f0fdf4";
+                                statusBorder = "#bbf7d0"; statusIcon = "fa-check-circle";
+                                statusText   = "Approved";
+                            }
+                            else if (cr.ApprovalStatus == "Rejected")
+                            {
+                                statusColor  = "#dc2626"; statusBg = "#fef2f2";
+                                statusBorder = "#fecaca"; statusIcon = "fa-times-circle";
+                                statusText   = "Rejected";
+                            }
+                            else
+                            {
+                                statusColor  = "#d97706"; statusBg = "#fffbeb";
+                                statusBorder = "#fde68a"; statusIcon = "fa-clock";
+                                statusText   = "Pending";
+                            }
                         }
                         <span style="display:inline-block; padding: 4px 12px; border-radius: 9999px; background: @statusBg; color: @statusColor; border: 1px solid @statusBorder; font-weight: 600; font-size: 0.875rem;">
-                            <i class="fas @(cr.ApprovalStatus == "Approved" ? "fa-check-circle" : cr.ApprovalStatus == "Rejected" ? "fa-times-circle" : "fa-clock")" style="margin-right: 4px;"></i>
-                            @(cr.ApprovalStatus == "None" ? "Pending" : cr.ApprovalStatus)
+                            <i class="fas @statusIcon" style="margin-right: 4px;"></i>@statusText
                         </span>
                     </div>
                 </div>

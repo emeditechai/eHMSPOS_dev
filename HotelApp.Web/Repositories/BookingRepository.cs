@@ -780,26 +780,30 @@ namespace HotelApp.Web.Repositories
         {
             var sql = @"
                 SELECT TOP (@Take)
-                    Id, BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
-                    CheckInDate, CheckOutDate, ActualCheckInDate, ActualCheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
-                    BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
-                    BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
-                    PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, BranchID,
-                    CreatedDate, CreatedBy, LastModifiedDate, LastModifiedBy
-                FROM Bookings
-                WHERE BranchID = @BranchId";
+                    b.Id, b.BookingNumber, b.Status, b.PaymentStatus, b.Channel, b.Source, b.CustomerType,
+                    b.CheckInDate, b.CheckOutDate, b.ActualCheckInDate, b.ActualCheckOutDate, b.Nights, b.RoomTypeId, b.RoomId, b.RatePlanId,
+                    b.BaseAmount, b.TaxAmount, b.CGSTAmount, b.SGSTAmount, b.DiscountAmount, b.TotalAmount, b.DepositAmount,
+                    b.BalanceAmount, b.Adults, b.Children, b.PrimaryGuestFirstName, b.PrimaryGuestLastName,
+                    b.PrimaryGuestEmail, b.PrimaryGuestPhone, b.LoyaltyId, b.SpecialRequests, b.BranchID,
+                    b.CreatedDate, b.CreatedBy, b.LastModifiedDate, b.LastModifiedBy,
+                    bc.AmountPaid AS CancellationAmountPaid,
+                    bc.RefundAmount AS CancellationRefundAmount,
+                    ISNULL(bc.IsRefunded, 0) AS CancellationIsRefunded
+                FROM Bookings b
+                LEFT JOIN BookingCancellations bc ON bc.BookingId = b.Id
+                WHERE b.BranchID = @BranchId";
 
             if (fromDate.HasValue)
             {
-                sql += " AND CAST(CheckInDate AS DATE) >= CAST(@FromDate AS DATE)";
+                sql += " AND CAST(b.CheckInDate AS DATE) >= CAST(@FromDate AS DATE)";
             }
 
             if (toDate.HasValue)
             {
-                sql += " AND CAST(CheckInDate AS DATE) <= CAST(@ToDate AS DATE)";
+                sql += " AND CAST(b.CheckInDate AS DATE) <= CAST(@ToDate AS DATE)";
             }
 
-            sql += " ORDER BY CheckInDate DESC, CreatedDate DESC";
+            sql += " ORDER BY b.CheckInDate DESC, b.CreatedDate DESC";
 
             var bookings = (await _dbConnection.QueryAsync<Booking>(sql, new { BranchId = branchId, FromDate = fromDate, ToDate = toDate, Take = take })).ToList();
             await PopulateRelatedCollectionsAsync(bookings);
@@ -1310,7 +1314,7 @@ namespace HotelApp.Web.Repositories
                 RefundPercent = refundPercent,
                 FlatDeduction = flatDeduction,
                 GatewayFeeDeductionPercent = gatewayPct,
-                DeductionAmount = Math.Round(deduction, 2, MidpointRounding.AwayFromZero),
+                DeductionAmount = Math.Round(amountPaid - refundFinal, 2, MidpointRounding.AwayFromZero),
                 RefundAmount = refundFinal,
                 PolicyId = policyId,
                 PolicyName = policy?.PolicyName,
@@ -3836,8 +3840,9 @@ WHERE BookingID = @BookingID
                     bc.RefundPercent,
                     ISNULL(bc.FlatDeduction, 0)              AS FlatDeduction,
                     ISNULL(bc.GatewayFeeDeductionPercent, 0) AS GatewayFeeDeductionPercent,
-                    ISNULL(bc.DeductionAmount, 0)            AS DeductionAmount,
+                    bc.AmountPaid - bc.RefundAmount           AS DeductionAmount,
                     bc.RefundAmount,
+                    ISNULL(bc.IsRefunded, 0)                 AS IsRefunded,
                     ISNULL(bc.ApprovalStatus, 'None')        AS ApprovalStatus,
                     bc.Reason,
                     ISNULL(bc.CancellationType, 'Staff')     AS CancellationType,
