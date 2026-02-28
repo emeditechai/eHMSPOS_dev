@@ -1,17 +1,31 @@
 @model IEnumerable<HotelApp.Web.Models.RefundListItem>
 @{
     ViewData["Title"] = "Refunds";
-    var banks = ViewBag.Banks as IEnumerable<HotelApp.Web.Models.Bank> ?? Enumerable.Empty<HotelApp.Web.Models.Bank>();
+    var banks        = ViewBag.Banks as IEnumerable<HotelApp.Web.Models.Bank> ?? Enumerable.Empty<HotelApp.Web.Models.Bank>();
+
+    // Date range (passed from controller, defaults to today)
+    string fromDateStr = ViewBag.FromDate ?? DateTime.Today.ToString("yyyy-MM-dd");
+    string toDateStr   = ViewBag.ToDate   ?? DateTime.Today.ToString("yyyy-MM-dd");
+
+    // The model contains pending refunds filtered by date range (for card stats)
     var pendingList = Model?.ToList() ?? new List<HotelApp.Web.Models.RefundListItem>();
 
-    // Dashboard stat computations
-    var totalPending       = pendingList.Count;
-    var totalRefundAmt     = pendingList.Sum(x => x.RefundAmount);
-    var totalDeductedAmt   = pendingList.Sum(x => x.DeductionAmount);
-    var totalAmountPaid    = pendingList.Sum(x => x.AmountPaid);
-    var approvedCount      = pendingList.Count(x => x.ApprovalStatus == "Approved");
-    var waitingCount       = pendingList.Count(x => x.ApprovalStatus != "Approved");
-    var urgentCount        = pendingList.Count(x => x.DaysSinceCancellation >= 3);
+    // The sidebar always shows ALL pending so nothing is missed
+    var sidebarList = (ViewBag.AllPendingList as IEnumerable<HotelApp.Web.Models.RefundListItem>)?.ToList()
+                      ?? pendingList;
+
+    // Dashboard stat computations (date-range filtered)
+    var totalPending      = pendingList.Count;
+    var totalRefundAmt    = pendingList.Sum(x => x.RefundAmount);
+    var totalRefunded     = (decimal)(ViewBag.TotalRefunded ?? 0m);
+    var refundedCount     = (int)(ViewBag.RefundedCount ?? 0);
+    var totalAmountPaid   = pendingList.Sum(x => x.AmountPaid);
+    var approvedCount     = pendingList.Count(x => x.ApprovalStatus == "Approved");
+    var waitingCount      = pendingList.Count(x => x.ApprovalStatus != "Approved");
+    var urgentCount       = pendingList.Count(x => x.DaysSinceCancellation >= 3);
+
+    // Totals for sidebar badge (all pending)
+    var allPendingCount   = sidebarList.Count;
 }
 
 <style>
@@ -256,6 +270,56 @@
         .refund-dashboard { grid-template-columns: repeat(2, 1fr); }
     }
 
+    /* ── Date Range Filter Bar ── */
+    .date-filter-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 8px 14px;
+        margin-bottom: 14px;
+        box-shadow: 0 1px 4px rgba(0,0,0,.05);
+        flex-wrap: wrap;
+    }
+
+    .date-filter-bar .dfb-label {
+        font-size: 11px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.5px; color: #495057; white-space: nowrap;
+    }
+
+    .date-filter-bar .dfb-sep {
+        font-size: 12px; color: #adb5bd;
+    }
+
+    .date-filter-bar input[type="date"] {
+        font-size: 12px; padding: 4px 8px; border: 1px solid #ced4da;
+        border-radius: 5px; color: #212529; background: #f8f9fa;
+        cursor: pointer; height: auto;
+    }
+
+    .date-filter-bar input[type="date"]:focus {
+        outline: none; border-color: #0d6efd;
+        box-shadow: 0 0 0 2px rgba(13,110,253,.15);
+    }
+
+    .date-filter-bar .dfb-btn {
+        font-size: 11px; padding: 4px 12px;
+        border-radius: 5px; font-weight: 600;
+    }
+
+    .date-filter-bar .dfb-today-btn {
+        font-size: 11px; padding: 4px 10px;
+        border-radius: 5px; color: #6c757d;
+        background: none; border: 1px solid #dee2e6;
+        cursor: pointer; font-weight: 500;
+    }
+
+    .date-filter-bar .dfb-today-btn:hover {
+        background: #f0f0f0;
+    }
+
     @@media (max-width: 768px) {
         .refund-container { flex-direction: column; height: auto; }
         .refund-sidebar { width: 100%; max-height: 260px; }
@@ -266,7 +330,7 @@
     }
 </style>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-2">
     <div>
         <h5 class="mb-0 fw-bold"><i class="fas fa-undo-alt me-2 text-primary"></i>Refunds</h5>
         <small class="text-muted">Process pending refunds for cancelled bookings</small>
@@ -276,9 +340,35 @@
         {
             <span class="badge bg-danger"><i class="fas fa-exclamation-circle me-1"></i>@urgentCount Overdue</span>
         }
-        <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>@totalPending Pending</span>
+        <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>@allPendingCount Pending</span>
     </div>
 </div>
+
+<!-- ── Date Range Filter Bar ── -->
+<form id="dateFilterForm" method="get" action="/Refund">
+    <div class="date-filter-bar">
+        <i class="fas fa-calendar-alt text-primary" style="font-size:14px;"></i>
+        <span class="dfb-label">Date Range</span>
+        <input type="date" name="fromDate" id="dfb_from" value="@fromDateStr"
+               onchange="autoSubmitDateFilter()" />
+        <span class="dfb-sep">—</span>
+        <input type="date" name="toDate" id="dfb_to" value="@toDateStr"
+               onchange="autoSubmitDateFilter()" />
+        <button type="submit" class="btn btn-primary dfb-btn">
+            <i class="fas fa-filter me-1"></i>Apply
+        </button>
+        <button type="button" class="dfb-today-btn" onclick="setToday()">
+            <i class="fas fa-dot-circle me-1"></i>Today
+        </button>
+        <span class="ms-auto text-muted" style="font-size:11px;">
+            Showing stats for @DateTime.Parse(fromDateStr).ToString("dd MMM yyyy")
+            @if (fromDateStr != toDateStr)
+            {
+                <text> &ndash; @DateTime.Parse(toDateStr).ToString("dd MMM yyyy")</text>
+            }
+        </span>
+    </div>
+</form>
 
 <!-- ── Dashboard Stat Cards ── -->
 <div class="refund-dashboard">
@@ -299,23 +389,23 @@
         </div>
     </div>
 
-    <!-- Total Refund Amount -->
+    <!-- Total Refund Amount (Pending) -->
     <div class="stat-card sc-green">
         <i class="fas fa-hand-holding-usd sc-icon"></i>
         <div class="sc-label">Total Refund Amount</div>
         <div class="sc-value">₹@totalRefundAmt.ToString("N0")</div>
-        <div class="sc-sub">Across @totalPending booking(s)</div>
+        <div class="sc-sub">Pending across @totalPending booking(s)</div>
     </div>
 
-    <!-- Total Deducted -->
-    <div class="stat-card sc-red">
-        <i class="fas fa-minus-circle sc-icon"></i>
-        <div class="sc-label">Total Deducted</div>
-        <div class="sc-value">₹@totalDeductedAmt.ToString("N0")</div>
-        <div class="sc-sub">Cancellation charges</div>
+    <!-- Total Refunded (Completed) -->
+    <div class="stat-card sc-teal">
+        <i class="fas fa-check-circle sc-icon"></i>
+        <div class="sc-label">Total Refunded</div>
+        <div class="sc-value">₹@totalRefunded.ToString("N0")</div>
+        <div class="sc-sub">@refundedCount refund(s) processed</div>
     </div>
 
-    <!-- Approved / Awaiting -->
+    <!-- Approval Status -->
     <div class="stat-card sc-blue">
         <i class="fas fa-check-double sc-icon"></i>
         <div class="sc-label">Approval Status</div>
@@ -328,9 +418,9 @@
     </div>
 </div>
 
-@if (!pendingList.Any())
+@if (!sidebarList.Any())
 {
-    <!-- All Clear empty state (stat cards stay but all 0) -->
+    <!-- All Clear empty state -->
     <div class="section-card">
         <div class="empty-state">
             <i class="fas fa-check-circle text-success"></i>
@@ -346,10 +436,10 @@ else
         <div class="refund-sidebar">
             <div class="refund-sidebar-header">
                 <h6><i class="fas fa-list me-2"></i>Pending Refunds</h6>
-                <small>@pendingList.Count booking(s) awaiting refund</small>
+                <small>@sidebarList.Count booking(s) awaiting refund</small>
             </div>
             <div class="refund-list">
-                @foreach (var item in pendingList)
+                @foreach (var item in sidebarList)
                 {
                     <div class="refund-list-item"
                          id="refund-item-@item.CancellationId"
@@ -548,6 +638,22 @@ else
 @section Scripts {
 <script>
     var _activeCancellationId = null;
+
+    // ── Date range filter helpers ──────────────────────────────────────────
+    function autoSubmitDateFilter() {
+        // Small debounce so both date fields can be changed before submit
+        clearTimeout(window._dfbTimer);
+        window._dfbTimer = setTimeout(function () {
+            document.getElementById('dateFilterForm').submit();
+        }, 600);
+    }
+
+    function setToday() {
+        var today = new Date().toISOString().split('T')[0];
+        document.getElementById('dfb_from').value = today;
+        document.getElementById('dfb_to').value   = today;
+        document.getElementById('dateFilterForm').submit();
+    }
 
     function selectRefund(cancellationId) {
         // Highlight selected item

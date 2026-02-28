@@ -21,10 +21,24 @@ public class RefundController : BaseController
 
     // GET /Refund or /Refund/Index
     [HttpGet]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? fromDate, string? toDate)
     {
-        var pendingRefunds = await _refundRepository.GetPendingRefundsAsync(CurrentBranchID);
-        ViewBag.Banks = await _bankRepository.GetAllActiveAsync();
+        var today = DateTime.Today;
+        var from = DateTime.TryParse(fromDate, out var fd) ? fd.Date : today;
+        var to   = DateTime.TryParse(toDate,   out var td) ? td.Date : today;
+        if (to < from) to = from;
+
+        var pendingRefunds   = await _refundRepository.GetPendingRefundsByDateAsync(CurrentBranchID, from, to);
+        var completedStats   = await _refundRepository.GetCompletedRefundsTotalAsync(CurrentBranchID, from, to);
+        var allPending       = await _refundRepository.GetPendingRefundsAsync(CurrentBranchID); // for sidebar showing all
+
+        ViewBag.Banks              = await _bankRepository.GetAllActiveAsync();
+        ViewBag.FromDate           = from.ToString("yyyy-MM-dd");
+        ViewBag.ToDate             = to.ToString("yyyy-MM-dd");
+        ViewBag.TotalRefunded      = completedStats.TotalRefunded;
+        ViewBag.RefundedCount      = completedStats.RefundedCount;
+        ViewBag.AllPendingList     = allPending;
+
         return View(pendingRefunds);
     }
 

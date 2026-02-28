@@ -46,6 +46,60 @@ public class RefundRepository : IRefundRepository
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Pending refunds filtered by cancellation date range
+    // ─────────────────────────────────────────────────────────────────────────
+    public async Task<IEnumerable<RefundListItem>> GetPendingRefundsByDateAsync(int branchId, DateTime fromDate, DateTime toDate)
+    {
+        const string sql = @"
+            SELECT
+                bc.Id                                                       AS CancellationId,
+                bc.BookingId,
+                bc.BookingNumber,
+                CONCAT(b.PrimaryGuestFirstName, ' ', b.PrimaryGuestLastName) AS GuestName,
+                b.PrimaryGuestPhone                                         AS GuestPhone,
+                rt.TypeName                                                 AS RoomType,
+                bc.AmountPaid,
+                bc.RefundAmount,
+                bc.AmountPaid - bc.RefundAmount                              AS DeductionAmount,
+                bc.RefundPercent,
+                ISNULL(bc.ApprovalStatus, 'None')                           AS ApprovalStatus,
+                bc.CreatedDate                                              AS CancelledOn,
+                bc.Reason,
+                DATEDIFF(DAY, bc.CreatedDate, GETDATE())                    AS DaysSinceCancellation
+            FROM BookingCancellations bc
+            INNER JOIN Bookings b ON b.Id = bc.BookingId
+            LEFT JOIN RoomTypes rt ON rt.Id = b.RoomTypeId
+            WHERE bc.BranchID = @BranchId
+              AND bc.RefundAmount > 0
+              AND ISNULL(bc.IsRefunded, 0) = 0
+              AND CAST(bc.CreatedDate AS DATE) BETWEEN @FromDate AND @ToDate
+            ORDER BY bc.CreatedDate ASC";
+
+        return await _db.QueryAsync<RefundListItem>(sql,
+            new { BranchId = branchId, FromDate = fromDate.Date, ToDate = toDate.Date });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Total of already-refunded transactions in a date range (by RefundedAt)
+    // ─────────────────────────────────────────────────────────────────────────
+    public async Task<(decimal TotalRefunded, int RefundedCount)> GetCompletedRefundsTotalAsync(
+        int branchId, DateTime fromDate, DateTime toDate)
+    {
+        const string sql = @"
+            SELECT
+                ISNULL(SUM(bc.RefundAmount), 0) AS TotalRefunded,
+                COUNT(*)                        AS RefundedCount
+            FROM BookingCancellations bc
+            WHERE bc.BranchID = @BranchId
+              AND ISNULL(bc.IsRefunded, 0) = 1
+              AND CAST(ISNULL(bc.RefundedAt, bc.CreatedDate) AS DATE) BETWEEN @FromDate AND @ToDate";
+
+        var row = await _db.QueryFirstAsync<(decimal TotalRefunded, int RefundedCount)>(
+            sql, new { BranchId = branchId, FromDate = fromDate.Date, ToDate = toDate.Date });
+        return row;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Full detail for a single pending refund
     // ─────────────────────────────────────────────────────────────────────────
     public async Task<RefundDetailViewModel?> GetRefundDetailAsync(int cancellationId, int branchId)
