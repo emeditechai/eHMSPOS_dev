@@ -97,7 +97,19 @@ public sealed class ReportsController : Controller
             (effectiveFrom, effectiveTo) = (effectiveTo, effectiveFrom);
         }
 
-        var data = await _reportsRepository.GetDailyCollectionRegisterAsync(branchId, effectiveFrom, effectiveTo);
+        // Resolve role — session may be lost on hot-reload, fall back to claims.
+        var roleName = HttpContext.Session.GetString("SelectedRoleName")
+                    ?? User.FindFirst("SelectedRoleName")?.Value
+                    ?? string.Empty;
+
+        var isAdmin = roleName.Equals("Administrator", StringComparison.OrdinalIgnoreCase)
+                   || roleName.Equals("Manager", StringComparison.OrdinalIgnoreCase);
+
+        var userId = HttpContext.Session.GetInt32("UserId")
+                  ?? (int.TryParse(User.FindFirst("UserId")?.Value, out var uid) ? uid : 0);
+
+        var data = await _reportsRepository.GetDailyCollectionRegisterAsync(
+            branchId, effectiveFrom, effectiveTo, userId, isAdmin);
 
         var vm = new DailyCollectionRegisterReportViewModel
         {
@@ -108,6 +120,8 @@ public sealed class ReportsController : Controller
             Rows = data.Rows
         };
 
+        ViewBag.IsAdmin = isAdmin;
+        ViewBag.RoleName = roleName;
         ViewData["Title"] = "Daily Collection Register";
         return View(vm);
     }

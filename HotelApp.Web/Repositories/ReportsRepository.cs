@@ -16,7 +16,9 @@ public interface IReportsRepository
     Task<DailyCollectionRegisterReportData> GetDailyCollectionRegisterAsync(
         int branchId,
         DateOnly fromDate,
-        DateOnly toDate
+        DateOnly toDate,
+        int userId = 0,
+        bool isAdmin = true
     );
 
     Task<GstReportData> GetGstReportAsync(
@@ -114,7 +116,9 @@ public sealed class ReportsRepository : IReportsRepository
     public async Task<DailyCollectionRegisterReportData> GetDailyCollectionRegisterAsync(
         int branchId,
         DateOnly fromDate,
-        DateOnly toDate
+        DateOnly toDate,
+        int userId = 0,
+        bool isAdmin = true
     )
     {
         if (_dbConnection.State != ConnectionState.Open)
@@ -131,7 +135,9 @@ public sealed class ReportsRepository : IReportsRepository
             {
                 BranchID = branchId,
                 FromDate = from,
-                ToDate = to
+                ToDate = to,
+                UserId = userId,
+                IsAdmin = isAdmin ? 1 : 0
             },
             commandType: CommandType.StoredProcedure
         );

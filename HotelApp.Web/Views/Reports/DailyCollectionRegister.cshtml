@@ -1,6 +1,8 @@
 @model HotelApp.Web.ViewModels.DailyCollectionRegisterReportViewModel
 @{
     ViewData["Title"] = "Daily Collection Register";
+    var dcrIsAdmin   = (bool)(ViewBag.IsAdmin ?? false);
+    var dcrRoleName  = ViewBag.RoleName as string ?? "";
 }
 
 @section Styles {
@@ -9,6 +11,22 @@
 
 <div class="page-header">
     <h2><i class="fas fa-cash-register"></i> Daily Collection Register</h2>
+</div>
+
+@* Visibility badge *@
+<div style="margin-bottom:14px;">
+    @if (dcrIsAdmin)
+    {
+        <div style="display:inline-flex;align-items:center;gap:6px;font-size:0.78rem;font-weight:600;padding:4px 12px;border-radius:20px;background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:#fff;">
+            <i class="fas fa-shield-alt"></i> @dcrRoleName – showing all branch data
+        </div>
+    }
+    else
+    {
+        <div style="display:inline-flex;align-items:center;gap:6px;font-size:0.78rem;font-weight:600;padding:4px 12px;border-radius:20px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;">
+            <i class="fas fa-user"></i> @dcrRoleName – showing your data only
+        </div>
+    }
 </div>
 
 <div class="filters-container" style="margin-bottom: 18px;">
