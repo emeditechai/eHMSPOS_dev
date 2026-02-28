@@ -298,8 +298,9 @@ public sealed class ReportsController : BaseController
     {
         var branchId = CurrentBranchID;
 
-        var effectiveFrom = fromDate ?? DateOnly.FromDateTime(DateTime.Today);
-        var effectiveTo = toDate ?? effectiveFrom;
+        // Default: first day of current month → today
+        var effectiveFrom = fromDate ?? new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var effectiveTo   = toDate   ?? DateOnly.FromDateTime(DateTime.Today);
 
         if (effectiveTo < effectiveFrom)
         {

@@ -572,6 +572,7 @@ public sealed class GuestDetailsReportSummaryRow
 {
     public int TotalGuests { get; set; }
     public int TotalBookings { get; set; }
+    public int CancelledBookings { get; set; }
     public int TotalNights { get; set; }
     public decimal TotalRevenue { get; set; }
     public decimal TotalBalance { get; set; }
@@ -587,6 +588,7 @@ public sealed class GuestDetailsReportRow
     public string? State { get; set; }
     public string? Country { get; set; }
     public int BookingCount { get; set; }
+    public int CancelledCount { get; set; }
     public int TotalNights { get; set; }
     public decimal TotalRevenue { get; set; }
     public decimal TotalBalance { get; set; }

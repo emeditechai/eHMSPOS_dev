@@ -15,12 +15,12 @@
     <form method="get" action="@Url.Action("GuestDetails", "Reports")" style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; justify-content: space-between;">
         <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;">
             <div>
-                <label for="fromDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">Booking From Date</label>
+                <label for="fromDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">Check-in From</label>
                 <input id="fromDate" name="fromDate" type="date" class="form-control" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
             </div>
 
             <div>
-                <label for="toDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">Booking To Date</label>
+                <label for="toDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">Check-in To</label>
                 <input id="toDate" name="toDate" type="date" class="form-control" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
             </div>
         </div>
@@ -41,6 +41,11 @@
     <div class="status-card occupied">
         <h3>Total Bookings</h3>
         <div class="value">@Model.Summary.TotalBookings</div>
+    </div>
+
+    <div class="status-card" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
+        <h3>Cancelled</h3>
+        <div class="value">@Model.Summary.CancelledBookings</div>
     </div>
 
     <div class="status-card maintenance">
@@ -82,10 +87,11 @@
                 <th>Email</th>
                 <th>City</th>
                 <th class="text-end">Bookings</th>
+                <th class="text-end">Cancelled</th>
                 <th class="text-end">Nights</th>
                 <th class="text-end">Revenue</th>
                 <th class="text-end">Outstanding</th>
-                <th>Last Stay</th>
+                <th>Last Check-in</th>
             </tr>
         </thead>
         <tbody>
@@ -97,6 +103,7 @@
                 <td>@(string.IsNullOrWhiteSpace(row.Email) ? "-" : row.Email)</td>
                 <td>@(string.IsNullOrWhiteSpace(row.City) ? "-" : row.City)</td>
                 <td class="text-end">@row.BookingCount</td>
+                <td class="text-end" style="color:@(row.CancelledCount > 0 ? "#e74c3c" : "inherit"); font-weight:@(row.CancelledCount > 0 ? "700" : "400");">@row.CancelledCount</td>
                 <td class="text-end">@row.TotalNights</td>
                 <td class="text-end">₹@row.TotalRevenue.ToString("N2")</td>
                 <td class="text-end">₹@row.TotalBalance.ToString("N2")</td>
@@ -135,17 +142,18 @@
                     email: (tds[2]?.innerText || '').trim(),
                     city: (tds[3]?.innerText || '').trim(),
                     bookings: (tds[4]?.innerText || '').trim(),
-                    nights: (tds[5]?.innerText || '').trim(),
-                    revenue: (tds[6]?.innerText || '').trim(),
-                    outstanding: (tds[7]?.innerText || '').trim(),
-                    lastStay: (tds[8]?.innerText || '').trim(),
+                    cancelled: (tds[5]?.innerText || '').trim(),
+                    nights: (tds[6]?.innerText || '').trim(),
+                    revenue: (tds[7]?.innerText || '').trim(),
+                    outstanding: (tds[8]?.innerText || '').trim(),
+                    lastStay: (tds[9]?.innerText || '').trim(),
                 };
             });
         };
 
         const exportToCsv = () => {
             const rows = getRows();
-            const header = ['Guest','Phone','Email','City','Bookings','Nights','Revenue','Outstanding','Last Stay'];
+            const header = ['Guest','Phone','Email','City','Bookings','Cancelled','Nights','Revenue','Outstanding','Last Stay'];
 
             const escape = (v) => {
                 const s = String(v ?? '');
@@ -154,7 +162,7 @@
             };
 
             const lines = [header.map(escape).join(',')];
-            rows.forEach(r => lines.push([r.guest, r.phone, r.email, r.city, r.bookings, r.nights, r.revenue, r.outstanding, r.lastStay].map(escape).join(',')));
+            rows.forEach(r => lines.push([r.guest, r.phone, r.email, r.city, r.bookings, r.cancelled, r.nights, r.revenue, r.outstanding, r.lastStay].map(escape).join(',')));
 
             const from = document.getElementById('fromDate')?.value || '';
             const to = document.getElementById('toDate')?.value || '';
@@ -167,9 +175,9 @@
             const escHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
             let html = '<table border="1">';
-            html += '<tr>' + ['Guest','Phone','Email','City','Bookings','Nights','Revenue','Outstanding','Last Stay'].map(h => `<th>${escHtml(h)}</th>`).join('') + '</tr>';
+            html += '<tr>' + ['Guest','Phone','Email','City','Bookings','Cancelled','Nights','Revenue','Outstanding','Last Stay'].map(h => `<th>${escHtml(h)}</th>`).join('') + '</tr>';
             rows.forEach(r => {
-                html += '<tr>' + [r.guest, r.phone, r.email, r.city, r.bookings, r.nights, r.revenue, r.outstanding, r.lastStay].map(v => `<td>${escHtml(v)}</td>`).join('') + '</tr>';
+                html += '<tr>' + [r.guest, r.phone, r.email, r.city, r.bookings, r.cancelled, r.nights, r.revenue, r.outstanding, r.lastStay].map(v => `<td>${escHtml(v)}</td>`).join('') + '</tr>';
             });
             html += '</table>';
 
@@ -203,8 +211,8 @@
 
             (doc.autoTable || autoTableFn).call(doc, {
                 startY: 60,
-                head: [[ 'Guest','Phone','Email','City','Bookings','Nights','Revenue','Outstanding','Last Stay' ]],
-                body: rows.map(r => [r.guest, r.phone, r.email, r.city, r.bookings, r.nights, r.revenue, r.outstanding, r.lastStay]),
+                head: [[ 'Guest','Phone','Email','City','Bookings','Cancelled','Nights','Revenue','Outstanding','Last Stay' ]],
+                body: rows.map(r => [r.guest, r.phone, r.email, r.city, r.bookings, r.cancelled, r.nights, r.revenue, r.outstanding, r.lastStay]),
                 styles: { fontSize: 8 },
                 headStyles: { fillColor: [15, 23, 42] }
             });
