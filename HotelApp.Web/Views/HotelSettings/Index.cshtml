@@ -429,6 +429,16 @@
                             <div class="parameter-value">@(Model.CancellationRefundApprovalThreshold.HasValue ? $"₹{Model.CancellationRefundApprovalThreshold.Value:N2}" : "Disabled")</div>
                         </div>
                     </div>
+
+                    <div class="parameter-item">
+                        <div class="parameter-icon">
+                            <i class="fas fa-file-contract"></i>
+                        </div>
+                        <div class="parameter-text">
+                            <div class="parameter-label">Enable Cancellation Policy</div>
+                            <div class="parameter-value">@(Model.EnableCancellationPolicy ? "YES" : "NO")</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

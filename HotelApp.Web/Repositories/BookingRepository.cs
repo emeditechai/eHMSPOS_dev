@@ -1067,9 +1067,9 @@ namespace HotelApp.Web.Repositories
 
         private async Task<BookingCancellationPreview?> ComputeCancellationPreviewAsync(Booking booking, bool isNoShow, IDbTransaction? transaction)
         {
-            // Pull check-in time + approval threshold from HotelSettings.
+            // Pull check-in time + approval threshold + policy flag from HotelSettings.
             var hotel = await _dbConnection.QueryFirstOrDefaultAsync<HotelSettings>(
-                "SELECT TOP 1 CheckInTime, NoShowGraceHours, CancellationRefundApprovalThreshold FROM HotelSettings WHERE BranchID = @BranchID AND IsActive = 1",
+                "SELECT TOP 1 CheckInTime, NoShowGraceHours, CancellationRefundApprovalThreshold, EnableCancellationPolicy FROM HotelSettings WHERE BranchID = @BranchID AND IsActive = 1",
                 new { booking.BranchID },
                 transaction);
 
@@ -1080,6 +1080,33 @@ namespace HotelApp.Web.Repositories
 
             var amountPaid = Math.Max(0m, Math.Round((booking.Payments?.Sum(p => p.Amount) ?? 0m), 2, MidpointRounding.AwayFromZero));
             var rateType = string.IsNullOrWhiteSpace(booking.RateType) ? "Standard" : booking.RateType.Trim();
+
+            // If cancellation policy is disabled in hotel settings, grant full refund immediately.
+            if (hotel?.EnableCancellationPolicy == false)
+            {
+                return new BookingCancellationPreview
+                {
+                    BookingNumber = booking.BookingNumber,
+                    BookingId = booking.Id,
+                    BranchID = booking.BranchID,
+                    CheckInAt = checkInAt,
+                    HoursBeforeCheckIn = hoursBefore,
+                    RateType = rateType,
+                    IsNoShow = false,
+                    AmountPaid = amountPaid,
+                    RefundPercent = 100m,
+                    FlatDeduction = 0m,
+                    GatewayFeeDeductionPercent = 0m,
+                    DeductionAmount = 0m,
+                    RefundAmount = amountPaid,
+                    PolicyId = null,
+                    PolicyName = null,
+                    PolicySnapshotJson = null,
+                    ApprovalThreshold = hotel?.CancellationRefundApprovalThreshold,
+                    ApprovalStatus = "Approved",
+                    RefundBreakdownNote = "Full refund applicable — cancellation policy is disabled in hotel settings."
+                };
+            }
 
             // Non-refundable/no-show shortcuts.
             if (isNoShow)

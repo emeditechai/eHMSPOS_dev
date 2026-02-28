@@ -1637,6 +1637,9 @@ namespace HotelApp.Web.Controllers
 
         public async Task<IActionResult> Create()
         {
+            var hotelSettings = await _hotelSettingsRepository.GetByBranchAsync(CurrentBranchID);
+            var minimumBookingAmountRequired = hotelSettings?.MinimumBookingAmountRequired ?? false;
+
             var model = new BookingCreateViewModel
             {
                 CheckInDate = DateTime.Today,
@@ -1645,9 +1648,13 @@ namespace HotelApp.Web.Controllers
                 CustomerType = CustomerTypes.First(),
                 Source = Sources.First(),
                 Channel = Channels.First(),
-                RateType = RateTypes.First()
+                RateType = RateTypes.First(),
+                CollectAdvancePayment = minimumBookingAmountRequired
             };
 
+            ViewBag.MinimumBookingAmountRequired = minimumBookingAmountRequired;
+            var enableCancellationPolicy = hotelSettings?.EnableCancellationPolicy ?? true;
+            ViewBag.EnableCancellationPolicy = enableCancellationPolicy;
             await PopulateLookupsAsync(model);
             return View(model);
         }

@@ -436,6 +436,20 @@
                     <small class="text-muted">Refunds above this amount will require approval.</small>
                     <span asp-validation-for="CancellationRefundApprovalThreshold" class="text-danger"></span>
                 </div>
+
+                <div class="form-group">
+                    <label class="form-label">Enable Cancellation Policy</label>
+                    <div class="toggle-row">
+                        <input asp-for="EnableCancellationPolicy" class="toggle-input" type="checkbox" id="enableCancellationPolicyToggle" />
+                        <label for="enableCancellationPolicyToggle" class="d-flex align-items-center gap-2 m-0">
+                            <span class="toggle-pill" aria-hidden="true">
+                                <span class="toggle-thumb"></span>
+                            </span>
+                        </label>
+                        <span id="enableCancellationPolicyText" class="toggle-text">@(Model.EnableCancellationPolicy ? "YES" : "NO")</span>
+                    </div>
+                    <small class="text-muted">When NO, the cancellation policy section on the booking form will be shown but acceptance will be auto-checked.</small>
+                </div>
             </div>
         </div>
 
@@ -478,6 +492,14 @@
 
             updateMinimumBookingAmountState();
             $('#minimumBookingAmountRequiredToggle').on('change', updateMinimumBookingAmountState);
+
+            function updateEnableCancellationPolicyText() {
+                var isOn = $('#enableCancellationPolicyToggle').is(':checked');
+                $('#enableCancellationPolicyText').text(isOn ? 'YES' : 'NO');
+            }
+
+            updateEnableCancellationPolicyText();
+            $('#enableCancellationPolicyToggle').on('change', updateEnableCancellationPolicyText);
 
             // Convert time input to TimeSpan format before form submission
             $('form').on('submit', function() {

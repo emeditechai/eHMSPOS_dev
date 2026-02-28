@@ -39,6 +39,7 @@ namespace HotelApp.Web.Controllers
                     MinimumBookingAmount = null,
                     NoShowGraceHours = 6,
                     CancellationRefundApprovalThreshold = null,
+                    EnableCancellationPolicy = true,
                     IsActive = true
                 };
             }
@@ -70,6 +71,7 @@ namespace HotelApp.Web.Controllers
                     MinimumBookingAmount = null,
                     NoShowGraceHours = 6,
                     CancellationRefundApprovalThreshold = null,
+                    EnableCancellationPolicy = true,
                     IsActive = true
                 };
             }
@@ -164,7 +166,8 @@ namespace HotelApp.Web.Controllers
                 {
                     success = true,
                     minimumBookingAmountRequired = settings.MinimumBookingAmountRequired,
-                    minimumBookingAmount = settings.MinimumBookingAmount ?? 0
+                    minimumBookingAmount = settings.MinimumBookingAmount ?? 0,
+                    enableCancellationPolicy = settings.EnableCancellationPolicy
                 });
             }
             catch (Exception ex)
