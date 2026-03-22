@@ -43,20 +43,23 @@ public class LicenseMiddleware
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IMemoryCache         _cache;
     private readonly bool                 _bypassHardwareCheck;
+    private readonly IPublicIpService     _publicIpService;
 
     // Cache key prefix — one entry per ClientCode
     private const string CacheKeyPrefix = "LicValidated_";
 
     public LicenseMiddleware(
-        RequestDelegate next,
+        RequestDelegate      next,
         IServiceScopeFactory scopeFactory,
-        IMemoryCache cache,
-        IConfiguration configuration)
+        IMemoryCache         cache,
+        IConfiguration       configuration,
+        IPublicIpService     publicIpService)
     {
         _next                = next;
         _scopeFactory        = scopeFactory;
         _cache               = cache;
         _bypassHardwareCheck = configuration.GetValue<bool>("Licensing:BypassHardwareCheck");
+        _publicIpService     = publicIpService;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -157,8 +160,8 @@ public class LicenseMiddleware
         }
 
         // ── Build validation history entry ───────────────────────────────────
-        var hw2       = hwService.GetHardwareInfo();
-        var publicIp  = context.Connection.RemoteIpAddress?.ToString();
+        var hw2        = hwService.GetHardwareInfo();
+        var publicIp   = await _publicIpService.ResolveAsync(context);
         // appUrl is already computed above for the remote lookup
         var deviceInfo = $"Host={Environment.MachineName};" +
                          $"OS={RuntimeInformation.OSDescription};" +

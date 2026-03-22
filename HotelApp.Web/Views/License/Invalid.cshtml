@@ -5,6 +5,7 @@
         ? new[] { "License validation failed. Contact Vendor Emeditech Plus LLP." }
         : System.Net.WebUtility.UrlDecode(rawErrors)
               .Split("||", StringSplitOptions.RemoveEmptyEntries);
+    var hasExpiry = errorList.Any(e => e.Contains("Expired", StringComparison.OrdinalIgnoreCase));
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -289,14 +290,19 @@
         <button class="btn-retry" onclick="window.location.reload()">
             <i class="fas fa-rotate-right"></i> Retry Validation
         </button>
+        @if (!hasExpiry)
+        {
         <button class="btn-renew" id="btnOpenRenewal">
             <i class="fas fa-key"></i> Renew License &mdash; Re-register Hardware
         </button>
+        }
     </div>
 </div>
 <!-- Antiforgery token for AJAX calls -->
 <div style="display:none">@Html.AntiForgeryToken()</div>
 
+@if (!hasExpiry)
+{
 <!-- ── Hardware Re-registration Wizard ────────────────────────────── -->
 <div id="renewalOverlay" class="renewal-overlay" style="display:none" role="dialog" aria-modal="true" aria-label="Hardware Re-registration Wizard">
     <div class="renewal-card">
@@ -484,6 +490,7 @@
     });
 })();
 </script>
+}
 
 </body>
 </html>

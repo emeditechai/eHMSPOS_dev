@@ -21,4 +21,5 @@ public class ClientAppLicense
     public DateTime? AMC_Expireddate { get; set; }
     public string? AppUrl { get; set; }
     public string? ProductType { get; set; }
+    public string? ConnectionString { get; set; }
 }

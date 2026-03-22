@@ -326,6 +326,21 @@
     let hwLoaded = false;
     let redirectTarget = '/Account/Login';
 
+    /* Auto-set Expiry Date and AMC Date to today + 365 days */
+    (function setDefaultDates() {
+        function toInputDate(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+        const future = new Date();
+        future.setFullYear(future.getFullYear() + 1);
+        const val = toInputDate(future);
+        document.getElementById('expiryDate').value     = val;
+        document.getElementById('amcExpiredDate').value = val;
+    })();
+
     /* Load hardware info */
     (async () => {
         try {
@@ -503,6 +518,36 @@
     document.getElementById('btnContinue').addEventListener('click', () => {
         window.location.href = redirectTarget;
     });
+</script>
+<script>
+    // ── Disable right-click ───────────────────────────────────────────
+    document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+    // ── Block F12, Ctrl+Shift+I/J/C/U, Ctrl+U ────────────────────────
+    document.addEventListener('keydown', function (e) {
+        if (
+            e.key === 'F12' ||
+            (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key.toUpperCase())) ||
+            (e.ctrlKey && e.key.toUpperCase() === 'U')
+        ) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    });
+
+    // ── Detect DevTools open via window size difference ───────────────
+    (function devToolsDetect() {
+        var threshold = 160;
+        function check() {
+            if (
+                window.outerWidth  - window.innerWidth  > threshold ||
+                window.outerHeight - window.innerHeight > threshold
+            ) {
+                document.body.innerHTML = '';
+            }
+        }
+        setInterval(check, 1000);
+    })();
 </script>
 </body>
 </html>

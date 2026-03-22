@@ -1,4 +1,5 @@
 using Dapper;
+using HotelApp.Web.Models;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Data.SqlClient;
@@ -111,6 +112,70 @@ public class LicenseOtpService : ILicenseOtpService
         }
     }
 
+    // ─── Public notification methods ─────────────────────────────────────────
+
+    public async Task SendWelcomeEmailAsync(ClientAppLicense license)
+    {
+        if (string.IsNullOrWhiteSpace(license.EmailID))
+        {
+            _logger.LogWarning("SendWelcomeEmail: no client email on record for {ClientCode} — skipping.", license.ClientCode);
+            return;
+        }
+
+        try
+        {
+            var smtp = await GetSmtpConfigAsync();
+            if (smtp == null)
+            {
+                _logger.LogWarning("SendWelcomeEmail: SMTP config not found — skipping for {ClientCode}.", license.ClientCode);
+                return;
+            }
+
+            var subject  = $"[eLUX Stay] Welcome — License Registered Successfully ({license.ClientCode})";
+            var htmlBody = BuildWelcomeEmailHtml(license);
+
+            await SendEmailAsync(smtp, new List<string> { license.EmailID }, subject, htmlBody);
+
+            _logger.LogInformation("Welcome email sent for {ClientCode} to {Email}.", license.ClientCode, license.EmailID);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Welcome email failed for {ClientCode} — non-critical.", license.ClientCode);
+        }
+    }
+
+    public async Task SendHardwareRenewalNotificationAsync(
+        string clientCode, string clientName, string emailId, string appUrl,
+        string macId, string hddSerial, string mbSerial)
+    {
+        if (string.IsNullOrWhiteSpace(emailId))
+        {
+            _logger.LogWarning("HardwareRenewalNotification: no client email for {ClientCode} — skipping.", clientCode);
+            return;
+        }
+
+        try
+        {
+            var smtp = await GetSmtpConfigAsync();
+            if (smtp == null)
+            {
+                _logger.LogWarning("HardwareRenewalNotification: SMTP config not found — skipping for {ClientCode}.", clientCode);
+                return;
+            }
+
+            var subject  = $"[eLUX Stay] Hardware Re-registration Confirmed ({clientCode})";
+            var htmlBody = BuildHardwareRenewalEmailHtml(clientCode, clientName, appUrl, macId, hddSerial, mbSerial);
+
+            await SendEmailAsync(smtp, new List<string> { emailId }, subject, htmlBody);
+
+            _logger.LogInformation("Hardware renewal notification sent for {ClientCode} to {Email}.", clientCode, emailId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Hardware renewal notification failed for {ClientCode} — non-critical.", clientCode);
+        }
+    }
+
     // ─── Private helpers ──────────────────────────────────────────────────────
 
     private static string GenerateOtp()
@@ -207,6 +272,180 @@ public class LicenseOtpService : ILicenseOtpService
       This email was sent by eLUX Stay License Management System.<br/>
       If you did not initiate this request, please ignore this email.
     </p>
+  </div>
+</body>
+</html>";
+    }
+
+    private static string BuildWelcomeEmailHtml(ClientAppLicense lic)
+    {
+        string Row(string label, string? value) =>
+            $"<tr><td style='color:#6b7280;padding:7px 0;font-size:.875rem;width:42%;'>{label}</td>" +
+            $"<td style='color:#111827;font-weight:600;padding:7px 0;font-size:.875rem;'>{value ?? "—"}</td></tr>";
+
+        var expiryStr   = lic.ExpiryDate.HasValue    ? lic.ExpiryDate.Value.ToString("dd-MMM-yyyy")      : "—";
+        var amcStr      = lic.AMC_Expireddate.HasValue ? lic.AMC_Expireddate.Value.ToString("dd-MMM-yyyy") : "—";
+        var startStr    = lic.Startdate.HasValue      ? lic.Startdate.Value.ToString("dd-MMM-yyyy")       : "—";
+
+        return $@"
+<!DOCTYPE html>
+<html>
+<head><meta charset='utf-8'/><meta name='viewport' content='width=device-width'/></head>
+<body style='font-family:""Segoe UI"",Arial,sans-serif;background:#f3f4f6;padding:24px;margin:0;'>
+  <div style='max-width:580px;margin:auto;background:#fff;border-radius:12px;
+              box-shadow:0 4px 16px rgba(0,0,0,.08);overflow:hidden;'>
+
+    <!-- Header -->
+    <div style='background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:32px 36px;'>
+      <p style='margin:0 0 4px;color:#c7d2fe;font-size:.78rem;letter-spacing:.8px;
+                text-transform:uppercase;'>eLUX Stay &mdash; License Management</p>
+      <h1 style='margin:0;color:#fff;font-size:1.45rem;font-weight:700;'>Welcome Aboard!</h1>
+      <p style='margin:8px 0 0;color:#c7d2fe;font-size:.9rem;'>Your license has been registered successfully.</p>
+    </div>
+
+    <!-- Body -->
+    <div style='padding:28px 36px;'>
+      <p style='color:#374151;font-size:.9rem;margin-top:0;'>
+        Dear <strong>{lic.ClientName}</strong>,<br/>
+        Your <strong>eLUX Stay</strong> software license has been activated.
+        Please keep the details below in a safe place &mdash; you will need the
+        License Key if you ever need to re-register hardware.
+      </p>
+
+      <!-- Client Details -->
+      <div style='background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;
+                  padding:18px 20px;margin:18px 0;'>
+        <p style='margin:0 0 10px;font-size:.7rem;font-weight:700;letter-spacing:.7px;
+                  text-transform:uppercase;color:#6d28d9;'>Client Information</p>
+        <table style='width:100%;border-collapse:collapse;'>
+          {Row("Client Code",      lic.ClientCode)}
+          {Row("Client Name",      lic.ClientName)}
+          {Row("Contact Number",   lic.ContactNumber)}
+          {Row("Email Address",    lic.EmailID)}
+        </table>
+      </div>
+
+      <!-- License Details -->
+      <div style='background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;
+                  padding:18px 20px;margin:18px 0;'>
+        <p style='margin:0 0 10px;font-size:.7rem;font-weight:700;letter-spacing:.7px;
+                  text-transform:uppercase;color:#6d28d9;'>License Details</p>
+        <table style='width:100%;border-collapse:collapse;'>
+          {Row("License Key",      lic.LicenseKey)}
+          {Row("Application URL",  lic.AppUrl)}
+          {Row("Start Date",       startStr)}
+          {Row("Expiry Date",      expiryStr)}
+          {Row("AMC Expiry",       amcStr)}
+          {Row("Product",          lic.ProductType ?? "eLuxstay")}
+        </table>
+      </div>
+
+      <!-- Hardware Details -->
+      <div style='background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;
+                  padding:18px 20px;margin:18px 0;'>
+        <p style='margin:0 0 10px;font-size:.7rem;font-weight:700;letter-spacing:.7px;
+                  text-transform:uppercase;color:#6d28d9;'>Registered Hardware</p>
+        <table style='width:100%;border-collapse:collapse;'>
+          {Row("MAC Address",      lic.ServerMacID)}
+          {Row("Hard Disk Serial", lic.HardDiskNumber)}
+          {Row("Motherboard ID",   lic.MotherboardNumber)}
+        </table>
+      </div>
+
+      <div style='background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;
+                  padding:14px 18px;margin-top:18px;font-size:.82rem;color:#92400e;'>
+        <strong>&#9888; Important:</strong> Your License Key is sensitive.
+        Never share it with anyone outside of the authorised Emeditech Plus LLP team.
+        If hardware changes are required, use the same key in the Re-register Hardware wizard.
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style='background:#f9fafb;border-top:1px solid #e5e7eb;padding:18px 36px;
+                text-align:center;font-size:.76rem;color:#9ca3af;'>
+      This email was sent automatically by <strong>eLUX Stay License Management</strong>.<br/>
+      &copy; Emeditech Plus LLP. For support contact your vendor.
+    </div>
+
+  </div>
+</body>
+</html>";
+    }
+
+    private static string BuildHardwareRenewalEmailHtml(
+        string clientCode, string clientName, string appUrl,
+        string macId, string hddSerial, string mbSerial)
+    {
+        string Row(string label, string? value) =>
+            $"<tr><td style='color:#6b7280;padding:7px 0;font-size:.875rem;width:42%;'>{label}</td>" +
+            $"<td style='color:#111827;font-weight:600;padding:7px 0;font-size:.875rem;'>{value ?? "—"}</td></tr>";
+
+        var updatedAt = DateTime.Now.ToString("dd-MMM-yyyy HH:mm:ss");
+
+        return $@"
+<!DOCTYPE html>
+<html>
+<head><meta charset='utf-8'/><meta name='viewport' content='width=device-width'/></head>
+<body style='font-family:""Segoe UI"",Arial,sans-serif;background:#f3f4f6;padding:24px;margin:0;'>
+  <div style='max-width:580px;margin:auto;background:#fff;border-radius:12px;
+              box-shadow:0 4px 16px rgba(0,0,0,.08);overflow:hidden;'>
+
+    <!-- Header -->
+    <div style='background:linear-gradient(135deg,#1e40af,#3b82f6);padding:32px 36px;'>
+      <p style='margin:0 0 4px;color:#bfdbfe;font-size:.78rem;letter-spacing:.8px;
+                text-transform:uppercase;'>eLUX Stay &mdash; License Management</p>
+      <h1 style='margin:0;color:#fff;font-size:1.45rem;font-weight:700;'>Hardware Re-registered</h1>
+      <p style='margin:8px 0 0;color:#bfdbfe;font-size:.9rem;'>Your server hardware has been updated and re-validated.</p>
+    </div>
+
+    <!-- Body -->
+    <div style='padding:28px 36px;'>
+      <p style='color:#374151;font-size:.9rem;margin-top:0;'>
+        Dear <strong>{clientName}</strong>,<br/>
+        The hardware identifiers registered for your <strong>eLUX Stay</strong> license
+        have been successfully updated. The system validated the new hardware against
+        the central license server and the login page is now accessible.
+      </p>
+
+      <!-- Account Details -->
+      <div style='background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;
+                  padding:18px 20px;margin:18px 0;'>
+        <p style='margin:0 0 10px;font-size:.7rem;font-weight:700;letter-spacing:.7px;
+                  text-transform:uppercase;color:#1e40af;'>Account</p>
+        <table style='width:100%;border-collapse:collapse;'>
+          {Row("Client Code",     clientCode)}
+          {Row("Application URL", appUrl)}
+          {Row("Updated At",      updatedAt)}
+        </table>
+      </div>
+
+      <!-- New Hardware -->
+      <div style='background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;
+                  padding:18px 20px;margin:18px 0;'>
+        <p style='margin:0 0 10px;font-size:.7rem;font-weight:700;letter-spacing:.7px;
+                  text-transform:uppercase;color:#1e40af;'>Updated Hardware Identifiers</p>
+        <table style='width:100%;border-collapse:collapse;'>
+          {Row("MAC Address",      macId)}
+          {Row("Hard Disk Serial", hddSerial)}
+          {Row("Motherboard ID",   mbSerial)}
+        </table>
+      </div>
+
+      <div style='background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;
+                  padding:14px 18px;margin-top:18px;font-size:.82rem;color:#7f1d1d;'>
+        <strong>&#9888; Security Notice:</strong> If you did <em>not</em> authorise this
+        hardware change, please contact <strong>Emeditech Plus LLP</strong> immediately
+        to suspend your license.
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style='background:#f9fafb;border-top:1px solid #e5e7eb;padding:18px 36px;
+                text-align:center;font-size:.76rem;color:#9ca3af;'>
+      This email was sent automatically by <strong>eLUX Stay License Management</strong>.<br/>
+      &copy; Emeditech Plus LLP. For support contact your vendor.
+    </div>
+
   </div>
 </body>
 </html>";

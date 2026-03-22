@@ -182,25 +182,11 @@
                         window.location.href = '/Account/Login';
                     } else {
                         var errs = data.errors || ['Validation failed. Contact Vendor Emeditech Plus LLP.'];
-                        var html = '<ul style="text-align:left;margin:8px 0 0;padding-left:18px;">' +
-                            errs.map(function (e) { return '<li style="margin-bottom:4px;">' + e + '</li>'; }).join('') +
-                            '</ul>';
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Hardware Data Mismatch',
-                            html: html,
-                            confirmButtonText: 'OK',
-                            confirmButtonColor: '#b91c1c'
-                        });
+                        window.location.href = '/License/Invalid?errors=' + encodeURIComponent(errs.join('||'));
                     }
                 })
                 .catch(function () {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Connection Error',
-                        text: 'Could not reach the validation server. Please try again.',
-                        confirmButtonColor: '#1a2a6c'
-                    });
+                    window.location.href = '/License/Invalid?errors=' + encodeURIComponent('Could not reach the validation server. Please check your connection and try again.');
                 });
             });
         })();

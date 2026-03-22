@@ -160,9 +160,11 @@ builder.Services.AddScoped<IRefundRepository, RefundRepository>();
 
 // Licensing
 builder.Services.AddMemoryCache();   // used by LicenseMiddleware for midnight-reset daily validation cache
+builder.Services.AddHttpClient();    // used by PublicIpService for outbound public-IP echo calls
 builder.Services.AddScoped<ILicenseRepository, LicenseRepository>();
 builder.Services.AddScoped<IRemoteLicenseRepository, RemoteLicenseRepository>();
 builder.Services.AddSingleton<IHardwareInfoService, HardwareInfoService>();
+builder.Services.AddSingleton<IPublicIpService, PublicIpService>();
 builder.Services.AddScoped<ILicenseOtpService, LicenseOtpService>();
 
 builder.Services.AddScoped<IMailPasswordProtector, MailPasswordProtector>();

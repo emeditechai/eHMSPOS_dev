@@ -25,6 +25,7 @@ public class LicenseController : Controller
     private readonly ILogger<LicenseController> _logger;
     private readonly IMemoryCache               _cache;
     private readonly IConfiguration             _config;
+    private readonly IPublicIpService           _publicIpService;
 
     public LicenseController(
         ILicenseRepository         licenseRepo,
@@ -33,15 +34,17 @@ public class LicenseController : Controller
         ILicenseOtpService         otpService,
         ILogger<LicenseController> logger,
         IMemoryCache               cache,
-        IConfiguration             config)
+        IConfiguration             config,
+        IPublicIpService           publicIpService)
     {
-        _licenseRepo = licenseRepo;
-        _remoteRepo  = remoteRepo;
-        _hwService   = hwService;
-        _otpService  = otpService;
-        _logger      = logger;
-        _cache       = cache;
-        _config      = config;
+        _licenseRepo     = licenseRepo;
+        _remoteRepo      = remoteRepo;
+        _hwService       = hwService;
+        _otpService      = otpService;
+        _logger          = logger;
+        _cache           = cache;
+        _config          = config;
+        _publicIpService = publicIpService;
     }
 
     // ── GET /License/Register ─────────────────────────────────────────────────
@@ -102,7 +105,7 @@ public class LicenseController : Controller
         // Capture hardware server-side — never trust client values
         var hw       = _hwService.GetHardwareInfo();
         var appUrl   = $"{Request.Scheme}://{Request.Host}";
-        var publicIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var publicIp = await _publicIpService.ResolveAsync(HttpContext);
 
         // Use a temporary token as the OTP-table identifier.
         // The real ClientCode + LicenseKey are generated only after OTP passes.
@@ -176,6 +179,7 @@ public class LicenseController : Controller
             AppUrl            = pending.AppUrl,
             ProductType       = ProductType,
             PublicIPAddress   = pending.PublicIPAddress,
+            ConnectionString  = _config.GetConnectionString("DefaultConnection"),
             IsActive          = true,
             OTP_Verified      = true
         };
@@ -196,7 +200,15 @@ public class LicenseController : Controller
        {
            _logger.LogWarning(ex, "Remote license save threw for {ClientCode}. Local record exists; contact vendor to sync remote.", clientCode);
        }
-
+       // Send welcome email to the registrant — best effort, does not block
+       try
+       {
+           await _otpService.SendWelcomeEmailAsync(license);
+       }
+       catch (Exception ex)
+       {
+           _logger.LogWarning(ex, "Welcome email failed for {ClientCode} — non-critical.", clientCode);
+       }
         // Clear pending session data
         HttpContext.Session.Remove(PendingRegKey);
 
@@ -391,22 +403,34 @@ public class LicenseController : Controller
             "Hardware re-registered and re-validated for {ClientCode}. MAC={Mac}, HDD={Hdd}, MB={Mb}.",
             remote.ClientCode, hw.MacId, hw.HardDiskSerial, hw.MotherboardSerial);
 
+        // Notify client via email — best effort, does not block
+        try
+        {
+            await _otpService.SendHardwareRenewalNotificationAsync(
+                remote.ClientCode,
+                remote.ClientName ?? remote.ClientCode,
+                remote.EmailID   ?? string.Empty,
+                appUrl,
+                hw.MacId, hw.HardDiskSerial, hw.MotherboardSerial);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Hardware renewal notification failed for {ClientCode} — non-critical.", remote.ClientCode);
+        }
+
         return Json(new { success = true });
     }
 
     // ── POST /License/ReValidate ───────────────────────────────────────────────
     // AJAX endpoint called from the Login page "Re-validate License" link.
-    // Clears the daily cache, fetches the remote ClientAppLicense record, reads
-    // live hardware identifiers from the host, and returns JSON so the caller
-    // can show an inline SweetAlert without a full-page redirect.
-    // On success the local ClientAppLicense row is updated from the remote record.
+    // Validates against the remote server and logs the result to BOTH the local
+    // and remote LicenseValidationHistory tables in every code path.
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ReValidate()
     {
-        var errors = new List<string>();
-
+        // ── Load local license (cannot log without it — return immediately) ──
         ClientAppLicense? localLicense;
         try
         {
@@ -421,65 +445,120 @@ public class LicenseController : Controller
         if (localLicense == null)
             return Json(new { success = false, errors = new[] { "No active license found on this server." } });
 
-        // Clear the daily cache so any subsequent middleware check re-validates too
+        // Clear daily cache so any subsequent middleware check re-validates too
         if (localLicense.ClientCode != null)
             _cache.Remove($"LicValidated_{localLicense.ClientCode}");
 
-// ── Fetch remote record (ClientCode + LicenseKey + AppUrl must all match) ──
-       var appUrl = $"{Request.Scheme}://{Request.Host}";
-       ClientAppLicense? remote = null;
-       try
-       {
-           remote = await _remoteRepo.GetLicenseForValidationAsync(
-               localLicense.ClientCode!, localLicense.LicenseKey!, appUrl);
+        var appUrl   = $"{Request.Scheme}://{Request.Host}";
+        var publicIp = await _publicIpService.ResolveAsync(HttpContext);
+
+        // ── Read live hardware early — always needed for DeviceInfo ──────────
+        HardwareInfo? hw = null;
+        string deviceInfo;
+        try
+        {
+            hw = _hwService.GetHardwareInfo();
+            deviceInfo = $"Host={Environment.MachineName};" +
+                         $"MAC={hw.MacId};HardDisk={hw.HardDiskSerial};MB={hw.MotherboardSerial}";
+        }
+        catch
+        {
+            deviceInfo = $"Host={Environment.MachineName};HardwareReadFailed=true";
+        }
+
+        // ── Fetch remote record ──────────────────────────────────────────────
+        ClientAppLicense? remote = null;
+        bool remoteReachable = true;
+        try
+        {
+            remote = await _remoteRepo.GetLicenseForValidationAsync(
+                localLicense.ClientCode!, localLicense.LicenseKey!, appUrl);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "ReValidate: remote server unreachable.");
+            remoteReachable = false;
+        }
+
+        // ── If remote unreachable: fail-open, log locally only ───────────────
+        if (!remoteReachable)
+        {
+            var unreachableEntry = new LicenseValidationHistory
+            {
+                ClientCode      = localLicense.ClientCode,
+                LicenseKey      = localLicense.LicenseKey,
+                IsValid         = true,
+                FailureReason   = null,
+                PublicIPAddress = publicIp,
+                DeviceInfo      = deviceInfo + ";RemoteUnreachable=true",
+                AppUrl          = appUrl,
+                ProductType     = localLicense.ProductType ?? "eLuxstay"
+            };
+            await _licenseRepo.LogValidationAsync(unreachableEntry);
+            // Remote is down — cannot log there, proceed with last known state
             return Json(new { success = true, warning = "Remote license server is currently unreachable. Proceeding with last known validation." });
         }
 
+        // ── Collect validation errors ────────────────────────────────────────
+        var errors = new List<string>();
+
         if (remote == null)
-        {
             errors.Add("License record not found in the central server. Contact Vendor Emeditech Plus LLP.");
-            return Json(new { success = false, errors });
-        }
 
-        // ── IsActive ─────────────────────────────────────────────────────────
-        if (!remote.IsActive)
-            errors.Add("Client deactivated. Contact Vendor Emeditech Plus LLP.");
-
-        // ── Expiry ───────────────────────────────────────────────────────────
-        if (remote.ExpiryDate.HasValue && remote.ExpiryDate.Value.Date < DateTime.Today)
-            errors.Add($"Software Expired on {remote.ExpiryDate.Value:dd-MMM-yyyy}. Contact Vendor for Renewal.");
-
-        // ── Live hardware vs remote record ───────────────────────────────────
-        bool bypassHw = _config.GetValue<bool>("Licensing:BypassHardwareCheck");
-        if (!bypassHw)
+        if (remote != null)
         {
-            HardwareInfo hw;
-            try   { hw = _hwService.GetHardwareInfo(); }
-            catch (Exception ex)
+            if (!remote.IsActive)
+                errors.Add("Client deactivated. Contact Vendor Emeditech Plus LLP.");
+
+            if (remote.ExpiryDate.HasValue && remote.ExpiryDate.Value.Date < DateTime.Today)
+                errors.Add($"Software Expired on {remote.ExpiryDate.Value:dd-MMM-yyyy}. Contact Vendor for Renewal.");
+
+            if (!_config.GetValue<bool>("Licensing:BypassHardwareCheck"))
             {
-                _logger.LogError(ex, "ReValidate: hardware read failed.");
-                errors.Add("Could not read hardware identifiers from this server. Contact Vendor Emeditech Plus LLP.");
-                return Json(new { success = false, errors });
+                if (hw == null)
+                {
+                    errors.Add("Could not read hardware identifiers from this server. Contact Vendor Emeditech Plus LLP.");
+                }
+                else
+                {
+                    var macMatch = string.Equals(hw.MacId,             remote.ServerMacID,       StringComparison.OrdinalIgnoreCase);
+                    var hddMatch = string.Equals(hw.HardDiskSerial,    remote.HardDiskNumber,    StringComparison.OrdinalIgnoreCase);
+                    var mbMatch  = string.Equals(hw.MotherboardSerial, remote.MotherboardNumber, StringComparison.OrdinalIgnoreCase);
+
+                    if (!macMatch) errors.Add("MAC Address Mismatch. Contact Vendor Emeditech Plus LLP.");
+                    if (!hddMatch) errors.Add("Hard Disk Serial Mismatch. Contact Vendor Emeditech Plus LLP.");
+                    if (!mbMatch)  errors.Add("Motherboard ID Mismatch. Contact Vendor Emeditech Plus LLP.");
+                }
             }
-
-            var macMatch = string.Equals(hw.MacId,             remote.ServerMacID,       StringComparison.OrdinalIgnoreCase);
-            var hddMatch = string.Equals(hw.HardDiskSerial,    remote.HardDiskNumber,    StringComparison.OrdinalIgnoreCase);
-            var mbMatch  = string.Equals(hw.MotherboardSerial, remote.MotherboardNumber, StringComparison.OrdinalIgnoreCase);
-
-           if (!macMatch) errors.Add("MAC Address Mismatch. Contact Vendor Emeditech Plus LLP.");
-           if (!hddMatch) errors.Add("Hard Disk Serial Mismatch. Contact Vendor Emeditech Plus LLP.");
-           if (!mbMatch)  errors.Add("Motherboard ID Mismatch. Contact Vendor Emeditech Plus LLP.");
         }
 
-        if (errors.Count > 0)
+        bool isValid = errors.Count == 0;
+
+        // ── Log to LOCAL and REMOTE history tables ───────────────────────────
+        // This happens in every path (success AND failure) so both tables always
+        // reflect every manual re-validation attempt.
+        var historyEntry = new LicenseValidationHistory
+        {
+            ClientCode      = localLicense.ClientCode,
+            LicenseKey      = localLicense.LicenseKey,
+            IsValid         = isValid,
+            FailureReason   = isValid ? null : string.Join(" | ", errors),
+            PublicIPAddress = publicIp,
+            DeviceInfo      = deviceInfo,
+            AppUrl          = appUrl,
+            ProductType     = localLicense.ProductType ?? "eLuxstay"
+        };
+
+        await _licenseRepo.LogValidationAsync(historyEntry);   // local
+        await _remoteRepo.LogValidationAsync(historyEntry);    // remote (EnsureHistoryTableAsync called inside)
+
+        if (!isValid)
             return Json(new { success = false, errors });
 
-        // ── All checks passed: sync remote → local, refresh cache ────────────
-        await _licenseRepo.SyncFromRemoteAsync(localLicense.ClientCode!, remote);
+        // ── All passed: sync, update dates, set cache ────────────────────────
+        await _licenseRepo.SyncFromRemoteAsync(localLicense.ClientCode!, remote!);
+        await _licenseRepo.UpdateLastLoginDateAsync(localLicense.ClientCode!);
+        await _remoteRepo.UpdateLastLoginDateAsync(localLicense.ClientCode!);
 
         var midnight = DateTime.Today.AddDays(1);
         _cache.Set($"LicValidated_{localLicense.ClientCode}",

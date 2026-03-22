@@ -77,12 +77,12 @@ public class RemoteLicenseRepository : IRemoteLicenseRepository
                     (ClientCode, ClientName, ContactNumber, LicenseKey,
                      HardDiskNumber, ServerMacID, MotherboardNumber,
                      Startdate, ExpiryDate, IsActive, CreatedAt, OTP_Verified,
-                     PublicIPAddress, EmailID, AMC_Expireddate, appurl, ProductType)
+                     PublicIPAddress, EmailID, AMC_Expireddate, appurl, ProductType, ConnectionString)
                 VALUES
                     (@ClientCode, @ClientName, @ContactNumber, @LicenseKey,
                      @HardDiskNumber, @ServerMacID, @MotherboardNumber,
                      @Startdate, @ExpiryDate, 1, GETDATE(), 1,
-                     @PublicIPAddress, @EmailID, @AMC_Expireddate, @AppUrl, @ProductType)";
+                     @PublicIPAddress, @EmailID, @AMC_Expireddate, @AppUrl, @ProductType, @ConnectionString)";
 
             return await conn.ExecuteAsync(sql, lic) > 0;
         }
@@ -97,6 +97,13 @@ public class RemoteLicenseRepository : IRemoteLicenseRepository
     {
         try
         {
+            // Always ensure the history table exists before inserting.
+            // EnsureHistoryTableAsync uses a static flag so DDL only runs once
+            // per lifetime; subsequent calls are O(1). This guards against the
+            // race where LogValidationAsync is called before EnsureHistoryTableAsync
+            // has completed (or if it failed on the very first request).
+            await EnsureHistoryTableAsync();
+
             await using var conn = new SqlConnection(RemoteConnStr);
 
             await conn.ExecuteAsync(@"
@@ -110,7 +117,9 @@ public class RemoteLicenseRepository : IRemoteLicenseRepository
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Remote validation log failed (non-blocking) for {ClientCode}.", history.ClientCode);
+            // Log as ERROR (not warning) so this failure is always visible in logs.
+            _logger.LogError(ex, "Remote LicenseValidationHistory insert failed for {ClientCode}. IsValid={IsValid}, Reason={Reason}.",
+                history.ClientCode, history.IsValid, history.FailureReason);
         }
     }
 
