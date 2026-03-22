@@ -3089,18 +3089,131 @@ WHERE BookingID = @BookingID
             using var transaction = _dbConnection.BeginTransaction();
             try
             {
-                // Ensure BookingGuests.GuestId is populated when possible
-                if (guest.GuestId <= 0 && !string.IsNullOrWhiteSpace(guest.Phone))
+                // Split FullName into FirstName and LastName for the Guests master table.
+                var nameParts = (guest.FullName ?? "").Trim().Split(new[] { ' ' }, 2);
+                var firstName = nameParts[0];
+                var lastName = nameParts.Length > 1 ? nameParts[1] : "";
+
+                // Normalize GuestType: empty/null defaults to "Companion"
+                guest.GuestType = string.IsNullOrWhiteSpace(guest.GuestType) ? "Companion" : guest.GuestType.Trim();
+
+                // Resolve the primary guest's master GuestId for ParentGuestId linkage
+                const string findPrimaryGuestIdSql = @"
+                    SELECT TOP 1 bg.GuestId
+                    FROM BookingGuests bg
+                    WHERE bg.BookingId = @BookingId
+                      AND bg.IsPrimary = 1
+                      AND bg.IsActive = 1
+                      AND bg.GuestId IS NOT NULL
+                      AND bg.GuestId > 0";
+                var primaryGuestId = await _dbConnection.QueryFirstOrDefaultAsync<int?>(
+                    findPrimaryGuestIdSql, new { guest.BookingId }, transaction);
+
+                // Step 1: Find or create the master Guest record FIRST so we have a valid GuestId
+                // before inserting into BookingGuests (FK_BookingGuests_Guests_GuestId requires it).
+                const string findGuestSql = "SELECT TOP 1 * FROM Guests WHERE Phone = @Phone AND IsActive = 1 ORDER BY LastModifiedDate DESC";
+                var existingGuest = await _dbConnection.QueryFirstOrDefaultAsync<Guest>(
+                    findGuestSql, new { Phone = guest.Phone }, transaction);
+
+                if (existingGuest != null)
                 {
-                    const string findGuestIdByPhoneSql = "SELECT TOP 1 Id FROM Guests WHERE Phone = @Phone AND IsActive = 1 ORDER BY LastModifiedDate DESC";
-                    var existingGuestId = await _dbConnection.QueryFirstOrDefaultAsync<int?>(findGuestIdByPhoneSql, new { Phone = guest.Phone }, transaction);
-                    if (existingGuestId.HasValue)
+                    // Update the existing master record with the latest details.
+                    const string updateGuestSql = @"
+                        UPDATE Guests SET 
+                            FirstName = @FirstName, 
+                            LastName = @LastName, 
+                            Email = @Email, 
+                            GuestType = @GuestType, 
+                            DateOfBirth = @DateOfBirth,
+                            Gender = @Gender,
+                            IdentityType = @IdentityType,
+                            IdentityNumber = @IdentityNumber,
+                            Address = @Address,
+                            City = @City,
+                            State = @State,
+                            Country = @Country,
+                            Pincode = @Pincode,
+                            CountryId = @CountryId,
+                            StateId = @StateId,
+                            CityId = @CityId,
+                            BranchID = @BranchID,
+                            LastModifiedDate = GETDATE()
+                        WHERE Id = @Id";
+
+                    await _dbConnection.ExecuteAsync(updateGuestSql, new
                     {
-                        guest.GuestId = existingGuestId.Value;
-                    }
+                        Id = existingGuest.Id,
+                        FirstName = firstName,
+                        LastName = lastName,
+                        Email = guest.Email ?? "",
+                        GuestType = guest.GuestType ?? "Companion",
+                        DateOfBirth = guest.DateOfBirth,
+                        Gender = guest.Gender,
+                        IdentityType = guest.IdentityType,
+                        IdentityNumber = guest.IdentityNumber,
+                        Address = guest.Address,
+                        City = guest.City,
+                        State = guest.State,
+                        Country = guest.Country,
+                        Pincode = guest.Pincode,
+                        CountryId = guest.CountryId,
+                        StateId = guest.StateId,
+                        CityId = guest.CityId,
+                        BranchID = branchId
+                    }, transaction);
+
+                    guest.GuestId = existingGuest.Id;
+                }
+                else
+                {
+                    // Create a new master Guest record and capture the new Id.
+                    const string insertGuestSql = @"
+                        INSERT INTO Guests (FirstName, LastName, Email, Phone, GuestType, BranchID, 
+                                          DateOfBirth, Gender, IdentityType, IdentityNumber, Address, City, State, Country,
+                                          Pincode, CountryId, StateId, CityId,
+                                          IsActive, CreatedDate, LastModifiedDate)
+                        VALUES (@FirstName, @LastName, @Email, @Phone, @GuestType, @BranchID, 
+                                @DateOfBirth, @Gender, @IdentityType, @IdentityNumber, @Address, @City, @State, @Country,
+                                @Pincode, @CountryId, @StateId, @CityId,
+                                1, GETDATE(), GETDATE());
+                        SELECT CAST(SCOPE_IDENTITY() AS INT)";
+
+                    var newGuestId = await _dbConnection.ExecuteScalarAsync<int>(insertGuestSql, new
+                    {
+                        FirstName = firstName,
+                        LastName = lastName,
+                        Email = guest.Email ?? "",
+                        Phone = guest.Phone ?? "",
+                        GuestType = guest.GuestType ?? "Companion",
+                        BranchID = branchId,
+                        DateOfBirth = guest.DateOfBirth,
+                        Gender = guest.Gender,
+                        IdentityType = guest.IdentityType,
+                        IdentityNumber = guest.IdentityNumber,
+                        Address = guest.Address,
+                        City = guest.City,
+                        State = guest.State,
+                        Country = guest.Country,
+                        Pincode = guest.Pincode,
+                        CountryId = guest.CountryId,
+                        StateId = guest.StateId,
+                        CityId = guest.CityId
+                    }, transaction);
+
+                    guest.GuestId = newGuestId;
                 }
 
-                // Insert into BookingGuests table
+                // Also set ParentGuestId on the master Guests record so the Guest Management page
+                // can display the "Primary Guest" column correctly.
+                if (primaryGuestId.HasValue && primaryGuestId.Value > 0)
+                {
+                    await _dbConnection.ExecuteAsync(
+                        "UPDATE Guests SET ParentGuestId = @ParentId WHERE Id = @Id AND (ParentGuestId IS NULL OR ParentGuestId = 0)",
+                        new { ParentId = primaryGuestId.Value, Id = guest.GuestId },
+                        transaction);
+                }
+
+                // Step 2: Insert into BookingGuests with the now-valid GuestId.
                 const string bookingGuestSql = @"
                     INSERT INTO BookingGuests (BookingId, GuestId, FullName, Email, Phone, GuestType, IsPrimary, 
                                              RelationshipToPrimary, Age, DateOfBirth, Gender, IdentityType, 
@@ -3113,112 +3226,6 @@ WHERE BookingID = @BookingID
                     SELECT CAST(SCOPE_IDENTITY() AS INT)";
 
                 var bookingGuestId = await _dbConnection.ExecuteScalarAsync<int>(bookingGuestSql, guest, transaction);
-
-                if (bookingGuestId > 0)
-                {
-                    // Split FullName into FirstName and LastName
-                    var nameParts = guest.FullName.Trim().Split(new[] { ' ' }, 2);
-                    var firstName = nameParts[0];
-                    var lastName = nameParts.Length > 1 ? nameParts[1] : "";
-
-                    // Check if guest exists by phone in Guests table
-                    const string findGuestSql = "SELECT TOP 1 * FROM Guests WHERE Phone = @Phone AND IsActive = 1 ORDER BY LastModifiedDate DESC";
-                    var existingGuest = await _dbConnection.QueryFirstOrDefaultAsync<Guest>(findGuestSql, new { Phone = guest.Phone }, transaction);
-
-                    if (existingGuest != null)
-                    {
-                        // Update existing guest in Guests table
-                        const string updateGuestSql = @"
-                            UPDATE Guests SET 
-                                FirstName = @FirstName, 
-                                LastName = @LastName, 
-                                Email = @Email, 
-                                GuestType = @GuestType, 
-                                DateOfBirth = @DateOfBirth,
-                                Gender = @Gender,
-                                IdentityType = @IdentityType,
-                                IdentityNumber = @IdentityNumber,
-                                Address = @Address,
-                                City = @City,
-                                State = @State,
-                                Country = @Country,
-                                Pincode = @Pincode,
-                                CountryId = @CountryId,
-                                StateId = @StateId,
-                                CityId = @CityId,
-                                BranchID = @BranchID,
-                                LastModifiedDate = GETDATE()
-                            WHERE Id = @Id";
-
-                        await _dbConnection.ExecuteAsync(updateGuestSql, new
-                        {
-                            Id = existingGuest.Id,
-                            FirstName = firstName,
-                            LastName = lastName,
-                            Email = guest.Email ?? "",
-                            GuestType = guest.GuestType ?? "Companion",
-                            DateOfBirth = guest.DateOfBirth,
-                            Gender = guest.Gender,
-                            IdentityType = guest.IdentityType,
-                            IdentityNumber = guest.IdentityNumber,
-                            Address = guest.Address,
-                            City = guest.City,
-                            State = guest.State,
-                            Country = guest.Country,
-                            Pincode = guest.Pincode,
-                            CountryId = guest.CountryId,
-                            StateId = guest.StateId,
-                            CityId = guest.CityId,
-                            BranchID = branchId
-                        }, transaction);
-                    }
-                    else
-                    {
-                        // Insert new guest into Guests table
-                        const string insertGuestSql = @"
-                            INSERT INTO Guests (FirstName, LastName, Email, Phone, GuestType, BranchID, 
-                                              DateOfBirth, Gender, IdentityType, IdentityNumber, Address, City, State, Country,
-                                              Pincode, CountryId, StateId, CityId,
-                                              IsActive, CreatedDate, LastModifiedDate)
-                            VALUES (@FirstName, @LastName, @Email, @Phone, @GuestType, @BranchID, 
-                                    @DateOfBirth, @Gender, @IdentityType, @IdentityNumber, @Address, @City, @State, @Country,
-                                    @Pincode, @CountryId, @StateId, @CityId,
-                                    1, GETDATE(), GETDATE())";
-
-                        await _dbConnection.ExecuteAsync(insertGuestSql, new
-                        {
-                            FirstName = firstName,
-                            LastName = lastName,
-                            Email = guest.Email ?? "",
-                            Phone = guest.Phone ?? "",
-                            GuestType = guest.GuestType ?? "Companion",
-                            BranchID = branchId,
-                            DateOfBirth = guest.DateOfBirth,
-                            Gender = guest.Gender,
-                            IdentityType = guest.IdentityType,
-                            IdentityNumber = guest.IdentityNumber,
-                            Address = guest.Address,
-                            City = guest.City,
-                            State = guest.State,
-                            Country = guest.Country,
-                            Pincode = guest.Pincode,
-                            CountryId = guest.CountryId,
-                            StateId = guest.StateId,
-                            CityId = guest.CityId
-                        }, transaction);
-
-                        // Link the newly created/ensured master Guest record back to BookingGuests.GuestId
-                        // Best-effort: set GuestId for the just inserted BookingGuests row by phone.
-                        const string linkGuestIdSql = @"
-                            UPDATE bg
-                            SET bg.GuestId = g.Id
-                            FROM BookingGuests bg
-                            INNER JOIN Guests g ON g.Phone = bg.Phone AND g.IsActive = 1
-                            WHERE bg.Id = @BookingGuestId AND (bg.GuestId IS NULL OR bg.GuestId = 0);";
-
-                        await _dbConnection.ExecuteAsync(linkGuestIdSql, new { BookingGuestId = bookingGuestId }, transaction);
-                    }
-                }
 
                 transaction.Commit();
                 return bookingGuestId > 0;

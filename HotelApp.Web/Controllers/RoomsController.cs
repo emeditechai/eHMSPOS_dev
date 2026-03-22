@@ -214,12 +214,44 @@ public class RoomsController : BaseController
             unassigned -= alloc;
         }
 
+        // Cascade overflow: when a head-tagged payment (e.g. BillingHead="S") exceeds that
+        // head's total, the excess should cover remaining dues in other heads rather than being
+        // silently discarded. This prevents false "Payment Not Cleared" errors when the total
+        // amount paid exceeds the total amount owed across all heads.
+        {
+            var overflow = 0m;
+            if (paidStay > stayTotal) { overflow += paidStay - stayTotal; paidStay = stayTotal; }
+            if (paidOther > otherChargesTotal) { overflow += paidOther - otherChargesTotal; paidOther = otherChargesTotal; }
+            if (paidRoomServices > roomServicesTotal) { overflow += paidRoomServices - roomServicesTotal; paidRoomServices = roomServicesTotal; }
+
+            if (overflow > 0m)
+            {
+                var d1 = Math.Max(0m, stayTotal - paidStay);
+                var a1 = Math.Min(overflow, d1);
+                paidStay += a1; overflow -= a1;
+            }
+            if (overflow > 0m)
+            {
+                var d2 = Math.Max(0m, otherChargesTotal - paidOther);
+                var a2 = Math.Min(overflow, d2);
+                paidOther += a2; overflow -= a2;
+            }
+            if (overflow > 0m)
+            {
+                var d3 = Math.Max(0m, roomServicesTotal - paidRoomServices);
+                paidRoomServices += Math.Min(overflow, d3);
+            }
+        }
+
         var stayDue = Round2(Math.Max(0m, stayTotal - paidStay));
         var otherDue = Round2(Math.Max(0m, otherChargesTotal - paidOther));
         var rsDue = Round2(Math.Max(0m, roomServicesTotal - paidRoomServices));
 
-        // Apply round-off as an adjustment to the overall payable amount (not as a payment).
-        // Negative round-off reduces payable (so it should reduce due), positive increases payable.
+        // Apply negative round-off as a reduction to the overall payable amount.
+        // Negative round-off means the invoice was rounded DOWN (guest pays less than exact total),
+        // so we reduce the dues accordingly.
+        // Note: positive round-off is already baked into payment.Amount by AddPayment — the guest
+        // pays the rounded-up amount — so we must NOT add it again here (that would double-count).
         if (totalRoundOffApplied < 0m)
         {
             var remainingReduction = -totalRoundOffApplied;
@@ -239,13 +271,7 @@ public class RoomsController : BaseController
             {
                 var reduceRs = Math.Min(rsDue, remainingReduction);
                 rsDue = Round2(rsDue - reduceRs);
-                remainingReduction -= reduceRs;
             }
-        }
-        else if (totalRoundOffApplied > 0m)
-        {
-            // If payable was rounded up, add the extra amount to due (attribute to stay by default).
-            stayDue = Round2(stayDue + totalRoundOffApplied);
         }
 
         var totalDue = Round2(stayDue + otherDue + rsDue);

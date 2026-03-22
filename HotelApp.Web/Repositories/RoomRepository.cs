@@ -404,7 +404,7 @@ namespace HotelApp.Web.Repositories
                             WHEN b.ActualCheckOutDate IS NOT NULL THEN CAST(b.ActualCheckOutDate AS DATE)
                             ELSE CAST(b.CheckOutDate AS DATE)
                         END
-                    ) > CAST(GETDATE() AS DATE)
+                    ) >= CAST(GETDATE() AS DATE)
                 ORDER BY b.CheckInDate DESC;
 
                 -- Fallback for legacy single-room assignment
@@ -415,14 +415,14 @@ namespace HotelApp.Web.Repositories
                 FROM Bookings
                 WHERE RoomId = @RoomId 
                     AND Status IN ('Confirmed', 'CheckedIn')
-                    -- A room is occupied on a date if: CheckInDate <= today AND (ActualCheckOutDate ?? CheckOutDate) > today
+                    -- A room is active on checkout date: CheckInDate <= today AND (ActualCheckOutDate ?? CheckOutDate) >= today
                     AND CAST(CheckInDate AS DATE) <= CAST(GETDATE() AS DATE)
                     AND (
                         CASE 
                             WHEN ActualCheckOutDate IS NOT NULL THEN CAST(ActualCheckOutDate AS DATE)
                             ELSE CAST(CheckOutDate AS DATE)
                         END
-                    ) > CAST(GETDATE() AS DATE)
+                    ) >= CAST(GETDATE() AS DATE)
                 ORDER BY CheckInDate DESC";
 
             var booking = await _dbConnection.QueryFirstOrDefaultAsync<dynamic>(sql, new { RoomId = roomId });

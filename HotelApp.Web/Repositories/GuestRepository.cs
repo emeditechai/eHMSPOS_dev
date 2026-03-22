@@ -173,11 +173,29 @@ namespace HotelApp.Web.Repositories
 
         public async Task<IEnumerable<Guest>> GetAllByBranchAsync(int branchId)
         {
+            // Fetch all guests and also resolve ParentGuestId from BookingGuests for guests
+            // that were added before the ParentGuestId column was being populated.
+            // We JOIN to find the primary guest GuestId from any shared booking.
             const string sql = @"
-                SELECT *
-                FROM Guests
-                WHERE IsActive = 1 AND BranchID = @BranchId
-                ORDER BY LastModifiedDate DESC";
+                SELECT
+                    g.*,
+                    COALESCE(
+                        g.ParentGuestId,
+                        (
+                            SELECT TOP 1 bgPrimary.GuestId
+                            FROM BookingGuests bgMe
+                            INNER JOIN BookingGuests bgPrimary
+                                ON bgPrimary.BookingId = bgMe.BookingId
+                               AND bgPrimary.IsPrimary = 1
+                               AND bgPrimary.IsActive = 1
+                            WHERE bgMe.GuestId = g.Id
+                              AND bgMe.IsPrimary = 0
+                              AND bgMe.IsActive = 1
+                        )
+                    ) AS ParentGuestId
+                FROM Guests g
+                WHERE g.IsActive = 1 AND g.BranchID = @BranchId
+                ORDER BY g.LastModifiedDate DESC";
 
             return await _dbConnection.QueryAsync<Guest>(sql, new { BranchId = branchId });
         }

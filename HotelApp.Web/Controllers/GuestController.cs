@@ -29,13 +29,22 @@ namespace HotelApp.Web.Controllers
             // Calculate statistics
             var totalGuests = guests.Count();
             var primaryGuests = guests.Count(g => g.GuestType == "Primary");
-            var companionGuests = guests.Count(g => g.GuestType == "Companion" || g.GuestType == "Child");
+            var companionGuests = guests.Count(g => g.GuestType != "Primary");
             var recentGuests = guests.Count(g => g.CreatedDate >= DateTime.UtcNow.AddDays(-30));
 
             ViewBag.TotalGuests = totalGuests;
             ViewBag.PrimaryGuests = primaryGuests;
             ViewBag.CompanionGuests = companionGuests;
             ViewBag.RecentGuests = recentGuests;
+
+            // Build a lookup of guestId -> full name for PRIMARY guests only,
+            // used by the view to display the "Primary Guest" column for additional guests.
+            // A guest is treated as primary if GuestType == "Primary" OR ParentGuestId is null
+            // and it has no parent (covers legacy records without GuestType set).
+            var primaryGuestLookup = guests
+                .Where(g => g.GuestType == "Primary" || (string.IsNullOrWhiteSpace(g.GuestType) && g.ParentGuestId == null))
+                .ToDictionary(g => g.Id, g => $"{g.FirstName} {g.LastName}".Trim());
+            ViewBag.PrimaryGuestLookup = primaryGuestLookup;
 
             return View(guests.OrderByDescending(g => g.LastModifiedDate));
         }

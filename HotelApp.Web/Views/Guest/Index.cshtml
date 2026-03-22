@@ -1,6 +1,7 @@
 @model IEnumerable<HotelApp.Web.Models.Guest>
 @{
     ViewData["Title"] = "Guest Management";
+    var primaryGuestLookup = ViewBag.PrimaryGuestLookup as Dictionary<int, string> ?? new Dictionary<int, string>();
 }
 
 <div class="page-header">
@@ -63,7 +64,7 @@
         </div>
         <div class="stat-details">
             <h3>@ViewBag.CompanionGuests</h3>
-            <p>Companions</p>
+            <p>Additional Guests</p>
         </div>
     </div>
 
@@ -92,6 +93,7 @@
                         <th>Email</th>
                         <th>Phone</th>
                         <th>Guest Type</th>
+                        <th>Primary Guest</th>
                         <th>Loyalty ID</th>
                         <th>Last Visit</th>
                         <th>Actions</th>
@@ -117,21 +119,37 @@
                                 {
                                     <span class="badge badge-available">Primary</span>
                                 }
-                                else if (guest.GuestType == "Companion")
-                                {
-                                    <span class="badge badge-muted">Companion</span>
-                                }
                                 else if (guest.GuestType == "Child")
                                 {
                                     <span class="badge badge-inactive">Child</span>
                                 }
+                                else if (!string.IsNullOrWhiteSpace(guest.GuestType) && guest.GuestType != "Primary" && guest.GuestType != "Child")
+                                {
+                                    <span class="badge badge-additional">Additional Guest</span>
+                                }
                                 else
                                 {
-                                    <span class="badge badge-muted">@guest.GuestType</span>
+                                    <span class="badge badge-additional">Additional Guest</span>
+                                }
+                            </td>
+                            <td>
+                                @if (guest.GuestType != "Primary" && guest.ParentGuestId.HasValue && primaryGuestLookup.TryGetValue(guest.ParentGuestId.Value, out var parentName))
+                                {
+                                    <span class="primary-guest-link">
+                                        <i class="fas fa-crown" style="color:#764ba2;font-size:0.7rem;margin-right:3px;"></i>@parentName
+                                    </span>
+                                }
+                                else if (guest.GuestType == "Primary")
+                                {
+                                    <span style="color:#aaa;font-size:0.8rem;">—</span>
+                                }
+                                else
+                                {
+                                    <span style="color:#aaa;font-size:0.8rem;">—</span>
                                 }
                             </td>
                             <td>@(guest.LoyaltyId ?? "-")</td>
-                            <td>@guest.LastModifiedDate.ToLocalTime():dd MMM yyyy</td>
+                            <td>@guest.LastModifiedDate.ToLocalTime().ToString("dd MMM yyyy hh:mm tt")</td>
                             <td>
                                 <div class="action-dropdown">
                                     <button class="action-dropdown-btn" onclick="toggleDropdown(event, '@guest.Id')">
@@ -262,6 +280,21 @@
     padding: 2px 6px;
     border-radius: 3px;
     font-size: 0.75rem;
+}
+
+.badge-additional {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.primary-guest-link {
+    font-size: 0.85rem;
+    color: #4a4a6a;
+    font-weight: 500;
 }
 
 .btn-view {
