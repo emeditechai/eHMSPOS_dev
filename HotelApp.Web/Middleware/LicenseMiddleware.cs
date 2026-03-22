@@ -126,6 +126,16 @@ public class LicenseMiddleware
 
         if (remoteReachable && remote == null)
         {
+            // If the stored AppUrl doesn't match the current server URL, this is a
+            // different server sharing the same database (new deployment). Treat it
+            // as a fresh installation and redirect to the Registration page instead
+            // of showing a validation-failed error.
+            if (!string.Equals(localLicense.AppUrl, appUrl, StringComparison.OrdinalIgnoreCase))
+            {
+                context.Response.Redirect("/License/Register");
+                return;
+            }
+
             // Record exists locally but not in remote — treat as deactivated
             errors.Add("License record not found in the central server. Contact Vendor Emeditech Plus LLP.");
         }
