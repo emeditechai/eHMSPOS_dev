@@ -27,8 +27,9 @@ public class PageAuthorizationFilter : IAsyncActionFilter
         var controller = (context.RouteData.Values["controller"]?.ToString() ?? string.Empty);
         var action = (context.RouteData.Values["action"]?.ToString() ?? string.Empty);
 
-        // Skip Account (login/logout/denied) and static home.
-        if (controller.Equals("Account", StringComparison.OrdinalIgnoreCase))
+        // Skip Account (login/logout/denied), license pages, and static home.
+        if (controller.Equals("Account", StringComparison.OrdinalIgnoreCase) ||
+            controller.Equals("License", StringComparison.OrdinalIgnoreCase))
         {
             await next();
             return;

@@ -1,6 +1,7 @@
 using System.Data;
 using Microsoft.Data.SqlClient;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using HotelApp.Web.Middleware;
 using HotelApp.Web.Repositories;
 using HotelApp.Web.Services;
 using Microsoft.AspNetCore.DataProtection;
@@ -157,6 +158,13 @@ builder.Services.AddScoped<IGuestFeedbackRepository, GuestFeedbackRepository>();
 builder.Services.AddScoped<IAssetManagementRepository, AssetManagementRepository>();
 builder.Services.AddScoped<IRefundRepository, RefundRepository>();
 
+// Licensing
+builder.Services.AddMemoryCache();   // used by LicenseMiddleware for midnight-reset daily validation cache
+builder.Services.AddScoped<ILicenseRepository, LicenseRepository>();
+builder.Services.AddScoped<IRemoteLicenseRepository, RemoteLicenseRepository>();
+builder.Services.AddSingleton<IHardwareInfoService, HardwareInfoService>();
+builder.Services.AddScoped<ILicenseOtpService, LicenseOtpService>();
+
 builder.Services.AddScoped<IMailPasswordProtector, MailPasswordProtector>();
 builder.Services.AddScoped<IMailSender, MailSender>();
 builder.Services.AddScoped<IRazorViewToStringRenderer, RazorViewToStringRenderer>();
@@ -232,6 +240,10 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.UseSession();
+
+// License gate — runs after static files and session, before auth
+app.UseMiddleware<LicenseMiddleware>();
+
 app.UseAuthentication();
 app.UseAuthorization();
 

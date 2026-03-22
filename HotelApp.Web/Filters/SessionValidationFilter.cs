@@ -19,6 +19,7 @@ public class SessionValidationFilter : IAsyncActionFilter
         "Account",
         "GuestFeedback",   // public feedback pages
         "Home",
+        "License",         // pre-login license registration/validation pages
     };
 
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)

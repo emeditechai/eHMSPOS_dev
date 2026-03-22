@@ -1,0 +1,489 @@
+@{
+    Layout = null;
+    var rawErrors = Context.Request.Query["errors"].ToString();
+    var errorList = string.IsNullOrWhiteSpace(rawErrors)
+        ? new[] { "License validation failed. Contact Vendor Emeditech Plus LLP." }
+        : System.Net.WebUtility.UrlDecode(rawErrors)
+              .Split("||", StringSplitOptions.RemoveEmptyEntries);
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>eLUX Stay | License Validation Failed</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+          crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            min-height: 100vh;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a0535 0%, #3a0d6e 50%, #1a0535 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, .5);
+            max-width: 520px;
+            width: 100%;
+            overflow: hidden;
+        }
+        /* ── Header ── */
+        .modal-header {
+            background: linear-gradient(135deg, #b91c1c, #dc2626);
+            padding: 24px 28px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .modal-header .icon-wrap {
+            width: 46px; height: 46px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.15);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem; color: #fff;
+            flex-shrink: 0;
+        }
+        .modal-header h2 {
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 700;
+            line-height: 1.3;
+        }
+        .modal-header h2 span {
+            color: #fca5a5;
+            font-weight: 400;
+            font-size: .8rem;
+            display: block;
+            margin-top: 2px;
+        }
+        /* ── Body ── */
+        .modal-body { padding: 24px 28px; }
+        .alert-label {
+            font-size: .68rem;
+            font-weight: 700;
+            letter-spacing: .8px;
+            text-transform: uppercase;
+            color: #b91c1c;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-bottom: 1px solid #fee2e2;
+            padding-bottom: 8px;
+            margin-bottom: 14px;
+        }
+        .error-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .error-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            background: #fff5f5;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 11px 14px;
+            font-size: .875rem;
+            color: #7f1d1d;
+            line-height: 1.5;
+        }
+        .error-list li .err-icon {
+            color: #dc2626;
+            font-size: 1rem;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        /* ── Footer ── */
+        .modal-footer {
+            padding: 16px 28px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .footer-note {
+            background: #faf5ff;
+            border: 1px solid #ede9fe;
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-size: .8rem;
+            color: #5b21b6;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            line-height: 1.5;
+        }
+        .footer-note i { flex-shrink: 0; margin-top: 2px; }
+        .btn-retry {
+            width: 100%;
+            padding: 11px;
+            background: linear-gradient(135deg, #6d28d9, #9333ea);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: .9rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: opacity .2s;
+        }
+        .btn-retry:hover { opacity: .88; }
+
+        /* ── Renew hardware button ── */
+        .btn-renew {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #b45309, #d97706);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: .82rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: opacity .2s;
+        }
+        .btn-renew:hover { opacity: .88; }
+
+        /* ── Renewal wizard overlay ── */
+        .renewal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .72);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            padding: 20px;
+        }
+        .renewal-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 24px 64px rgba(0,0,0,.55);
+            max-width: 440px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .renewal-head {
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .renewal-head .rh-icon {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.18);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; color: #fff; flex-shrink: 0;
+        }
+        .renewal-head h3 { color: #fff; font-size: 1rem; font-weight: 700; line-height: 1.3; }
+        .renewal-head h3 span { color: #bfdbfe; font-weight: 400; font-size: .77rem; display: block; margin-top: 2px; }
+        .step-bar { display: flex; gap: 5px; padding: 12px 24px 0; }
+        .step-dot { flex: 1; height: 4px; border-radius: 4px; background: #e5e7eb; transition: background .3s; }
+        .step-dot.active { background: #3b82f6; }
+        .step-dot.done   { background: #16a34a; }
+        .renewal-body { padding: 18px 24px 4px; }
+        .renewal-hint { font-size: .82rem; color: #6b7280; margin-bottom: 14px; line-height: 1.5; }
+        .renewal-lbl  { font-size: .74rem; font-weight: 600; color: #374151; margin-bottom: 5px; letter-spacing: .3px; }
+        .renewal-input {
+            width: 100%;
+            border: 1.5px solid #d1d5db;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: .9rem;
+            outline: none;
+            transition: border-color .2s;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        .renewal-input:focus { border-color: #3b82f6; }
+        .renewal-msg { min-height: 18px; font-size: .78rem; margin-top: 6px; margin-bottom: 2px; }
+        .renewal-msg.err { color: #dc2626; }
+        .renewal-msg.ok  { color: #16a34a; }
+        .renewal-foot { padding: 14px 24px 22px; display: flex; gap: 10px; }
+        .btn-r-cancel {
+            flex: 1; padding: 10px;
+            background: #f3f4f6; color: #374151;
+            border: none; border-radius: 8px;
+            font-size: .85rem; font-weight: 600; cursor: pointer;
+        }
+        .btn-r-cancel:hover { background: #e5e7eb; }
+        .btn-r-submit {
+            flex: 2.2; padding: 10px;
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            color: #fff; border: none; border-radius: 8px;
+            font-size: .85rem; font-weight: 700; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 7px;
+            transition: opacity .2s;
+        }
+        .btn-r-submit:hover { opacity: .88; }
+        .btn-r-submit:disabled, .btn-r-cancel:disabled { opacity: .5; cursor: not-allowed; }
+
+        /* ── Success overlay ── */
+        .success-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,.72);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000; padding: 20px;
+        }
+        .success-card {
+            background: #fff; border-radius: 16px;
+            padding: 40px 36px; text-align: center;
+            max-width: 360px; width: 100%;
+            box-shadow: 0 24px 64px rgba(0,0,0,.5);
+        }
+        .success-card .s-icon { font-size: 3.6rem; color: #16a34a; margin-bottom: 16px; }
+        .success-card h3 { font-size: 1.15rem; color: #111827; margin-bottom: 8px; }
+        .success-card p  { font-size: .82rem; color: #6b7280; line-height: 1.5; }
+    </style>
+</head>
+<body>
+<div class="modal-card">
+    <div class="modal-header">
+        <div class="icon-wrap"><i class="fas fa-shield-xmark"></i></div>
+        <h2>
+            License Validation Failed
+            <span>eLUX Stay &mdash; Emeditech Plus LLP</span>
+        </h2>
+    </div>
+
+    <div class="modal-body">
+        <div class="alert-label">
+            <i class="fas fa-circle-exclamation"></i>
+            @(errorList.Length == 1 ? "Validation Error" : $"{errorList.Length} Validation Errors Detected")
+        </div>
+        <ul class="error-list">
+            @foreach (var msg in errorList)
+            {
+                <li>
+                    <i class="fas fa-xmark err-icon"></i>
+                    <span>@msg</span>
+                </li>
+            }
+        </ul>
+    </div>
+
+    <div class="modal-footer">
+        <div class="footer-note">
+            <i class="fas fa-headset"></i>
+            <span>
+                Please contact <strong>Emeditech Plus LLP</strong> for support and
+                license renewal. Do not attempt to modify license files or hardware
+                configuration without vendor assistance.
+            </span>
+        </div>
+        <button class="btn-retry" onclick="window.location.reload()">
+            <i class="fas fa-rotate-right"></i> Retry Validation
+        </button>
+        <button class="btn-renew" id="btnOpenRenewal">
+            <i class="fas fa-key"></i> Renew License &mdash; Re-register Hardware
+        </button>
+    </div>
+</div>
+<!-- Antiforgery token for AJAX calls -->
+<div style="display:none">@Html.AntiForgeryToken()</div>
+
+<!-- ── Hardware Re-registration Wizard ────────────────────────────── -->
+<div id="renewalOverlay" class="renewal-overlay" style="display:none" role="dialog" aria-modal="true" aria-label="Hardware Re-registration Wizard">
+    <div class="renewal-card">
+        <div class="renewal-head">
+            <div class="rh-icon"><i class="fas fa-key"></i></div>
+            <h3>Hardware Re-registration<span>Re-register this server with your existing License Key</span></h3>
+        </div>
+        <div class="step-bar">
+            <div class="step-dot active" id="rDot1"></div>
+            <div class="step-dot"        id="rDot2"></div>
+        </div>
+
+        <!-- Step 1: License Key -->
+        <div id="rStep1">
+            <div class="renewal-body">
+                <p class="renewal-hint">Enter the License Key associated with this installation. An OTP will be sent to the registered approver to authorise the hardware update.</p>
+                <div class="renewal-lbl">License Key</div>
+                <input id="rLicKey" class="renewal-input" type="text"
+                       placeholder="e.g. A1B2C3D4-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+                       autocomplete="off" spellcheck="false" />
+                <div id="rMsg1" class="renewal-msg"></div>
+            </div>
+            <div class="renewal-foot">
+                <button class="btn-r-cancel" id="rCancelBtn"><i class="fas fa-xmark"></i> Cancel</button>
+                <button class="btn-r-submit" id="rSendOtpBtn">
+                    <i class="fas fa-paper-plane"></i> Verify &amp; Send OTP
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 2: OTP -->
+        <div id="rStep2" style="display:none">
+            <div class="renewal-body">
+                <p class="renewal-hint">A 6-digit OTP has been sent to the registered approver. Enter it below to confirm the hardware update on this server.</p>
+                <div class="renewal-lbl">OTP Code</div>
+                <input id="rOtpInput" class="renewal-input" type="text"
+                       placeholder="Enter 6-digit OTP" maxlength="6"
+                       inputmode="numeric" autocomplete="one-time-code" />
+                <div id="rMsg2" class="renewal-msg"></div>
+            </div>
+            <div class="renewal-foot">
+                <button class="btn-r-cancel" id="rBackBtn"><i class="fas fa-arrow-left"></i> Back</button>
+                <button class="btn-r-submit" id="rConfirmBtn">
+                    <i class="fas fa-check-circle"></i> Confirm &amp; Update Hardware
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Success screen (shown after hardware update) ─────────────────── -->
+<div id="successOverlay" class="success-overlay" style="display:none">
+    <div class="success-card">
+        <div class="s-icon"><i class="fas fa-circle-check"></i></div>
+        <h3>Hardware Updated Successfully</h3>
+        <p>This server&rsquo;s hardware identifiers have been updated.<br>Redirecting to Login for re-validation&hellip;</p>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    var csrfToken   = (document.querySelector('input[name="__RequestVerificationToken"]') || {}).value || '';
+    var licenseKey  = '';
+
+    // ── Open / close helpers ──────────────────────────────────────────
+    function openWizard() {
+        document.getElementById('rLicKey').value   = '';
+        document.getElementById('rOtpInput').value = '';
+        setMsg('rMsg1', '', '');
+        setMsg('rMsg2', '', '');
+        showStep(1);
+        document.getElementById('renewalOverlay').style.display = 'flex';
+    }
+    function closeWizard() {
+        document.getElementById('renewalOverlay').style.display = 'none';
+    }
+    function showStep(n) {
+        document.getElementById('rStep1').style.display = n === 1 ? 'block' : 'none';
+        document.getElementById('rStep2').style.display = n === 2 ? 'block' : 'none';
+        ['rDot1','rDot2'].forEach(function(id, i) {
+            var el = document.getElementById(id);
+            var s  = i + 1;
+            el.className = 'step-dot' + (s < n ? ' done' : s === n ? ' active' : '');
+        });
+    }
+    function setMsg(id, text, type) {
+        var el = document.getElementById(id);
+        el.textContent = text;
+        el.className   = 'renewal-msg' + (type ? ' ' + type : '');
+    }
+    function setBusy(btnId, busy, idleHtml) {
+        var btn = document.getElementById(btnId);
+        btn.disabled  = busy;
+        btn.innerHTML = busy ? '<i class="fas fa-spinner fa-spin"></i> Please wait…' : idleHtml;
+    }
+
+    // ── Wire up open button ───────────────────────────────────────────
+    document.getElementById('btnOpenRenewal').addEventListener('click', openWizard);
+
+    // ── Step 1: Cancel ───────────────────────────────────────────────
+    document.getElementById('rCancelBtn').addEventListener('click', closeWizard);
+
+    // ── Step 1: Send OTP ─────────────────────────────────────────────
+    document.getElementById('rSendOtpBtn').addEventListener('click', function () {
+        var key = document.getElementById('rLicKey').value.trim();
+        if (!key) { setMsg('rMsg1', 'Please enter your License Key.', 'err'); return; }
+
+        setBusy('rSendOtpBtn', true, '<i class="fas fa-paper-plane"></i> Verify &amp; Send OTP');
+        setMsg('rMsg1', '', '');
+
+        fetch('/License/InitHardwareRenewal', {
+            method:  'POST',
+            headers: {
+                'Content-Type':              'application/json',
+                'RequestVerificationToken':  csrfToken
+            },
+            body: JSON.stringify({ licenseKey: key })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            setBusy('rSendOtpBtn', false, '<i class="fas fa-paper-plane"></i> Verify &amp; Send OTP');
+            if (data.success) {
+                licenseKey = key;
+                showStep(2);
+                setMsg('rMsg2', data.message || 'OTP sent to approver.', 'ok');
+            } else {
+                setMsg('rMsg1', data.message || 'Verification failed. Please try again.', 'err');
+            }
+        })
+        .catch(function () {
+            setBusy('rSendOtpBtn', false, '<i class="fas fa-paper-plane"></i> Verify &amp; Send OTP');
+            setMsg('rMsg1', 'Connection error. Please try again.', 'err');
+        });
+    });
+
+    // ── Step 2: Back ─────────────────────────────────────────────────
+    document.getElementById('rBackBtn').addEventListener('click', function () { showStep(1); });
+
+    // ── Step 2: Confirm OTP & update hardware ────────────────────────
+    document.getElementById('rConfirmBtn').addEventListener('click', function () {
+        var otp = document.getElementById('rOtpInput').value.trim();
+        if (!otp) { setMsg('rMsg2', 'Please enter the OTP.', 'err'); return; }
+
+        setBusy('rConfirmBtn', true, '<i class="fas fa-check-circle"></i> Confirm &amp; Update Hardware');
+        document.getElementById('rBackBtn').disabled = true;
+        setMsg('rMsg2', '', '');
+
+        fetch('/License/ConfirmHardwareRenewal', {
+            method:  'POST',
+            headers: {
+                'Content-Type':              'application/json',
+                'RequestVerificationToken':  csrfToken
+            },
+            body: JSON.stringify({ licenseKey: licenseKey, otp: otp })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                closeWizard();
+                document.getElementById('successOverlay').style.display = 'flex';
+                // Give the user 2.5 s to read the success message, then redirect
+                // to Login — LicenseMiddleware will now validate the new hardware
+                // against the freshly-updated remote record and set the cache.
+                setTimeout(function () {
+                    window.location.href = '/Account/Login';
+                }, 2500);
+            } else {
+                setBusy('rConfirmBtn', false, '<i class="fas fa-check-circle"></i> Confirm &amp; Update Hardware');
+                document.getElementById('rBackBtn').disabled = false;
+                setMsg('rMsg2', data.message || 'OTP validation failed. Please try again.', 'err');
+            }
+        })
+        .catch(function () {
+            setBusy('rConfirmBtn', false, '<i class="fas fa-check-circle"></i> Confirm &amp; Update Hardware');
+            document.getElementById('rBackBtn').disabled = false;
+            setMsg('rMsg2', 'Connection error. Please try again.', 'err');
+        });
+    });
+
+    // ── Close wizard if user clicks the dark backdrop ─────────────────
+    document.getElementById('renewalOverlay').addEventListener('click', function (e) {
+        if (e.target === this) closeWizard();
+    });
+})();
+</script>
+
+</body>
+</html>

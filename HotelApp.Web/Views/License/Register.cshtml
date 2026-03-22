@@ -1,0 +1,508 @@
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>eLUX Stay | License Registration</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+          crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            min-height: 100vh;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a0535 0%, #3a0d6e 50%, #1a0535 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* ── Card ─────────────────────────────────────────────── */
+        .card {
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 24px 64px rgba(0,0,0,.45);
+            width: 100%;
+            max-width: 740px;
+        }
+
+        /* ── Header ───────────────────────────────────────────── */
+        .card-header {
+            background: linear-gradient(135deg, #5c20e0, #8e3be8);
+            color: #fff;
+            padding: 20px 28px 16px;
+            border-radius: 14px 14px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .card-header .brand-icon {
+            width: 44px; height: 44px;
+            background: rgba(255,255,255,.15);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+        .card-header h1 {
+            font-size: 1.2rem; font-weight: 700; color: #fff; line-height: 1.2;
+        }
+        .card-header h1 span { color: #d9b6ff; font-weight: 400; font-size: .82rem; display: block; margin-top: 2px; }
+        .card-header .badge-product {
+            margin-left: auto;
+            background: rgba(255,255,255,.15);
+            border: 1px solid rgba(255,255,255,.3);
+            color: #fff;
+            font-size: .72rem; font-weight: 600; letter-spacing: .5px;
+            padding: 4px 10px; border-radius: 20px; white-space: nowrap;
+        }
+
+        /* ── Body ─────────────────────────────────────────────── */
+        .card-body { padding: 22px 28px; }
+
+        /* ── Section label ────────────────────────────────────── */
+        .section-label {
+            font-size: .7rem; font-weight: 700; letter-spacing: 1px;
+            text-transform: uppercase; color: #7c3aed;
+            display: flex; align-items: center; gap: 6px;
+            border-bottom: 1px solid #ede9fe;
+            padding-bottom: 6px; margin-bottom: 12px;
+        }
+
+        /* ── Grid ─────────────────────────────────────────────── */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .col-full { grid-column: 1 / -1; }
+        @@media (max-width: 560px) { .grid-2 { grid-template-columns: 1fr; } .col-full { grid-column: 1; } }
+
+        /* ── Form controls ────────────────────────────────────── */
+        .fg { display: flex; flex-direction: column; gap: 4px; }
+        .fg label { font-size: .71rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .4px; }
+        .fg label .req { color: #dc2626; }
+        .fg input {
+            border: 1.5px solid #e5e7eb; border-radius: 7px;
+            padding: 7px 10px; font-size: .875rem; color: #111;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .fg input:focus {
+            outline: none; border-color: #7c3aed;
+            box-shadow: 0 0 0 3px rgba(124,58,237,.1);
+        }
+
+        /* ── Hardware panel ───────────────────────────────────── */
+        .hw-panel {
+            background: #faf5ff;
+            border: 1px solid #ede9fe;
+            border-radius: 9px;
+            padding: 12px 14px;
+            margin-top: 12px;
+        }
+        .hw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+        .hw-item { display: flex; flex-direction: column; gap: 2px; }
+        .hw-item .hw-label { font-size: .66rem; font-weight: 700; letter-spacing: .5px; color: #9333ea; text-transform: uppercase; }
+        .hw-item .hw-value {
+            font-size: .8rem; color: #374151; font-weight: 500;
+            font-family: 'Consolas', monospace;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .hw-item .hw-value.loading { color: #9ca3af; font-size: .75rem; font-style: italic; font-family: inherit; }
+        .hw-item .hw-value.error   { color: #dc2626; font-size: .75rem; }
+
+        /* ── Button ───────────────────────────────────────────── */
+        .btn-primary {
+            width: 100%; padding: 11px;
+            background: linear-gradient(135deg, #6d28d9, #9333ea);
+            color: #fff; border: none; border-radius: 8px;
+            font-size: .95rem; font-weight: 700; cursor: pointer;
+            margin-top: 18px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: opacity .2s;
+        }
+        .btn-primary:hover   { opacity: .9; }
+        .btn-primary:disabled { opacity: .55; cursor: not-allowed; }
+
+        @@keyframes spin { to { transform: rotate(360deg); } }
+        .spinner {
+            width: 15px; height: 15px; border-radius: 50%;
+            border: 2px solid rgba(255,255,255,.35);
+            border-top-color: #fff;
+            animation: spin .7s linear infinite;
+            display: none;
+        }
+
+        /* ── OTP Modal ────────────────────────────────────────── */
+        #otpOverlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(10,0,30,.6); z-index: 9000;
+            align-items: center; justify-content: center;
+        }
+        #otpOverlay.show { display: flex; }
+        .otp-modal {
+            background: #fff; border-radius: 14px;
+            padding: 32px 28px; max-width: 380px; width: 92%;
+            text-align: center;
+            box-shadow: 0 24px 64px rgba(0,0,0,.4);
+        }
+        .otp-modal .otp-icon { font-size: 2.4rem; color: #7c3aed; margin-bottom: 10px; }
+        .otp-modal h3 { font-size: 1.1rem; color: #111; margin-bottom: 4px; }
+        .otp-modal p  { font-size: .82rem; color: #6b7280; line-height: 1.5; margin-bottom: 16px; }
+        #otpTimer { font-size: 2.2rem; font-weight: 800; color: #7c3aed; margin-bottom: 14px; transition: color .3s; }
+        #otpTimer.urgent { color: #dc2626; }
+        #otpInput {
+            width: 100%; text-align: center; letter-spacing: 14px;
+            font-size: 1.9rem; font-weight: 700; color: #6d28d9;
+            border: 2px solid #e5e7eb; border-radius: 9px;
+            padding: 10px; margin-bottom: 6px;
+            transition: border-color .2s;
+        }
+        #otpInput:focus { outline: none; border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,.1); }
+        .otp-err { font-size: .78rem; color: #dc2626; min-height: 18px; margin-bottom: 10px; }
+        .btn-verify {
+            width: 100%; padding: 10px;
+            background: linear-gradient(135deg, #6d28d9, #9333ea);
+            color: #fff; border: none; border-radius: 8px;
+            font-size: .9rem; font-weight: 700; cursor: pointer;
+            margin-bottom: 8px; transition: opacity .2s;
+        }
+        .btn-verify:disabled { opacity: .5; cursor: not-allowed; }
+        .btn-resend {
+            background: none; border: none; color: #7c3aed;
+            font-size: .8rem; cursor: pointer; text-decoration: underline;
+        }
+        .btn-resend:disabled { color: #c4b5fd; cursor: not-allowed; text-decoration: none; }
+
+        /* ── Success Modal ────────────────────────────────────── */
+        #successOverlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(10,0,30,.6); z-index: 9100;
+            align-items: center; justify-content: center;
+        }
+        #successOverlay.show { display: flex; }
+        .success-modal {
+            background: #fff; border-radius: 14px;
+            padding: 32px 28px; max-width: 400px; width: 92%;
+            text-align: center;
+            box-shadow: 0 24px 64px rgba(0,0,0,.4);
+        }
+        .success-modal .s-icon { font-size: 2.8rem; color: #16a34a; margin-bottom: 10px; }
+        .success-modal h3 { font-size: 1.1rem; color: #111; margin-bottom: 6px; }
+        .success-modal p  { font-size: .82rem; color: #6b7280; margin-bottom: 16px; }
+        .license-detail {
+            background: #f5f3ff; border: 1px solid #ede9fe;
+            border-radius: 8px; padding: 10px 14px;
+            margin-bottom: 8px; text-align: left;
+        }
+        .license-detail .ld-label { font-size: .68rem; font-weight: 700; color: #7c3aed; letter-spacing: .5px; text-transform: uppercase; }
+        .license-detail .ld-value { font-size: .88rem; font-weight: 600; color: #1f2937; font-family: 'Consolas', monospace; word-break: break-all; }
+        .btn-continue {
+            width: 100%; padding: 10px;
+            background: linear-gradient(135deg, #6d28d9, #9333ea);
+            color: #fff; border: none; border-radius: 8px;
+            font-size: .9rem; font-weight: 700; cursor: pointer; margin-top: 6px;
+        }
+
+        .flash-err {
+            background: #fef2f2; border: 1px solid #fca5a5; color: #dc2626;
+            padding: 8px 12px; border-radius: 7px; font-size: .8rem; margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="card-header">
+        <div class="brand-icon"><i class="fas fa-hotel"></i></div>
+        <h1>eLUX Stay <span>Application License Registration</span></h1>
+        <span class="badge-product">eLuxstay</span>
+    </div>
+
+    <div class="card-body">
+        <form id="regForm" novalidate>
+            @Html.AntiForgeryToken()
+
+            <!-- Client Info -->
+            <div class="section-label"><i class="fas fa-building"></i> Client Information</div>
+            <div class="grid-2">
+                <div class="fg">
+                    <label>Client / Company Name <span class="req">*</span></label>
+                    <input type="text" id="clientName" name="ClientName"
+                           placeholder="e.g. Grand Plaza Hotels Pvt Ltd" required maxlength="200" />
+                </div>
+                <div class="fg">
+                    <label>Contact Number <span class="req">*</span></label>
+                    <input type="tel" id="contactNumber" name="ContactNumber"
+                           placeholder="+91 98765 43210" required maxlength="20" />
+                </div>
+                <div class="fg col-full">
+                    <label>Email ID <span class="req">*</span></label>
+                    <input type="email" id="emailID" name="EmailID"
+                           placeholder="admin@yourcompany.com" required maxlength="200" />
+                </div>
+                <div class="fg">
+                    <label>License Expiry Date <span class="req">*</span></label>
+                    <input type="date" id="expiryDate" name="ExpiryDate" required
+                           min="@DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="fg">
+                    <label>AMC Expiry Date</label>
+                    <input type="date" id="amcExpiredDate" name="AMC_Expireddate" />
+                </div>
+            </div>
+
+            <!-- Hardware Info -->
+            <div class="section-label" style="margin-top:18px;">
+                <i class="fas fa-server"></i> Server &amp; Hardware Details
+                <span id="hwSpinner" style="font-size:.7rem;color:#9ca3af;margin-left:4px;">
+                    <i class="fas fa-circle-notch fa-spin"></i> detecting&hellip;
+                </span>
+            </div>
+            <div class="hw-panel">
+                <div class="hw-grid">
+                    <div class="hw-item"><span class="hw-label">MAC Address</span><span class="hw-value loading" id="hwMac">detecting&hellip;</span></div>
+                    <div class="hw-item"><span class="hw-label">Hard Disk Serial</span><span class="hw-value loading" id="hwHdd">detecting&hellip;</span></div>
+                    <div class="hw-item"><span class="hw-label">Motherboard Serial</span><span class="hw-value loading" id="hwMb">detecting&hellip;</span></div>
+                    <div class="hw-item"><span class="hw-label">Application URL</span><span class="hw-value loading" id="hwUrl">detecting&hellip;</span></div>
+                    <div class="hw-item"><span class="hw-label">Start Date</span><span class="hw-value loading" id="hwStartDate">detecting&hellip;</span></div>
+                    <div class="hw-item"><span class="hw-label">Product Type</span><span class="hw-value" style="color:#7c3aed;">eLuxstay</span></div>
+                </div>
+            </div>
+            <p style="font-size:.72rem;color:#9ca3af;margin-top:6px;">
+                <i class="fas fa-info-circle"></i>
+                Hardware identifiers are captured server-side. Client Code &amp; License Key are assigned upon successful OTP verification.
+            </p>
+
+            <div id="flashMsg" class="flash-err" style="display:none;"></div>
+
+            <button type="submit" class="btn-primary" id="btnRegister" disabled>
+                <i class="fas fa-shield-halved"></i>
+                <span id="btnText">Register License &amp; Send OTP</span>
+                <div class="spinner" id="btnSpinner"></div>
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- OTP Modal -->
+<div id="otpOverlay">
+    <div class="otp-modal">
+        <div class="otp-icon"><i class="fas fa-envelope-open-text"></i></div>
+        <h3>Enter OTP</h3>
+        <p>A 6-digit OTP has been sent to the registered approver email(s). Valid for 60 seconds.</p>
+        <div id="otpTimer">60s</div>
+        <input type="text" id="otpInput" maxlength="6" placeholder="— — — — — —"
+               autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]{6}" />
+        <div class="otp-err" id="otpErr"></div>
+        <button class="btn-verify" id="btnVerify"><i class="fas fa-check"></i> Verify OTP</button>
+        <button class="btn-resend" id="btnResend" disabled>Resend OTP</button>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successOverlay">
+    <div class="success-modal">
+        <div class="s-icon"><i class="fas fa-circle-check"></i></div>
+        <h3>License Activated!</h3>
+        <p>Your application license has been registered. Please save these credentials.</p>
+        <div class="license-detail">
+            <div class="ld-label">Client Code</div>
+            <div class="ld-value" id="sClientCode">—</div>
+        </div>
+        <div class="license-detail">
+            <div class="ld-label">License Key</div>
+            <div class="ld-value" id="sLicenseKey">—</div>
+        </div>
+        <button class="btn-continue" id="btnContinue">
+            <i class="fas fa-arrow-right-to-bracket"></i> Continue to Login
+        </button>
+    </div>
+</div>
+
+<script>
+    const aft = () => document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+    let hwLoaded = false;
+    let redirectTarget = '/Account/Login';
+
+    /* Load hardware info */
+    (async () => {
+        try {
+            const r = await fetch('/License/GetHardwareInfo');
+            const d = await r.json();
+            if (!d.success) throw new Error(d.message || 'Detection failed');
+            set('hwMac',       d.macId);
+            set('hwHdd',       d.hardDiskSerial);
+            set('hwMb',        d.motherboardSerial);
+            set('hwUrl',       d.appUrl);
+            set('hwStartDate', fmtDate(d.startDate));
+            document.getElementById('hwSpinner').style.display = 'none';
+            hwLoaded = true;
+            document.getElementById('btnRegister').disabled = false;
+        } catch {
+            document.getElementById('hwSpinner').innerHTML =
+                '<i class="fas fa-triangle-exclamation" style="color:#dc2626"></i> detection failed';
+            ['hwMac','hwHdd','hwMb','hwUrl','hwStartDate'].forEach(id => {
+                const el = document.getElementById(id);
+                el.textContent = 'unavailable';
+                el.className = 'hw-value error';
+            });
+        }
+    })();
+
+    function set(id, val) {
+        const el = document.getElementById(id);
+        el.textContent = val || '—';
+        el.className = 'hw-value';
+    }
+
+    function fmtDate(iso) {
+        const d = new Date(iso);
+        return isNaN(d) ? iso : d.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+    }
+
+    function flash(msg) {
+        const el = document.getElementById('flashMsg');
+        el.textContent = msg;
+        el.style.display = 'block';
+        setTimeout(() => el.style.display = 'none', 4000);
+    }
+
+    /* Form submit */
+    document.getElementById('regForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        if (!hwLoaded) { flash('Hardware detection not complete. Please wait.'); return; }
+
+        const v = id => document.getElementById(id).value.trim();
+        if (!v('clientName'))    { flash('Client Name is required.');          return; }
+        if (!v('contactNumber')) { flash('Contact Number is required.');        return; }
+        if (!v('emailID') || !/.+@@.+\..+/.test(v('emailID'))) { flash('A valid Email ID is required.'); return; }
+        if (!document.getElementById('expiryDate').value) { flash('License Expiry Date is required.'); return; }
+
+        setBusy(true);
+        const fd = new FormData();
+        fd.append('__RequestVerificationToken', aft());
+        fd.append('ClientName',    v('clientName'));
+        fd.append('ContactNumber', v('contactNumber'));
+        fd.append('EmailID',       v('emailID'));
+        fd.append('ExpiryDate',    document.getElementById('expiryDate').value);
+        const amc = document.getElementById('amcExpiredDate').value;
+        if (amc) fd.append('AMC_Expireddate', amc);
+
+        try {
+            const r = await fetch('/License/SendOtp', { method:'POST', body:fd });
+            const d = await r.json();
+            d.success ? openOtp() : flash(d.message || 'Failed to send OTP.');
+        } catch { flash('Network error. Please try again.'); }
+        finally  { setBusy(false); }
+    });
+
+    function setBusy(b) {
+        document.getElementById('btnRegister').disabled = b;
+        document.getElementById('btnSpinner').style.display = b ? 'block' : 'none';
+        document.getElementById('btnText').textContent = b ? 'Sending OTP…' : 'Register License & Send OTP';
+    }
+
+    /* OTP Modal */
+    let timer, secs = 60;
+
+    function openOtp() {
+        secs = 60;
+        document.getElementById('otpInput').value = '';
+        document.getElementById('otpErr').textContent = '';
+        document.getElementById('btnVerify').disabled = false;
+        document.getElementById('btnResend').disabled = true;
+        tick();
+        document.getElementById('otpOverlay').classList.add('show');
+        setTimeout(() => document.getElementById('otpInput').focus(), 100);
+        clearInterval(timer);
+        timer = setInterval(() => {
+            secs--;
+            tick();
+            if (secs <= 0) {
+                clearInterval(timer);
+                document.getElementById('btnVerify').disabled = true;
+                document.getElementById('btnResend').disabled = false;
+            }
+        }, 1000);
+    }
+
+    function tick() {
+        const el = document.getElementById('otpTimer');
+        el.textContent = secs + 's';
+        el.classList.toggle('urgent', secs <= 10);
+    }
+
+    document.getElementById('otpInput').addEventListener('input', e => {
+        e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+    });
+
+    document.getElementById('btnVerify').addEventListener('click', async () => {
+        const otp = document.getElementById('otpInput').value.trim();
+        if (otp.length !== 6) { document.getElementById('otpErr').textContent = 'Enter the 6-digit OTP.'; return; }
+        document.getElementById('btnVerify').disabled = true;
+        document.getElementById('otpErr').textContent = '';
+
+        const fd = new FormData();
+        fd.append('__RequestVerificationToken', aft());
+        fd.append('otp', otp);
+
+        try {
+            const r = await fetch('/License/VerifyOtp', { method:'POST', body: fd });
+            const d = await r.json();
+            if (d.success) {
+                clearInterval(timer);
+                document.getElementById('otpOverlay').classList.remove('show');
+                document.getElementById('sClientCode').textContent = d.clientCode || '—';
+                document.getElementById('sLicenseKey').textContent = d.licenseKey || '—';
+                redirectTarget = d.redirectUrl || '/Account/Login';
+                document.getElementById('successOverlay').classList.add('show');
+            } else {
+                document.getElementById('otpErr').textContent = d.message || 'Invalid OTP.';
+                document.getElementById('btnVerify').disabled = secs <= 0;
+            }
+        } catch {
+            document.getElementById('otpErr').textContent = 'Network error. Please try again.';
+            document.getElementById('btnVerify').disabled = false;
+        }
+    });
+
+    document.getElementById('btnResend').addEventListener('click', async () => {
+        document.getElementById('btnResend').disabled = true;
+        document.getElementById('otpErr').textContent = '';
+        const fd = new FormData();
+        fd.append('__RequestVerificationToken', aft());
+        try {
+            const r = await fetch('/License/ResendOtp', { method:'POST', body:fd });
+            const d = await r.json();
+            if (d.success) {
+                secs = 60;
+                document.getElementById('otpInput').value = '';
+                document.getElementById('btnVerify').disabled = false;
+                tick();
+                clearInterval(timer);
+                timer = setInterval(() => {
+                    secs--; tick();
+                    if (secs <= 0) {
+                        clearInterval(timer);
+                        document.getElementById('btnVerify').disabled = true;
+                        document.getElementById('btnResend').disabled = false;
+                    }
+                }, 1000);
+            } else {
+                document.getElementById('otpErr').textContent = d.message || 'Resend failed.';
+                document.getElementById('btnResend').disabled = false;
+            }
+        } catch {
+            document.getElementById('otpErr').textContent = 'Network error.';
+            document.getElementById('btnResend').disabled = false;
+        }
+    });
+
+    document.getElementById('btnContinue').addEventListener('click', () => {
+        window.location.href = redirectTarget;
+    });
+</script>
+</body>
+</html>

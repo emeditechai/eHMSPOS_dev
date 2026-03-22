@@ -88,6 +88,14 @@
                     
                     <button type="submit" class="login-btn">Sign In</button>
                 </form>
+
+                <div style="text-align:center; margin-top:12px;">
+                    <a href="#" id="licRevalidateLink"
+                       style="font-size:.72rem; color:#aaa; text-decoration:none; opacity:.7;"
+                       title="Force re-validation against the central license server">
+                        <i class="fas fa-rotate-right" style="font-size:.65rem;"></i>&nbsp;Re-validate License
+                    </a>
+                </div>
                 
             </div>
         </div>
@@ -137,6 +145,64 @@
                     });
                 }
             }
+        })();
+    </script>
+    <script>
+        // Re-validate License — AJAX inline validation with SweetAlert result
+        (function () {
+            const link = document.getElementById('licRevalidateLink');
+            if (!link) return;
+
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+
+                const token = (document.querySelector('input[name="__RequestVerificationToken"]') || {}).value || '';
+
+                Swal.fire({
+                    title: 'Validating License…',
+                    text: 'Checking hardware and remote central server…',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: function () { Swal.showLoading(); }
+                });
+
+                fetch('/License/ReValidate', {
+                    method: 'POST',
+                    headers: {
+                        'RequestVerificationToken': token,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        // Cache is now set server-side; redirect so middleware
+                        // confirms the cache hit and loads the Login page cleanly.
+                        Swal.close();
+                        window.location.href = '/Account/Login';
+                    } else {
+                        var errs = data.errors || ['Validation failed. Contact Vendor Emeditech Plus LLP.'];
+                        var html = '<ul style="text-align:left;margin:8px 0 0;padding-left:18px;">' +
+                            errs.map(function (e) { return '<li style="margin-bottom:4px;">' + e + '</li>'; }).join('') +
+                            '</ul>';
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Hardware Data Mismatch',
+                            html: html,
+                            confirmButtonText: 'OK',
+                            confirmButtonColor: '#b91c1c'
+                        });
+                    }
+                })
+                .catch(function () {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Connection Error',
+                        text: 'Could not reach the validation server. Please try again.',
+                        confirmButtonColor: '#1a2a6c'
+                    });
+                });
+            });
         })();
     </script>
     <script>
