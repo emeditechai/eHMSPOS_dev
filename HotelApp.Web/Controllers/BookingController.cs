@@ -2555,10 +2555,10 @@ namespace HotelApp.Web.Controllers
                 }
 
                 var roundOffShare = 0m;
-                if (isRoundOffApplied)
+                if (isRoundOffApplied && isLast)
                 {
-                    roundOffShare = isLast ? roundOffRemaining : Math.Round(roundOffAmount * share, 2, MidpointRounding.AwayFromZero);
-                    roundOffRemaining -= roundOffShare;
+                    roundOffShare = roundOffRemaining;
+                    roundOffRemaining = 0m;
                 }
 
                 var netShare = allocation.Amount - discountShare + roundOffShare;
