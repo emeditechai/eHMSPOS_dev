@@ -35,6 +35,8 @@ public class RemoteLicenseRepository : IRemoteLicenseRepository
         try
         {
             await using var conn = new SqlConnection(RemoteConnStr);
+
+            // Create table if it doesn't exist
             await conn.ExecuteAsync(@"
                 IF NOT EXISTS (
                     SELECT 1 FROM sys.objects
@@ -47,14 +49,31 @@ public class RemoteLicenseRepository : IRemoteLicenseRepository
                         [ClientCode]      VARCHAR(50)     NULL,
                         [LicenseKey]      NVARCHAR(100)   NULL,
                         [IsValid]         BIT             NOT NULL DEFAULT 0,
-                        [FailureReason]   VARCHAR(500)    NULL,
-                        [PublicIPAddress] VARCHAR(100)    NULL,
-                        [DeviceInfo]      NVARCHAR(1000)  NULL,
+                        [FailureReason]   NVARCHAR(1000)  NULL,
+                        [PublicIPAddress] VARCHAR(200)    NULL,
+                        [DeviceInfo]      NVARCHAR(2000)  NULL,
                         [CreatedAt]       DATETIME        NOT NULL DEFAULT GETDATE(),
-                        [AppUrl]          VARCHAR(500)    NULL,
+                        [AppUrl]          NVARCHAR(1000)  NULL,
                         [ProductType]     VARCHAR(100)    NULL
                     );
                 END");
+
+            // If the table pre-existed with narrower columns, widen them so INSERT
+            // never fails with "String or binary data would be truncated".
+            // Each ALTER runs independently — failures are silently ignored (column
+            // already wide enough, or permission denied — non-critical).
+            var widenings = new[]
+            {
+                "IF COL_LENGTH('LicenseValidationHistory','FailureReason') NOT IN (-1) AND COL_LENGTH('LicenseValidationHistory','FailureReason') < 2000 ALTER TABLE [dbo].[LicenseValidationHistory] ALTER COLUMN [FailureReason] NVARCHAR(1000)",
+                "IF COL_LENGTH('LicenseValidationHistory','DeviceInfo') NOT IN (-1) AND COL_LENGTH('LicenseValidationHistory','DeviceInfo') < 4000 ALTER TABLE [dbo].[LicenseValidationHistory] ALTER COLUMN [DeviceInfo] NVARCHAR(2000)",
+                "IF COL_LENGTH('LicenseValidationHistory','AppUrl') NOT IN (-1) AND COL_LENGTH('LicenseValidationHistory','AppUrl') < 2000 ALTER TABLE [dbo].[LicenseValidationHistory] ALTER COLUMN [AppUrl] NVARCHAR(1000)",
+                "IF COL_LENGTH('LicenseValidationHistory','PublicIPAddress') IS NOT NULL AND COL_LENGTH('LicenseValidationHistory','PublicIPAddress') < 200 ALTER TABLE [dbo].[LicenseValidationHistory] ALTER COLUMN [PublicIPAddress] VARCHAR(200)"
+            };
+            foreach (var ddl in widenings)
+            {
+                try { await conn.ExecuteAsync(ddl); }
+                catch { /* ignore — column already wide or permission denied */ }
+            }
 
             _logger.LogInformation("Remote LicenseValidationHistory table verified/created.");
         }
@@ -68,63 +87,58 @@ public class RemoteLicenseRepository : IRemoteLicenseRepository
 
     public async Task<bool> SaveLicenseAsync(ClientAppLicense lic)
     {
-        try
+        await using var conn = new SqlConnection(RemoteConnStr);
+
+        // IF NOT EXISTS makes this idempotent — safe to retry without duplicates.
+        // Does NOT include ConnectionString so it works on any remote schema version.
+        // Throws the real SqlException on any failure so the caller (controller) can
+        // surface the actual error instead of silently returning false.
+        const string sql = @"
+            IF NOT EXISTS (SELECT 1 FROM ClientAppLicense WHERE ClientCode = @ClientCode)
+            INSERT INTO ClientAppLicense
+                (ClientCode, ClientName, ContactNumber, LicenseKey,
+                 HardDiskNumber, ServerMacID, MotherboardNumber,
+                 Startdate, ExpiryDate, IsActive, CreatedAt, OTP_Verified,
+                 PublicIPAddress, EmailID, AMC_Expireddate, appurl, ProductType)
+            VALUES
+                (@ClientCode, @ClientName, @ContactNumber, @LicenseKey,
+                 @HardDiskNumber, @ServerMacID, @MotherboardNumber,
+                 @Startdate, @ExpiryDate, 1, GETDATE(), 1,
+                 @PublicIPAddress, @EmailID, @AMC_Expireddate, @AppUrl, @ProductType)";
+
+        await conn.ExecuteAsync(sql, lic); // throws on SQL error — let it propagate
+
+        // Best-effort: store ConnectionString if the column exists on the remote table.
+        if (!string.IsNullOrWhiteSpace(lic.ConnectionString))
         {
-            await using var conn = new SqlConnection(RemoteConnStr);
-
-            // Core INSERT — does NOT include ConnectionString so it works regardless
-            // of whether the remote table has that column yet.
-            const string sql = @"
-                INSERT INTO ClientAppLicense
-                    (ClientCode, ClientName, ContactNumber, LicenseKey,
-                     HardDiskNumber, ServerMacID, MotherboardNumber,
-                     Startdate, ExpiryDate, IsActive, CreatedAt, OTP_Verified,
-                     PublicIPAddress, EmailID, AMC_Expireddate, appurl, ProductType)
-                VALUES
-                    (@ClientCode, @ClientName, @ContactNumber, @LicenseKey,
-                     @HardDiskNumber, @ServerMacID, @MotherboardNumber,
-                     @Startdate, @ExpiryDate, 1, GETDATE(), 1,
-                     @PublicIPAddress, @EmailID, @AMC_Expireddate, @AppUrl, @ProductType)";
-
-            var inserted = await conn.ExecuteAsync(sql, lic) > 0;
-
-            // Best-effort: store ConnectionString if the column exists on the remote table.
-            if (inserted && !string.IsNullOrWhiteSpace(lic.ConnectionString))
+            try
             {
-                try
-                {
-                    await conn.ExecuteAsync(
-                        "UPDATE ClientAppLicense SET ConnectionString = @cs WHERE ClientCode = @cc",
-                        new { cs = lic.ConnectionString, cc = lic.ClientCode });
-                }
-                catch
-                {
-                    // Column may not exist on the remote schema yet — non-critical.
-                }
+                await conn.ExecuteAsync(
+                    "UPDATE ClientAppLicense SET ConnectionString = @cs WHERE ClientCode = @cc",
+                    new { cs = lic.ConnectionString, cc = lic.ClientCode });
             }
+            catch
+            {
+                // Column may not exist on the remote schema yet — non-critical.
+            }
+        }
 
-            return inserted;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to save license to remote DB for {ClientCode}.", lic.ClientCode);
-            return false;
-        }
+        return true;
     }
 
     public async Task LogValidationAsync(LicenseValidationHistory history)
     {
         try
         {
-            // Always ensure the history table exists before inserting.
-            // EnsureHistoryTableAsync uses a static flag so DDL only runs once
-            // per lifetime; subsequent calls are O(1). This guards against the
-            // race where LogValidationAsync is called before EnsureHistoryTableAsync
-            // has completed (or if it failed on the very first request).
+            // Always ensure the history table exists (and has wide-enough columns)
+            // before inserting. Idempotent — O(1) after first call per app lifetime.
             await EnsureHistoryTableAsync();
 
             await using var conn = new SqlConnection(RemoteConnStr);
 
+            // Truncate every string field to its column capacity so the INSERT
+            // never fails with "String or binary data would be truncated" regardless
+            // of the remote schema version.
             await conn.ExecuteAsync(@"
                 INSERT INTO LicenseValidationHistory
                     (ClientCode, LicenseKey, IsValid, FailureReason,
@@ -132,15 +146,28 @@ public class RemoteLicenseRepository : IRemoteLicenseRepository
                 VALUES
                     (@ClientCode, @LicenseKey, @IsValid, @FailureReason,
                      @PublicIPAddress, @DeviceInfo, GETDATE(), @AppUrl, @ProductType)",
-                history);
+                new
+                {
+                    ClientCode      = TruncateStr(history.ClientCode,       50),
+                    LicenseKey      = TruncateStr(history.LicenseKey,       100),
+                    history.IsValid,
+                    FailureReason   = TruncateStr(history.FailureReason,    900),
+                    PublicIPAddress = TruncateStr(history.PublicIPAddress,  190),
+                    DeviceInfo      = TruncateStr(history.DeviceInfo,      1900),
+                    AppUrl          = TruncateStr(history.AppUrl,           900),
+                    ProductType     = TruncateStr(history.ProductType,      100)
+                });
         }
         catch (Exception ex)
         {
-            // Log as ERROR (not warning) so this failure is always visible in logs.
+            // Log as ERROR so this failure is always visible in application logs.
             _logger.LogError(ex, "Remote LicenseValidationHistory insert failed for {ClientCode}. IsValid={IsValid}, Reason={Reason}.",
                 history.ClientCode, history.IsValid, history.FailureReason);
         }
     }
+
+    private static string? TruncateStr(string? value, int maxLength)
+        => value is null ? null : (value.Length <= maxLength ? value : value[..maxLength]);
 
     public async Task UpdateLastLoginDateAsync(string clientCode)
     {

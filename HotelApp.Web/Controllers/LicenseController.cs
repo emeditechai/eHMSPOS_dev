@@ -191,22 +191,24 @@ public class LicenseController : Controller
             OTP_Verified      = true
         };
 
-        // Save to local DB
+        // ── Save to REMOTE DB first (authoritative central registry) ─────────
+        // If remote fails the exception propagates here with the real SQL message
+        // so we return an error to the user — no local record is created,
+        // preventing local/remote getting out of sync.
+        try
+        {
+            await _remoteRepo.SaveLicenseAsync(license);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Remote license save failed for {ClientCode}: {Message}", clientCode, ex.Message);
+            return Json(new { success = false, message = $"Failed to register license on central server: {ex.Message}. Please try again or contact support." });
+        }
+
+        // ── Save to local DB ───────────────────────────────────────────────────
         var localSaved = await _licenseRepo.SaveLicenseAsync(license);
         if (!localSaved)
             return Json(new { success = false, message = "Failed to save license locally. Please contact support." });
-// Save to remote DB — awaited so central registry is authoritative;
-       // failure is non-fatal (local license is valid) but must be logged.
-       try
-       {
-           var remoteSaved = await _remoteRepo.SaveLicenseAsync(license);
-           if (!remoteSaved)
-               _logger.LogWarning("Remote license save returned false for {ClientCode}. Local record exists; contact vendor to sync remote.", clientCode);
-       }
-       catch (Exception ex)
-       {
-           _logger.LogWarning(ex, "Remote license save threw for {ClientCode}. Local record exists; contact vendor to sync remote.", clientCode);
-       }
        // Send welcome email to the registrant — best effort, does not block
        try
        {

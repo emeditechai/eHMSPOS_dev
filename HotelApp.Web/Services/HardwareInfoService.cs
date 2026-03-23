@@ -14,13 +14,20 @@ public class HardwareInfoService : IHardwareInfoService
 {
     public HardwareInfo GetHardwareInfo()
     {
+        // All three values are capped at 50 characters so they fit the remote
+        // Central_Lic_DB column definitions on any server, and so that the value
+        // stored during registration always matches the value re-read during
+        // daily validation (both paths call this method).
         return new HardwareInfo
         {
-            MacId            = GetMacAddress(),
-            HardDiskSerial   = GetHardDiskSerial(),
-            MotherboardSerial = GetMotherboardSerial()
+            MacId             = Truncate(GetMacAddress(),         50),
+            HardDiskSerial    = Truncate(GetHardDiskSerial(),     50),
+            MotherboardSerial = Truncate(GetMotherboardSerial(),  50)
         };
     }
+
+    private static string Truncate(string value, int maxLength)
+        => string.IsNullOrEmpty(value) ? value : (value.Length <= maxLength ? value : value[..maxLength]);
 
     // ─── MAC Address ───────────────────────────────────────────────────────────
 
