@@ -54,7 +54,14 @@ public class LicenseController : Controller
     {
         var existing = await _licenseRepo.GetActiveLicenseAsync();
         if (existing != null && existing.OTP_Verified)
-            return RedirectToAction("Login", "Account");
+        {
+            // Only skip registration if this license belongs to the current server.
+            // If the AppUrl differs this is a new server sharing the same DB — let
+            // the user register fresh instead of looping back to Login.
+            var currentAppUrl = $"{Request.Scheme}://{Request.Host}";
+            if (string.Equals(existing.AppUrl, currentAppUrl, StringComparison.OrdinalIgnoreCase))
+                return RedirectToAction("Login", "Account");
+        }
 
         return View();
     }

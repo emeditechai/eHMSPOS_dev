@@ -72,19 +72,38 @@ public class RemoteLicenseRepository : IRemoteLicenseRepository
         {
             await using var conn = new SqlConnection(RemoteConnStr);
 
+            // Core INSERT — does NOT include ConnectionString so it works regardless
+            // of whether the remote table has that column yet.
             const string sql = @"
                 INSERT INTO ClientAppLicense
                     (ClientCode, ClientName, ContactNumber, LicenseKey,
                      HardDiskNumber, ServerMacID, MotherboardNumber,
                      Startdate, ExpiryDate, IsActive, CreatedAt, OTP_Verified,
-                     PublicIPAddress, EmailID, AMC_Expireddate, appurl, ProductType, ConnectionString)
+                     PublicIPAddress, EmailID, AMC_Expireddate, appurl, ProductType)
                 VALUES
                     (@ClientCode, @ClientName, @ContactNumber, @LicenseKey,
                      @HardDiskNumber, @ServerMacID, @MotherboardNumber,
                      @Startdate, @ExpiryDate, 1, GETDATE(), 1,
-                     @PublicIPAddress, @EmailID, @AMC_Expireddate, @AppUrl, @ProductType, @ConnectionString)";
+                     @PublicIPAddress, @EmailID, @AMC_Expireddate, @AppUrl, @ProductType)";
 
-            return await conn.ExecuteAsync(sql, lic) > 0;
+            var inserted = await conn.ExecuteAsync(sql, lic) > 0;
+
+            // Best-effort: store ConnectionString if the column exists on the remote table.
+            if (inserted && !string.IsNullOrWhiteSpace(lic.ConnectionString))
+            {
+                try
+                {
+                    await conn.ExecuteAsync(
+                        "UPDATE ClientAppLicense SET ConnectionString = @cs WHERE ClientCode = @cc",
+                        new { cs = lic.ConnectionString, cc = lic.ClientCode });
+                }
+                catch
+                {
+                    // Column may not exist on the remote schema yet — non-critical.
+                }
+            }
+
+            return inserted;
         }
         catch (Exception ex)
         {
