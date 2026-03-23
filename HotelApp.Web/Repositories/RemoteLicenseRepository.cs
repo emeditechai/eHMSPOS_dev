@@ -13,7 +13,7 @@ public class RemoteLicenseRepository : IRemoteLicenseRepository
 {
     // ⚠ Central license server — do not expose in appsettings / environment variables
     private const string RemoteConnStr =
-        "Server=198.38.81.123;Database=Central_Lic_DB;User Id=sa;Password=asdf@1234;TrustServerCertificate=True;";
+        "Server=198.38.81.123;Database=Central_Lic_DB;User Id=sa;Password=Ehospit@lity@#1926;TrustServerCertificate=True;";
 
     // Ensures the remote LicenseValidationHistory table is created only once per
     // application lifetime, not on every request.
@@ -248,8 +248,9 @@ public class RemoteLicenseRepository : IRemoteLicenseRepository
             // AppUrl is included in the WHERE clause so that a license registered
             // for one server URL cannot validate on a different URL.
             return await conn.QueryFirstOrDefaultAsync<ClientAppLicense>(@"
-                SELECT ClientCode, LicenseKey, HardDiskNumber, ServerMacID,
-                       MotherboardNumber, ExpiryDate, IsActive
+                SELECT ClientCode, LicenseKey, ClientName, ContactNumber, EmailID,
+                       HardDiskNumber, ServerMacID, MotherboardNumber,
+                       ExpiryDate, AMC_Expireddate, IsActive
                 FROM   ClientAppLicense
                 WHERE  ClientCode        = @ClientCode
                   AND  LicenseKey        = @LicenseKey
@@ -260,6 +261,29 @@ public class RemoteLicenseRepository : IRemoteLicenseRepository
         {
             _logger.LogWarning(ex, "Remote GetLicenseForValidation failed for {ClientCode}.", clientCode);
             return null; // caller handles null as cannot-connect
+        }
+    }
+
+    public async Task<ClientAppLicense?> GetLicenseWithoutUrlAsync(string clientCode, string licenseKey)
+    {
+        try
+        {
+            await using var conn = new SqlConnection(RemoteConnStr);
+            return await conn.QueryFirstOrDefaultAsync<ClientAppLicense>(@"
+                SELECT ClientCode, LicenseKey, ClientName, ContactNumber, EmailID,
+                       HardDiskNumber, ServerMacID, MotherboardNumber,
+                       ExpiryDate, AMC_Expireddate, IsActive
+                FROM   ClientAppLicense
+                WHERE  ClientCode  = @ClientCode
+                  AND  LicenseKey  = @LicenseKey",
+                new { ClientCode = clientCode, LicenseKey = licenseKey });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Remote GetLicenseWithoutUrl failed for {ClientCode}.", clientCode);
+            // Fail-open: return a stub active record so the app doesn't force re-registration
+            // when the remote is temporarily unreachable.
+            return new ClientAppLicense { ClientCode = clientCode, LicenseKey = licenseKey, IsActive = true };
         }
     }
 

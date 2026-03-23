@@ -44,6 +44,7 @@ public class LicenseMiddleware
     private readonly IMemoryCache         _cache;
     private readonly bool                 _bypassHardwareCheck;
     private readonly IPublicIpService     _publicIpService;
+    private readonly ILogger<LicenseMiddleware> _logger;
 
     // Cache key prefix — one entry per ClientCode
     private const string CacheKeyPrefix = "LicValidated_";
@@ -53,13 +54,15 @@ public class LicenseMiddleware
         IServiceScopeFactory scopeFactory,
         IMemoryCache         cache,
         IConfiguration       configuration,
-        IPublicIpService     publicIpService)
+        IPublicIpService     publicIpService,
+        ILogger<LicenseMiddleware> logger)
     {
         _next                = next;
         _scopeFactory        = scopeFactory;
         _cache               = cache;
         _bypassHardwareCheck = configuration.GetValue<bool>("Licensing:BypassHardwareCheck");
         _publicIpService     = publicIpService;
+        _logger              = logger;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -78,8 +81,9 @@ public class LicenseMiddleware
         // Ensure remote LicenseValidationHistory table exists (runs once per lifetime)
         await remoteRepo.EnsureHistoryTableAsync();
 
-        // ── 1. Local active license ───────────────────────────────────────────
-        var license = await licenseRepo.GetActiveLicenseAsync();
+        // ── 1. Local active license — prefer record matching current server URL ──
+        var appUrlEarly = $"{context.Request.Scheme}://{context.Request.Host}";
+        var license = await licenseRepo.GetActiveLicenseAsync(appUrlEarly);
         if (license == null)
         {
             context.Response.Redirect("/License/Register");
@@ -110,6 +114,17 @@ public class LicenseMiddleware
     {
         var errors = new List<string>();
 
+        // ── Dev bypass: skip all remote validation when BypassHardwareCheck is on ──
+        if (_bypassHardwareCheck)
+        {
+            _logger.LogInformation("[LicenseMiddleware] Dev bypass active — skipping remote validation.");
+            var midnight2 = DateTime.Today.AddDays(1);
+            _cache.Set(cacheKey, DateOnly.FromDateTime(DateTime.Today),
+                new MemoryCacheEntryOptions { AbsoluteExpiration = midnight2 });
+            await _next(context);
+            return;
+        }
+
         // ── Fetch remote record (ClientCode + LicenseKey + AppUrl must all match) ──
         var appUrl = $"{context.Request.Scheme}://{context.Request.Host}";
         ClientAppLicense? remote = null;
@@ -126,18 +141,28 @@ public class LicenseMiddleware
 
         if (remoteReachable && remote == null)
         {
-            // If the stored AppUrl doesn't match the current server URL, this is a
-            // different server sharing the same database (new deployment). Treat it
-            // as a fresh installation and redirect to the Registration page instead
-            // of showing a validation-failed error.
             if (!string.Equals(localLicense.AppUrl, appUrl, StringComparison.OrdinalIgnoreCase))
             {
-                context.Response.Redirect("/License/Register");
-                return;
+                // AppUrl mismatch — could be a new server OR developer running locally against prod DB.
+                // Fetch the remote record WITHOUT AppUrl filter to distinguish the two cases:
+                //   • If not found on remote at all → truly new/unregistered server → Register
+                //   • If found on remote (different URL) → dev/multi-URL scenario →
+                //     still validate IsActive + Expiry, but skip hardware (different machine)
+                var remoteNoUrl = await remoteRepo.GetLicenseWithoutUrlAsync(
+                    localLicense.ClientCode!, localLicense.LicenseKey!);
+                if (remoteNoUrl == null)
+                {
+                    context.Response.Redirect("/License/Register");
+                    return;
+                }
+                // Use the no-url record for IsActive + Expiry validation only
+                remote = remoteNoUrl;
             }
-
-            // Record exists locally but not in remote — treat as deactivated
-            errors.Add("License record not found in the central server. Contact Vendor Emeditech Plus LLP.");
+            else
+            {
+                // AppUrl matches but not found in remote — treat as deactivated/not found
+                errors.Add("License record not found in the central server. Contact Vendor Emeditech Plus LLP.");
+            }
         }
 
         if (remote != null)
@@ -152,11 +177,13 @@ public class LicenseMiddleware
                            "Contact Vendor for Renewal.");
 
             // ── Rule 2: Live hardware vs REMOTE stored values (separate alert per field) ──
-            if (_bypassHardwareCheck)
+            // Skip hardware check if AppUrl differs (dev/multi-URL scenario — different machine)
+            bool appUrlMatches = string.Equals(localLicense.AppUrl, appUrl, StringComparison.OrdinalIgnoreCase);
+            if (_bypassHardwareCheck || !appUrlMatches)
             {
                 // Dev bypass — skip hardware comparison
             }
-            else
+            else if (appUrlMatches)
             {
                 var hw = hwService.GetHardwareInfo();
                 var macMatch = string.Equals(hw.MacId,             remote.ServerMacID,       StringComparison.OrdinalIgnoreCase);

@@ -52,13 +52,13 @@ public class LicenseController : Controller
     [HttpGet]
     public async Task<IActionResult> Register()
     {
-        var existing = await _licenseRepo.GetActiveLicenseAsync();
+        var currentAppUrl = $"{Request.Scheme}://{Request.Host}";
+        var existing = await _licenseRepo.GetActiveLicenseAsync(currentAppUrl);
         if (existing != null && existing.OTP_Verified)
         {
             // Only skip registration if this license belongs to the current server.
             // If the AppUrl differs this is a new server sharing the same DB — let
             // the user register fresh instead of looping back to Login.
-            var currentAppUrl = $"{Request.Scheme}://{Request.Host}";
             if (string.Equals(existing.AppUrl, currentAppUrl, StringComparison.OrdinalIgnoreCase))
                 return RedirectToAction("Login", "Account");
         }
@@ -443,7 +443,8 @@ public class LicenseController : Controller
         ClientAppLicense? localLicense;
         try
         {
-            localLicense = await _licenseRepo.GetActiveLicenseAsync();
+            var revalidateUrl = $"{Request.Scheme}://{Request.Host}";
+            localLicense = await _licenseRepo.GetActiveLicenseAsync(revalidateUrl);
         }
         catch (Exception ex)
         {
@@ -489,6 +490,14 @@ public class LicenseController : Controller
             remoteReachable = false;
         }
 
+        // If AppUrl mismatch (dev/different-URL scenario), retry without AppUrl filter
+        if (remoteReachable && remote == null &&
+            !string.Equals(localLicense.AppUrl, appUrl, StringComparison.OrdinalIgnoreCase))
+        {
+            remote = await _remoteRepo.GetLicenseWithoutUrlAsync(
+                localLicense.ClientCode!, localLicense.LicenseKey!);
+        }
+
         // ── If remote unreachable: fail-open, log locally only ───────────────
         if (!remoteReachable)
         {
@@ -522,7 +531,8 @@ public class LicenseController : Controller
             if (remote.ExpiryDate.HasValue && remote.ExpiryDate.Value.Date < DateTime.Today)
                 errors.Add($"Software Expired on {remote.ExpiryDate.Value:dd-MMM-yyyy}. Contact Vendor for Renewal.");
 
-            if (!_config.GetValue<bool>("Licensing:BypassHardwareCheck"))
+            if (!_config.GetValue<bool>("Licensing:BypassHardwareCheck") &&
+                string.Equals(localLicense.AppUrl, appUrl, StringComparison.OrdinalIgnoreCase))
             {
                 if (hw == null)
                 {
@@ -587,7 +597,7 @@ public class LicenseController : Controller
     {
         try
         {
-            var license = await _licenseRepo.GetActiveLicenseAsync();
+            var license = await _licenseRepo.GetActiveLicenseAsync($"{Request.Scheme}://{Request.Host}");
             if (license?.ClientCode != null)
                 _cache.Remove($"LicValidated_{license.ClientCode}");
             _logger.LogInformation("License cache cleared (no-JS fallback) for {ClientCode}.", license?.ClientCode);

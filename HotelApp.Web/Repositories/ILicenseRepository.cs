@@ -5,7 +5,7 @@ namespace HotelApp.Web.Repositories;
 public interface ILicenseRepository
 {
     /// <summary>Returns the active, OTP-verified license for this installation, or null.</summary>
-    Task<ClientAppLicense?> GetActiveLicenseAsync();
+    Task<ClientAppLicense?> GetActiveLicenseAsync(string? appUrl = null);
 
     /// <summary>Persists a new license record to the local database.</summary>
     Task<bool> SaveLicenseAsync(ClientAppLicense license);

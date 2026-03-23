@@ -32,6 +32,14 @@ public interface IRemoteLicenseRepository
     Task<ClientAppLicense?> GetLicenseForValidationAsync(string clientCode, string licenseKey, string appUrl);
 
     /// <summary>
+    /// Fetches the license from remote by ClientCode + LicenseKey only (no AppUrl filter).
+    /// Used when AppUrl mismatches to distinguish a dev/different-URL scenario from a truly
+    /// new unregistered installation, while still enabling IsActive + Expiry validation.
+    /// Returns null if not found. Fail-open on connectivity failure (returns a stub record).
+    /// </summary>
+    Task<ClientAppLicense?> GetLicenseWithoutUrlAsync(string clientCode, string licenseKey);
+
+    /// <summary>
     /// Fetches a license from the remote DB by LicenseKey + AppUrl (for hardware
     /// re-registration). Returns null if not found. Throws on connectivity failure
     /// so callers can distinguish "not found" from "server unreachable".

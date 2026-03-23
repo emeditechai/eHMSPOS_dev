@@ -68,12 +68,43 @@ public class LicenseRepository : ILicenseRepository
 
         await _db.ExecuteAsync(createLicense);
         await _db.ExecuteAsync(createHistory);
+
+        // Add any columns that may be missing from tables created by older migration scripts
+        var alterColumns = new[]
+        {
+            "IF COL_LENGTH('dbo.ClientAppLicense','LastLoginDate') IS NULL ALTER TABLE dbo.ClientAppLicense ADD [LastLoginDate] DATETIME NULL",
+            "IF COL_LENGTH('dbo.ClientAppLicense','EmailID') IS NULL ALTER TABLE dbo.ClientAppLicense ADD [EmailID] VARCHAR(200) NULL",
+            "IF COL_LENGTH('dbo.ClientAppLicense','AMC_Expireddate') IS NULL ALTER TABLE dbo.ClientAppLicense ADD [AMC_Expireddate] DATETIME NULL",
+            "IF COL_LENGTH('dbo.ClientAppLicense','AppUrl') IS NULL ALTER TABLE dbo.ClientAppLicense ADD [AppUrl] VARCHAR(500) NULL",
+            "IF COL_LENGTH('dbo.ClientAppLicense','ProductType') IS NULL ALTER TABLE dbo.ClientAppLicense ADD [ProductType] VARCHAR(100) NULL",
+            "IF COL_LENGTH('dbo.ClientAppLicense','PublicIPAddress') IS NULL ALTER TABLE dbo.ClientAppLicense ADD [PublicIPAddress] VARCHAR(100) NULL",
+        };
+        foreach (var ddl in alterColumns)
+        {
+            try { await _db.ExecuteAsync(ddl); } catch { /* non-critical */ }
+        }
     }
 
-    public async Task<ClientAppLicense?> GetActiveLicenseAsync()
+    public async Task<ClientAppLicense?> GetActiveLicenseAsync(string? appUrl = null)
     {
         try
         {
+            // If a URL is provided, prefer the record registered for that URL.
+            // This handles the case where the local DB has licenses for multiple
+            // deployments (e.g. dev Mac + prod server share the same HMS_Dev DB).
+            if (!string.IsNullOrEmpty(appUrl))
+            {
+                var byUrl = await _db.QueryFirstOrDefaultAsync<ClientAppLicense>(@"
+                    SELECT TOP 1 *
+                    FROM   ClientAppLicense
+                    WHERE  IsActive     = 1
+                      AND  OTP_Verified = 1
+                      AND  LOWER(AppUrl) = LOWER(@AppUrl)
+                    ORDER BY Id DESC",
+                    new { AppUrl = appUrl });
+                if (byUrl != null) return byUrl;
+            }
+            // Fall back to the latest active record
             return await _db.QueryFirstOrDefaultAsync<ClientAppLicense>(@"
                 SELECT TOP 1 *
                 FROM   ClientAppLicense

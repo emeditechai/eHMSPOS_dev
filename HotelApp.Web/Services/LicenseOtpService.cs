@@ -17,7 +17,7 @@ public class LicenseOtpService : ILicenseOtpService
 {
     // Remote Central License DB — credentials stored in code per security requirement
     private const string RemoteConnStr =
-        "Server=198.38.81.123;Database=Central_Lic_DB;User Id=sa;Password=asdf@1234;TrustServerCertificate=True;";
+        "Server=198.38.81.123;Database=Central_Lic_DB;User Id=sa;Password=Ehospit@lity@#1926;TrustServerCertificate=True;";
 
     private readonly ILogger<LicenseOtpService> _logger;
 
