@@ -98,6 +98,20 @@ public class LicenseMiddleware
             return;
         }
 
+        // ── 2b. DB-backed fallback — handles app-pool recycles mid-day ──────────
+        // IMemoryCache is process-scoped; an IIS/Kestrel recycle wipes it.
+        // Check the LicenseValidationHistory table: if a successful validation was
+        // already logged today (any time after midnight), skip remote validation again
+        // and repopulate the in-memory cache for the remainder of the day.
+        if (await licenseRepo.HasValidationTodayAsync(license.ClientCode!))
+        {
+            _logger.LogInformation("[LicenseMiddleware] Daily validation already in DB history for {ClientCode} — skipping remote call (cache repopulated).", license.ClientCode);
+            _cache.Set(cacheKey, DateOnly.FromDateTime(DateTime.Today),
+                new MemoryCacheEntryOptions { AbsoluteExpiration = DateTime.Today.AddDays(1) });
+            await _next(context);
+            return;
+        }
+
         // ── 3. Full daily validation (first hit after midnight) ───────────────
         await PerformDailyValidationAsync(context, license, licenseRepo, remoteRepo, hwService, cacheKey);
     }

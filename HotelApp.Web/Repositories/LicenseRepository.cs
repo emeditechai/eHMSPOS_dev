@@ -104,12 +104,15 @@ public class LicenseRepository : ILicenseRepository
                     new { AppUrl = appUrl });
                 if (byUrl != null) return byUrl;
             }
-            // Fall back to the latest active record
+            // Fall back ONLY to legacy records that predate AppUrl tracking (AppUrl is empty/null).
+            // Records with a different populated AppUrl belong to another registered deployment —
+            // returning them here would allow an unregistered URL to bypass the registration check.
             return await _db.QueryFirstOrDefaultAsync<ClientAppLicense>(@"
                 SELECT TOP 1 *
                 FROM   ClientAppLicense
                 WHERE  IsActive     = 1
                   AND  OTP_Verified = 1
+                  AND  (AppUrl IS NULL OR AppUrl = '')
                 ORDER BY Id DESC");
         }
         catch
