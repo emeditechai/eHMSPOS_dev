@@ -315,13 +315,13 @@
     {
         <!-- ================================================================
              SESSION IDLE TIMEOUT
-             After 10 minutes of no user activity, a SweetAlert is shown and
+             After 2 hours of no user activity, a SweetAlert is shown and
              the user is redirected to /Account/TimeoutLogout (GET) which
              clears the auth cookie and session before forwarding to Login.
              ================================================================ -->
         <script>
             (function () {
-                const IDLE_MINUTES = 10;
+                const IDLE_MINUTES = 120;
                 const IDLE_MS = IDLE_MINUTES * 60 * 1000;
                 const WARNING_MS = 30 * 1000; // show alert 30 s before hard redirect
                 const LOGOUT_URL = '/Account/TimeoutLogout';
