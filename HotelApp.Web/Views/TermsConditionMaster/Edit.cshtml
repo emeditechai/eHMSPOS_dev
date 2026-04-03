@@ -1,0 +1,31 @@
+@model HotelApp.Web.Models.B2BTermsCondition
+@{
+    var isReadOnly = ViewBag.IsReadOnly == true;
+    ViewData["Title"] = isReadOnly ? "View Terms & Conditions" : "Edit Terms & Conditions";
+}
+
+<div class="page-header agreement-page-header">
+    <div>
+        <h2><i class="fas fa-scroll"></i> Terms &amp; Conditions Master</h2>
+        <p class="text-muted mb-0">@((isReadOnly ? "Review" : "Maintain") + " the reusable B2B legal and commercial clause set.")</p>
+    </div>
+    <a asp-action="Index" class="btn-cancel"><i class="fas fa-arrow-left"></i> Back to Terms List</a>
+</div>
+
+<form asp-action="Edit" method="post" class="agreement-shell">
+    @Html.AntiForgeryToken()
+    <input asp-for="Id" type="hidden" />
+    <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+    <partial name="_TermsConditionFormFields" model="Model" />
+    <div class="agreement-actions">
+        <a asp-action="Index" class="btn-cancel"><i class="fas fa-arrow-left"></i> Back</a>
+        @if (!isReadOnly)
+        {
+            <button type="submit" class="btn-save"><i class="fas fa-save"></i> Save Changes</button>
+        }
+    </div>
+</form>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

@@ -1,0 +1,54 @@
+@model IEnumerable<HotelApp.Web.Models.B2BTermsCondition>
+@{
+    ViewData["Title"] = "Terms & Conditions Master";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-scroll"></i> Terms &amp; Conditions Master</h2>
+    <a asp-action="Create" class="btn-create"><i class="fas fa-plus"></i> Add Terms</a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success"><i class="fas fa-check-circle"></i> @TempData["SuccessMessage"]</div>
+}
+
+@if (Model.Any())
+{
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Terms Code</th>
+                    <th>Terms Title</th>
+                    <th>Type</th>
+                    <th>Cancellation Policy</th>
+                    <th>Default</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model)
+                {
+                    <tr>
+                        <td><strong>@row.TermsCode</strong></td>
+                        <td>
+                            <div class="fw-semibold">@row.TermsTitle</div>
+                            <div class="text-muted small">@(string.IsNullOrWhiteSpace(row.PaymentTerms) ? "No payment note" : row.PaymentTerms)</div>
+                        </td>
+                        <td>@row.TermsType</td>
+                        <td>@(string.IsNullOrWhiteSpace(row.CancellationPolicyName) ? "-" : row.CancellationPolicyName)</td>
+                        <td>@if (row.IsDefault) { <span class="badge badge-available">Default</span> } else { <span class="badge bg-light text-dark">No</span> }</td>
+                        <td>@if (row.IsActive) { <span class="badge badge-available">Active</span> } else { <span class="badge badge-maintenance">Inactive</span> }</td>
+                        <td><div class="action-buttons"><a asp-action="Details" asp-route-id="@row.Id" class="btn-action btn-view"><i class="fas fa-eye"></i><span>View</span></a><a asp-action="Edit" asp-route-id="@row.Id" class="btn-action btn-edit"><i class="fas fa-pen"></i><span>Edit</span></a></div></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="empty-state"><i class="fas fa-scroll"></i><h3>No Terms Found</h3><p>Create reusable B2B legal and commercial clauses, then link them from Agreement Master.</p><a asp-action="Create" class="btn-create"><i class="fas fa-plus"></i> Add Terms</a></div>
+}

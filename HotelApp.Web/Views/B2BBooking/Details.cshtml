@@ -1,0 +1,84 @@
+@model HotelApp.Web.Models.Booking
+@{
+    ViewData["Title"] = "B2B Booking Details";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
+}
+
+<style>
+    .b2b-detail-shell { display: grid; gap: 18px; }
+    .b2b-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .b2b-detail-card { background: white; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
+    .b2b-detail-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 2px solid #f0f0f0; }
+    .b2b-detail-head h3 { margin: 0; font-size: 18px; font-weight: 600; color: #2d3748; }
+    .b2b-detail-list { display: grid; gap: 12px; }
+    .b2b-detail-row { display: flex; justify-content: space-between; gap: 18px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 10px; }
+    .b2b-detail-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .b2b-detail-row span { color: #718096; }
+    .b2b-detail-row strong { color: #2d3748; text-align: right; }
+    .b2b-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    @@media (max-width: 900px) { .b2b-detail-grid { grid-template-columns: 1fr; } }
+</style>
+
+<div class="page-header">
+    <h2><i class="fas fa-briefcase"></i> B2B Booking Details</h2>
+    <div class="b2b-actions">
+        <a asp-action="Index" class="btn-create" style="background:#fff;color:#1f2937;border:1px solid #cbd5e1;"><i class="fas fa-arrow-left"></i> B2B Dashboard</a>
+        <a asp-controller="Booking" asp-action="Details" asp-route-bookingNumber="@Model.BookingNumber" class="btn-create"><i class="fas fa-gears"></i> Open Standard Operations</a>
+    </div>
+</div>
+
+<div class="b2b-detail-shell">
+    <div class="b2b-detail-grid">
+        <section class="b2b-detail-card">
+            <div class="b2b-detail-head"><h3>Booking Snapshot</h3><span class="badge badge-available">@Model.Status</span></div>
+            <div class="b2b-detail-list">
+                <div class="b2b-detail-row"><span>Booking Number</span><strong>@Model.BookingNumber</strong></div>
+                <div class="b2b-detail-row"><span>Source / Channel</span><strong>@Model.Source / @Model.Channel</strong></div>
+                <div class="b2b-detail-row"><span>Check-In / Check-Out</span><strong>@Model.CheckInDate.ToString("dd MMM yyyy") - @Model.CheckOutDate.ToString("dd MMM yyyy")</strong></div>
+                <div class="b2b-detail-row"><span>Nights / Rooms</span><strong>@Model.Nights / @Model.RequiredRooms</strong></div>
+                <div class="b2b-detail-row"><span>Room Type</span><strong>@Model.RoomType?.TypeName</strong></div>
+                <div class="b2b-detail-row"><span>Payment Status</span><strong>@Model.PaymentStatus</strong></div>
+            </div>
+        </section>
+
+        <section class="b2b-detail-card">
+            <div class="b2b-detail-head"><h3>Company and Agreement</h3><span class="badge badge-available">@Model.BillingType</span></div>
+            <div class="b2b-detail-list">
+                <div class="b2b-detail-row"><span>Client</span><strong>@Model.B2BClientName (@Model.B2BClientCode)</strong></div>
+                <div class="b2b-detail-row"><span>Agreement</span><strong>@Model.AgreementName (@Model.AgreementCode)</strong></div>
+                <div class="b2b-detail-row"><span>Company Contact</span><strong>@Model.CompanyContactPerson / @Model.CompanyContactNo</strong></div>
+                <div class="b2b-detail-row"><span>Company Email</span><strong>@Model.CompanyEmail</strong></div>
+                <div class="b2b-detail-row"><span>GST No</span><strong>@Model.CompanyGstNo</strong></div>
+                <div class="b2b-detail-row"><span>Credit Terms</span><strong>@(Model.IsCreditAllowed == true ? $"Limit ₹{(Model.CompanyCreditLimit ?? 0m):N2} / {Model.CreditDays} day(s)" : "Prepaid / No credit")</strong></div>
+            </div>
+        </section>
+
+        <section class="b2b-detail-card">
+            <div class="b2b-detail-head"><h3>Guest and Billing</h3><span class="badge badge-available">@Model.BillingTo</span></div>
+            <div class="b2b-detail-list">
+                <div class="b2b-detail-row"><span>Primary Guest</span><strong>@Model.PrimaryGuestFirstName @Model.PrimaryGuestLastName</strong></div>
+                <div class="b2b-detail-row"><span>Guest Contact</span><strong>@Model.PrimaryGuestPhone</strong></div>
+                <div class="b2b-detail-row"><span>Guest Email</span><strong>@(string.IsNullOrWhiteSpace(Model.PrimaryGuestEmail) ? "-" : Model.PrimaryGuestEmail)</strong></div>
+                <div class="b2b-detail-row"><span>Billing Address</span><strong>@Model.BillingAddress, @Model.BillingStateName - @Model.BillingPincode</strong></div>
+                <div class="b2b-detail-row"><span>Meal Plan</span><strong>@(string.IsNullOrWhiteSpace(Model.MealPlan) ? "-" : Model.MealPlan)</strong></div>
+                <div class="b2b-detail-row"><span>Notes</span><strong>@(string.IsNullOrWhiteSpace(Model.SpecialRequests) ? "-" : Model.SpecialRequests)</strong></div>
+            </div>
+        </section>
+
+        <section class="b2b-detail-card">
+            <div class="b2b-detail-head"><h3>Financials and GST</h3><span class="badge badge-available">@Model.GstSlabCode</span></div>
+            <div class="b2b-detail-list">
+                <div class="b2b-detail-row"><span>Base Amount</span><strong>₹@Model.BaseAmount.ToString("N2")</strong></div>
+                <div class="b2b-detail-row"><span>Tax Amount</span><strong>₹@Model.TaxAmount.ToString("N2")</strong></div>
+                <div class="b2b-detail-row"><span>CGST / SGST</span><strong>₹@Model.CGSTAmount.ToString("N2") / ₹@Model.SGSTAmount.ToString("N2")</strong></div>
+                <div class="b2b-detail-row"><span>Agreement Discount</span><strong>@((Model.CorporateDiscountPercent ?? 0m).ToString("0.##"))%</strong></div>
+                <div class="b2b-detail-row"><span>Advance</span><strong>₹@Model.DepositAmount.ToString("N2")</strong></div>
+                <div class="b2b-detail-row"><span>Balance</span><strong>₹@Model.BalanceAmount.ToString("N2")</strong></div>
+                <div class="b2b-detail-row"><span>Grand Total</span><strong>₹@Model.TotalAmount.ToString("N2")</strong></div>
+            </div>
+        </section>
+    </div>
+</div>

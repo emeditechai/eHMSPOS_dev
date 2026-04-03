@@ -84,6 +84,7 @@
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
     gap: 20px;
     margin-bottom: 25px;
+    align-items: start;
 }
 
 .booking-card {
@@ -262,6 +263,49 @@
     display: flex;
     gap: 15px;
     margin-top: 25px;
+}
+
+@@media (max-height: 900px) and (min-width: 992px) {
+    .booking-dashboard {
+        padding: 16px;
+    }
+
+    .booking-steps {
+        margin: 8px 0 16px 0;
+    }
+
+    .booking-cards-grid {
+        gap: 16px;
+        margin-bottom: 18px;
+    }
+
+    .booking-card {
+        padding: 20px;
+    }
+
+    .card-header {
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+    }
+
+    .form-field {
+        margin-bottom: 14px;
+    }
+
+    .action-buttons {
+        margin-top: 18px;
+    }
+
+    .quote-summary-card {
+        margin-top: 16px;
+        padding: 20px;
+    }
+}
+
+@@media (max-width: 991.98px) {
+    .action-buttons {
+        flex-direction: column;
+    }
 }
 
 .btn-primary-booking {
@@ -612,6 +656,54 @@
                     <i class="fas fa-bed"></i>
                     <h3>Stay Details</h3>
                 </div>
+
+                    <div class="form-row-inline">
+                        <div class="form-field">
+                            <label asp-for="CustomerType">Customer Type <span style="color: #e53e3e;">*</span></label>
+                            <select asp-for="CustomerType">
+                                @foreach (var ct in customerTypes)
+                                {
+                                    <option value="@ct">@ct</option>
+                                }
+                            </select>
+                            <span asp-validation-for="CustomerType" class="text-danger"></span>
+                        </div>
+                        <div class="form-field">
+                            <label asp-for="Source">Source <span style="color: #e53e3e;">*</span></label>
+                            <select asp-for="Source">
+                                @foreach (var source in sources)
+                                {
+                                    <option value="@source">@source</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Source" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-row-inline">
+                        <div class="form-field">
+                            <label asp-for="Channel">Channel <span style="color: #e53e3e;">*</span></label>
+                            <select asp-for="Channel">
+                                @foreach (var channel in channels)
+                                {
+                                    <option value="@channel">@channel</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Channel" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-field">
+                            <label asp-for="RateType">Rate Type <span style="color: #e53e3e;">*</span></label>
+                            <select asp-for="RateType">
+                                @foreach (var rt in rateTypes)
+                                {
+                                    <option value="@rt">@rt</option>
+                                }
+                            </select>
+                            <span asp-validation-for="RateType" class="text-danger"></span>
+                        </div>
+                    </div>
+
                 <div class="form-row-inline">
                     <div class="form-field">
                         <label asp-for="CheckInDate">Check-In <span style="color: #e53e3e;">*</span></label>
@@ -669,53 +761,6 @@
                             <button type="button" class="stepper-btn step-up" aria-label="Increase children">+</button>
                         </div>
                         <span asp-validation-for="Children" class="text-danger"></span>
-                    </div>
-                </div>
-
-                <div class="form-row-inline">
-                    <div class="form-field">
-                        <label asp-for="CustomerType">Customer Type <span style="color: #e53e3e;">*</span></label>
-                        <select asp-for="CustomerType">
-                            @foreach (var ct in customerTypes)
-                            {
-                                <option value="@ct">@ct</option>
-                            }
-                        </select>
-                        <span asp-validation-for="CustomerType" class="text-danger"></span>
-                    </div>
-                    <div class="form-field">
-                        <label asp-for="Source">Source <span style="color: #e53e3e;">*</span></label>
-                        <select asp-for="Source">
-                            @foreach (var source in sources)
-                            {
-                                <option value="@source">@source</option>
-                            }
-                        </select>
-                        <span asp-validation-for="Source" class="text-danger"></span>
-                    </div>
-                </div>
-
-                <div class="form-row-inline">
-                    <div class="form-field">
-                        <label asp-for="Channel">Channel <span style="color: #e53e3e;">*</span></label>
-                        <select asp-for="Channel">
-                            @foreach (var channel in channels)
-                            {
-                                <option value="@channel">@channel</option>
-                            }
-                        </select>
-                        <span asp-validation-for="Channel" class="text-danger"></span>
-                    </div>
-
-                    <div class="form-field">
-                        <label asp-for="RateType">Rate Type <span style="color: #e53e3e;">*</span></label>
-                        <select asp-for="RateType">
-                            @foreach (var rt in rateTypes)
-                            {
-                                <option value="@rt">@rt</option>
-                            }
-                        </select>
-                        <span asp-validation-for="RateType" class="text-danger"></span>
                     </div>
                 </div>
 

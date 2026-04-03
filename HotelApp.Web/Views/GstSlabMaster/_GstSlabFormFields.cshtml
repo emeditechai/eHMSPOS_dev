@@ -1,0 +1,209 @@
+@model HotelApp.Web.Models.GstSlab
+@{
+    var isReadOnly = ViewBag.IsReadOnly == true;
+}
+
+<style>
+    .gst-master-shell { display:flex; flex-direction:column; gap:16px; }
+    .gst-card { background:#fff; border:1px solid rgba(15,23,42,.08); border-radius:18px; box-shadow:0 14px 36px rgba(15,23,42,.06); padding:20px 22px; }
+    .gst-card-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:16px; }
+    .gst-card-head h3 { margin:0; font-size:1.02rem; font-weight:700; color:#0f172a; }
+    .gst-card-head p { margin:4px 0 0; color:#64748b; font-size:.86rem; }
+    .gst-pill { display:inline-flex; align-items:center; gap:8px; padding:7px 11px; border-radius:999px; background:#ecfeff; color:#0f766e; font-size:.78rem; font-weight:700; }
+    .gst-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:14px 16px; }
+    .gst-field { display:flex; flex-direction:column; gap:6px; }
+    .gst-field.span-2 { grid-column:span 2; }
+    .gst-field label { font-weight:700; color:#334155; font-size:.84rem; }
+    .gst-field input,
+    .gst-field select { width:100%; border:1px solid #cbd5e1; border-radius:12px; padding:10px 12px; font-size:.93rem; background:#fff; transition:border-color .2s ease, box-shadow .2s ease; }
+    .gst-field input:focus,
+    .gst-field select:focus { border-color:#0f766e; box-shadow:0 0 0 3px rgba(15,118,110,.12); outline:none; }
+    .gst-field input[readonly],
+    .gst-field select:disabled { background:#f8fafc; color:#475569; }
+    .gst-band-toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; }
+    .gst-band-wrap { overflow-x:auto; border:1px solid #e2e8f0; border-radius:16px; }
+    .gst-band-table { width:100%; border-collapse:separate; border-spacing:0; min-width:980px; }
+    .gst-band-table th { background:#f8fafc; color:#334155; font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; padding:11px 10px; border-bottom:1px solid #dbe4ee; }
+    .gst-band-table td { padding:10px; border-bottom:1px solid #e2e8f0; vertical-align:top; }
+    .gst-band-table td input { min-width:110px; }
+    .gst-band-table td .text-danger { font-size:.78rem; display:block; margin-top:4px; }
+    .gst-summary { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px; margin-top:14px; }
+    .gst-summary-box { padding:12px 14px; background:#f8fafc; border:1px solid #dbe4ee; border-radius:14px; }
+    .gst-summary-box strong { display:block; font-size:.78rem; text-transform:uppercase; color:#64748b; margin-bottom:4px; }
+    .gst-summary-box span { color:#0f172a; font-weight:700; }
+    .row-remove-button { min-width:42px; }
+    @@media (max-width: 1200px) {
+        .gst-grid,
+        .gst-summary { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    }
+    @@media (max-width: 768px) {
+        .gst-grid,
+        .gst-summary { grid-template-columns:1fr; }
+        .gst-field.span-2 { grid-column:span 1; }
+        .gst-card-head,
+        .gst-band-toolbar { flex-direction:column; align-items:stretch; }
+    }
+</style>
+
+<div class="gst-master-shell">
+    <section class="gst-card">
+        <div class="gst-card-head">
+            <div>
+                <h3>GST Master Header</h3>
+                <p>Define the reusable GST master once, then maintain multiple tariff-based slabs under it.</p>
+            </div>
+            <span class="gst-pill"><i class="fas fa-layer-group"></i> Header + Tariff Bands</span>
+        </div>
+
+        <div class="gst-grid">
+            <div class="gst-field">
+                <label asp-for="SlabCode"></label>
+                <input asp-for="SlabCode" readonly="@isReadOnly" placeholder="e.g. GST_STD" />
+                <span asp-validation-for="SlabCode" class="text-danger"></span>
+            </div>
+            <div class="gst-field span-2">
+                <label asp-for="SlabName"></label>
+                <input asp-for="SlabName" readonly="@isReadOnly" placeholder="Standard Room GST Matrix" />
+                <span asp-validation-for="SlabName" class="text-danger"></span>
+            </div>
+            <div class="gst-field">
+                <label asp-for="IsActive"></label>
+                <select asp-for="IsActive" disabled="@isReadOnly">
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+            <div class="gst-field">
+                <label asp-for="EffectiveFrom"></label>
+                <input asp-for="EffectiveFrom" type="date" readonly="@isReadOnly" />
+                <span asp-validation-for="EffectiveFrom" class="text-danger"></span>
+            </div>
+            <div class="gst-field">
+                <label asp-for="EffectiveTo"></label>
+                <input asp-for="EffectiveTo" type="date" readonly="@isReadOnly" />
+                <span asp-validation-for="EffectiveTo" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="gst-summary">
+            <div class="gst-summary-box">
+                <strong>Active Bands</strong>
+                <span id="activeBandCountValue">@(Model.TariffBands.Count == 0 ? 0 : Model.TariffBands.Count(x => x.IsActive))</span>
+            </div>
+            <div class="gst-summary-box">
+                <strong>Tariff Coverage</strong>
+                <span id="tariffCoverageValue">
+                    @if (Model.TariffBands.Any())
+                    {
+                        var minimumTariff = Model.TariffBands.Min(x => x.TariffFrom);
+                        var maximumTariff = Model.TariffBands.Where(x => x.TariffTo.HasValue).Select(x => x.TariffTo!.Value).DefaultIfEmpty().Max();
+                        @(minimumTariff.ToString("N2") + " - " + (maximumTariff > 0 ? maximumTariff.ToString("N2") : "Open"))
+                    }
+                    else
+                    {
+                        @:Not defined
+                    }
+                </span>
+            </div>
+            <div class="gst-summary-box">
+                <strong>Highest GST %</strong>
+                <span id="highestGstValue">@(Model.TariffBands.Any() ? Model.TariffBands.Max(x => x.GstPercent).ToString("0.##") + "%" : "0%")</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="gst-card">
+        <div class="gst-card-head">
+            <div>
+                <h3>Tariff Based Slabs</h3>
+                <p>Each row defines the GST rate applicable for a tariff band under this GST master.</p>
+            </div>
+        </div>
+
+        <div class="gst-band-toolbar">
+            <span class="gst-pill"><i class="fas fa-percent"></i> Use non-overlapping From / To ranges</span>
+            @if (!isReadOnly)
+            {
+                <button type="button" class="btn-create" id="addGstBandRow"><i class="fas fa-plus"></i> Add Tariff Slab</button>
+            }
+        </div>
+
+        <div class="gst-band-wrap">
+            <table class="gst-band-table">
+                <thead>
+                    <tr>
+                        <th>Tariff From</th>
+                        <th>Tariff To</th>
+                        <th>GST %</th>
+                        <th>CGST %</th>
+                        <th>SGST %</th>
+                        <th>IGST %</th>
+                        <th>Active</th>
+                        @if (!isReadOnly)
+                        {
+                            <th></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody id="gstBandRows">
+                    @for (var index = 0; index < Model.TariffBands.Count; index++)
+                    {
+                        var row = Model.TariffBands[index];
+                        <tr class="gst-band-row">
+                            <td>
+                                <input type="hidden" name="TariffBands[@index].Id" value="@row.Id" />
+                                <input type="hidden" name="TariffBands[@index].SortOrder" value="@row.SortOrder" />
+                                <input name="TariffBands[@index].TariffFrom" type="number" min="0" step="0.01" value="@row.TariffFrom.ToString("0.##")" readonly="@isReadOnly" />
+                                <span asp-validation-for="TariffBands[@index].TariffFrom" class="text-danger"></span>
+                            </td>
+                            <td>
+                                <input name="TariffBands[@index].TariffTo" type="number" min="0" step="0.01" value="@(row.TariffTo.HasValue ? row.TariffTo.Value.ToString("0.##") : string.Empty)" readonly="@isReadOnly" placeholder="Leave blank for open ended" />
+                                <span asp-validation-for="TariffBands[@index].TariffTo" class="text-danger"></span>
+                            </td>
+                            <td>
+                                <input class="gst-percent-input" name="TariffBands[@index].GstPercent" type="number" min="0" step="0.01" value="@row.GstPercent.ToString("0.##")" readonly="@isReadOnly" />
+                                <span asp-validation-for="TariffBands[@index].GstPercent" class="text-danger"></span>
+                            </td>
+                            <td><input class="cgst-percent-input" name="TariffBands[@index].CgstPercent" type="number" value="@row.CgstPercent.ToString("0.##")" readonly /></td>
+                            <td><input class="sgst-percent-input" name="TariffBands[@index].SgstPercent" type="number" value="@row.SgstPercent.ToString("0.##")" readonly /></td>
+                            <td><input class="igst-percent-input" name="TariffBands[@index].IgstPercent" type="number" value="@row.IgstPercent.ToString("0.##")" readonly /></td>
+                            <td class="text-center">
+                                <input type="checkbox" name="TariffBands[@index].IsActive" value="true" @(row.IsActive ? "checked" : null) @(isReadOnly ? "disabled" : null) />
+                                <input type="hidden" name="TariffBands[@index].IsActive" value="false" />
+                            </td>
+                            @if (!isReadOnly)
+                            {
+                                <td><button type="button" class="btn-cancel row-remove-button remove-gst-band"><i class="fas fa-trash"></i></button></td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <span asp-validation-for="TariffBands" class="text-danger d-block mt-2"></span>
+    </section>
+</div>
+
+@if (!isReadOnly)
+{
+    <template id="gstBandTemplate">
+        <tr class="gst-band-row">
+            <td>
+                <input type="hidden" name="TariffBands[__index__].Id" value="0" />
+                <input type="hidden" name="TariffBands[__index__].SortOrder" value="__sort__" />
+                <input name="TariffBands[__index__].TariffFrom" type="number" min="0" step="0.01" value="0" />
+            </td>
+            <td><input name="TariffBands[__index__].TariffTo" type="number" min="0" step="0.01" placeholder="Leave blank for open ended" /></td>
+            <td><input class="gst-percent-input" name="TariffBands[__index__].GstPercent" type="number" min="0" step="0.01" value="0" /></td>
+            <td><input class="cgst-percent-input" name="TariffBands[__index__].CgstPercent" type="number" value="0" readonly /></td>
+            <td><input class="sgst-percent-input" name="TariffBands[__index__].SgstPercent" type="number" value="0" readonly /></td>
+            <td><input class="igst-percent-input" name="TariffBands[__index__].IgstPercent" type="number" value="0" readonly /></td>
+            <td class="text-center">
+                <input type="checkbox" name="TariffBands[__index__].IsActive" value="true" checked />
+                <input type="hidden" name="TariffBands[__index__].IsActive" value="false" />
+            </td>
+            <td><button type="button" class="btn-cancel row-remove-button remove-gst-band"><i class="fas fa-trash"></i></button></td>
+        </tr>
+    </template>
+}

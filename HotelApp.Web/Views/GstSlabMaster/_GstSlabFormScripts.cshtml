@@ -1,0 +1,141 @@
+<script>
+    (function () {
+        const bandRows = document.getElementById('gstBandRows');
+        const addBandButton = document.getElementById('addGstBandRow');
+        const bandTemplate = document.getElementById('gstBandTemplate');
+        const activeBandCountValue = document.getElementById('activeBandCountValue');
+        const tariffCoverageValue = document.getElementById('tariffCoverageValue');
+        const highestGstValue = document.getElementById('highestGstValue');
+
+        function syncBandTaxFields(row) {
+            if (!row) {
+                return;
+            }
+
+            const gstInput = row.querySelector('.gst-percent-input');
+            const cgstInput = row.querySelector('.cgst-percent-input');
+            const sgstInput = row.querySelector('.sgst-percent-input');
+            const igstInput = row.querySelector('.igst-percent-input');
+            if (!gstInput || !cgstInput || !sgstInput || !igstInput) {
+                return;
+            }
+
+            const gstValue = parseFloat(gstInput.value || '0');
+            const safeGst = Number.isFinite(gstValue) ? Math.max(0, gstValue) : 0;
+            const half = Math.round((safeGst / 2) * 100) / 100;
+            cgstInput.value = half.toFixed(2);
+            sgstInput.value = half.toFixed(2);
+            igstInput.value = safeGst.toFixed(2);
+        }
+
+        function renumberBandRows() {
+            if (!bandRows) {
+                return;
+            }
+
+            Array.from(bandRows.querySelectorAll('.gst-band-row')).forEach((row, index) => {
+                row.querySelectorAll('input').forEach(field => {
+                    const name = field.getAttribute('name');
+                    if (name) {
+                        field.setAttribute('name', name.replace(/TariffBands\[\d+\]/g, `TariffBands[${index}]`));
+                    }
+                });
+
+                const sortOrderField = row.querySelector('input[name$=".SortOrder"]');
+                if (sortOrderField) {
+                    sortOrderField.value = String(index + 1);
+                }
+            });
+
+            refreshSummary();
+        }
+
+        function refreshSummary() {
+            if (!bandRows) {
+                return;
+            }
+
+            const rows = Array.from(bandRows.querySelectorAll('.gst-band-row'));
+            const activeRows = rows.filter(row => row.querySelector('input[type="checkbox"][name$=".IsActive"]')?.checked);
+            const tariffFromValues = rows
+                .map(row => parseFloat(row.querySelector('input[name$=".TariffFrom"]')?.value || ''))
+                .filter(value => Number.isFinite(value));
+            const tariffToValues = rows
+                .map(row => {
+                    const value = row.querySelector('input[name$=".TariffTo"]')?.value || '';
+                    return value === '' ? null : parseFloat(value);
+                })
+                .filter(value => value !== null && Number.isFinite(value));
+            const gstValues = rows
+                .map(row => parseFloat(row.querySelector('input[name$=".GstPercent"]')?.value || ''))
+                .filter(value => Number.isFinite(value));
+
+            if (activeBandCountValue) {
+                activeBandCountValue.textContent = String(activeRows.length);
+            }
+
+            if (tariffCoverageValue) {
+                if (tariffFromValues.length === 0) {
+                    tariffCoverageValue.textContent = 'Not defined';
+                } else {
+                    const minimum = Math.min(...tariffFromValues);
+                    const maximum = tariffToValues.length > 0 ? Math.max(...tariffToValues) : null;
+                    tariffCoverageValue.textContent = `${minimum.toFixed(2)} - ${maximum === null ? 'Open' : maximum.toFixed(2)}`;
+                }
+            }
+
+            if (highestGstValue) {
+                highestGstValue.textContent = gstValues.length === 0 ? '0%' : `${Math.max(...gstValues).toFixed(2).replace(/\.00$/, '')}%`;
+            }
+        }
+
+        function addBandRow() {
+            if (!bandTemplate || !bandRows) {
+                return;
+            }
+
+            const nextIndex = bandRows.querySelectorAll('.gst-band-row').length;
+            const markup = bandTemplate.innerHTML
+                .replaceAll('__index__', String(nextIndex))
+                .replaceAll('__sort__', String(nextIndex + 1));
+            bandRows.insertAdjacentHTML('beforeend', markup);
+            const addedRow = bandRows.lastElementChild;
+            syncBandTaxFields(addedRow);
+            refreshSummary();
+        }
+
+        addBandButton?.addEventListener('click', addBandRow);
+
+        bandRows?.addEventListener('input', event => {
+            const row = event.target.closest('.gst-band-row');
+            if (!row) {
+                return;
+            }
+
+            if (event.target.classList.contains('gst-percent-input')) {
+                syncBandTaxFields(row);
+            }
+
+            refreshSummary();
+        });
+
+        bandRows?.addEventListener('change', event => {
+            if (event.target.matches('input[type="checkbox"][name$=".IsActive"]')) {
+                refreshSummary();
+            }
+        });
+
+        bandRows?.addEventListener('click', event => {
+            const button = event.target.closest('.remove-gst-band');
+            if (!button) {
+                return;
+            }
+
+            button.closest('.gst-band-row')?.remove();
+            renumberBandRows();
+        });
+
+        bandRows?.querySelectorAll('.gst-band-row').forEach(syncBandTaxFields);
+        refreshSummary();
+    })();
+</script>

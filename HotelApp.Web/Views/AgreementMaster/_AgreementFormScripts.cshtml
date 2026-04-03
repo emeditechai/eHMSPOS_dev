@@ -1,0 +1,116 @@
+<script>
+    (function () {
+        const billingType = document.getElementById('BillingType');
+        const creditDays = document.getElementById('creditDays');
+        const creditLimit = document.getElementById('creditLimit');
+        const amendmentToggle = document.getElementById('IsAmendmentAllowed');
+        const amendmentCharge = document.getElementById('AmendmentChargeAmount');
+        const autoRenew = document.getElementById('AutoRenew');
+        const renewalNotice = document.getElementById('RenewalNoticeDays');
+        const approvalStatus = document.getElementById('ApprovalStatus');
+        const approvedBy = document.getElementById('ApprovedByUserId');
+        const approvedDate = document.getElementById('ApprovedDate');
+        const addRoomRateButton = document.getElementById('addRoomRateRow');
+        const roomRateRows = document.getElementById('roomRateRows');
+        const roomRateTemplate = document.getElementById('roomRateTemplate');
+
+        function syncCreditFields() {
+            if (!billingType || !creditDays || creditDays.hasAttribute('readonly')) {
+                return;
+            }
+
+            const isCredit = (billingType.value || '').toLowerCase() === 'credit';
+            creditDays.disabled = !isCredit;
+            creditLimit.disabled = !isCredit;
+
+            if (!isCredit) {
+                creditDays.value = 0;
+                creditLimit.value = '';
+            }
+        }
+
+        function syncAmendmentFields() {
+            if (!amendmentToggle || !amendmentCharge || amendmentCharge.hasAttribute('readonly')) {
+                return;
+            }
+
+            const allowed = (amendmentToggle.value || '').toLowerCase() === 'true';
+            amendmentCharge.disabled = !allowed;
+            if (!allowed) {
+                amendmentCharge.value = '';
+            }
+        }
+
+        function syncRenewalFields() {
+            if (!autoRenew || !renewalNotice || renewalNotice.hasAttribute('readonly')) {
+                return;
+            }
+
+            const enabled = (autoRenew.value || '').toLowerCase() === 'true';
+            renewalNotice.disabled = !enabled;
+            if (!enabled) {
+                renewalNotice.value = '';
+            }
+        }
+
+        function syncApprovalFields() {
+            if (!approvalStatus || !approvedBy || approvedDate?.hasAttribute('readonly')) {
+                return;
+            }
+
+            const approved = (approvalStatus.value || '').toLowerCase() === 'approved';
+            approvedBy.disabled = !approved;
+            approvedDate.disabled = !approved;
+            if (!approved) {
+                approvedBy.value = '';
+                approvedDate.value = '';
+            }
+        }
+
+        function renumberRoomRateRows() {
+            if (!roomRateRows) {
+                return;
+            }
+
+            Array.from(roomRateRows.querySelectorAll('.room-rate-row')).forEach((row, index) => {
+                row.querySelectorAll('input, select, textarea').forEach(field => {
+                    const name = field.getAttribute('name');
+                    if (name) {
+                        field.setAttribute('name', name.replace(/RoomRates\[\d+\]/g, `RoomRates[${index}]`));
+                    }
+                });
+            });
+        }
+
+        function addRoomRateRow() {
+            if (!roomRateTemplate || !roomRateRows) {
+                return;
+            }
+
+            const nextIndex = roomRateRows.querySelectorAll('.room-rate-row').length;
+            const markup = roomRateTemplate.innerHTML.replaceAll('__index__', String(nextIndex));
+            roomRateRows.insertAdjacentHTML('beforeend', markup);
+        }
+
+        billingType?.addEventListener('change', syncCreditFields);
+        amendmentToggle?.addEventListener('change', syncAmendmentFields);
+        autoRenew?.addEventListener('change', syncRenewalFields);
+        approvalStatus?.addEventListener('change', syncApprovalFields);
+        addRoomRateButton?.addEventListener('click', addRoomRateRow);
+
+        roomRateRows?.addEventListener('click', event => {
+            const button = event.target.closest('.remove-room-rate');
+            if (!button) {
+                return;
+            }
+
+            button.closest('.room-rate-row')?.remove();
+            renumberRoomRateRows();
+        });
+
+        syncCreditFields();
+        syncAmendmentFields();
+        syncRenewalFields();
+        syncApprovalFields();
+    })();
+</script>

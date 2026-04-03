@@ -1,0 +1,661 @@
+@model HotelApp.Web.ViewModels.B2BBookingCreateViewModel
+@using HotelApp.Web.Models
+@{
+    ViewData["Title"] = "Create B2B Booking";
+    var roomTypes = ViewBag.RoomTypes as IEnumerable<RoomType> ?? Enumerable.Empty<RoomType>();
+    var clients = ViewBag.Clients as IEnumerable<B2BClient> ?? Enumerable.Empty<B2BClient>();
+    var sources = ViewBag.Sources as IEnumerable<string> ?? Enumerable.Empty<string>();
+    var channels = ViewBag.Channels as IEnumerable<string> ?? Enumerable.Empty<string>();
+    var paymentMethods = ViewBag.PaymentMethods as IReadOnlyDictionary<string, string> ?? new Dictionary<string, string>();
+}
+
+<style>
+    .booking-dashboard {
+        padding: 16px;
+        background: #f5f7fa;
+        min-height: calc(100vh - 80px);
+    }
+
+    .booking-cards-grid {
+        display: grid;
+        gap: 16px;
+        margin-bottom: 20px;
+        align-items: start;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .booking-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s;
+    }
+
+    .booking-card:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    }
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .card-header i {
+        font-size: 24px;
+        color: #4a5568;
+    }
+
+    .card-header h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #2d3748;
+    }
+
+    .booking-intro {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin: 4px 0 14px;
+        padding: 10px 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    }
+
+    .booking-intro-copy p {
+        margin: 2px 0 0;
+        color: #718096;
+        max-width: 760px;
+        font-size: 12px;
+    }
+
+    .booking-step-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 11px;
+        border-radius: 999px;
+        background: #edf2f7;
+        border: 1px solid #d7deea;
+        color: #2d3748;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .vertical-section + .vertical-section {
+        margin-top: 18px;
+    }
+
+    .b2b-form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px 14px;
+    }
+
+    .b2b-field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 0;
+    }
+
+    .b2b-field.col-3 { grid-column: span 1; }
+    .b2b-field.col-4 { grid-column: span 1; }
+    .b2b-field.col-6 { grid-column: span 1; }
+    .b2b-field.col-8 { grid-column: span 2; }
+    .b2b-field.col-12 { grid-column: span 2; }
+
+    .section-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        padding-top: 2px;
+        color: #2d3748;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .section-label small {
+        color: #718096;
+        font-weight: 500;
+        font-size: 11px;
+    }
+
+    .b2b-field label {
+        display: block;
+        margin-bottom: 0;
+        font-weight: 500;
+        color: #4a5568;
+        font-size: 13px;
+        line-height: 1.35;
+    }
+
+    .b2b-field input,
+    .b2b-field select,
+    .b2b-field textarea {
+        width: 100%;
+        padding: 9px 11px;
+        border: 1px solid #cbd5e0;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: all 0.2s;
+        background: white;
+    }
+
+    .b2b-field input:focus,
+    .b2b-field select:focus,
+    .b2b-field textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .b2b-field input[readonly],
+    .b2b-field textarea[readonly] {
+        background: #f7fafc;
+        color: #4a5568;
+    }
+
+    .b2b-field textarea {
+        min-height: 72px;
+        resize: vertical;
+    }
+
+    .section-note {
+        padding: 10px 12px;
+        border-radius: 8px;
+        background: #f7fafc;
+        border: 1px dashed #cbd5e0;
+        color: #4a5568;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+
+    .inline-toggle {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 42px;
+        padding: 0 2px;
+        color: #4a5568;
+        font-size: 14px;
+    }
+
+    .field-note {
+        margin-top: 6px;
+        color: #718096;
+        font-size: 11px;
+        line-height: 1.45;
+    }
+
+    .field-stack {
+        display: grid;
+        gap: 10px;
+    }
+
+    .quote-summary-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-top: 0;
+    }
+
+    .quote-summary-card h4 {
+        margin: 0 0 15px 0;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .quote-line {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .quote-line:last-of-type {
+        border-bottom: none;
+        font-size: 20px;
+        font-weight: 700;
+        margin-top: 10px;
+    }
+
+    .quote-summary-card .muted-note {
+        margin-top: 12px;
+        font-size: 12px;
+        opacity: 0.85;
+        line-height: 1.5;
+    }
+
+    .action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 18px;
+        justify-content: stretch;
+        align-items: stretch;
+    }
+
+    .btn-primary-booking {
+        background: #667eea;
+        color: white;
+        padding: 14px 24px;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-primary-booking:hover {
+        background: #5568d3;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+
+    .btn-secondary-booking {
+        background: white;
+        color: #4a5568;
+        padding: 14px 24px;
+        border: 2px solid #cbd5e0;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-secondary-booking:hover {
+        border-color: #a0aec0;
+        background: #f7fafc;
+        color: #4a5568;
+    }
+
+    .action-buttons .btn-secondary-booking,
+    .action-buttons .btn-primary-booking {
+        width: 100%;
+        min-width: 0;
+    }
+
+    @@media (max-width: 1100px) {
+        .booking-cards-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .booking-intro {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .booking-cards-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .b2b-field.col-3,
+        .b2b-field.col-4,
+        .b2b-field.col-6,
+        .b2b-field.col-8 {
+            grid-column: span 2;
+        }
+
+        .action-buttons .btn-secondary-booking,
+        .action-buttons .btn-primary-booking {
+            width: 100%;
+            min-width: 0;
+        }
+    }
+</style>
+
+<div class="booking-dashboard">
+    <div class="page-header">
+        <h2><i class="fas fa-briefcase"></i> Create B2B Booking</h2>
+        <a asp-action="Index" class="btn-secondary-booking" style="flex:none; max-width:220px;">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <div class="booking-intro">
+        <div class="booking-intro-copy">
+            <h3 style="margin:0; font-size:20px; color:#2d3748; font-weight:600;">Dedicated Corporate Booking Flow</h3>
+            <p>Use this dedicated corporate and travel-partner booking form to keep the B2C booking process isolated. Company, agreement, billing, and GST context are resolved here first.</p>
+        </div>
+        <div class="booking-step-badge"><i class="fas fa-shield-halved"></i> B2C flow remains untouched</div>
+    </div>
+
+    <form asp-action="Create" method="post" id="b2bBookingForm">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+        <div class="booking-cards-grid">
+            <section class="booking-card">
+                <div class="card-header"><i class="fas fa-building-user"></i><h3>Company and Guest</h3></div>
+                <div class="vertical-section">
+                    <div class="section-label">
+                        <span>Company Context</span>
+                        <small>Agreement auto-resolves from client master</small>
+                    </div>
+                    <div class="b2b-form-grid">
+                        <div class="b2b-field col-6">
+                            <label asp-for="ClientId"></label>
+                            <select asp-for="ClientId" id="ClientId">
+                                <option value="">Select B2B client</option>
+                                @foreach (var client in clients)
+                                {
+                                    <option value="@client.Id">@client.ClientName (@client.ClientCode)</option>
+                                }
+                            </select>
+                            <span asp-validation-for="ClientId" class="text-danger"></span>
+                        </div>
+                        <div class="b2b-field col-6">
+                            <label asp-for="AgreementId"></label>
+                            <input asp-for="AgreementId" id="AgreementId" type="hidden" />
+                            <input id="AgreementDisplay" value="@(string.IsNullOrWhiteSpace(Model.AgreementName) ? string.Empty : $"{Model.AgreementName} ({Model.AgreementCode})")" readonly />
+                            <span asp-validation-for="AgreementId" class="text-danger"></span>
+                        </div>
+                        <div class="b2b-field col-6"><label asp-for="ClientCode"></label><input asp-for="ClientCode" id="ClientCode" readonly /></div>
+                        <div class="b2b-field col-6"><label asp-for="AgreementCode"></label><input asp-for="AgreementCode" id="AgreementCode" readonly /></div>
+                        <div class="b2b-field col-6"><label asp-for="CompanyContactPerson"></label><input asp-for="CompanyContactPerson" id="CompanyContactPerson" readonly /></div>
+                        <div class="b2b-field col-6"><label asp-for="CompanyContactNo"></label><input asp-for="CompanyContactNo" id="CompanyContactNo" readonly /></div>
+                        <div class="b2b-field col-12"><label asp-for="CompanyEmail"></label><input asp-for="CompanyEmail" id="CompanyEmail" readonly /></div>
+                    </div>
+                </div>
+
+                <div class="vertical-section">
+                    <div class="section-label">
+                        <span>Primary Guest</span>
+                        <small>Booking contact</small>
+                    </div>
+                    <div class="b2b-form-grid">
+                        <div class="b2b-field col-6"><label asp-for="PrimaryGuestFirstName"></label><input asp-for="PrimaryGuestFirstName" /><span asp-validation-for="PrimaryGuestFirstName" class="text-danger"></span></div>
+                        <div class="b2b-field col-6"><label asp-for="PrimaryGuestLastName"></label><input asp-for="PrimaryGuestLastName" /><span asp-validation-for="PrimaryGuestLastName" class="text-danger"></span></div>
+                        <div class="b2b-field col-12"><label asp-for="PrimaryGuestPhone"></label><input asp-for="PrimaryGuestPhone" /><span asp-validation-for="PrimaryGuestPhone" class="text-danger"></span></div>
+                        <div class="b2b-field col-12"><label asp-for="PrimaryGuestEmail"></label><input asp-for="PrimaryGuestEmail" /><span asp-validation-for="PrimaryGuestEmail" class="text-danger"></span></div>
+                        <div class="b2b-field col-12"><label asp-for="SpecialRequests"></label><textarea asp-for="SpecialRequests" placeholder="Company remarks, guest requests, or billing note"></textarea><span asp-validation-for="SpecialRequests" class="text-danger"></span></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="booking-card">
+                <div class="card-header"><i class="fas fa-bed"></i><h3>Stay Details</h3></div>
+                <div class="vertical-section">
+                    <div class="b2b-form-grid">
+                        <div class="b2b-field col-6">
+                            <label asp-for="Source"></label>
+                            <select asp-for="Source" id="Source">
+                                @foreach (var source in sources)
+                                {
+                                    <option value="@source">@source</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Source" class="text-danger"></span>
+                        </div>
+                        <div class="b2b-field col-6">
+                            <label asp-for="Channel"></label>
+                            <select asp-for="Channel">
+                                @foreach (var channel in channels)
+                                {
+                                    <option value="@channel">@channel</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Channel" class="text-danger"></span>
+                        </div>
+                        <div class="b2b-field col-6"><label asp-for="CheckInDate"></label><input asp-for="CheckInDate" type="date" id="CheckInDate" /><span asp-validation-for="CheckInDate" class="text-danger"></span></div>
+                        <div class="b2b-field col-6"><label asp-for="CheckOutDate"></label><input asp-for="CheckOutDate" type="date" id="CheckOutDate" /><span asp-validation-for="CheckOutDate" class="text-danger"></span></div>
+                        <div class="b2b-field col-12">
+                            <label asp-for="RoomTypeId"></label>
+                            <select asp-for="RoomTypeId" id="RoomTypeId">
+                                <option value="">Select room type</option>
+                                @foreach (var roomType in roomTypes)
+                                {
+                                    <option value="@roomType.Id">@roomType.TypeName</option>
+                                }
+                            </select>
+                            <span asp-validation-for="RoomTypeId" class="text-danger"></span>
+                            <div class="field-note">Select stay dates, source, and room type, then refresh quote to load GST and commercial totals.</div>
+                        </div>
+                        <div class="b2b-field col-6"><label asp-for="RequiredRooms"></label><input asp-for="RequiredRooms" type="number" min="1" id="RequiredRooms" /><span asp-validation-for="RequiredRooms" class="text-danger"></span></div>
+                        <div class="b2b-field col-6"><label asp-for="Adults"></label><input asp-for="Adults" type="number" min="1" id="Adults" /><span asp-validation-for="Adults" class="text-danger"></span></div>
+                        <div class="b2b-field col-6"><label asp-for="Children"></label><input asp-for="Children" type="number" min="0" id="Children" /><span asp-validation-for="Children" class="text-danger"></span></div>
+                        <div class="b2b-field col-6"><label asp-for="MealPlan"></label><input asp-for="MealPlan" id="MealPlan" readonly /></div>
+                    </div>
+                </div>
+
+                <div class="vertical-section">
+                    <div class="section-label">
+                        <span>GST Context</span>
+                        <small>Auto-resolved from quote</small>
+                    </div>
+                    <div class="b2b-form-grid">
+                        <div class="b2b-field col-6"><label asp-for="GstSlabCode"></label><input asp-for="GstSlabCode" id="GstSlabCode" readonly /><input asp-for="GstSlabId" type="hidden" id="GstSlabId" /></div>
+                        <div class="b2b-field col-6"><label asp-for="BillingType"></label><input asp-for="BillingType" id="BillingType" readonly /></div>
+                        <div class="b2b-field col-12"><label asp-for="GstSlabName"></label><input asp-for="GstSlabName" id="GstSlabName" readonly /></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="booking-card">
+                <div class="card-header"><i class="fas fa-address-card"></i><h3>Other Info</h3></div>
+                <div class="vertical-section">
+                    <div class="section-label">
+                        <span>Billing Snapshot</span>
+                        <small>Agreement-linked</small>
+                    </div>
+                    <div class="b2b-form-grid">
+                        <div class="b2b-field col-6"><label asp-for="BillingTo"></label><input asp-for="BillingTo" readonly /></div>
+                        <div class="b2b-field col-6"><label asp-for="CreditDays"></label><input asp-for="CreditDays" id="CreditDays" readonly /></div>
+                        <div class="b2b-field col-12"><label asp-for="CompanyGstNo"></label><input asp-for="CompanyGstNo" id="CompanyGstNo" readonly /></div>
+                        <div class="b2b-field col-12"><label asp-for="CompanyCreditLimit"></label><input asp-for="CompanyCreditLimit" id="CompanyCreditLimit" readonly /></div>
+                        <div class="b2b-field col-12"><label asp-for="BillingAddress"></label><textarea asp-for="BillingAddress" id="BillingAddress" readonly></textarea></div>
+                        <div class="b2b-field col-6"><label asp-for="BillingStateName"></label><input asp-for="BillingStateName" id="BillingStateName" readonly /></div>
+                        <div class="b2b-field col-6"><label asp-for="BillingPincode"></label><input asp-for="BillingPincode" id="BillingPincode" readonly /></div>
+                    </div>
+                </div>
+
+                <div class="vertical-section">
+                    <div class="section-label">
+                        <span>Advance Collection</span>
+                        <small>Optional at booking time</small>
+                    </div>
+                    <div class="b2b-form-grid">
+                        <div class="b2b-field col-12">
+                            <label asp-for="CollectAdvancePayment"></label>
+                            <div class="inline-toggle"><input asp-for="CollectAdvancePayment" type="checkbox" id="CollectAdvancePayment" style="width:auto;" /><span>Capture advance during booking</span></div>
+                        </div>
+                        <div class="b2b-field col-6"><label asp-for="DepositAmount"></label><input asp-for="DepositAmount" type="number" min="0" step="0.01" id="DepositAmount" /><span asp-validation-for="DepositAmount" class="text-danger"></span></div>
+                        <div class="b2b-field col-6"><label asp-for="AdvancePaymentMethod"></label><select asp-for="AdvancePaymentMethod" id="AdvancePaymentMethod"><option value="">Select payment method</option>@foreach (var method in paymentMethods){<option value="@method.Key">@method.Value</option>}</select><span asp-validation-for="AdvancePaymentMethod" class="text-danger"></span></div>
+                        <div class="b2b-field col-12"><label asp-for="AdvancePaymentReference"></label><input asp-for="AdvancePaymentReference" id="AdvancePaymentReference" placeholder="Transaction or instrument reference" /><span asp-validation-for="AdvancePaymentReference" class="text-danger"></span></div>
+                    </div>
+                </div>
+
+                <div class="vertical-section">
+                    <div class="quote-summary-card">
+                        <h4><i class="fas fa-receipt"></i> Quote Summary</h4>
+                        <div class="quote-line"><span>Quoted Base</span><strong id="quotedBase">@(Model.QuotedBaseAmount?.ToString("N2") ?? "0.00")</strong></div>
+                        <div class="quote-line"><span>Tax</span><strong id="quotedTax">@(Model.QuotedTaxAmount?.ToString("N2") ?? "0.00")</strong></div>
+                        <div class="quote-line"><span>GST Slab</span><strong id="quotedGst">@(string.IsNullOrWhiteSpace(Model.GstSlabName) ? "Pending" : Model.GstSlabName)</strong></div>
+                        <div class="quote-line"><span>Grand Total</span><strong id="quotedGrand">@(Model.QuotedGrandTotal?.ToString("N2") ?? "0.00")</strong></div>
+                        <div class="muted-note" id="quoteMessage">@(string.IsNullOrWhiteSpace(Model.QuoteMessage) ? "Select a client with an assigned agreement, then choose stay dates, source, and room type to refresh the quote." : Model.QuoteMessage)</div>
+                        <div class="muted-note">This B2B flow keeps billing and agreement context attached before the booking is stored.</div>
+                    </div>
+                    <div class="action-buttons">
+                        <button type="button" class="btn-secondary-booking" id="refreshQuoteButton"><i class="fas fa-rotate"></i> Refresh Quote</button>
+                        <button type="submit" class="btn-primary-booking"><i class="fas fa-save"></i> Create B2B Booking</button>
+                        <a asp-action="Index" class="btn-secondary-booking"><i class="fas fa-arrow-left"></i> Back to B2B Dashboard</a>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        (function () {
+            const clientSelect = document.getElementById('ClientId');
+            const sourceSelect = document.getElementById('Source');
+            const roomTypeSelect = document.getElementById('RoomTypeId');
+            const checkInInput = document.getElementById('CheckInDate');
+            const checkOutInput = document.getElementById('CheckOutDate');
+            const adultsInput = document.getElementById('Adults');
+            const childrenInput = document.getElementById('Children');
+            const requiredRoomsInput = document.getElementById('RequiredRooms');
+            const refreshQuoteButton = document.getElementById('refreshQuoteButton');
+            const collectAdvanceToggle = document.getElementById('CollectAdvancePayment');
+            const paymentMethodSelect = document.getElementById('AdvancePaymentMethod');
+            const paymentReferenceInput = document.getElementById('AdvancePaymentReference');
+
+            function setValue(id, value) {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.value = value ?? '';
+                }
+            }
+
+            function setText(id, value) {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.textContent = value;
+                }
+            }
+
+            function syncAdvanceFields() {
+                const enabled = collectAdvanceToggle.checked;
+                paymentMethodSelect.disabled = !enabled;
+                paymentReferenceInput.disabled = !enabled;
+                if (!enabled) {
+                    paymentMethodSelect.value = '';
+                    paymentReferenceInput.value = '';
+                }
+            }
+
+            function populateAgreementMeta(agreement) {
+                setValue('AgreementId', agreement ? agreement.id : '');
+                setValue('AgreementCode', agreement ? agreement.code : '');
+                setValue('AgreementName', agreement ? agreement.name : '');
+                setValue('BillingType', agreement ? agreement.billingType : '');
+                setValue('CreditDays', agreement ? agreement.creditDays : '');
+                setValue('MealPlan', agreement ? (agreement.mealPlan || '') : '');
+                setValue('AgreementDisplay', agreement ? `${agreement.name} (${agreement.code})` : '');
+            }
+
+            async function loadClientContext() {
+                const clientId = clientSelect.value;
+                populateAgreementMeta(null);
+
+                if (!clientId) {
+                    ['ClientCode', 'ClientName', 'CompanyContactPerson', 'CompanyContactNo', 'CompanyEmail', 'CompanyGstNo', 'BillingAddress', 'BillingStateName', 'BillingPincode', 'CompanyCreditLimit', 'GstSlabId', 'GstSlabCode', 'GstSlabName'].forEach(id => setValue(id, ''));
+                    setText('quoteMessage', 'Select a client with an assigned agreement, then choose stay dates, source, and room type to refresh the quote.');
+                    return;
+                }
+
+                const response = await fetch(`@Url.Action("GetClientContext", "B2BBooking")?clientId=${encodeURIComponent(clientId)}`);
+                const data = await response.json();
+                if (!data.success) {
+                    return;
+                }
+
+                setValue('ClientCode', data.client.code || '');
+                setValue('ClientName', data.client.name || '');
+                setValue('CompanyContactPerson', data.client.contactPerson || '');
+                setValue('CompanyContactNo', data.client.contactNo || '');
+                setValue('CompanyEmail', data.client.corporateEmail || '');
+                setValue('CompanyGstNo', data.client.gstNo || '');
+                setValue('BillingAddress', data.client.address || '');
+                setValue('BillingStateName', data.client.stateName || '');
+                setValue('BillingPincode', data.client.pincode || '');
+                setValue('CompanyCreditLimit', data.client.creditAmount || '0.00');
+
+                populateAgreementMeta(data.agreement || null);
+
+                if (!data.agreement) {
+                    setText('quoteMessage', data.message || 'No active agreement is assigned to this client. Update B2B Client Master first.');
+                }
+            }
+
+            async function refreshQuote() {
+                const roomTypeId = roomTypeSelect.value;
+                const source = sourceSelect.value;
+                const checkInDate = checkInInput.value;
+                const checkOutDate = checkOutInput.value;
+
+                if (!roomTypeId || !source || !checkInDate || !checkOutDate) {
+                    setText('quoteMessage', 'Complete the stay block to refresh the B2B quote.');
+                    return;
+                }
+
+                const params = new URLSearchParams({
+                    roomTypeId,
+                    agreementId: document.getElementById('AgreementId').value || '',
+                    source,
+                    checkInDate,
+                    checkOutDate,
+                    adults: adultsInput.value || '1',
+                    children: childrenInput.value || '0',
+                    requiredRooms: requiredRoomsInput.value || '1'
+                });
+
+                const response = await fetch(`@Url.Action("GetQuote", "B2BBooking")?${params.toString()}`);
+                const data = await response.json();
+                if (!data.success) {
+                    setText('quoteMessage', data.message || 'Unable to fetch quote.');
+                    setText('quotedBase', '0.00');
+                    setText('quotedTax', '0.00');
+                    setText('quotedGrand', '0.00');
+                    setText('quotedGst', 'Pending');
+                    setValue('GstSlabId', '');
+                    setValue('GstSlabCode', '');
+                    setValue('GstSlabName', '');
+                    return;
+                }
+
+                setText('quotedBase', Number(data.quote.baseAmount || 0).toFixed(2));
+                setText('quotedTax', Number(data.quote.taxAmount || 0).toFixed(2));
+                setText('quotedGrand', Number(data.quote.grandTotal || 0).toFixed(2));
+                const gstBandLabel = data.gstSlab
+                    ? `${data.gstSlab.name} (${data.gstSlab.code})${data.gstSlab.tariffTo !== null ? ` | ${Number(data.gstSlab.tariffFrom || 0).toFixed(2)} - ${Number(data.gstSlab.tariffTo).toFixed(2)}` : ` | ${Number(data.gstSlab.tariffFrom || 0).toFixed(2)}+`}`
+                    : 'No active slab';
+                setText('quotedGst', gstBandLabel);
+                setText('quoteMessage', data.gstSlab
+                    ? `${data.quote.message || 'B2B quote ready.'} GST resolved from the selected agreement master.`
+                    : (data.quote.message || 'B2B quote ready.'));
+                setValue('GstSlabId', data.gstSlab ? data.gstSlab.id : '');
+                setValue('GstSlabCode', data.gstSlab ? data.gstSlab.code : '');
+                setValue('GstSlabName', data.gstSlab ? gstBandLabel : '');
+            }
+
+            clientSelect.addEventListener('change', loadClientContext);
+            refreshQuoteButton.addEventListener('click', refreshQuote);
+            collectAdvanceToggle.addEventListener('change', syncAdvanceFields);
+            syncAdvanceFields();
+
+            if (clientSelect.value) {
+                loadClientContext();
+            }
+        })();
+    </script>
+}

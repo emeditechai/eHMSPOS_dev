@@ -1,0 +1,414 @@
+@model HotelApp.Web.Models.B2BClient
+@using HotelApp.Web.Models
+@{
+    var isReadOnly = ViewBag.IsReadOnly == true;
+    var countries = ViewBag.Countries as IEnumerable<Country> ?? Enumerable.Empty<Country>();
+    var states = ViewBag.States as IEnumerable<State> ?? Enumerable.Empty<State>();
+    var cities = ViewBag.Cities as IEnumerable<City> ?? Enumerable.Empty<City>();
+    var agreements = ViewBag.Agreements as IEnumerable<B2BAgreement> ?? Enumerable.Empty<B2BAgreement>();
+    var companyTypes = ViewBag.CompanyTypes as IEnumerable<string> ?? Enumerable.Empty<string>();
+    var billingCycles = ViewBag.BillingCycles as IEnumerable<string> ?? Enumerable.Empty<string>();
+    var billingTypes = ViewBag.BillingTypes as IEnumerable<string> ?? Enumerable.Empty<string>();
+    var gstRegistrationTypes = ViewBag.GstRegistrationTypes as IEnumerable<string> ?? Enumerable.Empty<string>();
+    var createdDateText = Model.CreatedDate > DateTime.MinValue ? Model.CreatedDate.ToLocalTime().ToString("dd/MM/yyyy hh:mm tt") : "Will be generated after save";
+    var createdByText = !string.IsNullOrWhiteSpace(Model.CreatedByName)
+        ? Model.CreatedByName
+        : (Model.CreatedBy?.ToString() ?? "Will be captured automatically");
+    var companyDisplayName = string.IsNullOrWhiteSpace(Model.ClientName) ? "New company master" : Model.ClientName;
+    var agreementDisplay = string.IsNullOrWhiteSpace(Model.AgreementName) ? "Agreement pending" : $"{Model.AgreementName} ({Model.AgreementCode})";
+    var locationDisplay = string.Join(", ", new[] { Model.City, Model.StateName, Model.CountryName }.Where(x => !string.IsNullOrWhiteSpace(x)));
+    var creditDisplay = string.Equals(Model.BillingType, "Credit", StringComparison.OrdinalIgnoreCase)
+        ? $"{(Model.CreditAmount ?? 0):N2} / {Model.CreditDays} day(s)"
+        : "Prepaid billing";
+}
+
+<style>
+    .company-page-surface { max-width: 1480px; margin: 0 auto; padding: 20px 24px; }
+    .company-page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; margin-bottom: 18px; }
+    .company-page-header h2 { margin: 8px 0 0; }
+    .company-mode-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 11px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+    .company-shell { display: flex; flex-direction: column; gap: 16px; }
+    .company-workspace { display: flex; flex-direction: column; gap: 16px; }
+    .company-sidebar { display: none; }
+    .company-sidebar .company-master-card { display: none; }
+    .company-content { display: flex; flex-direction: column; gap: 16px; }
+    .co-info-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 10px; padding: 14px 18px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; }
+    .co-info-strip-item strong { display: block; font-size: .69rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #64748b; margin-bottom: 3px; }
+    .co-info-strip-item span { font-size: .87rem; font-weight: 700; color: #1e293b; word-break: break-word; }
+    .company-master-card { background: #fff; border: 1px solid rgba(15, 23, 42, .08); border-radius: 18px; box-shadow: 0 14px 34px rgba(15, 23, 42, .06); padding: 20px 22px; }
+    .company-overview { display: grid; gap: 14px; }
+    .company-overview-head { display: grid; gap: 10px; }
+    .company-overview-title { display: grid; gap: 4px; }
+    .company-overview-title h3 { margin: 0; font-size: 1.08rem; color: #0f172a; }
+    .company-overview-title p { margin: 0; color: #64748b; font-size: .83rem; line-height: 1.45; }
+    .company-overview-badges { display: flex; flex-wrap: wrap; gap: 8px; }
+    .company-pill { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: .82rem; font-weight: 600; }
+    .company-pill.company-pill-neutral { background: #ecfeff; color: #0f766e; }
+    .company-mini-grid { display: grid; gap: 10px; }
+    .company-mini-box { padding: 12px 13px; border: 1px solid #dbe4ee; border-radius: 14px; background: #f8fafc; }
+    .company-mini-box strong { display: block; color: #64748b; font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+    .company-mini-box span { color: #0f172a; font-weight: 700; line-height: 1.45; word-break: break-word; }
+    .company-inline-note { padding: 11px 12px; border-radius: 14px; border: 1px dashed #cbd5e1; background: #fcfcfd; color: #475569; font-size: .8rem; line-height: 1.5; }
+    .company-master-section-title { display: flex; align-items: center; gap: 10px; padding-bottom: 12px; margin-bottom: 16px; border-bottom: 1px solid #e5e7eb; font-size: .98rem; font-weight: 700; color: #1f2937; }
+    .company-master-section-title i { color: #0f766e; }
+    .company-master-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 16px; }
+    .company-master-field { display: flex; flex-direction: column; gap: 5px; }
+    .company-master-field.span-2 { grid-column: span 2; }
+    .company-master-field label { font-weight: 700; color: #334155; font-size: .82rem; margin: 0; }
+    .company-master-field input, .company-master-field select, .company-master-field textarea { width: 100%; padding: 9px 11px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: .92rem; line-height: 1.45; background: #fff; transition: border-color .2s ease, box-shadow .2s ease; }
+    .company-master-field input:focus, .company-master-field select:focus, .company-master-field textarea:focus { outline: none; border-color: #0f766e; box-shadow: 0 0 0 3px rgba(15, 118, 110, .12); }
+    .company-master-field input[readonly], .company-master-field textarea[readonly], .company-master-field select:disabled { background: #f8fafc; color: #475569; }
+    .company-master-field textarea { resize: vertical; min-height: 76px; }
+    .toggle-field { justify-content: flex-end; }
+    .toggle-line { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 2px; color: #334155; }
+    .field-hint { font-size: 11px; color: #64748b; }
+    .company-boolean-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .company-check { display: flex; gap: 10px; align-items: center; padding: 11px 12px; border: 1px solid #dbe4ee; border-radius: 14px; background: #f8fafc; min-height: 46px; }
+    .company-check input { width: 18px; height: 18px; margin: 0; }
+    .company-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 4px 2px 18px; }
+    @@media (max-width: 1280px) {
+        .company-master-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .co-info-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    @@media (max-width: 768px) {
+        .company-page-surface { padding: 12px 14px; }
+        .company-page-header { flex-direction: column; align-items: stretch; }
+        .company-master-grid, .company-boolean-grid { grid-template-columns: 1fr; }
+        .company-master-field.span-2 { grid-column: span 1; }
+        .company-master-card { padding: 14px 16px; }
+        .co-info-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .company-actions { flex-direction: column; align-items: stretch; }
+    }
+</style>
+
+<div class="company-workspace">
+    <div class="co-info-strip">
+        <div class="co-info-strip-item"><strong>Company</strong><span>@companyDisplayName</span></div>
+        <div class="co-info-strip-item"><strong>Code</strong><span>@(string.IsNullOrWhiteSpace(Model.ClientCode) ? "Pending" : Model.ClientCode)</span></div>
+        <div class="co-info-strip-item"><strong>Agreement</strong><span>@agreementDisplay</span></div>
+        <div class="co-info-strip-item"><strong>Billing</strong><span>@(string.IsNullOrWhiteSpace(Model.BillingType) ? "Pending" : Model.BillingType) / @(string.IsNullOrWhiteSpace(Model.BillingCycle) ? "Cycle pending" : Model.BillingCycle)</span></div>
+        <div class="co-info-strip-item"><strong>Credit</strong><span>@creditDisplay</span></div>
+        <div class="co-info-strip-item"><strong>Location</strong><span>@(string.IsNullOrWhiteSpace(locationDisplay) ? "Pending" : locationDisplay)</span></div>
+        <div class="co-info-strip-item"><strong>Status</strong><span>@(Model.IsActive ? "Active" : "Inactive")@(Model.Blacklisted ? " · Blacklisted" : "")</span></div>
+        <div class="co-info-strip-item"><strong>Created</strong><span>@createdDateText</span></div>
+    </div>
+    <aside class="company-sidebar">
+        <section class="company-master-card">
+            <div class="company-overview">
+                <div class="company-overview-head">
+                    <div class="company-overview-title">
+                        <h3>@companyDisplayName</h3>
+                        <p>Keep company identity, agreement mapping, credit controls, and compliance settings aligned in one compact master workspace.</p>
+                    </div>
+                    <div class="company-overview-badges">
+                        <span class="company-pill"><i class="fas fa-file-contract"></i> @agreementDisplay</span>
+                        <span class="company-pill company-pill-neutral"><i class="fas fa-circle-check"></i> @(Model.IsActive ? "Active account" : "Inactive account")</span>
+                    </div>
+                </div>
+
+                <div class="company-mini-grid">
+                    <div class="company-mini-box">
+                        <strong>Company Code</strong>
+                        <span>@(string.IsNullOrWhiteSpace(Model.ClientCode) ? "Will be assigned on save" : Model.ClientCode)</span>
+                    </div>
+                    <div class="company-mini-box">
+                        <strong>Display Name</strong>
+                        <span>@(string.IsNullOrWhiteSpace(Model.DisplayName) ? "Pending" : Model.DisplayName)</span>
+                    </div>
+                    <div class="company-mini-box">
+                        <strong>Billing Model</strong>
+                        <span>@(string.IsNullOrWhiteSpace(Model.BillingType) ? "Pending" : Model.BillingType) / @(string.IsNullOrWhiteSpace(Model.BillingCycle) ? "Cycle pending" : Model.BillingCycle)</span>
+                    </div>
+                    <div class="company-mini-box">
+                        <strong>Credit Control</strong>
+                        <span>@creditDisplay</span>
+                    </div>
+                    <div class="company-mini-box">
+                        <strong>Primary Contact</strong>
+                        <span>@(string.IsNullOrWhiteSpace(Model.ContactPerson) ? "Pending" : Model.ContactPerson)<br />@(string.IsNullOrWhiteSpace(Model.ContactNo) ? "" : Model.ContactNo)</span>
+                    </div>
+                    <div class="company-mini-box">
+                        <strong>Location</strong>
+                        <span>@(string.IsNullOrWhiteSpace(locationDisplay) ? "Address pending" : locationDisplay)</span>
+                    </div>
+                </div>
+
+                <div class="company-inline-note">
+                    @(isReadOnly
+                        ? "This page is in read-only mode. Use the summary rail for the account snapshot, then review detailed billing, tax, and status controls on the right."
+                        : "Capture the company header and agreement mapping first, then confirm address, contact, and credit rules before saving the account.")
+                </div>
+
+                <div class="company-mini-grid">
+                    <div class="company-mini-box">
+                        <strong>Created By</strong>
+                        <span>@createdByText</span>
+                    </div>
+                    <div class="company-mini-box">
+                        <strong>Created Date</strong>
+                        <span>@createdDateText</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </aside>
+
+    <div class="company-content">
+    <section class="company-master-card">
+        <div class="company-master-section-title"><i class="fas fa-address-card"></i><span>Basic Information</span></div>
+        <div class="company-master-grid">
+            <div class="company-master-field">
+                <label asp-for="ClientCode"></label>
+                <input asp-for="ClientCode" placeholder="ABC001" readonly="@isReadOnly" />
+                <span asp-validation-for="ClientCode" class="text-danger"></span>
+            </div>
+            <div class="company-master-field span-2">
+                <label asp-for="ClientName"></label>
+                <input asp-for="ClientName" placeholder="Legal company name" readonly="@isReadOnly" />
+                <span asp-validation-for="ClientName" class="text-danger"></span>
+            </div>
+            <div class="company-master-field">
+                <label asp-for="DisplayName"></label>
+                <input asp-for="DisplayName" placeholder="Short display name" readonly="@isReadOnly" />
+                <span asp-validation-for="DisplayName" class="text-danger"></span>
+            </div>
+            <div class="company-master-field">
+                <label asp-for="CompanyType"></label>
+                <select asp-for="CompanyType" disabled="@isReadOnly">
+                    <option value="">Select type</option>
+                    @foreach (var item in companyTypes)
+                    {
+                        <option value="@item">@item</option>
+                    }
+                </select>
+                <span asp-validation-for="CompanyType" class="text-danger"></span>
+            </div>
+            <div class="company-master-field span-2">
+                <label asp-for="AgreementId"></label>
+                <select asp-for="AgreementId" disabled="@isReadOnly">
+                    <option value="">Select agreement master</option>
+                    @foreach (var agreement in agreements)
+                    {
+                        var statusSuffix = agreement.IsActive ? string.Empty : " [Inactive]";
+                        <option value="@agreement.Id">@agreement.AgreementName (@agreement.AgreementCode)@statusSuffix</option>
+                    }
+                </select>
+                <span asp-validation-for="AgreementId" class="text-danger"></span>
+            </div>
+            <div class="company-master-field">
+                <label asp-for="Pan"></label>
+                <input asp-for="Pan" placeholder="PAN number" readonly="@isReadOnly" />
+                <span asp-validation-for="Pan" class="text-danger"></span>
+            </div>
+            <div class="company-master-field">
+                <label asp-for="GstNo"></label>
+                <input asp-for="GstNo" placeholder="GSTIN" readonly="@isReadOnly" />
+                <span asp-validation-for="GstNo" class="text-danger"></span>
+            </div>
+            <div class="company-master-field">
+                <label asp-for="Cin"></label>
+                <input asp-for="Cin" placeholder="CIN if applicable" readonly="@isReadOnly" />
+                <span asp-validation-for="Cin" class="text-danger"></span>
+            </div>
+        </div>
+    </section>
+
+    <section class="company-master-card">
+        <div class="company-master-section-title"><i class="fas fa-location-dot"></i><span>Address Details</span></div>
+        <div class="company-master-grid">
+            <div class="company-master-field span-2">
+                <label asp-for="Address"></label>
+                <textarea asp-for="Address" rows="2" placeholder="Address line 1" readonly="@isReadOnly"></textarea>
+                <span asp-validation-for="Address" class="text-danger"></span>
+            </div>
+            <div class="company-master-field span-2">
+                <label asp-for="AddressLine2"></label>
+                <textarea asp-for="AddressLine2" rows="2" placeholder="Address line 2" readonly="@isReadOnly"></textarea>
+                <span asp-validation-for="AddressLine2" class="text-danger"></span>
+            </div>
+            <div class="company-master-field">
+                <label asp-for="CountryId"></label>
+                <select asp-for="CountryId" id="CountryId" disabled="@isReadOnly">
+                    <option value="">Select country</option>
+                    @foreach (var country in countries)
+                    {
+                        <option value="@country.Id">@country.Name</option>
+                    }
+                </select>
+                <span asp-validation-for="CountryId" class="text-danger"></span>
+            </div>
+            <div class="company-master-field">
+                <label asp-for="StateId"></label>
+                <select asp-for="StateId" id="StateId" disabled="@isReadOnly">
+                    <option value="">Select state</option>
+                    @foreach (var state in states)
+                    {
+                        <option value="@state.Id" data-code="@state.Code">@state.Name</option>
+                    }
+                </select>
+                <span asp-validation-for="StateId" class="text-danger"></span>
+            </div>
+            <div class="company-master-field">
+                <label asp-for="City"></label>
+                <select asp-for="City" id="City" disabled="@isReadOnly">
+                    <option value="">Select city</option>
+                    @foreach (var city in cities)
+                    {
+                        <option value="@city.Name">@city.Name</option>
+                    }
+                </select>
+                <span asp-validation-for="City" class="text-danger"></span>
+            </div>
+            <div class="company-master-field">
+                <label asp-for="StateCode"></label>
+                <input asp-for="StateCode" id="StateCode" readonly />
+            </div>
+            <div class="company-master-field">
+                <label asp-for="Pincode"></label>
+                <input asp-for="Pincode" placeholder="Postal code" readonly="@isReadOnly" />
+                <span asp-validation-for="Pincode" class="text-danger"></span>
+            </div>
+        </div>
+    </section>
+
+    <section class="company-master-card">
+        <div class="company-master-section-title"><i class="fas fa-phone-volume"></i><span>Contact Details</span></div>
+        <div class="company-master-grid">
+            <div class="company-master-field">
+                <label asp-for="ContactPerson"></label>
+                <input asp-for="ContactPerson" placeholder="Primary contact person" readonly="@isReadOnly" />
+                <span asp-validation-for="ContactPerson" class="text-danger"></span>
+            </div>
+            <div class="company-master-field">
+                <label asp-for="ContactNo"></label>
+                <input asp-for="ContactNo" placeholder="Mobile number" readonly="@isReadOnly" />
+                <span asp-validation-for="ContactNo" class="text-danger"></span>
+            </div>
+            <div class="company-master-field span-2">
+                <label asp-for="CorporateEmail"></label>
+                <input asp-for="CorporateEmail" placeholder="official@company.com" readonly="@isReadOnly" />
+                <span asp-validation-for="CorporateEmail" class="text-danger"></span>
+            </div>
+            <div class="company-master-field span-2">
+                <label asp-for="AlternateContact"></label>
+                <input asp-for="AlternateContact" placeholder="Alternate contact details" readonly="@isReadOnly" />
+                <span asp-validation-for="AlternateContact" class="text-danger"></span>
+            </div>
+        </div>
+    </section>
+
+    <section class="company-master-card">
+        <div class="company-master-section-title"><i class="fas fa-wallet"></i><span>Credit and Financial Details</span></div>
+        <div class="company-master-grid">
+            <div class="company-master-field">
+                <label asp-for="BillingType"></label>
+                <select asp-for="BillingType" id="BillingType" disabled="@isReadOnly">
+                    <option value="">Select billing type</option>
+                    @foreach (var item in billingTypes)
+                    {
+                        <option value="@item">@item</option>
+                    }
+                </select>
+                <span asp-validation-for="BillingType" class="text-danger"></span>
+            </div>
+            <div class="company-master-field">
+                <label asp-for="BillingCycle"></label>
+                <select asp-for="BillingCycle" disabled="@isReadOnly">
+                    <option value="">Select billing cycle</option>
+                    @foreach (var item in billingCycles)
+                    {
+                        <option value="@item">@item</option>
+                    }
+                </select>
+                <span asp-validation-for="BillingCycle" class="text-danger"></span>
+            </div>
+            <div class="company-master-field">
+                <label asp-for="CreditAmount"></label>
+                <input asp-for="CreditAmount" id="CreditAmount" type="number" min="0" step="0.01" placeholder="0.00" readonly="@isReadOnly" />
+                <span asp-validation-for="CreditAmount" class="text-danger"></span>
+            </div>
+            <div class="company-master-field">
+                <label asp-for="CreditDays"></label>
+                <input asp-for="CreditDays" id="CreditDays" type="number" min="0" max="365" placeholder="30" readonly="@isReadOnly" />
+                <span asp-validation-for="CreditDays" class="text-danger"></span>
+            </div>
+            <div class="company-master-field">
+                <label asp-for="OutstandingAmount"></label>
+                <input asp-for="OutstandingAmount" type="number" min="0" step="0.01" readonly />
+                <div class="field-hint">Auto-calculated from receivables flow.</div>
+            </div>
+            <div class="company-master-field span-2">
+                <label>Financial Controls</label>
+                <div class="company-boolean-grid">
+                    <label class="company-check"><input asp-for="AllowExceedLimit" id="AllowExceedLimit" type="checkbox" disabled="@isReadOnly" /><span>Allow billings above limit</span></label>
+                    <label class="company-check"><input asp-for="TdsApplicable" id="TdsApplicable" type="checkbox" disabled="@isReadOnly" /><span>Deduct TDS on settlement</span></label>
+                </div>
+            </div>
+            <div class="company-master-field">
+                <label asp-for="TdsPercentage"></label>
+                <input asp-for="TdsPercentage" id="TdsPercentage" type="number" min="0" max="100" step="0.01" placeholder="10.00" readonly="@isReadOnly" />
+                <span asp-validation-for="TdsPercentage" class="text-danger"></span>
+            </div>
+        </div>
+    </section>
+
+    <section class="company-master-card">
+        <div class="company-master-section-title"><i class="fas fa-file-invoice"></i><span>GST and Compliance</span></div>
+        <div class="company-master-grid">
+            <div class="company-master-field">
+                <label asp-for="GstRegistrationType"></label>
+                <select asp-for="GstRegistrationType" disabled="@isReadOnly">
+                    <option value="">Select registration type</option>
+                    @foreach (var item in gstRegistrationTypes)
+                    {
+                        <option value="@item">@item</option>
+                    }
+                </select>
+                <span asp-validation-for="GstRegistrationType" class="text-danger"></span>
+            </div>
+            <div class="company-master-field">
+                <label asp-for="PlaceOfSupplyStateId"></label>
+                <select asp-for="PlaceOfSupplyStateId" id="PlaceOfSupplyStateId" disabled="@isReadOnly">
+                    <option value="">Select place of supply</option>
+                    @foreach (var state in states)
+                    {
+                        <option value="@state.Id">@state.Name</option>
+                    }
+                </select>
+                <span asp-validation-for="PlaceOfSupplyStateId" class="text-danger"></span>
+            </div>
+            <div class="company-master-field span-2">
+                <label>Tax Flags</label>
+                <div class="company-boolean-grid">
+                    <label class="company-check"><input asp-for="ReverseCharge" type="checkbox" disabled="@isReadOnly" /><span>Reverse charge applies</span></label>
+                    <label class="company-check"><input asp-for="EInvoiceApplicable" type="checkbox" disabled="@isReadOnly" /><span>Generate e-invoice</span></label>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="company-master-card">
+        <div class="company-master-section-title"><i class="fas fa-shield-halved"></i><span>Control and Status</span></div>
+        <div class="company-master-grid">
+            <div class="company-master-field">
+                <label asp-for="IsActive">Status</label>
+                <select asp-for="IsActive" disabled="@isReadOnly">
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+            <div class="company-master-field span-2">
+                <label>Control Flags</label>
+                <div class="company-boolean-grid">
+                    <label class="company-check"><input asp-for="Blacklisted" type="checkbox" disabled="@isReadOnly" /><span>Block further bookings and billing</span></label>
+                </div>
+            </div>
+            <div class="company-master-field span-2">
+                <label asp-for="Remarks"></label>
+                <textarea asp-for="Remarks" rows="3" placeholder="Internal notes or restrictions" readonly="@isReadOnly"></textarea>
+                <span asp-validation-for="Remarks" class="text-danger"></span>
+            </div>
+        </div>
+    </section>
+    </div>
+</div>

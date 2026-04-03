@@ -1,0 +1,38 @@
+@model HotelApp.Web.Models.B2BAgreement
+@{
+    var isReadOnly = ViewBag.IsReadOnly == true;
+    ViewData["Title"] = isReadOnly ? "View Agreement" : "Edit Agreement";
+}
+
+<div class="agreement-page-surface">
+    <div class="page-header agreement-page-header">
+        <div>
+            <div class="agreement-mode-badge"><i class="fas @(isReadOnly ? "fa-eye" : "fa-pen")"></i> @(isReadOnly ? "View" : "Edit")</div>
+            <h2><i class="fas fa-file-contract"></i> Agreement Master</h2>
+            <p class="text-muted mb-0">@((isReadOnly ? "Review" : "Update") + " contract scope, billing, terms, approvals, and room-rate commitments.")</p>
+        </div>
+        <a asp-action="Index" class="btn-cancel"><i class="fas fa-arrow-left"></i> Back to Agreement List</a>
+    </div>
+
+    <form asp-action="Edit" method="post" enctype="multipart/form-data" class="agreement-shell">
+        @Html.AntiForgeryToken()
+        <input asp-for="Id" type="hidden" />
+        <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+        <partial name="_AgreementFormFields" model="Model" />
+        <div class="agreement-actions">
+            <a asp-action="Index" class="btn-cancel"><i class="fas fa-arrow-left"></i> Back</a>
+            @if (!isReadOnly)
+            {
+                <button type="submit" class="btn-save"><i class="fas fa-save"></i> Save Changes</button>
+            }
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @if (!isReadOnly)
+    {
+        <partial name="_AgreementFormScripts" />
+    }
+}

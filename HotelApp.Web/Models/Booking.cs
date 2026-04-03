@@ -12,6 +12,29 @@ namespace HotelApp.Web.Models
         public string Source { get; set; } = string.Empty;
         public string CustomerType { get; set; } = string.Empty;
         public string RateType { get; set; } = "Standard";
+        public int? B2BClientId { get; set; }
+        public string? B2BClientCode { get; set; }
+        public string? B2BClientName { get; set; }
+        public int? B2BAgreementId { get; set; }
+        public string? AgreementCode { get; set; }
+        public string? AgreementName { get; set; }
+        public int? GstSlabId { get; set; }
+        public string? GstSlabCode { get; set; }
+        public string? GstSlabName { get; set; }
+        public string? CompanyContactPerson { get; set; }
+        public string? CompanyContactNo { get; set; }
+        public string? CompanyEmail { get; set; }
+        public string? CompanyGstNo { get; set; }
+        public string? BillingAddress { get; set; }
+        public string? BillingStateName { get; set; }
+        public string? BillingPincode { get; set; }
+        public string? BillingType { get; set; }
+        public string? BillingTo { get; set; }
+        public int? CreditDays { get; set; }
+        public string? MealPlan { get; set; }
+        public decimal? CorporateDiscountPercent { get; set; }
+        public decimal? CompanyCreditLimit { get; set; }
+        public bool? IsCreditAllowed { get; set; }
         public DateTime CheckInDate { get; set; }
         public DateTime CheckOutDate { get; set; }
         public DateTime? ActualCheckInDate { get; set; }

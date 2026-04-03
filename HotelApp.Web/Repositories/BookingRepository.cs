@@ -504,6 +504,11 @@ namespace HotelApp.Web.Repositories
             const string insertBookingSql = @"
                 INSERT INTO Bookings (
                     BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
+                    B2BClientId, B2BClientCode, B2BClientName, B2BAgreementId, AgreementCode, AgreementName,
+                    GstSlabId, GstSlabCode, GstSlabName,
+                    CompanyContactPerson, CompanyContactNo, CompanyEmail, CompanyGstNo,
+                    BillingAddress, BillingStateName, BillingPincode, BillingType, BillingTo,
+                    CreditDays, MealPlan, CorporateDiscountPercent, CompanyCreditLimit, IsCreditAllowed,
                     RateType, CancellationPolicyId, CancellationPolicySnapshot, CancellationPolicyAccepted, CancellationPolicyAcceptedAt,
                     CheckInDate, CheckOutDate, Nights, RoomTypeId, RequiredRooms, RoomId, RatePlanId,
                     BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
@@ -512,6 +517,11 @@ namespace HotelApp.Web.Repositories
                     LastModifiedBy)
                 VALUES (
                     @BookingNumber, @Status, @PaymentStatus, @Channel, @Source, @CustomerType,
+                    @B2BClientId, @B2BClientCode, @B2BClientName, @B2BAgreementId, @AgreementCode, @AgreementName,
+                    @GstSlabId, @GstSlabCode, @GstSlabName,
+                    @CompanyContactPerson, @CompanyContactNo, @CompanyEmail, @CompanyGstNo,
+                    @BillingAddress, @BillingStateName, @BillingPincode, @BillingType, @BillingTo,
+                    @CreditDays, @MealPlan, @CorporateDiscountPercent, @CompanyCreditLimit, @IsCreditAllowed,
                     @RateType, @CancellationPolicyId, @CancellationPolicySnapshot, @CancellationPolicyAccepted, @CancellationPolicyAcceptedAt,
                     @CheckInDate, @CheckOutDate, @Nights, @RoomTypeId, @RequiredRooms, @RoomId, @RatePlanId,
                     @BaseAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @DiscountAmount, @TotalAmount, @DepositAmount,
@@ -744,6 +754,11 @@ namespace HotelApp.Web.Repositories
             const string sql = @"
                 SELECT TOP (@Take)
                     Id, BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
+                    B2BClientId, B2BClientCode, B2BClientName, B2BAgreementId, AgreementCode, AgreementName,
+                    GstSlabId, GstSlabCode, GstSlabName,
+                    CompanyContactPerson, CompanyContactNo, CompanyEmail, CompanyGstNo,
+                    BillingAddress, BillingStateName, BillingPincode, BillingType, BillingTo,
+                    CreditDays, MealPlan, CorporateDiscountPercent, CompanyCreditLimit, IsCreditAllowed,
                     CheckInDate, CheckOutDate, ActualCheckInDate, ActualCheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
                     BaseAmount, TaxAmount, DiscountAmount, TotalAmount, DepositAmount,
                     BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
@@ -762,6 +777,11 @@ namespace HotelApp.Web.Repositories
             const string sql = @"
                 SELECT TOP (@Take)
                     Id, BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
+                    B2BClientId, B2BClientCode, B2BClientName, B2BAgreementId, AgreementCode, AgreementName,
+                    GstSlabId, GstSlabCode, GstSlabName,
+                    CompanyContactPerson, CompanyContactNo, CompanyEmail, CompanyGstNo,
+                    BillingAddress, BillingStateName, BillingPincode, BillingType, BillingTo,
+                    CreditDays, MealPlan, CorporateDiscountPercent, CompanyCreditLimit, IsCreditAllowed,
                     CheckInDate, CheckOutDate, ActualCheckInDate, ActualCheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
                     BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
                     BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
@@ -781,6 +801,11 @@ namespace HotelApp.Web.Repositories
             var sql = @"
                 SELECT TOP (@Take)
                     b.Id, b.BookingNumber, b.Status, b.PaymentStatus, b.Channel, b.Source, b.CustomerType,
+                    b.B2BClientId, b.B2BClientCode, b.B2BClientName, b.B2BAgreementId, b.AgreementCode, b.AgreementName,
+                    b.GstSlabId, b.GstSlabCode, b.GstSlabName,
+                    b.CompanyContactPerson, b.CompanyContactNo, b.CompanyEmail, b.CompanyGstNo,
+                    b.BillingAddress, b.BillingStateName, b.BillingPincode, b.BillingType, b.BillingTo,
+                    b.CreditDays, b.MealPlan, b.CorporateDiscountPercent, b.CompanyCreditLimit, b.IsCreditAllowed,
                     b.CheckInDate, b.CheckOutDate, b.ActualCheckInDate, b.ActualCheckOutDate, b.Nights, b.RoomTypeId, b.RoomId, b.RatePlanId,
                     b.BaseAmount, b.TaxAmount, b.CGSTAmount, b.SGSTAmount, b.DiscountAmount, b.TotalAmount, b.DepositAmount,
                     b.BalanceAmount, b.Adults, b.Children, b.PrimaryGuestFirstName, b.PrimaryGuestLastName,
@@ -815,6 +840,11 @@ namespace HotelApp.Web.Repositories
             const string sql = @"
                 SELECT
                     Id, BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
+                    B2BClientId, B2BClientCode, B2BClientName, B2BAgreementId, AgreementCode, AgreementName,
+                    GstSlabId, GstSlabCode, GstSlabName,
+                    CompanyContactPerson, CompanyContactNo, CompanyEmail, CompanyGstNo,
+                    BillingAddress, BillingStateName, BillingPincode, BillingType, BillingTo,
+                    CreditDays, MealPlan, CorporateDiscountPercent, CompanyCreditLimit, IsCreditAllowed,
                     RateType, CancellationPolicyId, CancellationPolicySnapshot, CancellationPolicyAccepted, CancellationPolicyAcceptedAt,
                     CheckInDate, CheckOutDate, ActualCheckInDate, ActualCheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
                     BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,

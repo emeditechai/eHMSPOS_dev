@@ -1,0 +1,325 @@
+@model HotelApp.Web.Models.B2BTermsCondition
+@using HotelApp.Web.Models
+@{
+	var isReadOnly = ViewBag.IsReadOnly == true;
+	var termsTypes = ViewBag.TermsTypes as IEnumerable<string> ?? Enumerable.Empty<string>();
+	var cancellationPolicies = ViewBag.CancellationPolicies as IEnumerable<CancellationPolicy> ?? Enumerable.Empty<CancellationPolicy>();
+}
+
+<style>
+	.agreement-page-header { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:14px; }
+	.agreement-shell { display:flex; flex-direction:column; gap:14px; }
+	.agreement-actions { display:flex; justify-content:flex-end; gap:12px; padding:4px 0 14px; }
+	.terms-workspace { display:grid; grid-template-columns:320px minmax(0, 1fr); gap:16px; align-items:start; }
+	.terms-panel { background:#fff; border:1px solid rgba(15,23,42,.08); border-radius:16px; box-shadow:0 14px 34px rgba(15,23,42,.06); }
+	.terms-panel-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; padding:16px 18px 0; }
+	.terms-panel-head h3 { margin:0; font-size:1rem; font-weight:700; color:#0f172a; }
+	.terms-panel-head p { margin:4px 0 0; color:#64748b; font-size:.84rem; line-height:1.45; }
+	.terms-panel-body { padding:16px 18px 18px; }
+	.terms-badge { display:inline-flex; align-items:center; gap:8px; padding:7px 11px; border-radius:999px; background:#ecfeff; color:#0f766e; font-size:.78rem; font-weight:700; white-space:nowrap; }
+	.terms-overview-list { display:grid; gap:12px; }
+	.terms-field { display:flex; flex-direction:column; gap:5px; }
+	.terms-field label { font-weight:700; color:#334155; font-size:.82rem; margin:0; }
+	.terms-field small { color:#64748b; font-size:.73rem; line-height:1.4; }
+	.terms-field input,
+	.terms-field select,
+	.terms-field textarea { width:100%; border:1px solid #cbd5e1; border-radius:12px; padding:9px 11px; font-size:.92rem; line-height:1.45; background:#fff; transition:border-color .2s ease, box-shadow .2s ease; }
+	.terms-field textarea { min-height:106px; resize:vertical; }
+	.terms-field textarea.compact { min-height:84px; }
+	.terms-field input:focus,
+	.terms-field select:focus,
+	.terms-field textarea:focus { border-color:#0f766e; box-shadow:0 0 0 3px rgba(15,118,110,.12); outline:none; }
+	.terms-field input[readonly],
+	.terms-field textarea[readonly],
+	.terms-field select:disabled { background:#f8fafc; color:#475569; }
+	.terms-status-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px 12px; }
+	.terms-highlights { display:grid; gap:10px; margin-top:12px; }
+	.terms-highlight { padding:11px 12px; border:1px dashed #cbd5e1; border-radius:12px; background:#f8fafc; }
+	.terms-highlight strong { display:block; color:#0f172a; font-size:.8rem; margin-bottom:3px; }
+	.terms-highlight span { color:#64748b; font-size:.77rem; line-height:1.45; }
+	.terms-content { display:grid; gap:16px; }
+	.terms-section-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px 14px; }
+	.terms-section-grid .span-2 { grid-column:1 / -1; }
+	.terms-cluster { border:1px solid #e2e8f0; border-radius:14px; padding:14px; background:linear-gradient(180deg, #ffffff 0%, #fbfdff 100%); }
+	.terms-cluster-head { display:flex; align-items:flex-start; gap:10px; margin-bottom:12px; }
+	.terms-cluster-head i { width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; border-radius:10px; background:#f1f5f9; color:#0f766e; font-size:.9rem; }
+	.terms-cluster-head strong { display:block; color:#0f172a; font-size:.87rem; }
+	.terms-cluster-head span { display:block; color:#64748b; font-size:.77rem; margin-top:2px; line-height:1.4; }
+	@@media (max-width: 1100px) {
+		.terms-workspace { grid-template-columns:1fr; }
+	}
+	@@media (max-width: 768px) {
+		.agreement-page-header { flex-direction:column; align-items:stretch; }
+		.agreement-actions { flex-direction:column; align-items:stretch; }
+		.terms-section-grid,
+		.terms-status-grid { grid-template-columns:1fr; }
+	}
+</style>
+
+<div class="terms-workspace">
+	<aside class="terms-panel">
+		<div class="terms-panel-head">
+			<div>
+				<h3>Quick Setup</h3>
+				<p>Keep the master identity and control fields together while you draft the operating clauses.</p>
+			</div>
+			<span class="terms-badge"><i class="fas fa-scroll"></i> Reusable Master</span>
+		</div>
+		<div class="terms-panel-body">
+			<div class="terms-overview-list">
+				<div class="terms-field">
+					<label asp-for="TermsCode"></label>
+					<input asp-for="TermsCode" readonly="@isReadOnly" />
+					<span asp-validation-for="TermsCode" class="text-danger"></span>
+				</div>
+				<div class="terms-field">
+					<label asp-for="TermsTitle"></label>
+					<input asp-for="TermsTitle" readonly="@isReadOnly" />
+					<span asp-validation-for="TermsTitle" class="text-danger"></span>
+				</div>
+				<div class="terms-status-grid">
+					<div class="terms-field">
+						<label asp-for="TermsType"></label>
+						<select asp-for="TermsType" disabled="@isReadOnly">
+							@foreach (var item in termsTypes)
+							{
+								<option value="@item">@item</option>
+							}
+						</select>
+						<span asp-validation-for="TermsType" class="text-danger"></span>
+					</div>
+					<div class="terms-field">
+						<label asp-for="IsDefault"></label>
+						<select asp-for="IsDefault" disabled="@isReadOnly">
+							<option value="true">Yes</option>
+							<option value="false">No</option>
+						</select>
+					</div>
+					<div class="terms-field">
+						<label asp-for="IsActive"></label>
+						<select asp-for="IsActive" disabled="@isReadOnly">
+							<option value="true">Active</option>
+							<option value="false">Inactive</option>
+						</select>
+					</div>
+				</div>
+				<div class="terms-field">
+					<label asp-for="CancellationPolicyId"></label>
+					<select asp-for="CancellationPolicyId" disabled="@isReadOnly">
+						<option value="">Select Cancellation Policy</option>
+						@foreach (var row in cancellationPolicies)
+						{
+							<option value="@row.Id">@row.PolicyName</option>
+						}
+					</select>
+					<span asp-validation-for="CancellationPolicyId" class="text-danger"></span>
+				</div>
+				<div class="terms-field">
+					<label asp-for="PaymentTerms"></label>
+					<textarea asp-for="PaymentTerms" class="compact" rows="3" readonly="@isReadOnly"></textarea>
+					<small>Use this for credit cycle, invoice timing, and settlement instructions.</small>
+					<span asp-validation-for="PaymentTerms" class="text-danger"></span>
+				</div>
+			</div>
+
+			<div class="terms-highlights">
+				<div class="terms-highlight">
+					<strong>Operations-first wording</strong>
+					<span>Keep each clause practical enough for front office, reservations, and billing teams to apply quickly.</span>
+				</div>
+				<div class="terms-highlight">
+					<strong>Agreement-ready output</strong>
+					<span>This master is reused in Agreement Master, so concise and standardized content works better than long prose.</span>
+				</div>
+			</div>
+		</div>
+	</aside>
+
+	<div class="terms-content">
+		<section class="terms-panel">
+			<div class="terms-panel-head">
+				<div>
+					<h3>Operations & Billing</h3>
+					<p>Put the frequently referenced hotel and billing instructions in one compact section.</p>
+				</div>
+			</div>
+			<div class="terms-panel-body">
+				<div class="terms-section-grid">
+					<div class="terms-cluster">
+						<div class="terms-cluster-head">
+							<i class="fas fa-door-open"></i>
+							<div>
+								<strong>Check-in / Check-out</strong>
+								<span>Timing rules, early check-in, late check-out, and release conditions.</span>
+							</div>
+						</div>
+						<div class="terms-field">
+							<label asp-for="CheckInCheckOutPolicy"></label>
+							<textarea asp-for="CheckInCheckOutPolicy" rows="4" readonly="@isReadOnly"></textarea>
+							<span asp-validation-for="CheckInCheckOutPolicy" class="text-danger"></span>
+						</div>
+					</div>
+
+					<div class="terms-cluster">
+						<div class="terms-cluster-head">
+							<i class="fas fa-file-invoice-dollar"></i>
+							<div>
+								<strong>Billing instructions</strong>
+								<span>PO, invoice submission, contact route, and settlement notes.</span>
+							</div>
+						</div>
+						<div class="terms-field">
+							<label asp-for="BillingInstructions"></label>
+							<textarea asp-for="BillingInstructions" rows="4" readonly="@isReadOnly"></textarea>
+							<span asp-validation-for="BillingInstructions" class="text-danger"></span>
+						</div>
+					</div>
+
+					<div class="terms-cluster">
+						<div class="terms-cluster-head">
+							<i class="fas fa-child-reaching"></i>
+							<div>
+								<strong>Child policy</strong>
+								<span>Occupancy, complimentary stay, and meal applicability.</span>
+							</div>
+						</div>
+						<div class="terms-field">
+							<label asp-for="ChildPolicy"></label>
+							<textarea asp-for="ChildPolicy" rows="4" readonly="@isReadOnly"></textarea>
+							<span asp-validation-for="ChildPolicy" class="text-danger"></span>
+						</div>
+					</div>
+
+					<div class="terms-cluster">
+						<div class="terms-cluster-head">
+							<i class="fas fa-bed"></i>
+							<div>
+								<strong>Extra bed policy</strong>
+								<span>Rollaway, extra pax charge, and inclusions.</span>
+							</div>
+						</div>
+						<div class="terms-field">
+							<label asp-for="ExtraBedPolicy"></label>
+							<textarea asp-for="ExtraBedPolicy" rows="4" readonly="@isReadOnly"></textarea>
+							<span asp-validation-for="ExtraBedPolicy" class="text-danger"></span>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<section class="terms-panel">
+			<div class="terms-panel-head">
+				<div>
+					<h3>Commercial Adjustments</h3>
+					<p>Group together the clauses that directly affect revenue and dispute handling.</p>
+				</div>
+			</div>
+			<div class="terms-panel-body">
+				<div class="terms-section-grid">
+					<div class="terms-cluster">
+						<div class="terms-cluster-head">
+							<i class="fas fa-rotate-left"></i>
+							<div>
+								<strong>Refund policy</strong>
+								<span>Refund window, deductions, and exceptions.</span>
+							</div>
+						</div>
+						<div class="terms-field">
+							<label asp-for="RefundPolicy"></label>
+							<textarea asp-for="RefundPolicy" rows="4" readonly="@isReadOnly"></textarea>
+							<span asp-validation-for="RefundPolicy" class="text-danger"></span>
+						</div>
+					</div>
+
+					<div class="terms-cluster">
+						<div class="terms-cluster-head">
+							<i class="fas fa-user-slash"></i>
+							<div>
+								<strong>No-show policy</strong>
+								<span>Retention, charge, and inventory release logic.</span>
+							</div>
+						</div>
+						<div class="terms-field">
+							<label asp-for="NoShowPolicy"></label>
+							<textarea asp-for="NoShowPolicy" rows="4" readonly="@isReadOnly"></textarea>
+							<span asp-validation-for="NoShowPolicy" class="text-danger"></span>
+						</div>
+					</div>
+
+					<div class="terms-cluster span-2">
+						<div class="terms-cluster-head">
+							<i class="fas fa-pen-to-square"></i>
+							<div>
+								<strong>Amendment policy</strong>
+								<span>Name changes, stay date changes, and negotiated amendment handling.</span>
+							</div>
+						</div>
+						<div class="terms-field">
+							<label asp-for="AmendmentPolicy"></label>
+							<textarea asp-for="AmendmentPolicy" rows="4" readonly="@isReadOnly"></textarea>
+							<span asp-validation-for="AmendmentPolicy" class="text-danger"></span>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<section class="terms-panel">
+			<div class="terms-panel-head">
+				<div>
+					<h3>Tax & Legal</h3>
+					<p>Keep statutory notes, liability language, and special exceptions concise and visible.</p>
+				</div>
+			</div>
+			<div class="terms-panel-body">
+				<div class="terms-section-grid">
+					<div class="terms-cluster">
+						<div class="terms-cluster-head">
+							<i class="fas fa-percent"></i>
+							<div>
+								<strong>Tax notes</strong>
+								<span>GST applicability, exclusions, and billing tax references.</span>
+							</div>
+						</div>
+						<div class="terms-field">
+							<label asp-for="TaxNotes"></label>
+							<textarea asp-for="TaxNotes" rows="4" readonly="@isReadOnly"></textarea>
+							<span asp-validation-for="TaxNotes" class="text-danger"></span>
+						</div>
+					</div>
+
+					<div class="terms-cluster">
+						<div class="terms-cluster-head">
+							<i class="fas fa-scale-balanced"></i>
+							<div>
+								<strong>Legal disclaimer</strong>
+								<span>Jurisdiction, liability, and legal operating position.</span>
+							</div>
+						</div>
+						<div class="terms-field">
+							<label asp-for="LegalDisclaimer"></label>
+							<textarea asp-for="LegalDisclaimer" rows="4" readonly="@isReadOnly"></textarea>
+							<span asp-validation-for="LegalDisclaimer" class="text-danger"></span>
+						</div>
+					</div>
+
+					<div class="terms-cluster span-2">
+						<div class="terms-cluster-head">
+							<i class="fas fa-triangle-exclamation"></i>
+							<div>
+								<strong>Special conditions</strong>
+								<span>Exceptions, negotiated clauses, or one-off commercial carve-outs.</span>
+							</div>
+						</div>
+						<div class="terms-field">
+							<label asp-for="SpecialConditions"></label>
+							<textarea asp-for="SpecialConditions" rows="4" readonly="@isReadOnly"></textarea>
+							<span asp-validation-for="SpecialConditions" class="text-danger"></span>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+	</div>
+</div>

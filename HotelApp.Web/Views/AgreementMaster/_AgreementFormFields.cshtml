@@ -1,0 +1,677 @@
+@model HotelApp.Web.Models.B2BAgreement
+@using HotelApp.Web.Models
+@{
+	var isReadOnly = ViewBag.IsReadOnly == true;
+	var signedDocumentFileName = string.IsNullOrWhiteSpace(Model.SignedDocumentPath)
+		? null
+		: Model.SignedDocumentPath.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+	var billingTypes = ViewBag.BillingTypes as IEnumerable<string> ?? Enumerable.Empty<string>();
+	var billingCycles = ViewBag.BillingCycles as IEnumerable<string> ?? Enumerable.Empty<string>();
+	var ratePlans = ViewBag.RatePlanTypes as IEnumerable<string> ?? Enumerable.Empty<string>();
+	var mealPlans = ViewBag.MealPlans as IEnumerable<string> ?? Enumerable.Empty<string>();
+	var agreementTypes = ViewBag.AgreementTypes as IEnumerable<string> ?? Enumerable.Empty<string>();
+	var approvalStatuses = ViewBag.ApprovalStatuses as IEnumerable<string> ?? Enumerable.Empty<string>();
+	var termsConditions = ViewBag.TermsConditions as IEnumerable<B2BTermsCondition> ?? Enumerable.Empty<B2BTermsCondition>();
+	var cancellationPolicies = ViewBag.CancellationPolicies as IEnumerable<CancellationPolicy> ?? Enumerable.Empty<CancellationPolicy>();
+	var gstSlabs = ViewBag.GstSlabs as IEnumerable<GstSlab> ?? Enumerable.Empty<GstSlab>();
+	var roomTypes = ViewBag.RoomTypes as IEnumerable<RoomType> ?? Enumerable.Empty<RoomType>();
+	var approvers = ViewBag.Approvers as IEnumerable<User> ?? Enumerable.Empty<User>();
+	var roomRateRows = Model.RoomRates ?? new List<B2BAgreementRoomRate>();
+	var displayRoomRateCount = Math.Max(Model.RoomRateCount, roomRateRows.Count);
+	var effectiveWindow = Model.EffectiveFrom != default && Model.EffectiveTo != default
+		? $"{Model.EffectiveFrom:dd MMM yyyy} to {Model.EffectiveTo:dd MMM yyyy}"
+		: "Set agreement validity";
+	var agreementDisplayName = string.IsNullOrWhiteSpace(Model.AgreementName) ? "New agreement" : Model.AgreementName;
+}
+
+<style>
+	.agreement-page-surface { max-width:1480px; margin:0 auto; padding:20px 24px; }
+	.agreement-page-header { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; margin-bottom:18px; }
+	.agreement-page-header h2 { margin:6px 0 0; }
+	.agreement-mode-badge { display:inline-flex; align-items:center; gap:8px; padding:6px 11px; border-radius:999px; background:#eef2ff; color:#3730a3; font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+	.agreement-shell { display:flex; flex-direction:column; gap:16px; }
+	.agreement-workspace { display:flex; flex-direction:column; gap:16px; }
+	.agreement-sidebar { display:none; }
+	.agreement-sidebar .agreement-card { display:none; }
+	.agreement-content { display:flex; flex-direction:column; gap:16px; }
+	.agr-info-strip { display:grid; grid-template-columns:repeat(auto-fill, minmax(175px, 1fr)); gap:10px; padding:14px 18px; background:#f0fdf4; border:1px solid #d1fae5; border-radius:14px; }
+	.agr-info-strip-item strong { display:block; font-size:.69rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#64748b; margin-bottom:3px; }
+	.agr-info-strip-item span { font-size:.87rem; font-weight:700; color:#1e293b; word-break:break-word; }
+	.agreement-card { background:#fff; border:1px solid rgba(15,23,42,.08); border-radius:18px; box-shadow:0 14px 34px rgba(15,23,42,.06); padding:20px 22px; }
+	.agreement-card-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:16px; }
+	.agreement-card-header h3 { margin:0; font-size:1rem; font-weight:700; color:#0f172a; }
+	.agreement-card-header p { margin:4px 0 0; color:#64748b; font-size:.84rem; line-height:1.45; }
+	.agreement-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14px 16px; }
+	.agreement-field { display:flex; flex-direction:column; gap:5px; }
+	.agreement-field.span-2 { grid-column:span 2; }
+	.agreement-field.span-4 { grid-column:1 / -1; }
+	.agreement-field label { font-weight:700; color:#334155; font-size:.82rem; }
+	.agreement-field input,
+	.agreement-field select,
+	.agreement-field textarea { width:100%; border:1px solid #cbd5e1; border-radius:12px; padding:9px 11px; font-size:.92rem; line-height:1.45; background:#fff; transition:border-color .2s ease, box-shadow .2s ease; }
+	.agreement-field input:focus,
+	.agreement-field select:focus,
+	.agreement-field textarea:focus { border-color:#0f766e; box-shadow:0 0 0 3px rgba(15,118,110,.12); outline:none; }
+	.agreement-field input[readonly],
+	.agreement-field textarea[readonly],
+	.agreement-field select:disabled { background:#f8fafc; color:#475569; }
+	.agreement-toggle-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; }
+	.agreement-check { display:flex; gap:10px; align-items:center; padding:11px 12px; border:1px solid #dbe4ee; border-radius:14px; background:#f8fafc; min-height:46px; }
+	.agreement-check input { width:18px; height:18px; margin:0; }
+	.agreement-rate-toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; }
+	.agreement-rate-table { width:100%; border-collapse:separate; border-spacing:0; min-width:1100px; }
+	.agreement-rate-table th { background:#f8fafc; color:#334155; font-size:.76rem; text-transform:uppercase; letter-spacing:.04em; padding:10px 9px; border-bottom:1px solid #dbe4ee; }
+	.agreement-rate-table td { padding:9px; border-bottom:1px solid #e2e8f0; vertical-align:top; }
+	.agreement-rate-table td input,
+	.agreement-rate-table td select,
+	.agreement-rate-table td textarea { min-width:110px; }
+	.agreement-rate-wrap { overflow-x:auto; border:1px solid #e2e8f0; border-radius:16px; }
+	.agreement-pill { display:inline-flex; align-items:center; gap:8px; padding:7px 12px; border-radius:999px; background:#ecfeff; color:#0f766e; font-size:.82rem; font-weight:600; }
+	.agreement-actions { display:flex; justify-content:flex-end; gap:12px; padding:4px 2px 18px; }
+	.agreement-meta { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:12px; }
+	.agreement-meta .meta-box { padding:12px 14px; background:#f8fafc; border:1px solid #dbe4ee; border-radius:14px; }
+	.agreement-meta .meta-label { display:block; font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#64748b; margin-bottom:5px; }
+	.agreement-meta .meta-value { color:#0f172a; font-weight:600; word-break:break-word; }
+	.agreement-upload-box { display:flex; flex-direction:column; gap:10px; padding:14px 16px; border:1px dashed #94a3b8; border-radius:14px; background:#f8fafc; }
+	.agreement-upload-box small { color:#64748b; }
+	.agreement-upload-link { display:inline-flex; align-items:center; gap:8px; color:#0f766e; font-weight:600; text-decoration:none; }
+	.agreement-upload-link:hover { text-decoration:underline; }
+	.agreement-overview { display:grid; gap:14px; }
+	.agreement-overview-head { display:grid; gap:10px; }
+	.agreement-overview-title { display:grid; gap:4px; }
+	.agreement-overview-title h3 { margin:0; font-size:1.08rem; color:#0f172a; }
+	.agreement-overview-title p { margin:0; color:#64748b; font-size:.83rem; line-height:1.45; }
+	.agreement-overview-badges { display:flex; flex-wrap:wrap; gap:8px; }
+	.agreement-mini-grid { display:grid; gap:10px; }
+	.agreement-mini-box { padding:12px 13px; border:1px solid #dbe4ee; border-radius:14px; background:#f8fafc; }
+	.agreement-mini-box strong { display:block; color:#64748b; font-size:.74rem; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px; }
+	.agreement-mini-box span { color:#0f172a; font-weight:700; line-height:1.45; word-break:break-word; }
+	.agreement-inline-note { padding:11px 12px; border-radius:14px; border:1px dashed #cbd5e1; background:#fcfcfd; color:#475569; font-size:.8rem; line-height:1.5; }
+	.row-remove-button { min-width:42px; }
+	@@media (max-width: 1280px) {
+		.agreement-grid, .agreement-meta, .agreement-toggle-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+		.agr-info-strip { grid-template-columns:repeat(4, minmax(0, 1fr)); }
+	}
+	@@media (max-width: 768px) {
+		.agreement-page-surface { padding: 12px 14px; }
+		.agreement-page-header { flex-direction:column; align-items:stretch; }
+		.agreement-grid, .agreement-meta, .agreement-toggle-grid { grid-template-columns:1fr; }
+		.agreement-field.span-2, .agreement-field.span-4 { grid-column:span 1; }
+		.agreement-card { padding:14px 16px; }
+		.agr-info-strip { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+		.agreement-rate-toolbar, .agreement-actions, .agreement-card-header { flex-direction:column; align-items:stretch; }
+	}
+</style>
+
+<div class="agreement-workspace">
+	<div class="agr-info-strip">
+		<div class="agr-info-strip-item"><strong>Agreement</strong><span>@agreementDisplayName</span></div>
+		<div class="agr-info-strip-item"><strong>Code</strong><span>@(string.IsNullOrWhiteSpace(Model.AgreementCode) ? "Pending" : Model.AgreementCode)</span></div>
+		<div class="agr-info-strip-item"><strong>Validity</strong><span>@effectiveWindow</span></div>
+		<div class="agr-info-strip-item"><strong>Status</strong><span>@(Model.IsActive ? "Active" : "Inactive")</span></div>
+		<div class="agr-info-strip-item"><strong>Approval</strong><span>@(string.IsNullOrWhiteSpace(Model.ApprovalStatus) ? "Draft" : Model.ApprovalStatus)</span></div>
+		<div class="agr-info-strip-item"><strong>Linked Clients</strong><span>@Model.AssignedClientCount</span></div>
+		<div class="agr-info-strip-item"><strong>Commercial</strong><span>@(string.IsNullOrWhiteSpace(Model.BillingType) ? "Pending" : Model.BillingType)</span></div>
+		<div class="agr-info-strip-item"><strong>Rate Rows</strong><span>@displayRoomRateCount configured</span></div>
+	</div>
+	<aside class="agreement-sidebar">
+		<section class="agreement-card">
+			<div class="agreement-overview">
+				<div class="agreement-overview-head">
+					<div class="agreement-overview-title">
+						<h3>@agreementDisplayName</h3>
+						<p>Keep the agreement header, billing rules, master mappings, and room-rate rows aligned in a single contract workspace.</p>
+					</div>
+					<div class="agreement-overview-badges">
+						<span class="agreement-pill"><i class="fas fa-link"></i> Reusable master</span>
+						<span class="agreement-pill"><i class="fas fa-users"></i> @Model.AssignedClientCount linked client(s)</span>
+					</div>
+				</div>
+
+				<div class="agreement-mini-grid">
+					<div class="agreement-mini-box">
+						<strong>Agreement Code</strong>
+						<span>@(string.IsNullOrWhiteSpace(Model.AgreementCode) ? "Will be assigned on save" : Model.AgreementCode)</span>
+					</div>
+					<div class="agreement-mini-box">
+						<strong>Validity</strong>
+						<span>@effectiveWindow</span>
+					</div>
+					<div class="agreement-mini-box">
+						<strong>Status</strong>
+						<span>@(Model.IsActive ? "Active" : "Inactive")</span>
+					</div>
+					<div class="agreement-mini-box">
+						<strong>Approval</strong>
+						<span>@(string.IsNullOrWhiteSpace(Model.ApprovalStatus) ? "Draft" : Model.ApprovalStatus)</span>
+					</div>
+					<div class="agreement-mini-box">
+						<strong>Commercial Model</strong>
+						<span>@(string.IsNullOrWhiteSpace(Model.BillingType) ? "Pending" : Model.BillingType) / @(string.IsNullOrWhiteSpace(Model.RatePlanType) ? "Rate not set" : Model.RatePlanType)</span>
+					</div>
+					<div class="agreement-mini-box">
+						<strong>Room Rate Rows</strong>
+						<span>@displayRoomRateCount configured row(s)</span>
+					</div>
+				</div>
+
+				<div class="agreement-inline-note">
+					@(isReadOnly
+						? "This page is in read-only mode. Use the summary rail to understand the agreement quickly, then review the detailed sections on the right."
+						: "Complete the header first, then confirm commercial rules and master mappings before adding or adjusting room-rate rows.")
+				</div>
+
+				@if (Model.CreatedDate != default || Model.UpdatedDate.HasValue || !string.IsNullOrWhiteSpace(Model.CreatedByName) || !string.IsNullOrWhiteSpace(Model.UpdatedByName))
+				{
+					<div class="agreement-mini-grid">
+						<div class="agreement-mini-box">
+							<strong>Created</strong>
+							<span>@(string.IsNullOrWhiteSpace(Model.CreatedByName) ? "-" : Model.CreatedByName)<br />@(Model.CreatedDate == default ? "" : Model.CreatedDate.ToLocalTime().ToString("dd MMM yyyy hh:mm tt"))</span>
+						</div>
+						<div class="agreement-mini-box">
+							<strong>Updated</strong>
+							<span>@(string.IsNullOrWhiteSpace(Model.UpdatedByName) ? "-" : Model.UpdatedByName)<br />@(Model.UpdatedDate.HasValue ? Model.UpdatedDate.Value.ToLocalTime().ToString("dd MMM yyyy hh:mm tt") : "-")</span>
+						</div>
+					</div>
+				}
+			</div>
+		</section>
+	</aside>
+
+	<div class="agreement-content">
+	<section class="agreement-card">
+		<div class="agreement-card-header">
+			<div>
+				<h3>Contract Header</h3>
+				<p>Define identity, contract reference, effective period, and signing details in one compact section.</p>
+			</div>
+			<span class="agreement-pill"><i class="fas fa-link"></i> Reusable across multiple B2B clients</span>
+		</div>
+		<div class="agreement-grid">
+		<div class="agreement-field">
+			<label asp-for="AgreementCode"></label>
+			<input asp-for="AgreementCode" readonly="@isReadOnly" />
+			<span asp-validation-for="AgreementCode" class="text-danger"></span>
+		</div>
+		<div class="agreement-field span-2">
+			<label asp-for="AgreementName"></label>
+			<input asp-for="AgreementName" readonly="@isReadOnly" />
+			<span asp-validation-for="AgreementName" class="text-danger"></span>
+		</div>
+		<div class="agreement-field">
+			<label asp-for="ContractReference"></label>
+			<input asp-for="ContractReference" readonly="@isReadOnly" placeholder="Client PO, MSA, or contract ref" />
+			<span asp-validation-for="ContractReference" class="text-danger"></span>
+		</div>
+		<div class="agreement-field">
+			<label asp-for="AgreementType"></label>
+			<select asp-for="AgreementType" disabled="@isReadOnly">
+				<option value="">Select Type</option>
+				@foreach (var item in agreementTypes)
+				{
+					<option value="@item">@item</option>
+				}
+			</select>
+			<span asp-validation-for="AgreementType" class="text-danger"></span>
+		</div>
+		<div class="agreement-field">
+			<label asp-for="EffectiveFrom"></label>
+			<input asp-for="EffectiveFrom" type="date" readonly="@isReadOnly" />
+			<span asp-validation-for="EffectiveFrom" class="text-danger"></span>
+		</div>
+		<div class="agreement-field">
+			<label asp-for="EffectiveTo"></label>
+			<input asp-for="EffectiveTo" type="date" readonly="@isReadOnly" />
+			<span asp-validation-for="EffectiveTo" class="text-danger"></span>
+		</div>
+		<div class="agreement-field">
+			<label>Assigned Clients</label>
+			<input value="@Model.AssignedClientCount" readonly />
+		</div>
+		<div class="agreement-field">
+			<label asp-for="SignedByName"></label>
+			<input asp-for="SignedByName" readonly="@isReadOnly" placeholder="Signing authority" />
+			<span asp-validation-for="SignedByName" class="text-danger"></span>
+		</div>
+		<div class="agreement-field">
+			<label asp-for="SignedDate"></label>
+			<input asp-for="SignedDate" type="date" readonly="@isReadOnly" />
+			<span asp-validation-for="SignedDate" class="text-danger"></span>
+		</div>
+		<div class="agreement-field span-2">
+			<label asp-for="SignedDocumentFile"></label>
+			@if (!isReadOnly)
+			{
+				<input asp-for="SignedDocumentPath" type="hidden" />
+				<div class="agreement-upload-box">
+					<input asp-for="SignedDocumentFile" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" />
+					<small>Allowed formats: PDF, DOC, DOCX, JPG, JPEG, PNG. Maximum size 10 MB.</small>
+					@if (!string.IsNullOrWhiteSpace(Model.SignedDocumentPath))
+					{
+						<a class="agreement-upload-link" href="@Model.SignedDocumentPath" target="_blank" rel="noopener noreferrer">
+							<i class="fas fa-paperclip"></i>
+							<span>Open current file@(string.IsNullOrWhiteSpace(signedDocumentFileName) ? string.Empty : $": {signedDocumentFileName}")</span>
+						</a>
+						<small>Upload a new file only if you want to replace the existing signed document.</small>
+					}
+				</div>
+			}
+			else if (!string.IsNullOrWhiteSpace(Model.SignedDocumentPath))
+			{
+				<div class="agreement-upload-box">
+					<a class="agreement-upload-link" href="@Model.SignedDocumentPath" target="_blank" rel="noopener noreferrer">
+						<i class="fas fa-file-download"></i>
+						<span>@(signedDocumentFileName ?? "Open signed agreement")</span>
+					</a>
+					<small>Stored signed agreement document.</small>
+				</div>
+			}
+			else
+			{
+				<div class="agreement-upload-box">
+					<small>No signed document uploaded.</small>
+				</div>
+			}
+			<span asp-validation-for="SignedDocumentFile" class="text-danger"></span>
+		</div>
+		<div class="agreement-field">
+			<label asp-for="IsActive"></label>
+			<select asp-for="IsActive" disabled="@isReadOnly">
+				<option value="true">Active</option>
+				<option value="false">Inactive</option>
+			</select>
+		</div>
+	</div>
+</section>
+
+<section class="agreement-card">
+	<div class="agreement-card-header">
+		<div>
+			<h3>Commercial & Billing</h3>
+			<p>Configure settlement style, payment terms, discount posture, and deposit control.</p>
+		</div>
+	</div>
+	<div class="agreement-grid">
+		<div class="agreement-field">
+			<label asp-for="BillingType"></label>
+			<select asp-for="BillingType" id="BillingType" disabled="@isReadOnly">
+				@foreach (var item in billingTypes)
+				{
+					<option value="@item">@item</option>
+				}
+			</select>
+			<span asp-validation-for="BillingType" class="text-danger"></span>
+		</div>
+		<div class="agreement-field">
+			<label asp-for="BillingCycle"></label>
+			<select asp-for="BillingCycle" disabled="@isReadOnly">
+				<option value="">Select Cycle</option>
+				@foreach (var item in billingCycles)
+				{
+					<option value="@item">@item</option>
+				}
+			</select>
+			<span asp-validation-for="BillingCycle" class="text-danger"></span>
+		</div>
+		<div class="agreement-field">
+			<label asp-for="CreditDays"></label>
+			<input asp-for="CreditDays" id="creditDays" type="number" min="0" readonly="@isReadOnly" />
+			<span asp-validation-for="CreditDays" class="text-danger"></span>
+		</div>
+		<div class="agreement-field">
+			<label asp-for="CreditLimit"></label>
+			<input asp-for="CreditLimit" id="creditLimit" type="number" min="0" step="0.01" readonly="@isReadOnly" />
+			<span asp-validation-for="CreditLimit" class="text-danger"></span>
+		</div>
+		<div class="agreement-field span-2">
+			<label asp-for="PaymentTerms"></label>
+			<input asp-for="PaymentTerms" readonly="@isReadOnly" placeholder="Ex: 30 days from invoice date" />
+			<span asp-validation-for="PaymentTerms" class="text-danger"></span>
+		</div>
+		<div class="agreement-field">
+			<label asp-for="SecurityDepositAmount"></label>
+			<input asp-for="SecurityDepositAmount" type="number" min="0" step="0.01" readonly="@isReadOnly" />
+			<span asp-validation-for="SecurityDepositAmount" class="text-danger"></span>
+		</div>
+		<div class="agreement-field">
+			<label asp-for="DiscountPercent"></label>
+			<input asp-for="DiscountPercent" type="number" min="0" max="100" step="0.01" readonly="@isReadOnly" />
+			<span asp-validation-for="DiscountPercent" class="text-danger"></span>
+		</div>
+		<div class="agreement-field">
+			<label asp-for="RatePlanType"></label>
+			<select asp-for="RatePlanType" disabled="@isReadOnly">
+				@foreach (var item in ratePlans)
+				{
+					<option value="@item">@item</option>
+				}
+			</select>
+			<span asp-validation-for="RatePlanType" class="text-danger"></span>
+		</div>
+		<div class="agreement-field">
+			<label asp-for="MealPlan"></label>
+			<select asp-for="MealPlan" disabled="@isReadOnly">
+				<option value="">Select Meal Plan</option>
+				@foreach (var item in mealPlans)
+				{
+					<option value="@item">@item</option>
+				}
+			</select>
+			<span asp-validation-for="MealPlan" class="text-danger"></span>
+		</div>
+	</div>
+</section>
+
+<section class="agreement-card">
+	<div class="agreement-card-header">
+		<div>
+			<h3>Policy & Master Mapping</h3>
+			<p>Attach the reusable legal and policy masters needed for B2B billing and booking use.</p>
+		</div>
+	</div>
+	<div class="agreement-grid">
+		<div class="agreement-field span-2">
+			<label asp-for="TermsConditionId"></label>
+			<select asp-for="TermsConditionId" disabled="@isReadOnly">
+				<option value="">Select Terms &amp; Conditions</option>
+				@foreach (var row in termsConditions)
+				{
+					<option value="@row.Id">@row.TermsTitle (@row.TermsCode)</option>
+				}
+			</select>
+			<span asp-validation-for="TermsConditionId" class="text-danger"></span>
+		</div>
+		<div class="agreement-field span-2">
+			<label asp-for="CancellationPolicyId"></label>
+			<select asp-for="CancellationPolicyId" disabled="@isReadOnly">
+				<option value="">Select Cancellation Policy</option>
+				@foreach (var row in cancellationPolicies)
+				{
+					<option value="@row.Id">@row.PolicyName</option>
+				}
+			</select>
+			<span asp-validation-for="CancellationPolicyId" class="text-danger"></span>
+		</div>
+		<div class="agreement-field">
+			<label asp-for="GstSlabId"></label>
+			<select asp-for="GstSlabId" disabled="@isReadOnly">
+				<option value="">Select GST Slab</option>
+				@foreach (var row in gstSlabs)
+				{
+					<option value="@row.Id">@row.SlabName (@row.ActiveBandCount slab(s), max @((row.MaximumGstPercent ?? 0).ToString("0.##"))%)</option>
+				}
+			</select>
+			<span asp-validation-for="GstSlabId" class="text-danger"></span>
+		</div>
+		<div class="agreement-field">
+			<label asp-for="IsAmendmentAllowed"></label>
+			<select asp-for="IsAmendmentAllowed" id="IsAmendmentAllowed" disabled="@isReadOnly">
+				<option value="true">Yes</option>
+				<option value="false">No</option>
+			</select>
+		</div>
+		<div class="agreement-field">
+			<label asp-for="AmendmentChargeAmount"></label>
+			<input asp-for="AmendmentChargeAmount" id="AmendmentChargeAmount" type="number" min="0" step="0.01" readonly="@isReadOnly" />
+			<span asp-validation-for="AmendmentChargeAmount" class="text-danger"></span>
+		</div>
+		<div class="agreement-field">
+			<label asp-for="AutoRenew"></label>
+			<select asp-for="AutoRenew" id="AutoRenew" disabled="@isReadOnly">
+				<option value="true">Yes</option>
+				<option value="false">No</option>
+			</select>
+		</div>
+		<div class="agreement-field">
+			<label asp-for="RenewalNoticeDays"></label>
+			<input asp-for="RenewalNoticeDays" id="RenewalNoticeDays" type="number" min="0" readonly="@isReadOnly" />
+			<span asp-validation-for="RenewalNoticeDays" class="text-danger"></span>
+		</div>
+		<div class="agreement-field span-2">
+			<label asp-for="SeasonalRateNotes"></label>
+			<textarea asp-for="SeasonalRateNotes" rows="3" readonly="@isReadOnly"></textarea>
+			<span asp-validation-for="SeasonalRateNotes" class="text-danger"></span>
+		</div>
+		<div class="agreement-field span-2">
+			<label asp-for="BlackoutDatesNotes"></label>
+			<textarea asp-for="BlackoutDatesNotes" rows="3" readonly="@isReadOnly"></textarea>
+			<span asp-validation-for="BlackoutDatesNotes" class="text-danger"></span>
+		</div>
+	</div>
+</section>
+
+<section class="agreement-card">
+	<div class="agreement-card-header">
+		<div>
+			<h3>Service Inclusions</h3>
+			<p>Capture the commercial commitments that should carry through to operations and invoicing.</p>
+		</div>
+	</div>
+	<div class="agreement-toggle-grid">
+		<label class="agreement-check"><input asp-for="IncludesBreakfast" disabled="@isReadOnly" /><span>Breakfast</span></label>
+		<label class="agreement-check"><input asp-for="IncludesLunch" disabled="@isReadOnly" /><span>Lunch</span></label>
+		<label class="agreement-check"><input asp-for="IncludesDinner" disabled="@isReadOnly" /><span>Dinner</span></label>
+		<label class="agreement-check"><input asp-for="IncludesLaundry" disabled="@isReadOnly" /><span>Laundry</span></label>
+		<label class="agreement-check"><input asp-for="IncludesAirportTransfer" disabled="@isReadOnly" /><span>Airport Transfer</span></label>
+		<label class="agreement-check"><input asp-for="IncludesWifi" disabled="@isReadOnly" /><span>Wi-Fi</span></label>
+		<label class="agreement-check"><input asp-for="IncludesAccessToLounge" disabled="@isReadOnly" /><span>Lounge Access</span></label>
+	</div>
+	<div class="agreement-grid mt-3">
+		<div class="agreement-field span-4">
+			<label asp-for="ServiceRemarks"></label>
+			<textarea asp-for="ServiceRemarks" rows="2" readonly="@isReadOnly"></textarea>
+			<span asp-validation-for="ServiceRemarks" class="text-danger"></span>
+		</div>
+	</div>
+</section>
+
+<section class="agreement-card">
+	<div class="agreement-card-header">
+		<div>
+			<h3>Room Rate Contract</h3>
+			<p>Maintain room-type-specific contract rates, seasonal windows, GST linkage, and meal-plan overrides.</p>
+		</div>
+	</div>
+	<div class="agreement-rate-toolbar">
+		<span class="agreement-pill"><i class="fas fa-bed"></i> At least one active room-rate row is required</span>
+		@if (!isReadOnly)
+		{
+			<button type="button" class="btn-create" id="addRoomRateRow"><i class="fas fa-plus"></i> Add Rate Row</button>
+		}
+	</div>
+	<div class="agreement-rate-wrap">
+		<table class="agreement-rate-table">
+			<thead>
+				<tr>
+					<th>Room Type</th>
+					<th>Season</th>
+					<th>Valid From</th>
+					<th>Valid To</th>
+					<th>Base Rate</th>
+					<th>Contract Rate</th>
+					<th>Extra Pax</th>
+					<th>Meal Plan</th>
+					<th>GST Slab</th>
+					<th>Remarks</th>
+					<th>Active</th>
+					@if (!isReadOnly)
+					{
+						<th></th>
+					}
+				</tr>
+			</thead>
+			<tbody id="roomRateRows">
+				@for (var index = 0; index < roomRateRows.Count; index++)
+				{
+					var row = roomRateRows[index];
+					<tr class="room-rate-row">
+						<td>
+							<input type="hidden" name="RoomRates[@index].Id" value="@row.Id" />
+							<select name="RoomRates[@index].RoomTypeId" @(isReadOnly ? "disabled" : null)>
+								<option value="">Select Room Type</option>
+								@foreach (var roomType in roomTypes)
+								{
+									<option value="@roomType.Id" selected="@(roomType.Id == row.RoomTypeId ? "selected" : null)">@roomType.TypeName</option>
+								}
+							</select>
+						</td>
+						<td><input name="RoomRates[@index].SeasonLabel" value="@row.SeasonLabel" readonly="@isReadOnly" /></td>
+						<td><input name="RoomRates[@index].ValidFrom" type="date" value="@row.ValidFrom.ToString("yyyy-MM-dd")" readonly="@isReadOnly" /></td>
+						<td><input name="RoomRates[@index].ValidTo" type="date" value="@row.ValidTo.ToString("yyyy-MM-dd")" readonly="@isReadOnly" /></td>
+						<td><input name="RoomRates[@index].BaseRate" type="number" min="0" step="0.01" value="@row.BaseRate.ToString("0.##")" readonly="@isReadOnly" /></td>
+						<td><input name="RoomRates[@index].ContractRate" type="number" min="0" step="0.01" value="@row.ContractRate.ToString("0.##")" readonly="@isReadOnly" /></td>
+						<td><input name="RoomRates[@index].ExtraPaxRate" type="number" min="0" step="0.01" value="@row.ExtraPaxRate.ToString("0.##")" readonly="@isReadOnly" /></td>
+						<td>
+							<select name="RoomRates[@index].MealPlan" @(isReadOnly ? "disabled" : null)>
+								<option value="">Select Plan</option>
+								@foreach (var item in mealPlans)
+								{
+									<option value="@item" selected="@(string.Equals(item, row.MealPlan, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@item</option>
+								}
+							</select>
+						</td>
+						<td>
+							<select name="RoomRates[@index].GstSlabId" @(isReadOnly ? "disabled" : null)>
+								<option value="">Header GST Slab</option>
+								@foreach (var slab in gstSlabs)
+								{
+									<option value="@slab.Id" selected="@(slab.Id == row.GstSlabId ? "selected" : null)">@slab.SlabName</option>
+								}
+							</select>
+						</td>
+						<td><textarea name="RoomRates[@index].Remarks" rows="2" readonly="@isReadOnly">@row.Remarks</textarea></td>
+						<td class="text-center">
+							<input type="hidden" name="RoomRates[@index].IsActive" value="false" />
+							<input type="checkbox" name="RoomRates[@index].IsActive" value="true" @(row.IsActive ? "checked" : null) @(isReadOnly ? "disabled" : null) />
+						</td>
+						@if (!isReadOnly)
+						{
+							<td><button type="button" class="btn-cancel row-remove-button remove-room-rate"><i class="fas fa-trash"></i></button></td>
+						}
+					</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<span asp-validation-for="RoomRates" class="text-danger d-block mt-2"></span>
+</section>
+
+<section class="agreement-card">
+	<div class="agreement-card-header">
+		<div>
+			<h3>Approval & Audit</h3>
+			<p>Track commercial review, sign-off, and internal reference notes.</p>
+		</div>
+	</div>
+	<div class="agreement-grid">
+		<div class="agreement-field">
+			<label asp-for="ApprovalStatus"></label>
+			<select asp-for="ApprovalStatus" id="ApprovalStatus" disabled="@isReadOnly">
+				@foreach (var item in approvalStatuses)
+				{
+					<option value="@item">@item</option>
+				}
+			</select>
+			<span asp-validation-for="ApprovalStatus" class="text-danger"></span>
+		</div>
+		<div class="agreement-field">
+			<label asp-for="ApprovedByUserId"></label>
+			<select asp-for="ApprovedByUserId" id="ApprovedByUserId" disabled="@isReadOnly">
+				<option value="">Select Approver</option>
+				@foreach (var row in approvers)
+				{
+					var displayName = string.IsNullOrWhiteSpace(row.FullName) ? row.Username : row.FullName;
+					<option value="@row.Id">@displayName</option>
+				}
+			</select>
+			<span asp-validation-for="ApprovedByUserId" class="text-danger"></span>
+		</div>
+		<div class="agreement-field">
+			<label asp-for="ApprovedDate"></label>
+			<input asp-for="ApprovedDate" id="ApprovedDate" type="date" readonly="@isReadOnly" />
+			<span asp-validation-for="ApprovedDate" class="text-danger"></span>
+		</div>
+		<div class="agreement-field span-4">
+			<label asp-for="Remarks"></label>
+			<textarea asp-for="Remarks" rows="3" readonly="@isReadOnly"></textarea>
+			<span asp-validation-for="Remarks" class="text-danger"></span>
+		</div>
+		<div class="agreement-field span-4">
+			<label asp-for="InternalRemarks"></label>
+			<textarea asp-for="InternalRemarks" rows="3" readonly="@isReadOnly"></textarea>
+			<span asp-validation-for="InternalRemarks" class="text-danger"></span>
+		</div>
+	</div>
+
+	@if (Model.CreatedDate != default || Model.UpdatedDate.HasValue || !string.IsNullOrWhiteSpace(Model.CreatedByName))
+	{
+		<div class="agreement-meta mt-3">
+			<div class="meta-box">
+				<span class="meta-label">Created By</span>
+				<span class="meta-value">@(string.IsNullOrWhiteSpace(Model.CreatedByName) ? "-" : Model.CreatedByName)</span>
+			</div>
+			<div class="meta-box">
+				<span class="meta-label">Created On</span>
+				<span class="meta-value">@(Model.CreatedDate == default ? "-" : Model.CreatedDate.ToLocalTime().ToString("dd MMM yyyy hh:mm tt"))</span>
+			</div>
+			<div class="meta-box">
+				<span class="meta-label">Updated By</span>
+				<span class="meta-value">@(string.IsNullOrWhiteSpace(Model.UpdatedByName) ? "-" : Model.UpdatedByName)</span>
+			</div>
+			<div class="meta-box">
+				<span class="meta-label">Updated On</span>
+				<span class="meta-value">@(Model.UpdatedDate.HasValue ? Model.UpdatedDate.Value.ToLocalTime().ToString("dd MMM yyyy hh:mm tt") : "-")</span>
+			</div>
+		</div>
+	}
+</section>
+	</div>
+</div>
+
+@if (!isReadOnly)
+{
+	<template id="roomRateTemplate">
+		<tr class="room-rate-row">
+			<td>
+				<input type="hidden" name="RoomRates[__index__].Id" value="0" />
+				<select name="RoomRates[__index__].RoomTypeId">
+					<option value="">Select Room Type</option>
+					@foreach (var roomType in roomTypes)
+					{
+						<option value="@roomType.Id">@roomType.TypeName</option>
+					}
+				</select>
+			</td>
+			<td><input name="RoomRates[__index__].SeasonLabel" /></td>
+			<td><input name="RoomRates[__index__].ValidFrom" type="date" value="@Model.EffectiveFrom.ToString("yyyy-MM-dd")" /></td>
+			<td><input name="RoomRates[__index__].ValidTo" type="date" value="@Model.EffectiveTo.ToString("yyyy-MM-dd")" /></td>
+			<td><input name="RoomRates[__index__].BaseRate" type="number" min="0" step="0.01" value="0" /></td>
+			<td><input name="RoomRates[__index__].ContractRate" type="number" min="0" step="0.01" value="0" /></td>
+			<td><input name="RoomRates[__index__].ExtraPaxRate" type="number" min="0" step="0.01" value="0" /></td>
+			<td>
+				<select name="RoomRates[__index__].MealPlan">
+					<option value="">Select Plan</option>
+					@foreach (var item in mealPlans)
+					{
+						<option value="@item">@item</option>
+					}
+				</select>
+			</td>
+			<td>
+				<select name="RoomRates[__index__].GstSlabId">
+					<option value="">Header GST Slab</option>
+					@foreach (var slab in gstSlabs)
+					{
+						<option value="@slab.Id">@slab.SlabName</option>
+					}
+				</select>
+			</td>
+			<td><textarea name="RoomRates[__index__].Remarks" rows="2"></textarea></td>
+			<td class="text-center">
+				<input type="hidden" name="RoomRates[__index__].IsActive" value="false" />
+				<input type="checkbox" name="RoomRates[__index__].IsActive" value="true" checked />
+			</td>
+			<td><button type="button" class="btn-cancel row-remove-button remove-room-rate"><i class="fas fa-trash"></i></button></td>
+		</tr>
+	</template>
+}

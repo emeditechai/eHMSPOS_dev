@@ -1,0 +1,32 @@
+@model HotelApp.Web.Models.GstSlab
+@{
+    var isReadOnly = ViewBag.IsReadOnly == true;
+    ViewData["Title"] = isReadOnly ? "View GST Slab" : "Edit GST Slab";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-percent"></i> GST Slab Master</h2>
+    <a asp-action="Index" class="btn-cancel"><i class="fas fa-arrow-left"></i> Back to GST Master List</a>
+</div>
+
+<form asp-action="Edit" method="post" class="gst-master-shell">
+    @Html.AntiForgeryToken()
+    <input asp-for="Id" type="hidden" />
+    <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+    <partial name="_GstSlabFormFields" model="Model" />
+    <div class="agreement-actions">
+        <a asp-action="Index" class="btn-cancel"><i class="fas fa-arrow-left"></i> Back</a>
+        @if (!isReadOnly)
+        {
+            <button type="submit" class="btn-save"><i class="fas fa-save"></i> Save Changes</button>
+        }
+    </div>
+</form>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @if (!isReadOnly)
+    {
+        <partial name="_GstSlabFormScripts" />
+    }
+}
