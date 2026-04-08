@@ -11,6 +11,7 @@ namespace HotelApp.Web.ViewModels
         public DateTime? FromDate { get; set; }
         public DateTime? ToDate { get; set; }
         public string? StatusFilter { get; set; }
+        public string? CustomerType { get; set; }
         public IEnumerable<Booking> Bookings { get; set; } = new List<Booking>();
     }
 }

@@ -22,6 +22,8 @@
 		? $"{Model.EffectiveFrom:dd MMM yyyy} to {Model.EffectiveTo:dd MMM yyyy}"
 		: "Set agreement validity";
 	var agreementDisplayName = string.IsNullOrWhiteSpace(Model.AgreementName) ? "New agreement" : Model.AgreementName;
+	string? disabledAttr = isReadOnly ? "disabled" : null;
+	string? readonlyAttr = isReadOnly ? "readonly" : null;
 }
 
 <style>
@@ -190,22 +192,22 @@
 		<div class="agreement-grid">
 		<div class="agreement-field">
 			<label asp-for="AgreementCode"></label>
-			<input asp-for="AgreementCode" readonly="@isReadOnly" />
+			<input asp-for="AgreementCode" readonly="@readonlyAttr" />
 			<span asp-validation-for="AgreementCode" class="text-danger"></span>
 		</div>
 		<div class="agreement-field span-2">
 			<label asp-for="AgreementName"></label>
-			<input asp-for="AgreementName" readonly="@isReadOnly" />
+			<input asp-for="AgreementName" readonly="@readonlyAttr" />
 			<span asp-validation-for="AgreementName" class="text-danger"></span>
 		</div>
 		<div class="agreement-field">
 			<label asp-for="ContractReference"></label>
-			<input asp-for="ContractReference" readonly="@isReadOnly" placeholder="Client PO, MSA, or contract ref" />
+			<input asp-for="ContractReference" readonly="@readonlyAttr" placeholder="Client PO, MSA, or contract ref" />
 			<span asp-validation-for="ContractReference" class="text-danger"></span>
 		</div>
 		<div class="agreement-field">
 			<label asp-for="AgreementType"></label>
-			<select asp-for="AgreementType" disabled="@isReadOnly">
+			<select asp-for="AgreementType" disabled="@disabledAttr">
 				<option value="">Select Type</option>
 				@foreach (var item in agreementTypes)
 				{
@@ -216,12 +218,12 @@
 		</div>
 		<div class="agreement-field">
 			<label asp-for="EffectiveFrom"></label>
-			<input asp-for="EffectiveFrom" type="date" readonly="@isReadOnly" />
+			<input asp-for="EffectiveFrom" type="date" readonly="@readonlyAttr" />
 			<span asp-validation-for="EffectiveFrom" class="text-danger"></span>
 		</div>
 		<div class="agreement-field">
 			<label asp-for="EffectiveTo"></label>
-			<input asp-for="EffectiveTo" type="date" readonly="@isReadOnly" />
+			<input asp-for="EffectiveTo" type="date" readonly="@readonlyAttr" />
 			<span asp-validation-for="EffectiveTo" class="text-danger"></span>
 		</div>
 		<div class="agreement-field">
@@ -230,12 +232,12 @@
 		</div>
 		<div class="agreement-field">
 			<label asp-for="SignedByName"></label>
-			<input asp-for="SignedByName" readonly="@isReadOnly" placeholder="Signing authority" />
+			<input asp-for="SignedByName" readonly="@readonlyAttr" placeholder="Signing authority" />
 			<span asp-validation-for="SignedByName" class="text-danger"></span>
 		</div>
 		<div class="agreement-field">
 			<label asp-for="SignedDate"></label>
-			<input asp-for="SignedDate" type="date" readonly="@isReadOnly" />
+			<input asp-for="SignedDate" type="date" readonly="@readonlyAttr" />
 			<span asp-validation-for="SignedDate" class="text-danger"></span>
 		</div>
 		<div class="agreement-field span-2">
@@ -276,7 +278,7 @@
 		</div>
 		<div class="agreement-field">
 			<label asp-for="IsActive"></label>
-			<select asp-for="IsActive" disabled="@isReadOnly">
+			<select asp-for="IsActive" disabled="@disabledAttr">
 				<option value="true">Active</option>
 				<option value="false">Inactive</option>
 			</select>
@@ -294,7 +296,7 @@
 	<div class="agreement-grid">
 		<div class="agreement-field">
 			<label asp-for="BillingType"></label>
-			<select asp-for="BillingType" id="BillingType" disabled="@isReadOnly">
+			<select asp-for="BillingType" id="BillingType" disabled="@disabledAttr">
 				@foreach (var item in billingTypes)
 				{
 					<option value="@item">@item</option>
@@ -304,7 +306,7 @@
 		</div>
 		<div class="agreement-field">
 			<label asp-for="BillingCycle"></label>
-			<select asp-for="BillingCycle" disabled="@isReadOnly">
+			<select asp-for="BillingCycle" disabled="@disabledAttr">
 				<option value="">Select Cycle</option>
 				@foreach (var item in billingCycles)
 				{
@@ -315,32 +317,32 @@
 		</div>
 		<div class="agreement-field">
 			<label asp-for="CreditDays"></label>
-			<input asp-for="CreditDays" id="creditDays" type="number" min="0" readonly="@isReadOnly" />
+			<input asp-for="CreditDays" id="creditDays" type="number" min="0" readonly="@readonlyAttr" />
 			<span asp-validation-for="CreditDays" class="text-danger"></span>
 		</div>
 		<div class="agreement-field">
 			<label asp-for="CreditLimit"></label>
-			<input asp-for="CreditLimit" id="creditLimit" type="number" min="0" step="0.01" readonly="@isReadOnly" />
+			<input asp-for="CreditLimit" id="creditLimit" type="number" min="0" step="0.01" readonly="@readonlyAttr" />
 			<span asp-validation-for="CreditLimit" class="text-danger"></span>
 		</div>
 		<div class="agreement-field span-2">
 			<label asp-for="PaymentTerms"></label>
-			<input asp-for="PaymentTerms" readonly="@isReadOnly" placeholder="Ex: 30 days from invoice date" />
+			<input asp-for="PaymentTerms" readonly="@readonlyAttr" placeholder="Ex: 30 days from invoice date" />
 			<span asp-validation-for="PaymentTerms" class="text-danger"></span>
 		</div>
 		<div class="agreement-field">
 			<label asp-for="SecurityDepositAmount"></label>
-			<input asp-for="SecurityDepositAmount" type="number" min="0" step="0.01" readonly="@isReadOnly" />
+			<input asp-for="SecurityDepositAmount" type="number" min="0" step="0.01" readonly="@readonlyAttr" />
 			<span asp-validation-for="SecurityDepositAmount" class="text-danger"></span>
 		</div>
 		<div class="agreement-field">
 			<label asp-for="DiscountPercent"></label>
-			<input asp-for="DiscountPercent" type="number" min="0" max="100" step="0.01" readonly="@isReadOnly" />
+			<input asp-for="DiscountPercent" type="number" min="0" max="100" step="0.01" readonly="@readonlyAttr" />
 			<span asp-validation-for="DiscountPercent" class="text-danger"></span>
 		</div>
 		<div class="agreement-field">
 			<label asp-for="RatePlanType"></label>
-			<select asp-for="RatePlanType" disabled="@isReadOnly">
+			<select asp-for="RatePlanType" disabled="@disabledAttr">
 				@foreach (var item in ratePlans)
 				{
 					<option value="@item">@item</option>
@@ -350,7 +352,7 @@
 		</div>
 		<div class="agreement-field">
 			<label asp-for="MealPlan"></label>
-			<select asp-for="MealPlan" disabled="@isReadOnly">
+			<select asp-for="MealPlan" disabled="@disabledAttr">
 				<option value="">Select Meal Plan</option>
 				@foreach (var item in mealPlans)
 				{
@@ -372,7 +374,7 @@
 	<div class="agreement-grid">
 		<div class="agreement-field span-2">
 			<label asp-for="TermsConditionId"></label>
-			<select asp-for="TermsConditionId" disabled="@isReadOnly">
+			<select asp-for="TermsConditionId" disabled="@disabledAttr">
 				<option value="">Select Terms &amp; Conditions</option>
 				@foreach (var row in termsConditions)
 				{
@@ -383,7 +385,7 @@
 		</div>
 		<div class="agreement-field span-2">
 			<label asp-for="CancellationPolicyId"></label>
-			<select asp-for="CancellationPolicyId" disabled="@isReadOnly">
+			<select asp-for="CancellationPolicyId" disabled="@disabledAttr">
 				<option value="">Select Cancellation Policy</option>
 				@foreach (var row in cancellationPolicies)
 				{
@@ -394,7 +396,7 @@
 		</div>
 		<div class="agreement-field">
 			<label asp-for="GstSlabId"></label>
-			<select asp-for="GstSlabId" disabled="@isReadOnly">
+			<select asp-for="GstSlabId" disabled="@disabledAttr">
 				<option value="">Select GST Slab</option>
 				@foreach (var row in gstSlabs)
 				{
@@ -405,36 +407,36 @@
 		</div>
 		<div class="agreement-field">
 			<label asp-for="IsAmendmentAllowed"></label>
-			<select asp-for="IsAmendmentAllowed" id="IsAmendmentAllowed" disabled="@isReadOnly">
+			<select asp-for="IsAmendmentAllowed" id="IsAmendmentAllowed" disabled="@disabledAttr">
 				<option value="true">Yes</option>
 				<option value="false">No</option>
 			</select>
 		</div>
 		<div class="agreement-field">
 			<label asp-for="AmendmentChargeAmount"></label>
-			<input asp-for="AmendmentChargeAmount" id="AmendmentChargeAmount" type="number" min="0" step="0.01" readonly="@isReadOnly" />
+			<input asp-for="AmendmentChargeAmount" id="AmendmentChargeAmount" type="number" min="0" step="0.01" readonly="@readonlyAttr" />
 			<span asp-validation-for="AmendmentChargeAmount" class="text-danger"></span>
 		</div>
 		<div class="agreement-field">
 			<label asp-for="AutoRenew"></label>
-			<select asp-for="AutoRenew" id="AutoRenew" disabled="@isReadOnly">
+			<select asp-for="AutoRenew" id="AutoRenew" disabled="@disabledAttr">
 				<option value="true">Yes</option>
 				<option value="false">No</option>
 			</select>
 		</div>
 		<div class="agreement-field">
 			<label asp-for="RenewalNoticeDays"></label>
-			<input asp-for="RenewalNoticeDays" id="RenewalNoticeDays" type="number" min="0" readonly="@isReadOnly" />
+			<input asp-for="RenewalNoticeDays" id="RenewalNoticeDays" type="number" min="0" readonly="@readonlyAttr" />
 			<span asp-validation-for="RenewalNoticeDays" class="text-danger"></span>
 		</div>
 		<div class="agreement-field span-2">
 			<label asp-for="SeasonalRateNotes"></label>
-			<textarea asp-for="SeasonalRateNotes" rows="3" readonly="@isReadOnly"></textarea>
+			<textarea asp-for="SeasonalRateNotes" rows="3" readonly="@readonlyAttr"></textarea>
 			<span asp-validation-for="SeasonalRateNotes" class="text-danger"></span>
 		</div>
 		<div class="agreement-field span-2">
 			<label asp-for="BlackoutDatesNotes"></label>
-			<textarea asp-for="BlackoutDatesNotes" rows="3" readonly="@isReadOnly"></textarea>
+			<textarea asp-for="BlackoutDatesNotes" rows="3" readonly="@readonlyAttr"></textarea>
 			<span asp-validation-for="BlackoutDatesNotes" class="text-danger"></span>
 		</div>
 	</div>
@@ -448,18 +450,18 @@
 		</div>
 	</div>
 	<div class="agreement-toggle-grid">
-		<label class="agreement-check"><input asp-for="IncludesBreakfast" disabled="@isReadOnly" /><span>Breakfast</span></label>
-		<label class="agreement-check"><input asp-for="IncludesLunch" disabled="@isReadOnly" /><span>Lunch</span></label>
-		<label class="agreement-check"><input asp-for="IncludesDinner" disabled="@isReadOnly" /><span>Dinner</span></label>
-		<label class="agreement-check"><input asp-for="IncludesLaundry" disabled="@isReadOnly" /><span>Laundry</span></label>
-		<label class="agreement-check"><input asp-for="IncludesAirportTransfer" disabled="@isReadOnly" /><span>Airport Transfer</span></label>
-		<label class="agreement-check"><input asp-for="IncludesWifi" disabled="@isReadOnly" /><span>Wi-Fi</span></label>
-		<label class="agreement-check"><input asp-for="IncludesAccessToLounge" disabled="@isReadOnly" /><span>Lounge Access</span></label>
+		<label class="agreement-check"><input asp-for="IncludesBreakfast" disabled="@disabledAttr" /><span>Breakfast</span></label>
+		<label class="agreement-check"><input asp-for="IncludesLunch" disabled="@disabledAttr" /><span>Lunch</span></label>
+		<label class="agreement-check"><input asp-for="IncludesDinner" disabled="@disabledAttr" /><span>Dinner</span></label>
+		<label class="agreement-check"><input asp-for="IncludesLaundry" disabled="@disabledAttr" /><span>Laundry</span></label>
+		<label class="agreement-check"><input asp-for="IncludesAirportTransfer" disabled="@disabledAttr" /><span>Airport Transfer</span></label>
+		<label class="agreement-check"><input asp-for="IncludesWifi" disabled="@disabledAttr" /><span>Wi-Fi</span></label>
+		<label class="agreement-check"><input asp-for="IncludesAccessToLounge" disabled="@disabledAttr" /><span>Lounge Access</span></label>
 	</div>
 	<div class="agreement-grid mt-3">
 		<div class="agreement-field span-4">
 			<label asp-for="ServiceRemarks"></label>
-			<textarea asp-for="ServiceRemarks" rows="2" readonly="@isReadOnly"></textarea>
+			<textarea asp-for="ServiceRemarks" rows="2" readonly="@readonlyAttr"></textarea>
 			<span asp-validation-for="ServiceRemarks" class="text-danger"></span>
 		</div>
 	</div>
@@ -493,7 +495,6 @@
 					<th>Meal Plan</th>
 					<th>GST Slab</th>
 					<th>Remarks</th>
-					<th>Active</th>
 					@if (!isReadOnly)
 					{
 						<th></th>
@@ -515,12 +516,12 @@
 								}
 							</select>
 						</td>
-						<td><input name="RoomRates[@index].SeasonLabel" value="@row.SeasonLabel" readonly="@isReadOnly" /></td>
-						<td><input name="RoomRates[@index].ValidFrom" type="date" value="@row.ValidFrom.ToString("yyyy-MM-dd")" readonly="@isReadOnly" /></td>
-						<td><input name="RoomRates[@index].ValidTo" type="date" value="@row.ValidTo.ToString("yyyy-MM-dd")" readonly="@isReadOnly" /></td>
-						<td><input name="RoomRates[@index].BaseRate" type="number" min="0" step="0.01" value="@row.BaseRate.ToString("0.##")" readonly="@isReadOnly" /></td>
-						<td><input name="RoomRates[@index].ContractRate" type="number" min="0" step="0.01" value="@row.ContractRate.ToString("0.##")" readonly="@isReadOnly" /></td>
-						<td><input name="RoomRates[@index].ExtraPaxRate" type="number" min="0" step="0.01" value="@row.ExtraPaxRate.ToString("0.##")" readonly="@isReadOnly" /></td>
+						<td><input name="RoomRates[@index].SeasonLabel" value="@row.SeasonLabel" @(isReadOnly ? "readonly" : null) /></td>
+						<td><input name="RoomRates[@index].ValidFrom" type="date" value="@row.ValidFrom.ToString("yyyy-MM-dd")" @(isReadOnly ? "readonly" : null) /></td>
+						<td><input name="RoomRates[@index].ValidTo" type="date" value="@row.ValidTo.ToString("yyyy-MM-dd")" @(isReadOnly ? "readonly" : null) /></td>
+						<td><input name="RoomRates[@index].BaseRate" type="number" min="0" step="0.01" value="@row.BaseRate.ToString("0.##")" @(isReadOnly ? "readonly" : null) /></td>
+						<td><input name="RoomRates[@index].ContractRate" type="number" min="0" step="0.01" value="@row.ContractRate.ToString("0.##")" @(isReadOnly ? "readonly" : null) /></td>
+						<td><input name="RoomRates[@index].ExtraPaxRate" type="number" min="0" step="0.01" value="@row.ExtraPaxRate.ToString("0.##")" @(isReadOnly ? "readonly" : null) /></td>
 						<td>
 							<select name="RoomRates[@index].MealPlan" @(isReadOnly ? "disabled" : null)>
 								<option value="">Select Plan</option>
@@ -539,11 +540,8 @@
 								}
 							</select>
 						</td>
-						<td><textarea name="RoomRates[@index].Remarks" rows="2" readonly="@isReadOnly">@row.Remarks</textarea></td>
-						<td class="text-center">
-							<input type="hidden" name="RoomRates[@index].IsActive" value="false" />
-							<input type="checkbox" name="RoomRates[@index].IsActive" value="true" @(row.IsActive ? "checked" : null) @(isReadOnly ? "disabled" : null) />
-						</td>
+						<td><textarea name="RoomRates[@index].Remarks" rows="2" @(isReadOnly ? "readonly" : null)>@row.Remarks</textarea></td>
+						<input type="hidden" name="RoomRates[@index].IsActive" value="true" />
 						@if (!isReadOnly)
 						{
 							<td><button type="button" class="btn-cancel row-remove-button remove-room-rate"><i class="fas fa-trash"></i></button></td>
@@ -566,7 +564,7 @@
 	<div class="agreement-grid">
 		<div class="agreement-field">
 			<label asp-for="ApprovalStatus"></label>
-			<select asp-for="ApprovalStatus" id="ApprovalStatus" disabled="@isReadOnly">
+			<select asp-for="ApprovalStatus" id="ApprovalStatus" disabled="@disabledAttr">
 				@foreach (var item in approvalStatuses)
 				{
 					<option value="@item">@item</option>
@@ -576,7 +574,7 @@
 		</div>
 		<div class="agreement-field">
 			<label asp-for="ApprovedByUserId"></label>
-			<select asp-for="ApprovedByUserId" id="ApprovedByUserId" disabled="@isReadOnly">
+			<select asp-for="ApprovedByUserId" id="ApprovedByUserId" disabled="@disabledAttr">
 				<option value="">Select Approver</option>
 				@foreach (var row in approvers)
 				{
@@ -588,17 +586,17 @@
 		</div>
 		<div class="agreement-field">
 			<label asp-for="ApprovedDate"></label>
-			<input asp-for="ApprovedDate" id="ApprovedDate" type="date" readonly="@isReadOnly" />
+			<input asp-for="ApprovedDate" id="ApprovedDate" type="date" readonly="@readonlyAttr" />
 			<span asp-validation-for="ApprovedDate" class="text-danger"></span>
 		</div>
 		<div class="agreement-field span-4">
 			<label asp-for="Remarks"></label>
-			<textarea asp-for="Remarks" rows="3" readonly="@isReadOnly"></textarea>
+			<textarea asp-for="Remarks" rows="3" readonly="@readonlyAttr"></textarea>
 			<span asp-validation-for="Remarks" class="text-danger"></span>
 		</div>
 		<div class="agreement-field span-4">
 			<label asp-for="InternalRemarks"></label>
-			<textarea asp-for="InternalRemarks" rows="3" readonly="@isReadOnly"></textarea>
+			<textarea asp-for="InternalRemarks" rows="3" readonly="@readonlyAttr"></textarea>
 			<span asp-validation-for="InternalRemarks" class="text-danger"></span>
 		</div>
 	</div>
@@ -667,10 +665,7 @@
 				</select>
 			</td>
 			<td><textarea name="RoomRates[__index__].Remarks" rows="2"></textarea></td>
-			<td class="text-center">
-				<input type="hidden" name="RoomRates[__index__].IsActive" value="false" />
-				<input type="checkbox" name="RoomRates[__index__].IsActive" value="true" checked />
-			</td>
+			<input type="hidden" name="RoomRates[__index__].IsActive" value="true" />
 			<td><button type="button" class="btn-cancel row-remove-button remove-room-rate"><i class="fas fa-trash"></i></button></td>
 		</tr>
 	</template>

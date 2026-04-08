@@ -2,6 +2,8 @@
 @{
     ViewData["Title"] = "Assign Room";
     var availableRooms = ViewBag.AvailableRooms as IEnumerable<HotelApp.Web.Models.Room>;
+    var availableRoomsByType = ViewBag.AvailableRoomsByType as Dictionary<int, List<HotelApp.Web.Models.Room>>;
+    bool isB2BMultiType = ViewBag.IsB2BMultiType == true;
 }
 
 <style>
@@ -331,10 +333,13 @@
                 <strong>Guest Name</strong>
                 <span>@Model.PrimaryGuestFirstName @Model.PrimaryGuestLastName</span>
             </div>
-            <div class="booking-detail-item">
-                <strong>Room Type</strong>
-                <span>@Model.RoomType?.TypeName</span>
-            </div>
+            @if (!isB2BMultiType)
+            {
+                <div class="booking-detail-item">
+                    <strong>Room Type</strong>
+                    <span>@Model.RoomType?.TypeName</span>
+                </div>
+            }
             <div class="booking-detail-item">
                 <strong>Check-in Date</strong>
                 <span>@Model.CheckInDate.ToString("dd MMM yyyy")</span>
@@ -360,7 +365,118 @@
         </div>
     </div>
 
-    <h3 class="section-title">Select Available Room(s)</h3>
+    @if (isB2BMultiType && Model.B2BRoomLines != null && Model.B2BRoomLines.Any())
+    {
+        @* ========== B2B Multi-Room-Type Assignment ========== *@
+        var hasAnyRooms = availableRoomsByType != null && availableRoomsByType.Values.Any(v => v.Any());
+        if (hasAnyRooms)
+        {
+            <form asp-action="AssignRoom" method="post" id="assignRoomForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="bookingNumber" value="@Model.BookingNumber" />
+                <input type="hidden" id="requiredRooms" value="@Model.RequiredRooms" />
+
+                <div class="selection-counter" id="selectionCounter">
+                    <span class="selection-counter-label">
+                        <i class="fas fa-check-circle"></i>
+                        Total Rooms Selected:
+                    </span>
+                    <span class="selection-counter-value" id="selectedCount">
+                        0 / @Model.RequiredRooms
+                    </span>
+                </div>
+
+                @foreach (var line in Model.B2BRoomLines)
+                {
+                    var roomsForType = (availableRoomsByType != null && availableRoomsByType.ContainsKey(line.RoomTypeId))
+                        ? availableRoomsByType[line.RoomTypeId]
+                        : new List<HotelApp.Web.Models.Room>();
+
+                    <div class="b2b-roomtype-section" data-roomtypeid="@line.RoomTypeId" data-required="@line.RequiredRooms" style="margin-bottom: 24px; border: 2px solid #e2e8f0; border-radius: 12px; padding: 16px; background: #fafbfd;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                            <h4 style="margin: 0; font-size: 1.05rem; font-weight: 700; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                                <i class="fas fa-bed" style="-webkit-text-fill-color: #667eea;"></i> @line.RoomTypeName
+                            </h4>
+                            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                <span style="font-size: 0.82rem; color: #64748b;">
+                                    @line.RequiredRooms room(s) &bull;
+                                    @((line.CheckInDate ?? Model.CheckInDate).ToString("dd MMM")) &ndash; @((line.CheckOutDate ?? Model.CheckOutDate).ToString("dd MMM yyyy")) &bull;
+                                    @line.Adults A, @line.Children C
+                                </span>
+                                <span class="type-counter" data-roomtypeid="@line.RoomTypeId"
+                                      style="font-weight: 700; font-size: 0.9rem; padding: 4px 10px; border-radius: 6px; background: #f1f5f9; color: #475569;">
+                                    0 / @line.RequiredRooms
+                                </span>
+                            </div>
+                        </div>
+
+                        @if (roomsForType.Any())
+                        {
+                            <div class="room-selection-grid">
+                                @foreach (var room in roomsForType)
+                                {
+                                    <label class="room-card-selectable" for="room-@room.Id" data-room-id="@room.Id" data-roomtypeid="@line.RoomTypeId">
+                                        <div class="room-card-header">
+                                            <h4>Room @room.RoomNumber</h4>
+                                            <input type="checkbox"
+                                                   id="room-@room.Id"
+                                                   name="roomIds"
+                                                   value="@room.Id"
+                                                   class="room-checkbox"
+                                                   data-roomtypeid="@line.RoomTypeId"
+                                                   onchange="handleRoomSelection()">
+                                        </div>
+                                        <div class="room-card-body">
+                                            <div class="room-info-row">
+                                                <span class="room-info-label">Floor:</span>
+                                                <span class="room-info-value">@(room.FloorName ?? $"Floor {room.Floor}")</span>
+                                            </div>
+                                            <div class="room-info-row">
+                                                <span class="room-info-label">Status:</span>
+                                                <span class="badge-available">@room.Status</span>
+                                            </div>
+                                        </div>
+                                    </label>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert-warning" style="margin: 0;">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span>No available rooms for @line.RoomTypeName.</span>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <div class="form-actions">
+                    <a asp-action="Details" asp-route-bookingNumber="@Model.BookingNumber" class="btn-cancel-action">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn-assign" id="assignRoomBtn" disabled>
+                        <i class="fas fa-ban"></i> Select Room(s) First
+                    </button>
+                </div>
+            </form>
+        }
+        else
+        {
+            <div class="alert-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>No available rooms found for the required room types.</span>
+            </div>
+            <div class="form-actions">
+                <a asp-action="Details" asp-route-bookingNumber="@Model.BookingNumber" class="btn-cancel-action">
+                    <i class="fas fa-arrow-left"></i> Back to Details
+                </a>
+            </div>
+        }
+    }
+    else
+    {
+        @* ========== Standard single-room-type assignment ========== *@
+        <h3 class="section-title">Select Available Room(s)</h3>
 
     @if (availableRooms != null && availableRooms.Any())
     {
@@ -428,11 +544,23 @@
             </a>
         </div>
     }
+    } @* end else standard *@
 </div>
 
 <script>
     const requiredRooms = parseInt(document.getElementById('requiredRooms')?.value || 1);
-    
+    const isB2BMultiType = @(isB2BMultiType ? "true" : "false");
+
+    // Build per-type requirement map for B2B
+    const typeRequirements = {};
+    if (isB2BMultiType) {
+        document.querySelectorAll('.b2b-roomtype-section').forEach(section => {
+            const typeId = section.dataset.roomtypeid;
+            const req = parseInt(section.dataset.required) || 0;
+            typeRequirements[typeId] = req;
+        });
+    }
+
     // Update button state based on selection (global function)
     function updateButtonState() {
         const assignBtn = document.getElementById('assignRoomBtn');
@@ -461,12 +589,11 @@
         const checkboxes = document.querySelectorAll('input[name="roomIds"]:checked');
         const selectedCount = checkboxes.length;
         
-        // Update counter
+        // Update global counter
         const counterValue = document.getElementById('selectedCount');
         if (counterValue) {
             counterValue.textContent = `${selectedCount} / ${requiredRooms}`;
             
-            // Update counter color
             counterValue.classList.remove('complete', 'incomplete');
             if (selectedCount === requiredRooms) {
                 counterValue.classList.add('complete');
@@ -484,20 +611,50 @@
                 card.classList.remove('selected');
             }
         });
-        
-        // Disable other checkboxes if limit reached
-        const allCheckboxes = document.querySelectorAll('input[name="roomIds"]');
-        allCheckboxes.forEach(cb => {
-            if (!cb.checked && selectedCount >= requiredRooms) {
-                cb.disabled = true;
-                cb.closest('.room-card-selectable').style.opacity = '0.5';
-                cb.closest('.room-card-selectable').style.cursor = 'not-allowed';
-            } else if (!cb.checked) {
-                cb.disabled = false;
-                cb.closest('.room-card-selectable').style.opacity = '1';
-                cb.closest('.room-card-selectable').style.cursor = 'pointer';
+
+        if (isB2BMultiType) {
+            // B2B: enforce per-type limits
+            for (const typeId of Object.keys(typeRequirements)) {
+                const maxForType = typeRequirements[typeId];
+                const checkedForType = document.querySelectorAll(`input[name="roomIds"][data-roomtypeid="${typeId}"]:checked`);
+                const countForType = checkedForType.length;
+
+                // Update per-type counter
+                const typeCounter = document.querySelector(`.type-counter[data-roomtypeid="${typeId}"]`);
+                if (typeCounter) {
+                    typeCounter.textContent = `${countForType} / ${maxForType}`;
+                    typeCounter.style.background = countForType === maxForType ? '#dcfce7' : (countForType > 0 ? '#fef9c3' : '#f1f5f9');
+                    typeCounter.style.color = countForType === maxForType ? '#16a34a' : (countForType > 0 ? '#a16207' : '#475569');
+                }
+
+                // Disable/enable unchecked checkboxes for this type
+                document.querySelectorAll(`input[name="roomIds"][data-roomtypeid="${typeId}"]`).forEach(cb => {
+                    if (!cb.checked && countForType >= maxForType) {
+                        cb.disabled = true;
+                        cb.closest('.room-card-selectable').style.opacity = '0.5';
+                        cb.closest('.room-card-selectable').style.cursor = 'not-allowed';
+                    } else if (!cb.checked) {
+                        cb.disabled = false;
+                        cb.closest('.room-card-selectable').style.opacity = '1';
+                        cb.closest('.room-card-selectable').style.cursor = 'pointer';
+                    }
+                });
             }
-        });
+        } else {
+            // Standard: enforce global limit
+            const allCheckboxes = document.querySelectorAll('input[name="roomIds"]');
+            allCheckboxes.forEach(cb => {
+                if (!cb.checked && selectedCount >= requiredRooms) {
+                    cb.disabled = true;
+                    cb.closest('.room-card-selectable').style.opacity = '0.5';
+                    cb.closest('.room-card-selectable').style.cursor = 'not-allowed';
+                } else if (!cb.checked) {
+                    cb.disabled = false;
+                    cb.closest('.room-card-selectable').style.opacity = '1';
+                    cb.closest('.room-card-selectable').style.cursor = 'pointer';
+                }
+            });
+        }
         
         // Update button state
         updateButtonState();

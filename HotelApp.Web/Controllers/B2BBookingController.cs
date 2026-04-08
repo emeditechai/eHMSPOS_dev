@@ -47,69 +47,10 @@ namespace HotelApp.Web.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index(DateTime? fromDate, DateTime? toDate, string? statusFilter)
+        public IActionResult Index(DateTime? fromDate, DateTime? toDate, string? statusFilter)
         {
-            var isUpcomingFilter = string.Equals(statusFilter, "upcoming", StringComparison.OrdinalIgnoreCase);
-
-            if (!isUpcomingFilter && !fromDate.HasValue && !toDate.HasValue)
-            {
-                fromDate = DateTime.Today.AddDays(-7);
-                toDate = DateTime.Today;
-            }
-
-            var bookings = isUpcomingFilter
-                ? await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, null, null, 5000)
-                : await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, fromDate, toDate, 5000);
-
-            var b2bBookings = bookings
-                .Where(IsB2BBooking)
-                .ToList();
-
-            if (!string.IsNullOrWhiteSpace(statusFilter))
-            {
-                b2bBookings = statusFilter.ToLowerInvariant() switch
-                {
-                    "upcoming" => b2bBookings.Where(b =>
-                        !string.Equals(b.Status, "Cancelled", StringComparison.OrdinalIgnoreCase)
-                        && !b.ActualCheckInDate.HasValue
-                        && b.CheckInDate.Date > DateTime.Today).ToList(),
-                    "assigned" => b2bBookings.Where(b => b.Room != null || (b.AssignedRooms != null && b.AssignedRooms.Any())).ToList(),
-                    "notassigned" => b2bBookings.Where(b => b.Room == null && (b.AssignedRooms == null || !b.AssignedRooms.Any())).ToList(),
-                    "checkedin" => b2bBookings.Where(b => b.ActualCheckInDate.HasValue && !b.ActualCheckOutDate.HasValue).ToList(),
-                    "checkedout" => b2bBookings.Where(b => b.ActualCheckOutDate.HasValue).ToList(),
-                    "cancelled" => b2bBookings.Where(b => string.Equals(b.Status, "Cancelled", StringComparison.OrdinalIgnoreCase)).ToList(),
-                    "due" => b2bBookings.Where(b => b.BalanceAmount > 0).ToList(),
-                    "fullypaid" => b2bBookings.Where(b => b.BalanceAmount <= 0 || string.Equals(b.PaymentStatus, "Paid", StringComparison.OrdinalIgnoreCase)).ToList(),
-                    _ => b2bBookings
-                };
-            }
-
-            var todayB2BBookings = (await _bookingRepository
-                    .GetByBranchAndDateRangeAsync(CurrentBranchID, DateTime.Today, DateTime.Today, 5000))
-                .Where(IsB2BBooking)
-                .ToList();
-
-            var activeClients = (await _clientRepository.GetActiveByBranchAsync(CurrentBranchID)).ToList();
-            var activeAgreements = (await _agreementRepository.GetByBranchAsync(CurrentBranchID))
-                .Count(a => a.IsActive && a.EffectiveFrom.Date <= DateTime.Today && a.EffectiveTo.Date >= DateTime.Today);
-
-            var viewModel = new B2BBookingDashboardViewModel
-            {
-                TodayBookingCount = todayB2BBookings.Count,
-                TodayAdvanceAmount = todayB2BBookings.Sum(x => x.DepositAmount),
-                TotalOutstandingAmount = b2bBookings
-                    .Where(x => !string.Equals(x.Status, "Cancelled", StringComparison.OrdinalIgnoreCase))
-                    .Sum(x => x.BalanceAmount),
-                ActiveClientCount = activeClients.Count,
-                ActiveAgreementCount = activeAgreements,
-                FromDate = fromDate,
-                ToDate = toDate,
-                StatusFilter = statusFilter,
-                Bookings = b2bBookings
-            };
-
-            ViewData["Title"] = "B2B Booking Dashboard";
-            return View(viewModel);
+            // Redirect to the standard Booking List with B2B filter — same UI, same flows
+            return RedirectToAction("List", "Booking", new { fromDate, toDate, statusFilter, customerType = "B2B" });
         }
 
         [HttpGet]
@@ -152,16 +93,6 @@ namespace HotelApp.Web.Controllers
                 ModelState.AddModelError(nameof(model.CheckOutDate), "Check-out date must be after check-in date.");
             }
 
-            if (model.DepositAmount > 0 && !model.CollectAdvancePayment)
-            {
-                ModelState.AddModelError(nameof(model.CollectAdvancePayment), "Enable advance collection when an advance amount is entered.");
-            }
-
-            if (model.CollectAdvancePayment && model.DepositAmount > 0 && string.IsNullOrWhiteSpace(model.AdvancePaymentMethod))
-            {
-                ModelState.AddModelError(nameof(model.AdvancePaymentMethod), "Advance payment method is required.");
-            }
-
             var client = await _clientRepository.GetByIdAsync(model.ClientId);
             if (client == null || client.BranchID != CurrentBranchID || !client.IsActive)
             {
@@ -196,57 +127,147 @@ namespace HotelApp.Web.Controllers
                 return View(model);
             }
 
-            var quoteRequest = new BookingQuoteRequest
+            // Validate that at least one room type line was selected
+            var selectedLines = model.RoomLines?.Where(l => l.RoomTypeId > 0 && l.RequiredRooms > 0).ToList()
+                                ?? new List<B2BRoomLineItem>();
+            if (!selectedLines.Any())
             {
-                RoomTypeId = model.RoomTypeId,
-                CheckInDate = model.CheckInDate,
-                CheckOutDate = model.CheckOutDate,
-                CustomerType = "B2B",
-                Source = model.Source,
-                Adults = model.Adults,
-                Children = model.Children,
-                BranchID = CurrentBranchID,
-                RequiredRooms = model.RequiredRooms
-            };
-
-            var quote = await _bookingRepository.GetQuoteAsync(quoteRequest);
-            if (quote == null)
-            {
-                ModelState.AddModelError(string.Empty, "No active B2B rate is configured for the selected source and room type.");
+                ModelState.AddModelError(string.Empty, "Please select at least one room type and enter the number of rooms required.");
                 return View(model);
             }
 
-            model.QuotedBaseAmount = quote.TotalRoomRate;
-            model.QuotedTaxAmount = quote.TotalTaxAmount;
-            model.QuotedGrandTotal = quote.GrandTotal;
-            model.QuoteMessage = $"Rate locked for {quote.Nights} night(s)";
+            // Process each selected room type: compute quote, check capacity, resolve GST
+            var roomLineEntities = new List<B2BBookingRoomLine>();
+            var allRoomNights    = new List<BookingRoomNight>();
+            decimal grandBase = 0, grandTax = 0, grandTotal = 0, grandDiscount = 0;
+            int totalRooms = 0, totalAdults = 0, totalChildren = 0;
+            int primaryRoomTypeId = selectedLines[0].RoomTypeId;
+            int? primaryGstMasterId = null;
+            GstSlabBand? primaryGstSlab = null;
+            DateTime globalCheckIn = DateTime.MaxValue, globalCheckOut = DateTime.MinValue;
 
-            if (model.DepositAmount < 0 || model.DepositAmount > quote.GrandTotal)
+            foreach (var line in selectedLines)
             {
-                ModelState.AddModelError(nameof(model.DepositAmount), "Advance amount must be between 0 and the quoted grand total.");
-                return View(model);
+                // Per-line dates fall back to global dates from the form
+                var lineCheckIn  = line.CheckInDate?.Date  ?? model.CheckInDate.Date;
+                var lineCheckOut = line.CheckOutDate?.Date ?? model.CheckOutDate.Date;
+                if (lineCheckOut <= lineCheckIn)
+                {
+                    lineCheckIn  = model.CheckInDate.Date;
+                    lineCheckOut = model.CheckOutDate.Date;
+                }
+                if (lineCheckIn < globalCheckIn)   globalCheckIn  = lineCheckIn;
+                if (lineCheckOut > globalCheckOut)  globalCheckOut = lineCheckOut;
+
+                var (computed, lineErr) = ComputeB2BAgreementQuote(agreement, line.RoomTypeId,
+                    lineCheckIn, lineCheckOut, line.RequiredRooms);
+                if (computed == null)
+                {
+                    ModelState.AddModelError(string.Empty,
+                        lineErr ?? $"No active room rate found for room type '{line.RoomTypeName}' and the selected dates.");
+                    return View(model);
+                }
+
+                totalRooms    += line.RequiredRooms;
+                totalAdults   += Math.Max(1, line.Adults);
+                totalChildren += line.Children;
+
+                var lineCapacity = await _bookingRepository.CheckRoomCapacityAvailabilityAsync(
+                    line.RoomTypeId, CurrentBranchID, lineCheckIn, lineCheckOut, line.RequiredRooms);
+                if (!lineCapacity)
+                {
+                    ModelState.AddModelError(string.Empty,
+                        $"Not enough inventory for '{line.RoomTypeName}' ({line.RequiredRooms} room(s)) on the selected dates.");
+                    return View(model);
+                }
+
+                var lineGstMasterId = ResolveApplicableGstMasterId(agreement, line.RoomTypeId, lineCheckIn);
+                var lineGstSlab    = await ResolveGstSlabAsync(computed.RateAfterDiscount, lineCheckIn, lineGstMasterId);
+                decimal lineGstPct = lineGstSlab?.GstPercent ?? 0m;
+                decimal lineTax    = Math.Round(computed.TotalBase * (lineGstPct / 100m), 2, MidpointRounding.AwayFromZero);
+                decimal lineGrand  = computed.TotalBase + lineTax;
+
+                grandBase     += computed.TotalBase;
+                grandTax      += lineTax;
+                grandDiscount += computed.TotalDiscount;
+                grandTotal    += lineGrand;
+
+                if (line.RoomTypeId == primaryRoomTypeId)
+                {
+                    primaryGstMasterId = lineGstMasterId;
+                    primaryGstSlab     = lineGstSlab;
+                }
+
+                // Resolve meal plan from agreement for this room type
+                var lineMealPlan = !string.IsNullOrWhiteSpace(line.MealPlan) ? line.MealPlan
+                    : agreement.RoomRates?.FirstOrDefault(r => r.IsActive && r.RoomTypeId == line.RoomTypeId)?.MealPlan
+                    ?? agreement.MealPlan;
+
+                roomLineEntities.Add(new B2BBookingRoomLine
+                {
+                    RoomTypeId    = line.RoomTypeId,
+                    RoomTypeName  = line.RoomTypeName,
+                    RequiredRooms = line.RequiredRooms,
+                    RatePerNight  = computed.RateAfterDiscount,
+                    Nights        = computed.Nights,
+                    BaseAmount    = computed.TotalBase,
+                    TaxAmount     = lineTax,
+                    GrandTotal    = lineGrand,
+                    CheckInDate   = lineCheckIn,
+                    CheckOutDate  = lineCheckOut,
+                    Adults        = Math.Max(1, line.Adults),
+                    Children      = line.Children,
+                    MealPlan      = lineMealPlan
+                });
+
+                // Generate BookingRoomNights for each stay date × each room (for calendar/availability)
+                int lineNights = computed.Nights;
+                decimal nightRate = computed.RateAfterDiscount;
+                decimal nightTax  = lineNights > 0 && line.RequiredRooms > 0
+                    ? Math.Round(lineTax / (lineNights * line.RequiredRooms), 2, MidpointRounding.AwayFromZero)
+                    : 0m;
+                decimal nightCGST = Math.Round(nightTax / 2, 2, MidpointRounding.AwayFromZero);
+                decimal nightSGST = nightTax - nightCGST;
+
+                for (int d = 0; d < lineNights; d++)
+                {
+                    var stayDate = lineCheckIn.AddDays(d);
+                    for (int r = 0; r < line.RequiredRooms; r++)
+                    {
+                        allRoomNights.Add(new BookingRoomNight
+                        {
+                            RoomId         = null,
+                            StayDate       = stayDate,
+                            RateAmount     = nightRate,
+                            ActualBaseRate = nightRate,
+                            DiscountAmount = 0m,
+                            TaxAmount      = nightTax,
+                            CGSTAmount     = nightCGST,
+                            SGSTAmount     = nightSGST,
+                            Status         = "Reserved"
+                        });
+                    }
+                }
             }
 
-            var hasCapacity = await _bookingRepository.CheckRoomCapacityAvailabilityAsync(
-                model.RoomTypeId,
-                CurrentBranchID,
-                model.CheckInDate,
-                model.CheckOutDate,
-                model.RequiredRooms);
+            grandBase     = Math.Round(grandBase,     2, MidpointRounding.AwayFromZero);
+            grandTax      = Math.Round(grandTax,      2, MidpointRounding.AwayFromZero);
+            grandDiscount = Math.Round(grandDiscount, 2, MidpointRounding.AwayFromZero);
+            grandTotal    = Math.Round(grandTotal,    2, MidpointRounding.AwayFromZero);
 
-            if (!hasCapacity)
-            {
-                ModelState.AddModelError(string.Empty, "The selected room type does not have enough inventory for this B2B stay.");
-                return View(model);
-            }
+            int nights = Math.Max(1, (globalCheckOut.Date - globalCheckIn.Date).Days);
 
-            var applicableGstMasterId = ResolveApplicableGstMasterId(agreement, model.RoomTypeId, model.CheckInDate);
-            var gstSlab = await ResolveGstSlabAsync(GetPerNightTariff(quote, model), model.CheckInDate, applicableGstMasterId);
-            model.GstSlabId = applicableGstMasterId;
-            model.GstSlabCode = gstSlab?.SlabCode;
-            model.GstSlabName = gstSlab == null
+            model.QuotedBaseAmount = grandBase;
+            model.QuotedTaxAmount  = grandTax;
+            model.QuotedGrandTotal = grandTotal;
+            model.QuoteMessage     = $"Rate locked for {nights} night(s) — {selectedLines.Count} room type(s)";
+
+
+            model.GstSlabId   = primaryGstMasterId;
+            model.GstSlabCode = primaryGstSlab?.SlabCode;
+            model.GstSlabName = primaryGstSlab == null
                 ? null
-                : $"{gstSlab.SlabName} | {gstSlab.TariffFrom:N2} - {(gstSlab.TariffTo.HasValue ? gstSlab.TariffTo.Value.ToString("N2") : "Open")}";
+                : $"{primaryGstSlab.SlabName} | {primaryGstSlab.TariffFrom:N2} - {(primaryGstSlab.TariffTo.HasValue ? primaryGstSlab.TariffTo.Value.ToString("N2") : "Open")}";
 
             var derivedRateType = agreement.DiscountPercent > 0 ? "Discounted" : "Standard";
             var (policyId, snapshotJson) = await _cancellationPolicyRepository.GetApplicablePolicySnapshotAsync(
@@ -258,15 +279,12 @@ namespace HotelApp.Web.Controllers
 
             var bookingNumber = GenerateB2BBookingNumber();
             var createdBy = GetCurrentUserId();
-            var totalAmount = Math.Round(quote.TotalRoomRate + quote.TotalTaxAmount, 2, MidpointRounding.AwayFromZero);
 
             var booking = new Booking
             {
                 BookingNumber = bookingNumber,
                 Status = "Confirmed",
-                PaymentStatus = model.DepositAmount >= quote.GrandTotal
-                    ? "Paid"
-                    : (model.DepositAmount > 0 ? "Partially Paid" : "Pending"),
+                PaymentStatus = "Pending",
                 CustomerType = "B2B",
                 Source = model.Source,
                 Channel = model.Channel,
@@ -277,9 +295,9 @@ namespace HotelApp.Web.Controllers
                 B2BAgreementId = agreement.Id,
                 AgreementCode = agreement.AgreementCode,
                 AgreementName = agreement.AgreementName,
-                GstSlabId = applicableGstMasterId,
-                GstSlabCode = gstSlab?.SlabCode,
-                GstSlabName = gstSlab?.SlabName,
+                GstSlabId = primaryGstMasterId,
+                GstSlabCode = primaryGstSlab?.SlabCode,
+                GstSlabName = primaryGstSlab?.SlabName,
                 CompanyContactPerson = client.ContactPerson,
                 CompanyContactNo = client.ContactNo,
                 CompanyEmail = client.CorporateEmail,
@@ -296,22 +314,22 @@ namespace HotelApp.Web.Controllers
                 IsCreditAllowed = client.IsCreditAllowed,
                 CancellationPolicyId = policyId,
                 CancellationPolicySnapshot = snapshotJson,
-                CheckInDate = model.CheckInDate,
-                CheckOutDate = model.CheckOutDate,
-                Nights = quote.Nights,
-                RoomTypeId = model.RoomTypeId,
-                RequiredRooms = model.RequiredRooms,
-                RatePlanId = quote.RatePlanId,
-                BaseAmount = quote.TotalRoomRate,
-                TaxAmount = quote.TotalTaxAmount,
-                CGSTAmount = quote.TotalCGSTAmount,
-                SGSTAmount = quote.TotalSGSTAmount,
-                DiscountAmount = quote.DiscountAmount,
-                TotalAmount = totalAmount,
-                DepositAmount = model.DepositAmount,
-                BalanceAmount = totalAmount - model.DepositAmount,
-                Adults = model.Adults,
-                Children = model.Children,
+                CheckInDate = globalCheckIn,
+                CheckOutDate = globalCheckOut,
+                Nights = nights,
+                RoomTypeId = primaryRoomTypeId,
+                RequiredRooms = totalRooms,
+                RatePlanId = null,
+                BaseAmount = grandBase,
+                TaxAmount = grandTax,
+                CGSTAmount = Math.Round(grandTax / 2, 2, MidpointRounding.AwayFromZero),
+                SGSTAmount = Math.Round(grandTax / 2, 2, MidpointRounding.AwayFromZero),
+                DiscountAmount = grandDiscount,
+                TotalAmount = grandTotal,
+                DepositAmount = 0m,
+                BalanceAmount = grandTotal,
+                Adults = totalAdults,
+                Children = totalChildren,
                 PrimaryGuestFirstName = model.PrimaryGuestFirstName,
                 PrimaryGuestLastName = model.PrimaryGuestLastName,
                 PrimaryGuestEmail = model.PrimaryGuestEmail ?? string.Empty,
@@ -338,22 +356,18 @@ namespace HotelApp.Web.Controllers
             };
 
             var payments = new List<BookingPayment>();
-            if (model.CollectAdvancePayment && model.DepositAmount > 0)
+
+            var result = await _bookingRepository.CreateBookingAsync(booking, guests, payments, allRoomNights);
+            await _bookingRepository.SaveB2BRoomLinesAsync(result.BookingId, roomLineEntities);
+            TempData["SuccessMessage"] = $"B2B booking {result.BookingNumber} created successfully.";
+
+            // If advance payment requested, redirect to standard Details page (which has payment modal)
+            if (model.CollectAdvancePayment)
             {
-                payments.Add(new BookingPayment
-                {
-                    Amount = model.DepositAmount,
-                    PaymentMethod = model.AdvancePaymentMethod ?? string.Empty,
-                    PaymentReference = string.IsNullOrWhiteSpace(model.AdvancePaymentReference) ? null : model.AdvancePaymentReference.Trim(),
-                    Status = "Captured",
-                    PaidOn = DateTime.Now,
-                    Notes = "Advance collected during B2B booking creation.",
-                    IsAdvancePayment = true
-                });
+                TempData["ShowAdvancePaymentModal"] = "true";
+                return RedirectToAction("Details", "Booking", new { bookingNumber = result.BookingNumber });
             }
 
-            var result = await _bookingRepository.CreateBookingAsync(booking, guests, payments, new List<BookingRoomNight>());
-            TempData["SuccessMessage"] = $"B2B booking {result.BookingNumber} created successfully.";
             return RedirectToAction(nameof(Details), new { bookingNumber = result.BookingNumber });
         }
 
@@ -427,78 +441,139 @@ namespace HotelApp.Web.Controllers
                         mealPlan = agreement.MealPlan,
                         effectiveFrom = agreement.EffectiveFrom.ToString("yyyy-MM-dd"),
                         effectiveTo = agreement.EffectiveTo.ToString("yyyy-MM-dd")
-                    }
+                    },
+                roomTypes = agreement == null
+                    ? Array.Empty<object>()
+                    : agreement.RoomRates
+                        .Where(r => r.IsActive)
+                        .GroupBy(r => r.RoomTypeId)
+                        .Select(g =>
+                        {
+                            // Prefer the rate row whose validity window includes today
+                            var today = DateTime.Today;
+                            var row = g.FirstOrDefault(r => r.ValidFrom.Date <= today && r.ValidTo.Date >= today)
+                                      ?? g.OrderByDescending(r => r.ValidFrom).First();
+                            return (object)new
+                            {
+                                id = g.Key,
+                                name = row.RoomTypeName,
+                                ratePerNight = row.ContractRate,
+                                mealPlan = row.MealPlan,
+                                season = row.SeasonLabel
+                            };
+                        })
+                        .OrderBy(r => ((dynamic)r).name)
+                        .ToArray()
             });
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetQuote(int roomTypeId, int? agreementId, string source, DateTime checkInDate, DateTime checkOutDate, int adults, int children, int requiredRooms)
+        // DTO for multi-room-type quote request body
+        public sealed class QuoteLineDto
         {
-            if (roomTypeId <= 0 || string.IsNullOrWhiteSpace(source) || checkOutDate <= checkInDate)
-            {
-                return Json(new { success = false, message = "Enter valid stay details." });
-            }
+            public int RoomTypeId { get; set; }
+            public int RequiredRooms { get; set; } = 1;
+            public DateTime? CheckInDate { get; set; }
+            public DateTime? CheckOutDate { get; set; }
+        }
 
-            if (!agreementId.HasValue || agreementId.Value <= 0)
-            {
+        public sealed class MultiRoomQuoteRequest
+        {
+            public int AgreementId { get; set; }
+            public DateTime CheckInDate { get; set; }
+            public DateTime CheckOutDate { get; set; }
+            public List<QuoteLineDto> Lines { get; set; } = new();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> GetQuote([FromBody] MultiRoomQuoteRequest request)
+        {
+            if (request == null || request.CheckOutDate <= request.CheckInDate)
+                return Json(new { success = false, message = "Enter valid check-in and check-out dates." });
+
+            if (request.AgreementId <= 0)
                 return Json(new { success = false, message = "Select a B2B client with an assigned agreement first." });
-            }
 
-            B2BAgreement? agreement = null;
-            if (agreementId.Value > 0)
+            var validLines = request.Lines?.Where(l => l.RoomTypeId > 0 && l.RequiredRooms > 0).ToList();
+            if (validLines == null || validLines.Count == 0)
+                return Json(new { success = false, message = "Select at least one room type with a quantity of 1 or more." });
+
+            var agreement = await _agreementRepository.GetByIdAsync(request.AgreementId);
+            if (agreement == null || agreement.BranchID != CurrentBranchID || !agreement.IsActive)
+                return Json(new { success = false, message = "The selected agreement is invalid or inactive." });
+
+            var lineResults = new List<object>();
+            decimal grandBase = 0, grandTax = 0, grandTotal = 0;
+            var availabilityIssues = new List<string>();
+
+            foreach (var line in validLines)
             {
-                agreement = await _agreementRepository.GetByIdAsync(agreementId.Value);
-                if (agreement == null || agreement.BranchID != CurrentBranchID || !agreement.IsActive)
+                // Per-line dates fall back to the global request dates
+                var lineCheckIn  = line.CheckInDate?.Date  ?? request.CheckInDate.Date;
+                var lineCheckOut = line.CheckOutDate?.Date ?? request.CheckOutDate.Date;
+                if (lineCheckOut <= lineCheckIn)
                 {
-                    return Json(new { success = false, message = "Select a valid active agreement." });
+                    lineCheckIn  = request.CheckInDate.Date;
+                    lineCheckOut = request.CheckOutDate.Date;
                 }
+
+                var (computed, err) = ComputeB2BAgreementQuote(agreement, line.RoomTypeId, lineCheckIn, lineCheckOut, line.RequiredRooms);
+                if (computed == null)
+                    return Json(new { success = false, message = err });
+
+                var gstMasterId = ResolveApplicableGstMasterId(agreement, line.RoomTypeId, lineCheckIn);
+                var gstSlab = await ResolveGstSlabAsync(computed.RateAfterDiscount, lineCheckIn, gstMasterId);
+                decimal gstPct = gstSlab?.GstPercent ?? 0m;
+                decimal lineTax = Math.Round(computed.TotalBase * (gstPct / 100m), 2, MidpointRounding.AwayFromZero);
+                decimal lineGrand = computed.TotalBase + lineTax;
+
+                var hasCapacity = await _bookingRepository.CheckRoomCapacityAvailabilityAsync(
+                    line.RoomTypeId, CurrentBranchID, lineCheckIn, lineCheckOut, line.RequiredRooms);
+
+                var roomTypeName = agreement.RoomRates
+                    .FirstOrDefault(r => r.RoomTypeId == line.RoomTypeId)?.RoomTypeName ?? $"Room Type #{line.RoomTypeId}";
+
+                if (!hasCapacity)
+                    availabilityIssues.Add($"{roomTypeName} ({line.RequiredRooms} room(s))");
+
+                grandBase  += computed.TotalBase;
+                grandTax   += lineTax;
+                grandTotal += lineGrand;
+
+                lineResults.Add(new
+                {
+                    roomTypeId   = line.RoomTypeId,
+                    roomTypeName,
+                    requiredRooms = line.RequiredRooms,
+                    nights        = computed.Nights,
+                    ratePerNight  = computed.RateAfterDiscount,
+                    baseAmount    = computed.TotalBase,
+                    taxAmount     = lineTax,
+                    grandTotal    = lineGrand,
+                    available     = hasCapacity,
+                    gstSlabName   = gstSlab?.SlabName,
+                    checkInDate   = lineCheckIn.ToString("yyyy-MM-dd"),
+                    checkOutDate  = lineCheckOut.ToString("yyyy-MM-dd")
+                });
             }
 
-            var quote = await _bookingRepository.GetQuoteAsync(new BookingQuoteRequest
-            {
-                RoomTypeId = roomTypeId,
-                CheckInDate = checkInDate,
-                CheckOutDate = checkOutDate,
-                CustomerType = "B2B",
-                Source = source,
-                Adults = adults,
-                Children = children,
-                BranchID = CurrentBranchID,
-                RequiredRooms = requiredRooms
-            });
-
-            if (quote == null)
-            {
-                return Json(new { success = false, message = "No B2B rate configured for the selected stay." });
-            }
-
-            var applicableGstMasterId = ResolveApplicableGstMasterId(agreement, roomTypeId, checkInDate);
-            var gstSlab = await ResolveGstSlabAsync(GetPerNightTariff(quote, requiredRooms, quote.Nights), checkInDate, applicableGstMasterId);
+            bool allAvailable = availabilityIssues.Count == 0;
+            string availMsg = allAvailable
+                ? $"All rooms available for {validLines.Sum(l => l.RequiredRooms)} room(s) over {(request.CheckOutDate.Date - request.CheckInDate.Date).Days} night(s)."
+                : $"Insufficient inventory for: {string.Join(", ", availabilityIssues)}.";
 
             return Json(new
             {
                 success = true,
-                quote = new
+                roomsAvailable = allAvailable,
+                availabilityMessage = availMsg,
+                lines = lineResults,
+                totals = new
                 {
-                    nights = quote.Nights,
-                    baseAmount = quote.TotalRoomRate,
-                    taxAmount = quote.TotalTaxAmount,
-                    grandTotal = quote.GrandTotal,
-                    discountAmount = quote.DiscountAmount,
-                    taxPercentage = quote.TaxPercentage,
-                    message = $"{quote.Nights} night(s) quoted for B2B stay."
-                },
-                gstSlab = gstSlab == null
-                    ? null
-                    : new
-                    {
-                        id = gstSlab.GstSlabId,
-                        code = gstSlab.SlabCode,
-                        name = gstSlab.SlabName,
-                        gstPercent = gstSlab.GstPercent,
-                        tariffFrom = gstSlab.TariffFrom,
-                        tariffTo = gstSlab.TariffTo
-                    }
+                    baseAmount = Math.Round(grandBase,  2, MidpointRounding.AwayFromZero),
+                    taxAmount  = Math.Round(grandTax,   2, MidpointRounding.AwayFromZero),
+                    grandTotal = Math.Round(grandTotal, 2, MidpointRounding.AwayFromZero),
+                    nights     = (request.CheckOutDate.Date - request.CheckInDate.Date).Days
+                }
             });
         }
 
@@ -584,6 +659,40 @@ namespace HotelApp.Web.Controllers
             model.SpecialRequests = string.IsNullOrWhiteSpace(model.SpecialRequests) ? null : model.SpecialRequests.Trim();
         }
 
+        private sealed record B2BAgreementQuoteResult(
+            int Nights,
+            decimal RateAfterDiscount,
+            decimal TotalBase,
+            decimal TotalDiscount);
+
+        private static (B2BAgreementQuoteResult? result, string? error) ComputeB2BAgreementQuote(
+            B2BAgreement agreement, int roomTypeId, DateTime checkInDate, DateTime checkOutDate, int requiredRooms)
+        {
+            var rate = agreement.RoomRates?
+                .Where(r => r.IsActive && r.RoomTypeId == roomTypeId
+                    && r.ValidFrom.Date <= checkInDate.Date && r.ValidTo.Date >= checkOutDate.Date.AddDays(-1))
+                .OrderByDescending(r => r.ValidFrom)
+                .FirstOrDefault()
+                ?? agreement.RoomRates?
+                .Where(r => r.IsActive && r.RoomTypeId == roomTypeId
+                    && r.ValidFrom.Date <= checkInDate.Date && r.ValidTo.Date >= checkInDate.Date)
+                .OrderByDescending(r => r.ValidFrom)
+                .FirstOrDefault();
+
+            if (rate == null)
+                return (null, $"No active room rate found in the agreement for the selected room type and dates ({checkInDate:dd MMM} – {checkOutDate:dd MMM}).");
+
+            int nights = Math.Max(1, (checkOutDate.Date - checkInDate.Date).Days);
+            int rooms = Math.Max(1, requiredRooms);
+            decimal discountPct = string.Equals(agreement.RatePlanType, "Discount", StringComparison.OrdinalIgnoreCase)
+                ? agreement.DiscountPercent : 0m;
+            decimal discountPerNight = Math.Round(rate.ContractRate * (discountPct / 100m), 2, MidpointRounding.AwayFromZero);
+            decimal rateAfterDiscount = rate.ContractRate - discountPerNight;
+            decimal totalBase = Math.Round(rateAfterDiscount * nights * rooms, 2, MidpointRounding.AwayFromZero);
+            decimal totalDiscount = Math.Round(discountPerNight * nights * rooms, 2, MidpointRounding.AwayFromZero);
+            return (new B2BAgreementQuoteResult(nights, rateAfterDiscount, totalBase, totalDiscount), null);
+        }
+
         private async Task<GstSlabBand?> ResolveGstSlabAsync(decimal perNightTariff, DateTime stayDate, int? gstSlabId)
         {
             return await _gstSlabRepository.ResolveBandAsync(perNightTariff, stayDate, gstSlabId);
@@ -607,18 +716,6 @@ namespace HotelApp.Web.Controllers
                 .FirstOrDefault();
 
             return roomRateGst ?? agreement.GstSlabId;
-        }
-
-        private static decimal GetPerNightTariff(BookingQuoteResult quote, B2BBookingCreateViewModel model)
-        {
-            return GetPerNightTariff(quote, model.RequiredRooms, quote.Nights);
-        }
-
-        private static decimal GetPerNightTariff(BookingQuoteResult quote, int requiredRooms, int nights)
-        {
-            var safeRooms = Math.Max(1, requiredRooms);
-            var safeNights = Math.Max(1, nights);
-            return Math.Round(quote.TotalRoomRate / (safeRooms * safeNights), 2, MidpointRounding.AwayFromZero);
         }
 
         private static bool IsB2BBooking(Booking booking)

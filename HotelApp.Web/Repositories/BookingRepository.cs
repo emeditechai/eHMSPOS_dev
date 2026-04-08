@@ -396,12 +396,14 @@ namespace HotelApp.Web.Repositories
                 ELSE
                 BEGIN
                     -- Calculate total required rooms already booked for this room type in the date range
+                    -- Non-B2B bookings
                     DECLARE @BookedRooms INT;
                     SELECT @BookedRooms = ISNULL(SUM(RequiredRooms), 0)
                     FROM Bookings
                     WHERE RoomTypeId = @RoomTypeId
                         AND BranchID = @BranchId
                         AND Status IN ('Confirmed', 'CheckedIn')
+                        AND ISNULL(CustomerType, '') <> 'B2B'
                         AND CAST(CheckInDate AS DATE) < CAST(@CheckOut AS DATE)
                         AND (
                             CASE 
@@ -411,9 +413,39 @@ namespace HotelApp.Web.Repositories
                             END > CAST(@CheckIn AS DATE)
                         );
 
+                    -- B2B bookings without room lines (legacy)
+                    DECLARE @BookedB2BLegacy INT;
+                    SELECT @BookedB2BLegacy = ISNULL(SUM(RequiredRooms), 0)
+                    FROM Bookings
+                    WHERE RoomTypeId = @RoomTypeId
+                        AND BranchID = @BranchId
+                        AND Status IN ('Confirmed', 'CheckedIn')
+                        AND CustomerType = 'B2B'
+                        AND NOT EXISTS (SELECT 1 FROM B2BBookingRoomLines brl WHERE brl.BookingId = Bookings.Id)
+                        AND CAST(CheckInDate AS DATE) < CAST(@CheckOut AS DATE)
+                        AND (
+                            CASE 
+                                WHEN ActualCheckOutDate IS NOT NULL 
+                                THEN CAST(ActualCheckOutDate AS DATE)
+                                ELSE CAST(CheckOutDate AS DATE)
+                            END > CAST(@CheckIn AS DATE)
+                        );
+
+                    -- B2B bookings with room lines — per-line dates and room type
+                    DECLARE @BookedB2BLines INT;
+                    SELECT @BookedB2BLines = ISNULL(SUM(brl.RequiredRooms), 0)
+                    FROM B2BBookingRoomLines brl
+                    INNER JOIN Bookings b ON brl.BookingId = b.Id
+                    WHERE brl.RoomTypeId = @RoomTypeId
+                        AND b.BranchID = @BranchId
+                        AND b.Status IN ('Confirmed', 'CheckedIn')
+                        AND b.CustomerType = 'B2B'
+                        AND CAST(ISNULL(brl.CheckInDate, b.CheckInDate) AS DATE) < CAST(@CheckOut AS DATE)
+                        AND CAST(ISNULL(brl.CheckOutDate, b.CheckOutDate) AS DATE) > CAST(@CheckIn AS DATE);
+
                     -- Check if there's enough capacity
                     SELECT CASE 
-                        WHEN (@MaxCapacity - @BookedRooms) >= @RequiredRooms THEN 1
+                        WHEN (@MaxCapacity - @BookedRooms - @BookedB2BLegacy - @BookedB2BLines) >= @RequiredRooms THEN 1
                         ELSE 0
                     END AS IsAvailable;
                 END";
@@ -428,6 +460,23 @@ namespace HotelApp.Web.Repositories
             });
 
             return result == 1;
+        }
+
+        public async Task SaveB2BRoomLinesAsync(int bookingId, IEnumerable<B2BBookingRoomLine> lines)
+        {
+            const string sql = @"
+                INSERT INTO dbo.B2BBookingRoomLines
+                    (BookingId, RoomTypeId, RoomTypeName, RequiredRooms, RatePerNight, Nights,
+                     BaseAmount, TaxAmount, GrandTotal, CheckInDate, CheckOutDate, Adults, Children, MealPlan)
+                VALUES
+                    (@BookingId, @RoomTypeId, @RoomTypeName, @RequiredRooms, @RatePerNight, @Nights,
+                     @BaseAmount, @TaxAmount, @GrandTotal, @CheckInDate, @CheckOutDate, @Adults, @Children, @MealPlan);";
+
+            foreach (var line in lines)
+            {
+                line.BookingId = bookingId;
+                await _dbConnection.ExecuteAsync(sql, line);
+            }
         }
 
         public async Task<BookingCreationResult> CreateBookingAsync(
@@ -474,10 +523,16 @@ namespace HotelApp.Web.Repositories
                     }
 
                     var requiredRooms = booking.RequiredRooms > 0 ? booking.RequiredRooms : 1;
-                    var nightlyAfterDiscountForAllRooms = nightlyBaseAfterDiscountSum * requiredRooms;
-                    var nightlyTaxForAllRooms = nightlyTaxSum * requiredRooms;
-                    var nightlyCGSTForAllRooms = nightlyCGSTSum * requiredRooms;
-                    var nightlySGSTForAllRooms = nightlySGSTSum * requiredRooms;
+
+                    // B2B bookings create one BookingRoomNight per room per night, so the sums
+                    // already represent all rooms and must NOT be multiplied again.
+                    var isB2B = string.Equals(booking.CustomerType, "B2B", StringComparison.OrdinalIgnoreCase);
+                    var roomMultiplier = isB2B ? 1 : requiredRooms;
+
+                    var nightlyAfterDiscountForAllRooms = nightlyBaseAfterDiscountSum * roomMultiplier;
+                    var nightlyTaxForAllRooms = nightlyTaxSum * roomMultiplier;
+                    var nightlyCGSTForAllRooms = nightlyCGSTSum * roomMultiplier;
+                    var nightlySGSTForAllRooms = nightlySGSTSum * roomMultiplier;
 
                     decimal discountAmount = 0;
                     if (discountPercent > 0)
@@ -1406,20 +1461,30 @@ namespace HotelApp.Web.Repositories
             const string reservationNightSql = "SELECT * FROM ReservationRoomNights WHERE BookingId IN @Ids";
             var reservationNights = await _dbConnection.QueryAsync<ReservationRoomNight>(reservationNightSql, new { Ids = bookingIds });
 
+            // Load B2B room lines for corporate bookings
+            var b2bBookingIds = bookings
+                .Where(b => string.Equals(b.CustomerType, "B2B", StringComparison.OrdinalIgnoreCase))
+                .Select(b => b.Id)
+                .ToArray();
+            IEnumerable<B2BBookingRoomLine> b2bRoomLines = b2bBookingIds.Any()
+                ? await _dbConnection.QueryAsync<B2BBookingRoomLine>(
+                    "SELECT * FROM B2BBookingRoomLines WHERE BookingId IN @Ids", new { Ids = b2bBookingIds })
+                : Enumerable.Empty<B2BBookingRoomLine>();
+
             const string bookingRoomsSql = @"
-                SELECT br.*, r.RoomNumber 
+                SELECT br.*, r.RoomNumber, r.RoomTypeId AS RoomRoomTypeId
                 FROM BookingRooms br
                 INNER JOIN Rooms r ON br.RoomId = r.Id
                 WHERE br.BookingId IN @Ids AND br.IsActive = 1";
-            var bookingRooms = await _dbConnection.QueryAsync<BookingRoom, string, BookingRoom>(
+            var bookingRooms = await _dbConnection.QueryAsync<BookingRoom, string, int, BookingRoom>(
                 bookingRoomsSql,
-                (bookingRoom, roomNumber) =>
+                (bookingRoom, roomNumber, roomTypeId) =>
                 {
-                    bookingRoom.Room = new Room { Id = bookingRoom.RoomId, RoomNumber = roomNumber };
+                    bookingRoom.Room = new Room { Id = bookingRoom.RoomId, RoomNumber = roomNumber, RoomTypeId = roomTypeId };
                     return bookingRoom;
                 },
                 new { Ids = bookingIds },
-                splitOn: "RoomNumber"
+                splitOn: "RoomNumber,RoomRoomTypeId"
             );
 
             var roomTypes = roomTypeIds.Any()
@@ -1445,6 +1510,7 @@ namespace HotelApp.Web.Repositories
                 booking.RoomNights = nights.Where(n => n.BookingId == booking.Id).OrderBy(n => n.StayDate).ToList();
                 booking.ReservationRoomNights = reservationNights.Where(n => n.BookingId == booking.Id).OrderBy(n => n.StayDate).ToList();
                 booking.AssignedRooms = bookingRooms.Where(br => br.BookingId == booking.Id).ToList();
+                booking.B2BRoomLines = b2bRoomLines.Where(l => l.BookingId == booking.Id).ToList();
 
                 if (roomTypeLookup.TryGetValue(booking.RoomTypeId, out var roomType))
                 {
@@ -2041,6 +2107,17 @@ WHERE BookingID = @BookingID
                 var shouldCaptureActualCheckIn = !actualCheckInDate.HasValue;
                 var actualCheckInTimestamp = shouldCaptureActualCheckIn ? DateTime.Now : actualCheckInDate;
 
+                // Check if B2B with multiple room types
+                var b2bRoomLines = await _dbConnection.QueryAsync<B2BBookingRoomLine>(
+                    "SELECT * FROM B2BBookingRoomLines WHERE BookingId = @BookingId",
+                    new { BookingId = bookingId },
+                    transaction);
+                var b2bLines = b2bRoomLines.ToList();
+                var isB2BMultiType = b2bLines.Any();
+                var allowedRoomTypeIds = isB2BMultiType
+                    ? b2bLines.Select(l => l.RoomTypeId).Distinct().ToHashSet()
+                    : new HashSet<int> { (int)booking.RoomTypeId };
+
                 // Deactivate any existing room assignments
                 const string deactivateExistingSql = @"
                     UPDATE BookingRooms 
@@ -2067,7 +2144,7 @@ WHERE BookingID = @BookingID
                         transaction
                     );
 
-                    if (roomInfo == null || (int)roomInfo!.RoomTypeId != (int)booking.RoomTypeId)
+                    if (roomInfo == null || !allowedRoomTypeIds.Contains((int)roomInfo!.RoomTypeId))
                     {
                         transaction.Rollback();
                         return false;
@@ -2129,73 +2206,77 @@ WHERE BookingID = @BookingID
                 );
 
                 // Get rate plan and room type details for room night calculation
-                var ratePlanId = booking.RatePlanId as int? ?? 0;
-                var checkInDate = (DateTime)booking.CheckInDate;
-                var checkOutDate = (DateTime)booking.CheckOutDate;
-                var adults = (int)booking.Adults;
-                var children = (int)booking.Children;
-                var roomTypeId = (int)booking.RoomTypeId;
-
-                var ratePlan = ratePlanId > 0 
-                    ? await _dbConnection.QueryFirstOrDefaultAsync<RateMaster>(
-                        "SELECT * FROM RateMaster WHERE Id = @Id", 
-                        new { Id = ratePlanId }, 
-                        transaction)
-                    : null;
-
-                var roomType = await _dbConnection.QueryFirstOrDefaultAsync<RoomType>(
-                    "SELECT * FROM RoomTypes WHERE Id = @Id", 
-                    new { Id = roomTypeId }, 
-                    transaction);
-
-                if (roomType != null)
+                // Skip for B2B multi-type — room nights are already created during booking creation with agreement rates
+                if (!isB2BMultiType)
                 {
-                    var defaultBaseRate = ratePlan?.BaseRate ?? roomType.BaseRate;
-                    var defaultExtraPaxRate = ratePlan?.ExtraPaxRate ?? 0;
-                    var taxPercentage = ratePlan?.TaxPercentage ?? 0;
-                    var cgstPercentage = (ratePlan?.CGSTPercentage > 0 ? ratePlan.CGSTPercentage : taxPercentage / 2);
-                    var sgstPercentage = (ratePlan?.SGSTPercentage > 0 ? ratePlan.SGSTPercentage : taxPercentage / 2);
-                    var extraGuests = Math.Max(0, adults + children - roomType.MaxOccupancy);
+                    var ratePlanId = booking.RatePlanId as int? ?? 0;
+                    var checkInDate = (DateTime)booking.CheckInDate;
+                    var checkOutDate = (DateTime)booking.CheckOutDate;
+                    var adults = (int)booking.Adults;
+                    var children = (int)booking.Children;
+                    var roomTypeId = (int)booking.RoomTypeId;
 
-                    // Build room night breakdown with weekend/special day rates
-                    var roomNightBreakdown = await BuildRoomNightBreakdownAsync(
-                        ratePlanId,
-                        checkInDate,
-                        checkOutDate,
-                        defaultBaseRate,
-                        defaultExtraPaxRate,
-                        extraGuests,
-                        taxPercentage,
-                        cgstPercentage,
-                        sgstPercentage,
+                    var ratePlan = ratePlanId > 0 
+                        ? await _dbConnection.QueryFirstOrDefaultAsync<RateMaster>(
+                            "SELECT * FROM RateMaster WHERE Id = @Id", 
+                            new { Id = ratePlanId }, 
+                            transaction)
+                        : null;
+
+                    var roomType = await _dbConnection.QueryFirstOrDefaultAsync<RoomType>(
+                        "SELECT * FROM RoomTypes WHERE Id = @Id", 
+                        new { Id = roomTypeId }, 
                         transaction);
 
-                    // Create room nights for each assigned room
-                    const string insertRoomNightSql = @"
-                        INSERT INTO BookingRoomNights (BookingId, RoomId, StayDate, RateAmount, ActualBaseRate, DiscountAmount, TaxAmount, CGSTAmount, SGSTAmount, Status)
-                        VALUES (@BookingId, @RoomId, @StayDate, @RateAmount, @ActualBaseRate, @DiscountAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @Status)";
-
-                    foreach (var roomId in roomIds)
+                    if (roomType != null)
                     {
-                        foreach (var (date, rateAmountAfterDiscount, actualBaseRate, discountAmount, taxAmount, cgstAmount, sgstAmount) in roomNightBreakdown)
+                        var defaultBaseRate = ratePlan?.BaseRate ?? roomType.BaseRate;
+                        var defaultExtraPaxRate = ratePlan?.ExtraPaxRate ?? 0;
+                        var taxPercentage = ratePlan?.TaxPercentage ?? 0;
+                        var cgstPercentage = (ratePlan?.CGSTPercentage > 0 ? ratePlan.CGSTPercentage : taxPercentage / 2);
+                        var sgstPercentage = (ratePlan?.SGSTPercentage > 0 ? ratePlan.SGSTPercentage : taxPercentage / 2);
+                        var extraGuests = Math.Max(0, adults + children - roomType.MaxOccupancy);
+
+                        // Build room night breakdown with weekend/special day rates
+                        var roomNightBreakdown = await BuildRoomNightBreakdownAsync(
+                            ratePlanId,
+                            checkInDate,
+                            checkOutDate,
+                            defaultBaseRate,
+                            defaultExtraPaxRate,
+                            extraGuests,
+                            taxPercentage,
+                            cgstPercentage,
+                            sgstPercentage,
+                            transaction);
+
+                        // Create room nights for each assigned room
+                        const string insertRoomNightSql = @"
+                            INSERT INTO BookingRoomNights (BookingId, RoomId, StayDate, RateAmount, ActualBaseRate, DiscountAmount, TaxAmount, CGSTAmount, SGSTAmount, Status)
+                            VALUES (@BookingId, @RoomId, @StayDate, @RateAmount, @ActualBaseRate, @DiscountAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @Status)";
+
+                        foreach (var roomId in roomIds)
                         {
-                            await _dbConnection.ExecuteAsync(
-                                insertRoomNightSql,
-                                new
-                                {
-                                    BookingId = bookingId,
-                                    RoomId = roomId,
-                                    StayDate = date,
-                                    RateAmount = rateAmountAfterDiscount,
-                                    ActualBaseRate = actualBaseRate,
-                                    DiscountAmount = discountAmount,
-                                    TaxAmount = taxAmount,
-                                    CGSTAmount = cgstAmount,
-                                    SGSTAmount = sgstAmount,
-                                    Status = "Reserved"
-                                },
-                                transaction
-                            );
+                            foreach (var (date, rateAmountAfterDiscount, actualBaseRate, discountAmount, taxAmount, cgstAmount, sgstAmount) in roomNightBreakdown)
+                            {
+                                await _dbConnection.ExecuteAsync(
+                                    insertRoomNightSql,
+                                    new
+                                    {
+                                        BookingId = bookingId,
+                                        RoomId = roomId,
+                                        StayDate = date,
+                                        RateAmount = rateAmountAfterDiscount,
+                                        ActualBaseRate = actualBaseRate,
+                                        DiscountAmount = discountAmount,
+                                        TaxAmount = taxAmount,
+                                        CGSTAmount = cgstAmount,
+                                        SGSTAmount = sgstAmount,
+                                        Status = "Reserved"
+                                    },
+                                    transaction
+                                );
+                            }
                         }
                     }
                 }

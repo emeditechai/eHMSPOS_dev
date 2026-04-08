@@ -17,7 +17,7 @@
     <form asp-action="Edit" method="post" enctype="multipart/form-data" class="agreement-shell">
         @Html.AntiForgeryToken()
         <input asp-for="Id" type="hidden" />
-        <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+        <div asp-validation-summary="All" class="validation-summary"></div>
         <partial name="_AgreementFormFields" model="Model" />
         <div class="agreement-actions">
             <a asp-action="Index" class="btn-cancel"><i class="fas fa-arrow-left"></i> Back</a>

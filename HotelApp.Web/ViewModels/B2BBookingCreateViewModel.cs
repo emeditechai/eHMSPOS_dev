@@ -2,9 +2,23 @@ using System.ComponentModel.DataAnnotations;
 
 namespace HotelApp.Web.ViewModels
 {
+    /// <summary>One room-type line chosen by the user on the Create B2B Booking page.</summary>
+    public class B2BRoomLineItem
+    {
+        public int RoomTypeId { get; set; }
+        public string RoomTypeName { get; set; } = string.Empty;
+        public int RequiredRooms { get; set; } = 1;
+        public DateTime? CheckInDate { get; set; }
+        public DateTime? CheckOutDate { get; set; }
+        public int Adults { get; set; } = 1;
+        public int Children { get; set; }
+        public string? MealPlan { get; set; }
+    }
+
     public class B2BBookingCreateViewModel
     {
         [Required]
+        [Range(1, int.MaxValue, ErrorMessage = "Please select a B2B client.")]
         [Display(Name = "B2B Client")]
         public int ClientId { get; set; }
 
@@ -30,13 +44,14 @@ namespace HotelApp.Web.ViewModels
         [Display(Name = "Channel")]
         public string Channel { get; set; } = string.Empty;
 
-        [Required]
-        [Display(Name = "Room Type")]
+        /// <summary>Selected room-type lines (one per room type chosen in the agreement).</summary>
+        public List<B2BRoomLineItem> RoomLines { get; set; } = new();
+
+        // Keep for backward-compat / primary room type storage
         public int RoomTypeId { get; set; }
 
-        [Required]
         [Range(1, 50)]
-        [Display(Name = "Required Rooms")]
+        [Display(Name = "Total Rooms")]
         public int RequiredRooms { get; set; } = 1;
 
         [Required]

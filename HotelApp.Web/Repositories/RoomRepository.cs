@@ -493,19 +493,19 @@ namespace HotelApp.Web.Repositories
         public async Task<Dictionary<int, (string roomTypeName, int totalRooms, int availableRooms, decimal baseRate, int maxOccupancy, List<string> availableRoomNumbers, string? discount)>> GetRoomAvailabilityByDateRangeAsync(int branchId, DateTime startDate, DateTime endDate)
         {
             var sql = @"
-                -- Count required rooms by room type in the date range (includes bookings with or without room assignments)
+                -- Count required rooms by room type in the date range
+                -- For B2B bookings with room lines, use B2BBookingRoomLines for accurate per-room-type counts
                 WITH BookingsByRoomType AS (
+                    -- Non-B2B bookings (B2C, Walk-In, etc.) — use Bookings table directly
                     SELECT 
                         b.RoomTypeId,
                         SUM(b.RequiredRooms) AS TotalRequiredRooms
                     FROM Bookings b
                     WHERE b.BranchID = @BranchId
                         AND b.Status IN ('Confirmed', 'CheckedIn')
-                        -- Room is occupied if check-in is before or on the end date
-                        -- AND actual checkout hasn't happened yet OR planned checkout is after start date
+                        AND ISNULL(b.CustomerType, '') <> 'B2B'
                         AND CAST(b.CheckInDate AS DATE) <= CAST(@EndDate AS DATE)
                         AND (
-                            -- If ActualCheckOutDate is set, use it; otherwise use CheckOutDate
                             CASE 
                                 WHEN b.ActualCheckOutDate IS NOT NULL 
                                 THEN CAST(b.ActualCheckOutDate AS DATE)
@@ -513,6 +513,42 @@ namespace HotelApp.Web.Repositories
                             END > CAST(@StartDate AS DATE)
                         )
                     GROUP BY b.RoomTypeId
+
+                    UNION ALL
+
+                    -- B2B bookings without room lines (legacy) — use Bookings table
+                    SELECT 
+                        b.RoomTypeId,
+                        SUM(b.RequiredRooms) AS TotalRequiredRooms
+                    FROM Bookings b
+                    WHERE b.BranchID = @BranchId
+                        AND b.Status IN ('Confirmed', 'CheckedIn')
+                        AND b.CustomerType = 'B2B'
+                        AND NOT EXISTS (SELECT 1 FROM B2BBookingRoomLines brl WHERE brl.BookingId = b.Id)
+                        AND CAST(b.CheckInDate AS DATE) <= CAST(@EndDate AS DATE)
+                        AND (
+                            CASE 
+                                WHEN b.ActualCheckOutDate IS NOT NULL 
+                                THEN CAST(b.ActualCheckOutDate AS DATE)
+                                ELSE CAST(b.CheckOutDate AS DATE)
+                            END > CAST(@StartDate AS DATE)
+                        )
+                    GROUP BY b.RoomTypeId
+
+                    UNION ALL
+
+                    -- B2B bookings with room lines — use per-line RoomTypeId and RequiredRooms with per-line dates
+                    SELECT 
+                        brl.RoomTypeId,
+                        SUM(brl.RequiredRooms) AS TotalRequiredRooms
+                    FROM B2BBookingRoomLines brl
+                    INNER JOIN Bookings b ON brl.BookingId = b.Id
+                    WHERE b.BranchID = @BranchId
+                        AND b.Status IN ('Confirmed', 'CheckedIn')
+                        AND b.CustomerType = 'B2B'
+                        AND CAST(ISNULL(brl.CheckInDate, b.CheckInDate) AS DATE) <= CAST(@EndDate AS DATE)
+                        AND CAST(ISNULL(brl.CheckOutDate, b.CheckOutDate) AS DATE) > CAST(@StartDate AS DATE)
+                    GROUP BY brl.RoomTypeId
                 ),
                 -- Get all active rooms by room type that are available (not already assigned to bookings in this range)
                 AvailableRoomsForRange AS (

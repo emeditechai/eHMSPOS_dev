@@ -1200,7 +1200,9 @@
 
                 // Use ReservationRoomNights only before room assignment.
                 // Keep current workflow unchanged: once rooms are assigned, BookingRoomNights continues to drive totals.
-                var roomNightsForTotals = hasAssignedRoomsForReceipt
+                // B2B bookings always use BookingRoomNights (they don't create ReservationRoomNights).
+                var isB2BReceipt = string.Equals(Model.CustomerType, "B2B", StringComparison.OrdinalIgnoreCase);
+                var roomNightsForTotals = (hasAssignedRoomsForReceipt || isB2BReceipt)
                     ? (Model.RoomNights ?? new List<HotelApp.Web.Models.BookingRoomNight>()).Cast<dynamic>().ToList()
                     : (Model.ReservationRoomNights ?? new List<HotelApp.Web.Models.ReservationRoomNight>()).Cast<dynamic>().ToList();
                 var hasNightBreakdownForTotals = roomNightsForTotals.Any();
@@ -1212,7 +1214,8 @@
                 var distinctDatesForTotals = roomNightsForTotals.Select(n => n.StayDate.Date).Distinct().Count();
                 var rowsPerDateForTotals = distinctDatesForTotals > 0 ? (decimal)roomNightsForTotals.Count / distinctDatesForTotals : 0m;
                 var roomNightsIncludeAllRooms = hasNightBreakdownForTotals && roomsForTotals > 1 && rowsPerDateForTotals > 1m;
-                var roomMultiplierForTotals = roomNightsIncludeAllRooms ? 1 : roomsForTotals;
+                // B2B room nights are stored per-room-per-night, so they always include all rooms.
+                var roomMultiplierForTotals = (roomNightsIncludeAllRooms || isB2BReceipt) ? 1 : roomsForTotals;
 
                 var hasNightPricingColumns = hasNightBreakdownForTotals
                     && roomNightsForTotals.Any(n => n.ActualBaseRate > 0 || n.DiscountAmount > 0);
@@ -1278,7 +1281,8 @@
                     <tbody>
                         @{
                             var rooms = Model.RequiredRooms > 0 ? Model.RequiredRooms : 1;
-                            var roomNights = hasAssignedRoomsForReceipt
+                            // B2B bookings always use BookingRoomNights (no ReservationRoomNights).
+                            var roomNights = (hasAssignedRoomsForReceipt || isB2BReceipt)
                                 ? (Model.RoomNights ?? new List<HotelApp.Web.Models.BookingRoomNight>())
                                     .Cast<dynamic>()
                                     .OrderBy(n => n.StayDate)
@@ -1305,7 +1309,38 @@
                             // If nights are missing, fall back to a single summarized row.
                         }
 
-                        @if (hasNightBreakdown)
+                        @if (isB2BReceipt && Model.B2BRoomLines != null && Model.B2BRoomLines.Any())
+                        {
+                            // B2B bookings: display one row per room line from the agreement
+                            foreach (var rl in Model.B2BRoomLines)
+                            {
+                                var lineNights = rl.Nights > 0 ? rl.Nights : 1;
+                                var lineTotal = rl.BaseAmount;
+                                var lineRate = rl.RatePerNight;
+                                var lineDateHint = rl.CheckInDate.HasValue
+                                    ? (rl.CheckOutDate.HasValue
+                                        ? $"{rl.CheckInDate.Value:dd MMM yyyy} - {rl.CheckOutDate.Value:dd MMM yyyy}"
+                                        : $"{rl.CheckInDate.Value:dd MMM yyyy}")
+                                    : $"{Model.CheckInDate:dd MMM yyyy} - {Model.CheckOutDate:dd MMM yyyy}";
+
+                                <tr>
+                                    <td>
+                                        @rl.RoomTypeName
+                                        <br /><small style="color:#888;">@lineDateHint</small>
+                                    </td>
+                                    <td class="text-center">@lineNights</td>
+                                    <td class="text-center">@rl.RequiredRooms</td>
+                                    <td class="text-center">@rl.Adults</td>
+                                    <td class="text-center">@rl.Children</td>
+                                    <td>@(rl.MealPlan ?? Model.MealPlan ?? "EP")</td>
+                                    <td class="text-right">
+                                        <span class="mono">@lineRate.ToString("N2")</span>
+                                    </td>
+                                    <td class="text-right mono">₹ @lineTotal.ToString("N2")</td>
+                                </tr>
+                            }
+                        }
+                        else if (hasNightBreakdown)
                         {
                             foreach (var g in groupedNightRates)
                             {
@@ -1330,8 +1365,8 @@
                                 // If BookingRoomNights is per-date only, sums represent the booking plan total already (not per-room).
                                 var distinctDatesInGroup = items.Select(x => ((DateTime)x.StayDate).Date).Distinct().Count();
                                 var rowsPerDateInGroup = distinctDatesInGroup > 0 ? (decimal)items.Count() / distinctDatesInGroup : 0m;
-                                var groupIncludesAllRooms = hasAssignedRoomsForReceipt && rooms > 1 && rowsPerDateInGroup > 1m;
-                                var groupRoomMultiplier = groupIncludesAllRooms ? 1 : rooms;
+                                var groupIncludesAllRooms = (hasAssignedRoomsForReceipt || isB2BReceipt) && rooms > 1 && rowsPerDateInGroup > 1m;
+                                var groupRoomMultiplier = (groupIncludesAllRooms || isB2BReceipt) ? 1 : rooms;
                                 var planGroupTotal = actualGroupTotalPerRoom;
 
                                 var fromDate = items.Min(x => ((DateTime)x.StayDate)).Date;

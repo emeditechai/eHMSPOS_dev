@@ -660,12 +660,10 @@
                     <div class="form-row-inline">
                         <div class="form-field">
                             <label asp-for="CustomerType">Customer Type <span style="color: #e53e3e;">*</span></label>
-                            <select asp-for="CustomerType">
-                                @foreach (var ct in customerTypes)
-                                {
-                                    <option value="@ct">@ct</option>
-                                }
+                            <select asp-for="CustomerType" disabled>
+                                <option value="B2C">B2C</option>
                             </select>
+                            <input type="hidden" name="CustomerType" value="B2C" />
                             <span asp-validation-for="CustomerType" class="text-danger"></span>
                         </div>
                         <div class="form-field">

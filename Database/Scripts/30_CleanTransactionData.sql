@@ -1,7 +1,8 @@
 -- =============================================
 -- Hotel Management System - Transaction Data Cleaner
 -- Created: 2025-12-07
--- Description: Removes all transaction data (Bookings, Payments, Guests) while preserving Master Data
+-- Description: Removes all transaction data (Bookings, Payments, Guests, B2B Booking Lines) while preserving Master Data
+--              B2B Master Data PRESERVED: B2BClients, B2BAgreements, B2BAgreementRoomRates, Terms & Conditions
 -- WARNING: This script will DELETE all booking, payment, and guest records permanently!
 -- =============================================
 
@@ -27,6 +28,10 @@ ALTER TABLE BookingOtherCharges NOCHECK CONSTRAINT ALL;
 ALTER TABLE BookingGuests NOCHECK CONSTRAINT ALL;
 ALTER TABLE BookingRoomNights NOCHECK CONSTRAINT ALL;
 ALTER TABLE ReservationRoomNights NOCHECK CONSTRAINT ALL;
+IF OBJECT_ID(N'dbo.B2BBookingRoomLines', N'U') IS NOT NULL
+    ALTER TABLE B2BBookingRoomLines NOCHECK CONSTRAINT ALL;
+IF OBJECT_ID(N'dbo.BookingCancellations', N'U') IS NOT NULL
+    ALTER TABLE BookingCancellations NOCHECK CONSTRAINT ALL;
 ALTER TABLE Bookings NOCHECK CONSTRAINT ALL;
 PRINT '✓ Foreign key constraints disabled';
 PRINT '';
@@ -44,6 +49,8 @@ DECLARE @BookingOtherChargesCount INT;
 DECLARE @BookingGuestsCount INT;
 DECLARE @BookingRoomNightsCount INT;
 DECLARE @ReservationRoomNightsCount INT;
+DECLARE @B2BBookingRoomLinesCount INT;
+DECLARE @BookingCancellationsCount INT;
 DECLARE @BookingsCount INT;
 DECLARE @GuestsCount INT;
 
@@ -59,6 +66,17 @@ SELECT @BookingOtherChargesCount = COUNT(*) FROM BookingOtherCharges;
 SELECT @BookingGuestsCount = COUNT(*) FROM BookingGuests;
 SELECT @BookingRoomNightsCount = COUNT(*) FROM BookingRoomNights;
 SELECT @ReservationRoomNightsCount = COUNT(*) FROM ReservationRoomNights;
+
+IF OBJECT_ID(N'dbo.B2BBookingRoomLines', N'U') IS NOT NULL
+    SELECT @B2BBookingRoomLinesCount = COUNT(*) FROM B2BBookingRoomLines;
+ELSE
+    SET @B2BBookingRoomLinesCount = 0;
+
+IF OBJECT_ID(N'dbo.BookingCancellations', N'U') IS NOT NULL
+    SELECT @BookingCancellationsCount = COUNT(*) FROM BookingCancellations;
+ELSE
+    SET @BookingCancellationsCount = 0;
+
 SELECT @BookingsCount = COUNT(*) FROM Bookings;
 SELECT @GuestsCount = COUNT(*) FROM Guests;
 
@@ -70,6 +88,8 @@ PRINT '  - BookingOtherCharges: ' + CAST(@BookingOtherChargesCount AS VARCHAR(10
 PRINT '  - BookingGuests: ' + CAST(@BookingGuestsCount AS VARCHAR(10)) + ' records';
 PRINT '  - BookingRoomNights: ' + CAST(@BookingRoomNightsCount AS VARCHAR(10)) + ' records';
 PRINT '  - ReservationRoomNights: ' + CAST(@ReservationRoomNightsCount AS VARCHAR(10)) + ' records';
+PRINT '  - B2BBookingRoomLines: ' + CAST(@B2BBookingRoomLinesCount AS VARCHAR(10)) + ' records';
+PRINT '  - BookingCancellations: ' + CAST(@BookingCancellationsCount AS VARCHAR(10)) + ' records';
 PRINT '  - Bookings: ' + CAST(@BookingsCount AS VARCHAR(10)) + ' records';
 PRINT '  - Guests: ' + CAST(@GuestsCount AS VARCHAR(10)) + ' records';
 PRINT '';
@@ -114,6 +134,20 @@ PRINT '  ✓ Deleted ' + CAST(@BookingRoomNightsCount AS VARCHAR(10)) + ' Bookin
 DELETE FROM ReservationRoomNights;
 PRINT '  ✓ Deleted ' + CAST(@ReservationRoomNightsCount AS VARCHAR(10)) + ' ReservationRoomNights records';
 
+-- Delete B2BBookingRoomLines (B2B per-room-type booking lines — transaction data, NOT agreement/master)
+IF OBJECT_ID(N'dbo.B2BBookingRoomLines', N'U') IS NOT NULL
+BEGIN
+    DELETE FROM B2BBookingRoomLines;
+    PRINT '  ✓ Deleted ' + CAST(@B2BBookingRoomLinesCount AS VARCHAR(10)) + ' B2BBookingRoomLines records';
+END
+
+-- Delete BookingCancellations (cancellation transaction records)
+IF OBJECT_ID(N'dbo.BookingCancellations', N'U') IS NOT NULL
+BEGIN
+    DELETE FROM BookingCancellations;
+    PRINT '  ✓ Deleted ' + CAST(@BookingCancellationsCount AS VARCHAR(10)) + ' BookingCancellations records';
+END
+
 -- Delete Bookings (main booking records)
 DELETE FROM Bookings;
 PRINT '  ✓ Deleted ' + CAST(@BookingsCount AS VARCHAR(10)) + ' Bookings records';
@@ -151,6 +185,10 @@ ALTER TABLE BookingOtherCharges CHECK CONSTRAINT ALL;
 ALTER TABLE BookingGuests CHECK CONSTRAINT ALL;
 ALTER TABLE BookingRoomNights CHECK CONSTRAINT ALL;
 ALTER TABLE ReservationRoomNights CHECK CONSTRAINT ALL;
+IF OBJECT_ID(N'dbo.B2BBookingRoomLines', N'U') IS NOT NULL
+    ALTER TABLE B2BBookingRoomLines CHECK CONSTRAINT ALL;
+IF OBJECT_ID(N'dbo.BookingCancellations', N'U') IS NOT NULL
+    ALTER TABLE BookingCancellations CHECK CONSTRAINT ALL;
 ALTER TABLE Bookings CHECK CONSTRAINT ALL;
 PRINT '✓ Foreign key constraints re-enabled';
 PRINT '';
@@ -169,6 +207,10 @@ DBCC CHECKIDENT ('BookingOtherCharges', RESEED, 0);
 DBCC CHECKIDENT ('BookingGuests', RESEED, 0);
 DBCC CHECKIDENT ('BookingRoomNights', RESEED, 0);
 DBCC CHECKIDENT ('ReservationRoomNights', RESEED, 0);
+IF OBJECT_ID(N'dbo.B2BBookingRoomLines', N'U') IS NOT NULL
+    DBCC CHECKIDENT ('B2BBookingRoomLines', RESEED, 0);
+IF OBJECT_ID(N'dbo.BookingCancellations', N'U') IS NOT NULL
+    DBCC CHECKIDENT ('BookingCancellations', RESEED, 0);
 DBCC CHECKIDENT ('Bookings', RESEED, 0);
 DBCC CHECKIDENT ('Guests', RESEED, 0);
 
@@ -182,6 +224,7 @@ PRINT 'Step 7: Verifying master data preservation...';
 
 DECLARE @UsersCount INT, @RoomTypesCount INT, @RoomsCount INT, @FloorsCount INT;
 DECLARE @BranchesCount INT, @RateMasterCount INT, @BanksCount INT;
+DECLARE @B2BClientsCount INT, @B2BAgreementsCount INT;
 
 SELECT @UsersCount = COUNT(*) FROM Users WHERE IsActive = 1;
 SELECT @RoomTypesCount = COUNT(*) FROM RoomTypes WHERE IsActive = 1;
@@ -191,6 +234,16 @@ SELECT @BranchesCount = COUNT(*) FROM BranchMaster WHERE IsActive = 1;
 SELECT @RateMasterCount = COUNT(*) FROM RateMaster WHERE IsActive = 1;
 SELECT @BanksCount = COUNT(*) FROM Banks WHERE IsActive = 1;
 
+IF OBJECT_ID(N'dbo.B2BClients', N'U') IS NOT NULL
+    SELECT @B2BClientsCount = COUNT(*) FROM B2BClients WHERE IsActive = 1;
+ELSE
+    SET @B2BClientsCount = 0;
+
+IF OBJECT_ID(N'dbo.B2BAgreements', N'U') IS NOT NULL
+    SELECT @B2BAgreementsCount = COUNT(*) FROM B2BAgreements WHERE IsActive = 1;
+ELSE
+    SET @B2BAgreementsCount = 0;
+
 PRINT '  Master Data Counts (Preserved):';
 PRINT '    - Users: ' + CAST(@UsersCount AS VARCHAR(10));
 PRINT '    - Branches: ' + CAST(@BranchesCount AS VARCHAR(10));
@@ -199,6 +252,8 @@ PRINT '    - Rooms: ' + CAST(@RoomsCount AS VARCHAR(10));
 PRINT '    - Floors: ' + CAST(@FloorsCount AS VARCHAR(10));
 PRINT '    - Rate Master: ' + CAST(@RateMasterCount AS VARCHAR(10));
 PRINT '    - Banks: ' + CAST(@BanksCount AS VARCHAR(10));
+PRINT '    - B2B Clients: ' + CAST(@B2BClientsCount AS VARCHAR(10));
+PRINT '    - B2B Agreements: ' + CAST(@B2BAgreementsCount AS VARCHAR(10));
 PRINT '';
 
 -- =============================================
@@ -206,7 +261,7 @@ PRINT '';
 -- =============================================
 PRINT 'Step 8: Final verification...';
 
-DECLARE @RemainingBookings INT, @RemainingPayments INT, @RemainingRooms INT, @RemainingRoomServices INT;
+DECLARE @RemainingBookings INT, @RemainingPayments INT, @RemainingRooms INT, @RemainingRoomServices INT, @RemainingB2BLines INT, @RemainingCancellations INT;
 
 SELECT @RemainingBookings = COUNT(*) FROM Bookings;
 SELECT @RemainingPayments = COUNT(*) FROM BookingPayments;
@@ -215,8 +270,16 @@ IF OBJECT_ID(N'dbo.RoomServices', N'U') IS NOT NULL
     SELECT @RemainingRoomServices = COUNT(*) FROM RoomServices;
 ELSE
     SET @RemainingRoomServices = 0;
+IF OBJECT_ID(N'dbo.B2BBookingRoomLines', N'U') IS NOT NULL
+    SELECT @RemainingB2BLines = COUNT(*) FROM B2BBookingRoomLines;
+ELSE
+    SET @RemainingB2BLines = 0;
+IF OBJECT_ID(N'dbo.BookingCancellations', N'U') IS NOT NULL
+    SELECT @RemainingCancellations = COUNT(*) FROM BookingCancellations;
+ELSE
+    SET @RemainingCancellations = 0;
 
-IF @RemainingBookings = 0 AND @RemainingPayments = 0 AND @RemainingRooms = 0 AND @RemainingRoomServices = 0
+IF @RemainingBookings = 0 AND @RemainingPayments = 0 AND @RemainingRooms = 0 AND @RemainingRoomServices = 0 AND @RemainingB2BLines = 0 AND @RemainingCancellations = 0
 BEGIN
     PRINT '  ✓ All transaction data successfully removed';
     PRINT '  ✓ System is clean and ready for new bookings';
@@ -228,6 +291,8 @@ BEGIN
     PRINT '    - Remaining Payments: ' + CAST(@RemainingPayments AS VARCHAR(10));
     PRINT '    - Remaining Room Assignments: ' + CAST(@RemainingRooms AS VARCHAR(10));
     PRINT '    - Remaining RoomServices: ' + CAST(@RemainingRoomServices AS VARCHAR(10));
+    PRINT '    - Remaining B2BBookingRoomLines: ' + CAST(@RemainingB2BLines AS VARCHAR(10));
+    PRINT '    - Remaining BookingCancellations: ' + CAST(@RemainingCancellations AS VARCHAR(10));
 END
 
 PRINT '';
@@ -237,7 +302,7 @@ PRINT 'Finished at: ' + CONVERT(VARCHAR(50), GETDATE(), 121);
 PRINT '========================================';
 PRINT '';
 PRINT 'SUMMARY:';
-PRINT '  Total Records Deleted: ' + CAST(@RoomServicesCount + @BookingsCount + @BookingPaymentsCount + @BookingOtherChargesCount + @BookingGuestsCount + @BookingRoomNightsCount + @ReservationRoomNightsCount + @BookingAuditLogCount + @BookingRoomsCount + @GuestsCount AS VARCHAR(10));
+PRINT '  Total Records Deleted: ' + CAST(@RoomServicesCount + @BookingsCount + @BookingPaymentsCount + @BookingOtherChargesCount + @BookingGuestsCount + @BookingRoomNightsCount + @ReservationRoomNightsCount + @B2BBookingRoomLinesCount + @BookingCancellationsCount + @BookingAuditLogCount + @BookingRoomsCount + @GuestsCount AS VARCHAR(10));
 PRINT '  Rooms Reset: ' + CAST(@RoomsUpdated AS VARCHAR(10));
 PRINT '  Master Data: PRESERVED';
 PRINT '';

@@ -84,6 +84,7 @@ namespace HotelApp.Web.Models
         public List<BookingRoomNight> RoomNights { get; set; } = new();
         public List<ReservationRoomNight> ReservationRoomNights { get; set; } = new();
         public List<BookingRoom> AssignedRooms { get; set; } = new();
+        public List<B2BBookingRoomLine> B2BRoomLines { get; set; } = new();
     }
 
     public class BookingGuest

@@ -292,11 +292,6 @@ namespace HotelApp.Web.Controllers
                 ModelState.AddModelError(nameof(model.CreditDays), "Credit days must be greater than zero for credit agreements.");
             }
 
-            if (!model.TermsConditionId.HasValue)
-            {
-                ModelState.AddModelError(nameof(model.TermsConditionId), "Terms & conditions mapping is required.");
-            }
-
             if (model.AutoRenew && (!model.RenewalNoticeDays.HasValue || model.RenewalNoticeDays.Value <= 0))
             {
                 ModelState.AddModelError(nameof(model.RenewalNoticeDays), "Renewal notice days are required when auto renew is enabled.");
@@ -313,27 +308,6 @@ namespace HotelApp.Web.Controllers
                 {
                     ModelState.AddModelError(nameof(model.ApprovedDate), "Approved date is required when the agreement is approved.");
                 }
-            }
-
-            if (model.SignedDate.HasValue && string.IsNullOrWhiteSpace(model.SignedByName))
-            {
-                ModelState.AddModelError(nameof(model.SignedByName), "Signed by is required when signed date is entered.");
-            }
-
-            if (!string.IsNullOrWhiteSpace(model.SignedByName) && !model.SignedDate.HasValue)
-            {
-                ModelState.AddModelError(nameof(model.SignedDate), "Signed date is required when signed by is entered.");
-            }
-
-            var requiresSignedDocument = string.Equals(model.ApprovalStatus, "Approved", StringComparison.OrdinalIgnoreCase)
-                || model.SignedDate.HasValue
-                || !string.IsNullOrWhiteSpace(model.SignedByName);
-
-            if (requiresSignedDocument
-                && model.SignedDocumentFile == null
-                && string.IsNullOrWhiteSpace(model.SignedDocumentPath))
-            {
-                ModelState.AddModelError(nameof(model.SignedDocumentFile), "Upload the signed agreement document for approved or signed contracts.");
             }
 
             if (!model.RoomRates.Any())
@@ -366,10 +340,7 @@ namespace HotelApp.Web.Controllers
                     ModelState.AddModelError($"{prefix}.ContractRate", "Contract rate must be greater than zero.");
                 }
 
-                if (!row.GstSlabId.HasValue && !model.GstSlabId.HasValue)
-                {
-                    ModelState.AddModelError($"{prefix}.GstSlabId", "Select a GST slab on the agreement or on each room rate row.");
-                }
+
             }
         }
 

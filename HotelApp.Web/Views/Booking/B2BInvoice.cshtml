@@ -1,0 +1,616 @@
+@model HotelApp.Web.Models.Booking
+@{
+    ViewData["Title"] = $"B2B Invoice - {Model.BookingNumber}";
+    Layout = null;
+    var hotelSettings = ViewBag.HotelSettings as HotelApp.Web.Models.HotelSettings;
+    var payments = ViewBag.Payments as IEnumerable<HotelApp.Web.Models.BookingPayment>;
+    var totalPaid = payments?.Sum(p => p.Amount) ?? 0;
+    var invoiceDate = DateTime.Now;
+
+    var otherCharges = ViewBag.BookingOtherCharges as IEnumerable<HotelApp.Web.Repositories.BookingOtherChargeDetailRow>
+        ?? Enumerable.Empty<HotelApp.Web.Repositories.BookingOtherChargeDetailRow>();
+    var hasOtherCharges = otherCharges.Any();
+    var ocAmountTotal = otherCharges.Sum(x => x.Rate * (x.Qty <= 0 ? 1 : x.Qty));
+    var ocGstTotal = otherCharges.Sum(x => x.GSTAmount);
+    var ocGrandTotal = ocAmountTotal + ocGstTotal;
+
+    var roomLines = Model.B2BRoomLines ?? new List<HotelApp.Web.Models.B2BBookingRoomLine>();
+    var roomLineBaseTotal = roomLines.Sum(l => l.BaseAmount);
+    var roomLineTaxTotal = roomLines.Sum(l => l.TaxAmount);
+    var roomLineGrandTotal = roomLines.Sum(l => l.GrandTotal);
+
+    // Use B2BRoomLines totals for base when available, else fall back to booking header
+    var stayBaseAmount = roomLines.Any() ? roomLineBaseTotal : Model.BaseAmount;
+    var stayTaxAmount = roomLines.Any() ? roomLineTaxTotal : Model.TaxAmount;
+    var stayGrandTotal = stayBaseAmount + stayTaxAmount;
+
+    var grandTotal = stayGrandTotal + ocGrandTotal;
+    var balanceDue = grandTotal - totalPaid;
+
+    var cgstPct = ViewBag.CGSTPercentage != null ? (decimal)ViewBag.CGSTPercentage : 0m;
+    var sgstPct = ViewBag.SGSTPercentage != null ? (decimal)ViewBag.SGSTPercentage : 0m;
+    var gstPct = cgstPct + sgstPct;
+
+    var assignedRooms = ViewBag.AssignedRooms as IEnumerable<string>;
+    var roomNumbers = assignedRooms != null && assignedRooms.Any()
+        ? string.Join(", ", assignedRooms)
+        : "Not Assigned";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f0f2f5;
+            color: #1e293b;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .invoice-container {
+            max-width: 900px;
+            margin: 24px auto;
+            background: white;
+            box-shadow: 0 2px 12px rgba(0,0,0,.08);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .invoice-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 28px 32px 20px;
+            border-bottom: 3px solid #1e293b;
+        }
+        .hotel-info h1 { font-size: 22px; font-weight: 800; color: #1e293b; margin-bottom: 2px; }
+        .hotel-info p { font-size: 11.5px; color: #64748b; line-height: 1.6; }
+        .invoice-title-box {
+            text-align: right;
+        }
+        .invoice-title-box h2 {
+            font-size: 26px; font-weight: 800; color: #6366f1;
+            letter-spacing: 1px; text-transform: uppercase;
+        }
+        .invoice-title-box .invoice-number {
+            font-size: 13px; color: #475569; margin-top: 4px; font-weight: 600;
+        }
+        .invoice-title-box .invoice-date {
+            font-size: 12px; color: #94a3b8; margin-top: 2px;
+        }
+
+        /* Bill To / From */
+        .bill-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            padding: 20px 32px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .bill-block h4 {
+            font-size: 10px; font-weight: 700; color: #94a3b8;
+            text-transform: uppercase; letter-spacing: .08em;
+            margin-bottom: 8px;
+        }
+        .bill-block .company-name {
+            font-size: 15px; font-weight: 700; color: #1e293b; margin-bottom: 2px;
+        }
+        .bill-block p { font-size: 12px; color: #475569; line-height: 1.6; }
+        .bill-block .label { color: #94a3b8; font-size: 11px; }
+
+        /* Booking Info Row */
+        .booking-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            padding: 16px 32px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .meta-item .meta-label {
+            font-size: 10px; font-weight: 700; color: #94a3b8;
+            text-transform: uppercase; letter-spacing: .06em;
+        }
+        .meta-item .meta-value {
+            font-size: 13px; font-weight: 600; color: #1e293b; margin-top: 2px;
+        }
+
+        /* Tables */
+        .invoice-body { padding: 20px 32px; }
+        .section-title {
+            font-size: 13px; font-weight: 700; color: #1e293b;
+            text-transform: uppercase; letter-spacing: .04em;
+            margin-bottom: 10px; padding-bottom: 6px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        table.inv-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table.inv-table th {
+            background: #f1f5f9;
+            font-size: 10px; font-weight: 700; color: #64748b;
+            text-transform: uppercase; letter-spacing: .06em;
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        table.inv-table td {
+            padding: 10px;
+            font-size: 12.5px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+        }
+        table.inv-table tr:last-child td { border-bottom: none; }
+        .text-right { text-align: right !important; }
+        .text-center { text-align: center !important; }
+        .mono { font-family: 'SF Mono', 'Fira Code', monospace; }
+        .text-muted { color: #94a3b8; font-size: 11px; }
+
+        /* Totals */
+        .totals-box {
+            margin-left: auto;
+            width: 340px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 16px;
+            font-size: 12.5px;
+        }
+        .totals-row:nth-child(even) { background: #f8fafc; }
+        .totals-row.grand {
+            background: #1e293b;
+            color: white;
+            font-size: 15px;
+            font-weight: 700;
+            padding: 12px 16px;
+        }
+        .totals-row.due {
+            background: #fef2f2;
+            color: #dc2626;
+            font-weight: 700;
+            font-size: 14px;
+            padding: 10px 16px;
+        }
+        .totals-row.paid {
+            color: #16a34a;
+            font-weight: 600;
+        }
+        .totals-label { color: inherit; }
+        .totals-value { font-weight: 600; font-family: 'SF Mono', monospace; }
+
+        /* Payments */
+        .payments-section { margin-top: 8px; }
+
+        /* Footer */
+        .invoice-footer {
+            padding: 16px 32px;
+            border-top: 1px solid #e2e8f0;
+            background: #f8fafc;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .footer-note { font-size: 11px; color: #94a3b8; max-width: 400px; }
+        .footer-sig {
+            text-align: center;
+            font-size: 11px; color: #64748b;
+        }
+        .footer-sig .sig-line {
+            width: 160px;
+            border-bottom: 1px solid #94a3b8;
+            margin: 0 auto 4px;
+            height: 30px;
+        }
+
+        /* Print */
+        .print-controls {
+            text-align: center;
+            padding: 16px;
+        }
+        .btn-print {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 24px;
+            background: #6366f1;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-print:hover { background: #4f46e5; }
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: white;
+            color: #475569;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            margin-left: 10px;
+        }
+        .btn-back:hover { border-color: #6366f1; color: #6366f1; }
+
+        @@media print {
+            body { background: white; }
+            .invoice-container { box-shadow: none; margin: 0; max-width: 100%; }
+            .print-controls { display: none !important; }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body>
+
+<div class="print-controls">
+    <button class="btn-print" onclick="window.print()">
+        <i class="fas fa-print"></i> Print Invoice
+    </button>
+    <a href="@Url.Action("Details", "Booking", new { bookingNumber = Model.BookingNumber })" class="btn-back">
+        <i class="fas fa-arrow-left"></i> Back to Booking
+    </a>
+</div>
+
+<div class="invoice-container">
+
+    <!-- Header -->
+    <div class="invoice-header">
+        <div class="hotel-info">
+            <h1>@(hotelSettings?.HotelName ?? "Hotel")</h1>
+            <p>
+                @(hotelSettings?.Address ?? "")<br />
+                @if (!string.IsNullOrWhiteSpace(hotelSettings?.ContactNumber1))
+                {
+                    <text>Phone: @hotelSettings.ContactNumber1</text><br />
+                }
+                @if (!string.IsNullOrWhiteSpace(hotelSettings?.EmailAddress))
+                {
+                    <text>Email: @hotelSettings.EmailAddress</text><br />
+                }
+                @if (!string.IsNullOrWhiteSpace(hotelSettings?.GSTCode))
+                {
+                    <text>GSTIN: @hotelSettings.GSTCode</text>
+                }
+            </p>
+        </div>
+        <div class="invoice-title-box">
+            <h2>Tax Invoice</h2>
+            <div class="invoice-number">Invoice #: @Model.BookingNumber</div>
+            <div class="invoice-date">Date: @invoiceDate.ToString("dd MMM yyyy")</div>
+        </div>
+    </div>
+
+    <!-- Bill To / Ship To -->
+    <div class="bill-section">
+        <div class="bill-block">
+            <h4>Bill To</h4>
+            <div class="company-name">@(Model.B2BClientName ?? "—")</div>
+            <p>
+                @if (!string.IsNullOrWhiteSpace(Model.AgreementCode))
+                {
+                    <text>Agreement: @Model.AgreementCode — @Model.AgreementName</text><br />
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.CompanyContactPerson))
+                {
+                    <text>Contact: @Model.CompanyContactPerson</text><br />
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.CompanyContactNo))
+                {
+                    <text>Phone: @Model.CompanyContactNo</text><br />
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.CompanyEmail))
+                {
+                    <text>Email: @Model.CompanyEmail</text><br />
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.CompanyGstNo))
+                {
+                    <text>GSTIN: @Model.CompanyGstNo</text>
+                }
+            </p>
+        </div>
+        <div class="bill-block">
+            <h4>Billing Address</h4>
+            <p>
+                @(Model.BillingAddress ?? "—")<br />
+                @if (!string.IsNullOrWhiteSpace(Model.BillingStateName))
+                {
+                    @Model.BillingStateName
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.BillingPincode))
+                {
+                    <text> — @Model.BillingPincode</text>
+                }
+            </p>
+            <p style="margin-top: 8px;">
+                <span class="label">Billing Type:</span> @(Model.BillingType ?? "—")<br />
+                <span class="label">Credit Days:</span> @(Model.CreditDays?.ToString() ?? "—")<br />
+                @if (Model.CorporateDiscountPercent.HasValue && Model.CorporateDiscountPercent > 0)
+                {
+                    <span class="label">Corp. Discount:</span> @Model.CorporateDiscountPercent.Value.ToString("0.##")<text>%</text>
+                }
+            </p>
+        </div>
+    </div>
+
+    <!-- Booking Meta -->
+    <div class="booking-meta">
+        <div class="meta-item">
+            <div class="meta-label">Booking No.</div>
+            <div class="meta-value">@Model.BookingNumber</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Guest</div>
+            <div class="meta-value">@Model.PrimaryGuestFirstName @Model.PrimaryGuestLastName</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Check-In</div>
+            <div class="meta-value">@Model.CheckInDate.ToString("dd MMM yyyy")</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Check-Out</div>
+            <div class="meta-value">@Model.CheckOutDate.ToString("dd MMM yyyy")</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Room(s)</div>
+            <div class="meta-value">@roomNumbers</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Status</div>
+            <div class="meta-value">@Model.Status</div>
+        </div>
+    </div>
+
+    <!-- Invoice Body -->
+    <div class="invoice-body">
+
+        <!-- Room Charges -->
+        <h3 class="section-title">Room Charges</h3>
+        <table class="inv-table">
+            <thead>
+                <tr>
+                    <th style="width:5%;">#</th>
+                    <th>Room Type</th>
+                    <th class="text-center">Nights</th>
+                    <th class="text-center">Rooms</th>
+                    <th class="text-center">Meal Plan</th>
+                    <th class="text-right">Rate / Night</th>
+                    <th class="text-right">Base Amount</th>
+                    <th class="text-right">GST</th>
+                    <th class="text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (roomLines.Any())
+                {
+                    var idx = 0;
+                    foreach (var rl in roomLines)
+                    {
+                        idx++;
+                        <tr>
+                            <td class="text-center">@idx</td>
+                            <td>
+                                <strong>@rl.RoomTypeName</strong>
+                                @if (rl.CheckInDate.HasValue)
+                                {
+                                    <br /><span class="text-muted">@rl.CheckInDate.Value.ToString("dd MMM") — @(rl.CheckOutDate?.ToString("dd MMM") ?? "")</span>
+                                }
+                            </td>
+                            <td class="text-center">@rl.Nights</td>
+                            <td class="text-center">@rl.RequiredRooms</td>
+                            <td class="text-center">@(rl.MealPlan ?? Model.MealPlan ?? "EP")</td>
+                            <td class="text-right mono">₹ @rl.RatePerNight.ToString("N2")</td>
+                            <td class="text-right mono">₹ @rl.BaseAmount.ToString("N2")</td>
+                            <td class="text-right mono">₹ @rl.TaxAmount.ToString("N2")</td>
+                            <td class="text-right mono">₹ @rl.GrandTotal.ToString("N2")</td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <!-- Fallback: single row from booking header -->
+                    <tr>
+                        <td class="text-center">1</td>
+                        <td><strong>@(Model.RoomType?.TypeName ?? "N/A")</strong></td>
+                        <td class="text-center">@Model.Nights</td>
+                        <td class="text-center">@Model.RequiredRooms</td>
+                        <td class="text-center">@(Model.MealPlan ?? "EP")</td>
+                        <td class="text-right mono">₹ @(Model.Nights > 0 && Model.RequiredRooms > 0 ? (Model.BaseAmount / Model.Nights / Model.RequiredRooms).ToString("N2") : "0.00")</td>
+                        <td class="text-right mono">₹ @Model.BaseAmount.ToString("N2")</td>
+                        <td class="text-right mono">₹ @Model.TaxAmount.ToString("N2")</td>
+                        <td class="text-right mono">₹ @Model.TotalAmount.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr style="font-weight: 700; background: #f8fafc;">
+                    <td colspan="6" class="text-right">Room Charges Total:</td>
+                    <td class="text-right mono">₹ @stayBaseAmount.ToString("N2")</td>
+                    <td class="text-right mono">₹ @stayTaxAmount.ToString("N2")</td>
+                    <td class="text-right mono">₹ @stayGrandTotal.ToString("N2")</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        @if (hasOtherCharges)
+        {
+            <h3 class="section-title">Other Charges</h3>
+            <table class="inv-table">
+                <thead>
+                    <tr>
+                        <th style="width:5%;">#</th>
+                        <th>Particulars</th>
+                        <th class="text-center">Date</th>
+                        <th class="text-center">Qty</th>
+                        <th class="text-right">Rate</th>
+                        <th class="text-right">Amount</th>
+                        <th class="text-right">GST</th>
+                        <th class="text-right">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        var ocIdx = 0;
+                        foreach (var oc in otherCharges)
+                        {
+                            ocIdx++;
+                            var qty = oc.Qty <= 0 ? 1 : oc.Qty;
+                            var amount = oc.Rate * qty;
+                            var total = amount + oc.GSTAmount;
+                            <tr>
+                                <td class="text-center">@ocIdx</td>
+                                <td>
+                                    <strong>@oc.Name</strong>
+                                    <br /><span class="text-muted">@oc.Code</span>
+                                </td>
+                                <td class="text-center mono">@oc.ChargeDate.ToString("dd MMM yyyy")</td>
+                                <td class="text-center">@qty</td>
+                                <td class="text-right mono">₹ @oc.Rate.ToString("N2")</td>
+                                <td class="text-right mono">₹ @amount.ToString("N2")</td>
+                                <td class="text-right mono">₹ @oc.GSTAmount.ToString("N2")</td>
+                                <td class="text-right mono">₹ @total.ToString("N2")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+                <tfoot>
+                    <tr style="font-weight: 700; background: #f8fafc;">
+                        <td colspan="5" class="text-right">Other Charges Total:</td>
+                        <td class="text-right mono">₹ @ocAmountTotal.ToString("N2")</td>
+                        <td class="text-right mono">₹ @ocGstTotal.ToString("N2")</td>
+                        <td class="text-right mono">₹ @ocGrandTotal.ToString("N2")</td>
+                    </tr>
+                </tfoot>
+            </table>
+        }
+
+        <!-- Totals -->
+        <div style="display: flex; justify-content: flex-end;">
+            <div class="totals-box">
+                <div class="totals-row">
+                    <span class="totals-label">Room Charges (Base)</span>
+                    <span class="totals-value mono">₹ @stayBaseAmount.ToString("N2")</span>
+                </div>
+                @if (Model.DiscountAmount > 0)
+                {
+                    <div class="totals-row">
+                        <span class="totals-label">Discount</span>
+                        <span class="totals-value mono" style="color:#dc2626;">- ₹ @Model.DiscountAmount.ToString("N2")</span>
+                    </div>
+                }
+                @if (gstPct > 0)
+                {
+                    <div class="totals-row">
+                        <span class="totals-label">CGST @@ @cgstPct.ToString("0.##")%</span>
+                        <span class="totals-value mono">₹ @(Math.Round(stayTaxAmount / 2m, 2).ToString("N2"))</span>
+                    </div>
+                    <div class="totals-row">
+                        <span class="totals-label">SGST @@ @sgstPct.ToString("0.##")%</span>
+                        <span class="totals-value mono">₹ @(Math.Round(stayTaxAmount / 2m, 2).ToString("N2"))</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="totals-row">
+                        <span class="totals-label">GST</span>
+                        <span class="totals-value mono">₹ @stayTaxAmount.ToString("N2")</span>
+                    </div>
+                }
+                @if (hasOtherCharges)
+                {
+                    <div class="totals-row">
+                        <span class="totals-label">Other Charges (Incl. GST)</span>
+                        <span class="totals-value mono">₹ @ocGrandTotal.ToString("N2")</span>
+                    </div>
+                }
+                <div class="totals-row grand">
+                    <span class="totals-label">Grand Total</span>
+                    <span class="totals-value mono">₹ @grandTotal.ToString("N2")</span>
+                </div>
+                @if (totalPaid > 0)
+                {
+                    <div class="totals-row paid">
+                        <span class="totals-label">Amount Paid</span>
+                        <span class="totals-value mono">₹ @totalPaid.ToString("N2")</span>
+                    </div>
+                }
+                <div class="totals-row due">
+                    <span class="totals-label">Balance Due</span>
+                    <span class="totals-value mono">₹ @balanceDue.ToString("N2")</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment History -->
+        @if (payments != null && payments.Any())
+        {
+            <div class="payments-section">
+                <h3 class="section-title">Payment History</h3>
+                <table class="inv-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Date</th>
+                            <th>Method</th>
+                            <th>Reference</th>
+                            <th class="text-right">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            var pIdx = 0;
+                            foreach (var p in payments)
+                            {
+                                pIdx++;
+                                <tr>
+                                    <td class="text-center">@pIdx</td>
+                                    <td class="mono">@p.PaidOn.ToString("dd MMM yyyy")</td>
+                                    <td>@p.PaymentMethod</td>
+                                    <td class="text-muted">@(p.PaymentReference ?? "—")</td>
+                                    <td class="text-right mono">₹ @p.Amount.ToString("N2")</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <!-- Footer -->
+    <div class="invoice-footer">
+        <div class="footer-note">
+            This is a computer-generated invoice. All amounts are in INR (₹).
+            @if (Model.CreditDays.HasValue && Model.CreditDays > 0)
+            {
+                <br /><text>Payment terms: Net @Model.CreditDays days from date of invoice.</text>
+            }
+        </div>
+        <div class="footer-sig">
+            <div class="sig-line"></div>
+            Authorised Signatory
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

@@ -447,14 +447,16 @@ namespace HotelApp.Web.Controllers
             public DateTime? ChargeDate { get; set; }
         }
 
-        public async Task<IActionResult> List(DateTime? fromDate, DateTime? toDate, string? statusFilter)
+        public async Task<IActionResult> List(DateTime? fromDate, DateTime? toDate, string? statusFilter, string? customerType)
         {
             var isUpcomingFilter = string.Equals(statusFilter, "upcoming", StringComparison.OrdinalIgnoreCase);
+            var isB2BFilter = string.Equals(customerType, "B2B", StringComparison.OrdinalIgnoreCase);
 
             // Default to last 3 days if no dates provided (but NOT for Upcoming filter)
+            // Use 7 days for B2B view
             if (!isUpcomingFilter && !fromDate.HasValue && !toDate.HasValue)
             {
-                fromDate = DateTime.Today.AddDays(-3);
+                fromDate = DateTime.Today.AddDays(isB2BFilter ? -7 : -3);
                 toDate = DateTime.Today;
             }
 
@@ -463,6 +465,13 @@ namespace HotelApp.Web.Controllers
             var bookings = isUpcomingFilter
                 ? await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, null, null)
                 : await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, fromDate, toDate);
+
+            // Filter by customer type if specified
+            if (!string.IsNullOrEmpty(customerType))
+            {
+                bookings = bookings.Where(b =>
+                    string.Equals(b.CustomerType, customerType, StringComparison.OrdinalIgnoreCase));
+            }
 
             // Apply status filter
             if (!string.IsNullOrEmpty(statusFilter))
@@ -493,6 +502,7 @@ namespace HotelApp.Web.Controllers
                 FromDate = fromDate,
                 ToDate = toDate,
                 StatusFilter = statusFilter,
+                CustomerType = customerType,
                 Bookings = bookings
             };
             return View(viewModel);
@@ -1104,6 +1114,27 @@ namespace HotelApp.Web.Controllers
                     // Best-effort only; receipt has safe fallbacks.
                 }
             }
+            else if (string.Equals(booking.CustomerType, "B2B", StringComparison.OrdinalIgnoreCase))
+            {
+                // B2B bookings don't use RateMaster — resolve GST from the booking's GstSlabId
+                if (booking.GstSlabId.HasValue && booking.BaseAmount > 0)
+                {
+                    try
+                    {
+                        var gstPct = booking.BaseAmount > 0
+                            ? Math.Round((booking.TaxAmount / booking.BaseAmount) * 100m, 2, MidpointRounding.AwayFromZero)
+                            : 0m;
+                        var halfPct = Math.Round(gstPct / 2m, 2, MidpointRounding.AwayFromZero);
+                        ViewBag.TaxPercentage = gstPct;
+                        ViewBag.CGSTPercentage = halfPct;
+                        ViewBag.SGSTPercentage = halfPct;
+                    }
+                    catch { /* safe fallback */ }
+                }
+
+                // B2B discount from agreement
+                ViewBag.DiscountPercentage = booking.CorporateDiscountPercent ?? 0m;
+            }
 
             // Pick receipt template per-branch (default: classic)
             string templateKey;
@@ -1128,6 +1159,47 @@ namespace HotelApp.Web.Controllers
             };
 
             return View(viewName, booking);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> B2BInvoice(string bookingNumber)
+        {
+            if (string.IsNullOrWhiteSpace(bookingNumber))
+                return RedirectToAction(nameof(List));
+
+            var booking = await _bookingRepository.GetByBookingNumberAsync(bookingNumber);
+            if (booking == null || booking.BranchID != CurrentBranchID)
+            {
+                TempData["ErrorMessage"] = "Booking not found.";
+                return RedirectToAction(nameof(List));
+            }
+
+            if (!string.Equals(booking.CustomerType, "B2B", StringComparison.OrdinalIgnoreCase))
+                return RedirectToAction(nameof(Receipt), new { bookingNumber });
+
+            var hotelSettings = await _hotelSettingsRepository.GetByBranchAsync(CurrentBranchID);
+            ViewBag.HotelSettings = hotelSettings;
+
+            var payments = await _bookingRepository.GetPaymentsAsync(booking.Id);
+            ViewBag.Payments = payments;
+
+            var otherCharges = await _bookingOtherChargeRepository.GetDetailsByBookingIdAsync(booking.Id);
+            ViewBag.BookingOtherCharges = otherCharges;
+
+            var assignedRooms = await _bookingRepository.GetAssignedRoomNumbersAsync(booking.Id);
+            ViewBag.AssignedRooms = assignedRooms;
+
+            // Resolve GST percentage from booking amounts
+            if (booking.BaseAmount > 0)
+            {
+                var gstPct = Math.Round((booking.TaxAmount / booking.BaseAmount) * 100m, 2, MidpointRounding.AwayFromZero);
+                var halfPct = Math.Round(gstPct / 2m, 2, MidpointRounding.AwayFromZero);
+                ViewBag.TaxPercentage = gstPct;
+                ViewBag.CGSTPercentage = halfPct;
+                ViewBag.SGSTPercentage = halfPct;
+            }
+
+            return View("B2BInvoice", booking);
         }
 
         [HttpPost]
@@ -2719,11 +2791,29 @@ namespace HotelApp.Web.Controllers
                 return RedirectToAction(nameof(List));
             }
 
-            // Get all rooms and filter available ones for this booking's room type
             var allRooms = await _roomRepository.GetAllByBranchAsync(CurrentBranchID);
-            var availableRooms = allRooms.Where(r => r.RoomTypeId == booking.RoomTypeId && r.Status == "Available").ToList();
+            var isB2BMultiType = string.Equals(booking.CustomerType, "B2B", StringComparison.OrdinalIgnoreCase)
+                                 && booking.B2BRoomLines != null && booking.B2BRoomLines.Any();
 
-            ViewBag.AvailableRooms = availableRooms;
+            if (isB2BMultiType)
+            {
+                // B2B: group available rooms by each room-type line
+                var roomTypeIds = booking.B2BRoomLines!.Select(l => l.RoomTypeId).Distinct().ToList();
+                var availableRoomsByType = allRooms
+                    .Where(r => roomTypeIds.Contains(r.RoomTypeId) && r.Status == "Available")
+                    .GroupBy(r => r.RoomTypeId)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+                ViewBag.AvailableRoomsByType = availableRoomsByType;
+                ViewBag.IsB2BMultiType = true;
+            }
+            else
+            {
+                // Standard: single room type
+                var availableRooms = allRooms.Where(r => r.RoomTypeId == booking.RoomTypeId && r.Status == "Available").ToList();
+                ViewBag.AvailableRooms = availableRooms;
+                ViewBag.IsB2BMultiType = false;
+            }
+
             ViewBag.Booking = booking;
 
             return View(booking);
@@ -2769,11 +2859,30 @@ namespace HotelApp.Web.Controllers
                 return RedirectToAction(nameof(AssignRoom), new { bookingNumber });
             }
 
-            // Check if all rooms match the booking's room type
-            if (selectedRooms.Any(r => r.RoomTypeId != booking.RoomTypeId))
+            var isB2BMultiType = string.Equals(booking.CustomerType, "B2B", StringComparison.OrdinalIgnoreCase)
+                                 && booking.B2BRoomLines != null && booking.B2BRoomLines.Any();
+
+            if (isB2BMultiType)
             {
-                TempData["ErrorMessage"] = "All selected rooms must match the booking's room type";
-                return RedirectToAction(nameof(AssignRoom), new { bookingNumber });
+                // B2B: validate per room-type line
+                foreach (var line in booking.B2BRoomLines!)
+                {
+                    var roomsForType = selectedRooms.Where(r => r.RoomTypeId == line.RoomTypeId).ToList();
+                    if (roomsForType.Count != line.RequiredRooms)
+                    {
+                        TempData["ErrorMessage"] = $"Please select exactly {line.RequiredRooms} room(s) of type {line.RoomTypeName}. You selected {roomsForType.Count}.";
+                        return RedirectToAction(nameof(AssignRoom), new { bookingNumber });
+                    }
+                }
+            }
+            else
+            {
+                // Standard: all rooms must match single room type
+                if (selectedRooms.Any(r => r.RoomTypeId != booking.RoomTypeId))
+                {
+                    TempData["ErrorMessage"] = "All selected rooms must match the booking's room type";
+                    return RedirectToAction(nameof(AssignRoom), new { bookingNumber });
+                }
             }
 
             // Check if all rooms are available
