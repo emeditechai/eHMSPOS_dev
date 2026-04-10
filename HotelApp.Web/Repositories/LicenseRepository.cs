@@ -244,6 +244,30 @@ public class LicenseRepository : ILicenseRepository
         }
     }
 
+    public async Task<string?> GetActiveAlertMessageAsync()
+    {
+        try
+        {
+            return await _db.QueryFirstOrDefaultAsync<string?>(@"
+                SELECT TOP 1 AlertMessage
+                FROM   ClientAppLicense
+                WHERE  IsActive        = 1
+                  AND  OTP_Verified    = 1
+                  AND  IsDisplayAlerts = 1
+                  AND  AlertMessage IS NOT NULL
+                  AND  AlertMessage <> ''
+                  AND  CAST(GETDATE() AS DATE) >= AlertStartDate
+                  AND  CAST(GETDATE() AS DATE) <= AlertEndDate
+                  AND  CAST(GETDATE() AS TIME) >= AlertStartTime
+                  AND  CAST(GETDATE() AS TIME) <= AlertEndTime
+                ORDER BY Id DESC");
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public async Task SyncFromRemoteAsync(string clientCode, ClientAppLicense remote)
     {
         try
@@ -258,7 +282,13 @@ public class LicenseRepository : ILicenseRepository
                      MotherboardNumber = @MotherboardNumber,
                      ExpiryDate       = @ExpiryDate,
                      IsActive         = @IsActive,
-                     AMC_Expireddate  = @AMC_Expireddate
+                     AMC_Expireddate  = @AMC_Expireddate,
+                     IsDisplayAlerts  = @IsDisplayAlerts,
+                     AlertStartdate   = @AlertStartDate,
+                     AlertStartTime   = @AlertStartTime,
+                     AlertEnddate     = @AlertEndDate,
+                     AlertEndTime     = @AlertEndTime,
+                     AlertMessage     = @AlertMessage
                 WHERE ClientCode = @ClientCode",
                 new
                 {
@@ -271,7 +301,13 @@ public class LicenseRepository : ILicenseRepository
                     remote.MotherboardNumber,
                     remote.ExpiryDate,
                     remote.IsActive,
-                    remote.AMC_Expireddate
+                    remote.AMC_Expireddate,
+                    remote.IsDisplayAlerts,
+                    remote.AlertStartDate,
+                    remote.AlertStartTime,
+                    remote.AlertEndDate,
+                    remote.AlertEndTime,
+                    remote.AlertMessage
                 });
         }
         catch { /* non-critical — best effort */ }

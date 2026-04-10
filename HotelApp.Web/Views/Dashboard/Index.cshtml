@@ -16,6 +16,25 @@
 }
 
 <div class="main-content dashboard-main-content">
+    @{
+        var alertMessage = ViewBag.AlertMessage as string;
+    }
+    @if (!string.IsNullOrWhiteSpace(alertMessage))
+    {
+        <div class="dashboard-alert-banner">
+            <div class="alert-icon-box">
+                <i class="fas fa-bullhorn"></i>
+            </div>
+            <div class="alert-marquee-wrap">
+                <marquee behavior="scroll" direction="left" scrollamount="4" onmouseover="this.stop();" onmouseout="this.start();">
+                    @alertMessage
+                </marquee>
+            </div>
+            <button type="button" class="alert-dismiss-btn" onclick="this.closest('.dashboard-alert-banner').style.display='none'" title="Dismiss">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    }
     <div class="top-bar">
         <div class="page-title">
             <h1>@displayTitle</h1>

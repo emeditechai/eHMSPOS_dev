@@ -41,4 +41,7 @@ public interface ILicenseRepository
 
     /// <summary>Updates LicenseKey in the local table for the given ClientCode.</summary>
     Task UpdateLicenseKeyAsync(string clientCode, string newLicenseKey);
+
+    /// <summary>Returns the active alert message if alerts are enabled and current date/time is within the alert window.</summary>
+    Task<string?> GetActiveAlertMessageAsync();
 }

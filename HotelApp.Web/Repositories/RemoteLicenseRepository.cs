@@ -250,7 +250,10 @@ public class RemoteLicenseRepository : IRemoteLicenseRepository
             return await conn.QueryFirstOrDefaultAsync<ClientAppLicense>(@"
                 SELECT ClientCode, LicenseKey, ClientName, ContactNumber, EmailID,
                        HardDiskNumber, ServerMacID, MotherboardNumber,
-                       ExpiryDate, AMC_Expireddate, IsActive
+                       ExpiryDate, AMC_Expireddate, IsActive,
+                       IsDisplayAlerts, AlertStartdate AS AlertStartDate,
+                       AlertStartTime, AlertEnddate AS AlertEndDate,
+                       AlertEndTime, AlertMessage
                 FROM   ClientAppLicense
                 WHERE  ClientCode        = @ClientCode
                   AND  LicenseKey        = @LicenseKey
@@ -272,7 +275,10 @@ public class RemoteLicenseRepository : IRemoteLicenseRepository
             return await conn.QueryFirstOrDefaultAsync<ClientAppLicense>(@"
                 SELECT ClientCode, LicenseKey, ClientName, ContactNumber, EmailID,
                        HardDiskNumber, ServerMacID, MotherboardNumber,
-                       ExpiryDate, AMC_Expireddate, IsActive
+                       ExpiryDate, AMC_Expireddate, IsActive,
+                       IsDisplayAlerts, AlertStartdate AS AlertStartDate,
+                       AlertStartTime, AlertEnddate AS AlertEndDate,
+                       AlertEndTime, AlertMessage
                 FROM   ClientAppLicense
                 WHERE  ClientCode  = @ClientCode
                   AND  LicenseKey  = @LicenseKey",

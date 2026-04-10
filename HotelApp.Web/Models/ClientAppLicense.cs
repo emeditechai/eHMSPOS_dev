@@ -22,4 +22,12 @@ public class ClientAppLicense
     public string? AppUrl { get; set; }
     public string? ProductType { get; set; }
     public string? ConnectionString { get; set; }
+
+    // Alert columns
+    public bool IsDisplayAlerts { get; set; }
+    public DateTime? AlertStartDate { get; set; }
+    public TimeSpan? AlertStartTime { get; set; }
+    public DateTime? AlertEndDate { get; set; }
+    public TimeSpan? AlertEndTime { get; set; }
+    public string? AlertMessage { get; set; }
 }

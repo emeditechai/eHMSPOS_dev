@@ -947,3 +947,69 @@ body {
         min-width: 900px;
     }
 }
+
+/* ── Alert Marquee Banner ── */
+.dashboard-alert-banner {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+    border: 1px solid #fed7aa;
+    border-left: 4px solid #f97316;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    padding: 0;
+    box-shadow: 0 2px 8px rgba(249, 115, 22, 0.10);
+    overflow: hidden;
+    min-height: 44px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+.alert-icon-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f97316, #ea580c);
+    color: #fff;
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+.alert-marquee-wrap {
+    flex: 1;
+    overflow: hidden;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #9a3412;
+    letter-spacing: 0.2px;
+}
+.alert-marquee-wrap marquee {
+    display: block;
+}
+.alert-dismiss-btn {
+    background: none;
+    border: none;
+    color: #c2410c;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 10px 14px;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+    flex-shrink: 0;
+}
+.alert-dismiss-btn:hover {
+    opacity: 1;
+}
+@media (max-width: 600px) {
+    .dashboard-alert-banner {
+        border-radius: 6px;
+        margin-bottom: 10px;
+    }
+    .alert-marquee-wrap {
+        font-size: 13px;
+        padding: 8px 10px;
+    }
+}
