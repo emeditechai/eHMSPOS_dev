@@ -7,6 +7,7 @@ namespace HotelApp.Web.ViewModels
         public int RoomTypeId { get; set; }
         public string CustomerType { get; set; } = string.Empty;
         public string Source { get; set; } = string.Empty;
+        public string MealType { get; set; } = "EP";
         public decimal BaseRate { get; set; }
         public decimal ExtraPaxRate { get; set; }
         public decimal TaxPercentage { get; set; }

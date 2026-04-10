@@ -357,6 +357,9 @@ namespace HotelApp.Web.Controllers
 
             var payments = new List<BookingPayment>();
 
+            // Generate unique B2B invoice number: INV/{FY}/{5-digit seq}
+            booking.InvoiceNumber = await _bookingRepository.GenerateInvoiceNumberAsync(CurrentBranchID);
+
             var result = await _bookingRepository.CreateBookingAsync(booking, guests, payments, allRoomNights);
             await _bookingRepository.SaveB2BRoomLinesAsync(result.BookingId, roomLineEntities);
             TempData["SuccessMessage"] = $"B2B booking {result.BookingNumber} created successfully.";
@@ -364,6 +367,9 @@ namespace HotelApp.Web.Controllers
             // If advance payment requested, redirect to standard Details page (which has payment modal)
             if (model.CollectAdvancePayment)
             {
+                TempData["BookingCreated"] = "true";
+                TempData["BookingNumber"] = result.BookingNumber;
+                TempData["BookingAmount"] = booking.TotalAmount.ToString("N2");
                 TempData["ShowAdvancePaymentModal"] = "true";
                 return RedirectToAction("Details", "Booking", new { bookingNumber = result.BookingNumber });
             }

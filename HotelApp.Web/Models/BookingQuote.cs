@@ -17,6 +17,7 @@ namespace HotelApp.Web.Models
     {
         public int Nights { get; set; }
         public int? RatePlanId { get; set; }
+        public string? MealType { get; set; }
         public decimal BaseRatePerNight { get; set; }
         public decimal ExtraPaxRatePerNight { get; set; }
         public decimal TaxPercentage { get; set; }

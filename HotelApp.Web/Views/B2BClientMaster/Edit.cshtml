@@ -12,7 +12,17 @@
             <h2><i class="fas fa-building-user"></i> B2B Client Master</h2>
             <p class="text-muted mb-0">@((isReadOnly ? "Review" : "Update") + " company identity, agreement allocation, billing discipline, and compliance settings from one compact page.")</p>
         </div>
-        <a asp-action="Index" class="btn-cancel"><i class="fas fa-arrow-left"></i> Back to Company List</a>
+        <div style="display:flex; gap:10px; align-items:flex-start;">
+            @if (isReadOnly)
+            {
+                <a asp-action="Print" asp-route-id="@Model.Id" target="_blank"
+                   class="btn-cancel" style="background:#2563eb; color:#fff; border-color:#2563eb;"
+                   title="Print / Save as PDF">
+                    <i class="fas fa-print"></i> Print Client Profile
+                </a>
+            }
+            <a asp-action="Index" class="btn-cancel"><i class="fas fa-arrow-left"></i> Back to Company List</a>
+        </div>
     </div>
 
     <form asp-action="Edit" method="post" class="company-shell">

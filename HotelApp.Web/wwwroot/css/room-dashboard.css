@@ -11,6 +11,13 @@
     --info: #17a2b8;
 }
 
+/* Full-width override for Room Dashboard */
+.main-content.room-dashboard-fullwidth {
+    max-width: none;
+    width: 100%;
+    padding: 16px 24px;
+}
+
 .room-dashboard-header {
     display: flex;
     justify-content: space-between;
@@ -75,15 +82,15 @@
 .status-cards {
     display: grid;
     grid-template-columns: repeat(4, 1fr) !important;
-    gap: 15px;
-    margin-bottom: 20px;
+    gap: 10px;
+    margin-bottom: 14px;
 }
 
 .status-card {
     background: #ffffff;
-    padding: 18px;
-    border-radius: 14px;
-    box-shadow: 0 6px 18px rgba(26, 42, 108, 0.10);
+    padding: 12px 14px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(26, 42, 108, 0.10);
     min-width: 0;
     border: 1px solid rgba(102, 126, 234, 0.18);
     transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
@@ -127,9 +134,9 @@
 }
 
 .status-card .value {
-    font-size: 2.2rem;
+    font-size: 1.6rem;
     font-weight: 800;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     color: #ffffff;
     letter-spacing: 0.3px;
     position: relative;
@@ -202,11 +209,11 @@
 /* Occupancy Bar Styles */
 .occupancy-bar-container {
     background: #ffffff;
-    padding: 20px 25px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    margin-bottom: 20px;
-    border: 1px solid rgba(102, 126, 234, 0.15);
+    padding: 12px 18px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    margin-bottom: 14px;
+    border: 1px solid rgba(102, 126, 234, 0.12);
 }
 
 .occupancy-bar-header {
@@ -242,7 +249,7 @@
 }
 
 .percentage-value {
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 800;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     -webkit-background-clip: text;
@@ -252,7 +259,7 @@
 }
 
 .occupancy-bar {
-    height: 30px;
+    height: 20px;
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     border-radius: 15px;
     overflow: hidden;
@@ -336,14 +343,14 @@
 /* Room Grid */
 .room-content {
     display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 20px;
-    margin-bottom: 30px;
+    grid-template-columns: 1fr 280px;
+    gap: 14px;
+    margin-bottom: 20px;
 }
 
 .room-availability-section {
     background: white;
-    padding: 25px;
+    padding: 16px;
     border-radius: 10px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
@@ -398,27 +405,67 @@
 }
 
 /* Room Cards Grid */
+.room-type-group {
+    margin-bottom: 14px;
+}
+
+.room-type-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    border-left: 3px solid #667eea;
+}
+
+.room-type-group-header span:first-child {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #334155;
+}
+
+.room-type-group-header span:last-child {
+    font-size: 0.75rem;
+    color: #64748b;
+    background: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+#calendarDateInfo {
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: #f0f9ff;
+    border-radius: 6px;
+    border-left: 3px solid #17a2b8;
+    font-size: 0.8rem;
+    color: #0c4a6e;
+    font-weight: 500;
+}
+
 .room-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
-    margin-bottom: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
     align-items: start;
 }
 
 .room-card {
     border: none;
-    border-radius: 10px;
-    padding: 12px;
+    border-radius: 8px;
+    padding: 8px 10px;
     text-align: center;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.2s;
     display: flex;
     flex-direction: column;
-    min-height: 140px;
+    min-height: 100px;
     position: relative;
     z-index: 0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.08);
 }
 
 .room-card:hover {
@@ -456,16 +503,16 @@
 }
 
 .room-number {
-    font-size: 1.3rem;
+    font-size: 1.1rem;
     font-weight: 700;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
     color: var(--dark);
 }
 
 .room-type {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--gray);
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     font-weight: 500;
 }
 
@@ -541,7 +588,7 @@
 
 .calendar-widget, .room-details-widget {
     background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-    padding: 15px;
+    padding: 12px;
     border-radius: 10px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
@@ -702,19 +749,22 @@
 /* Responsive - Consistent layout for all screen sizes */
 @media (max-width: 1400px) {
     .room-grid {
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     }
 }
 
 @media (max-width: 1200px) {
+    .room-content {
+        grid-template-columns: 1fr 260px;
+    }
     .room-grid {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
     }
 }
 
 @media (max-width: 992px) {
     .room-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
     }
 }
 
@@ -758,21 +808,21 @@
 /* Search and Filter Bar Styles */
 .search-filter-bar {
     background: #ffffff;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    margin-bottom: 20px;
-    border: 1px solid rgba(102, 126, 234, 0.15);
+    padding: 12px 14px;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    margin-bottom: 12px;
+    border: 1px solid rgba(102, 126, 234, 0.12);
 }
 
 .search-box {
     display: flex;
     align-items: center;
     background: #f8f9fa;
-    border: 2px solid #e9ecef;
-    border-radius: 10px;
-    padding: 12px 16px;
-    margin-bottom: 16px;
+    border: 1.5px solid #e9ecef;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
     transition: all 0.3s;
     position: relative;
 }

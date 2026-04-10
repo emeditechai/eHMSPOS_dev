@@ -76,18 +76,20 @@
         .status-cleaning { color: #17a2b8; }
         .status-maintenance { color: #ffc107; }
         .status-checkout { color: #6c757d; }
+        .status-view-details { color: #0d6efd; text-decoration: none; }
         
         .room-checkout-date {
-            margin-top: 6px;
-            padding: 4px 8px;
+            margin-top: 0;
+            padding: 3px 6px;
             background: #fff3cd;
             border-radius: 3px;
-            font-size: 10px;
+            font-size: 9px;
             color: #856404;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 3px;
             border-left: 2px solid #ffc107;
+            overflow: hidden;
         }
         
         .room-checkout-date.overdue {
@@ -103,21 +105,20 @@
         }
         
         .room-overdue-badge {
-            margin-top: 6px;
-            padding: 6px 10px;
+            margin-top: 0;
+            padding: 3px 6px;
             background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-            border-radius: 6px;
-            font-size: 9px;
+            border-radius: 4px;
+            font-size: 8px;
             color: #ffffff;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4);
+            box-shadow: 0 1px 4px rgba(220, 53, 69, 0.4);
             animation: blink 1.5s ease-in-out infinite;
-            border: 1px solid rgba(255, 255, 255, 0.3);
         }
         
         @@keyframes blink {
@@ -142,38 +143,101 @@
             75% { transform: translateX(2px); }
         }
         
-        .room-guest-count-badge {
+        /* Occupied card info wrapper */
+        .room-occupied-info {
             margin-top: 6px;
-            padding: 5px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            width: 100%;
+        }
+        .room-occupied-row {
+            display: flex;
+            gap: 3px;
+            width: 100%;
+        }
+        .room-occupied-row > * {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .room-source-badge {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            z-index: 5;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 2px 7px;
+            border-radius: 3px;
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+        .room-source-badge.b2b {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+        }
+        .room-source-badge.b2c {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fcd34d;
+        }
+        .room-source-badge i { font-size: 7px; }
+
+        .room-client-name {
+            margin-top: 0;
+            padding: 3px 6px;
+            background: #ede9fe;
+            border-radius: 3px;
+            font-size: 9px;
+            color: #5b21b6;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            border-left: 2px solid #8b5cf6;
+            overflow: hidden;
+        }
+        .room-client-name i { font-size: 9px; flex-shrink: 0; }
+        .room-client-name span {
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .room-guest-count-badge {
+            margin-top: 0;
+            padding: 3px 6px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 6px;
-            font-size: 10px;
+            border-radius: 4px;
+            font-size: 9px;
             color: #ffffff;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             font-weight: 600;
-            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 1px 4px rgba(102, 126, 234, 0.3);
         }
         
         .room-guest-count-badge i {
-            font-size: 11px;
+            font-size: 9px;
         }
         
         .room-days-remaining {
-            margin-top: 6px;
-            padding: 5px 10px;
+            margin-top: 0;
+            padding: 3px 6px;
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            border-radius: 6px;
-            font-size: 10px;
+            border-radius: 4px;
+            font-size: 9px;
             color: #ffffff;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             font-weight: 600;
-            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 1px 4px rgba(16, 185, 129, 0.3);
         }
         
         .room-days-remaining.soon {
@@ -199,11 +263,11 @@
         }
         
         .room-days-remaining i {
-            font-size: 11px;
+            font-size: 9px;
         }
         
         .room-checkout-date i {
-            font-size: 10px;
+            font-size: 9px;
         }
         
         .room-checkout-date span {
@@ -212,20 +276,21 @@
         }
         
         .room-due-amount {
-            margin-top: 4px;
-            padding: 4px 8px;
+            margin-top: 0;
+            padding: 3px 6px;
             background: #f8d7da;
             border-radius: 3px;
-            font-size: 10px;
+            font-size: 9px;
             color: #721c24;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 3px;
             border-left: 2px solid #dc3545;
+            overflow: hidden;
         }
         
         .room-due-amount i {
-            font-size: 10px;
+            font-size: 9px;
         }
         
         .room-due-amount span {
@@ -249,46 +314,47 @@
         }
         
         .room-booking-info {
-            margin-top: 6px;
-            padding: 4px 8px;
+            margin-top: 0;
+            padding: 3px 6px;
             background: #d1ecf1;
             border-radius: 3px;
-            font-size: 10px;
+            font-size: 9px;
             color: #0c5460;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 3px;
             border-left: 2px solid #17a2b8;
-            word-break: break-all;
-            flex-wrap: wrap;
+            overflow: hidden;
         }
         
         .room-booking-info i {
-            font-size: 10px;
+            font-size: 9px;
             flex-shrink: 0;
         }
         
         .room-booking-info span {
             font-weight: 600;
-            word-break: break-all;
-            overflow-wrap: anywhere;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
         .room-guest-info {
-            margin-top: 4px;
-            padding: 4px 8px;
+            margin-top: 0;
+            padding: 3px 6px;
             background: #d4edda;
             border-radius: 3px;
-            font-size: 10px;
+            font-size: 9px;
             color: #155724;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 3px;
             border-left: 2px solid #28a745;
+            overflow: hidden;
         }
         
         .room-guest-info i {
-            font-size: 10px;
+            font-size: 9px;
         }
         
         .room-guest-info span {
@@ -299,20 +365,21 @@
         }
         
         .room-checkin-date {
-            margin-top: 4px;
-            padding: 4px 8px;
+            margin-top: 0;
+            padding: 3px 6px;
             background: #e7e3f7;
             border-radius: 3px;
-            font-size: 10px;
+            font-size: 9px;
             color: #5a3d7a;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 3px;
             border-left: 2px solid #6f42c1;
+            overflow: hidden;
         }
         
         .room-checkin-date i {
-            font-size: 10px;
+            font-size: 9px;
         }
         
         .room-checkin-date span {
@@ -620,14 +687,14 @@
 }
 
 <!-- Main Content -->
-<div class="main-content">
+<div class="main-content room-dashboard-fullwidth">
     <!-- Header -->
     <div class="room-dashboard-header">
-        <h1>Room Availability Dashboard</h1>
+        <h1><i class="fas fa-bed" style="font-size:0.9em;margin-right:6px;"></i> Room Dashboard</h1>
         <div class="header-actions">
             <button class="btn-filter" onclick="window.location.href='@Url.Action("List", "Booking")'">
                 <i class="fas fa-calendar-check"></i>
-                View Bookings
+                Bookings
             </button>
             <button class="btn-new-booking" onclick="window.location.href='@Url.Action("Create", "Booking")'">
                 <i class="fas fa-plus"></i>
@@ -761,8 +828,8 @@
     <div class="occupancy-bar-container">
         <div class="occupancy-bar-header">
             <div class="occupancy-info">
-                <h3><i class="fas fa-chart-line"></i> Overall Occupancy</h3>
-                <span class="occupancy-stats">@Model.OccupiedCount of @totalRoomsCount rooms occupied</span>
+                <h3><i class="fas fa-chart-line"></i> Occupancy</h3>
+                <span class="occupancy-stats">@Model.OccupiedCount / @totalRoomsCount rooms</span>
             </div>
             <div class="occupancy-percentage">
                 <span class="percentage-value">@occupancyPercentage%</span>
@@ -872,153 +939,206 @@
                 <span id="resultsCount">0</span> room(s) found
             </div>
 
-            <div class="room-grid" id="roomGrid">
-                @foreach (var room in Model.Rooms)
+            <div id="roomGrid">
+                @{
+                    var groupedRooms = Model.Rooms.GroupBy(r => r.RoomTypeName).OrderBy(g => g.Key);
+                }
+                @foreach (var group in groupedRooms)
                 {
-                    <div class="room-card @room.Status.ToLower()" 
-                         data-room-id="@room.Id" 
-                         data-floor="@room.Floor"
-                         data-rate="@room.BaseRate"
-                         data-room-number="@room.RoomNumber"
-                         data-room-type="@room.RoomTypeName"
-                         data-status="@room.Status"
-                         data-guest-name="@(room.PrimaryGuestName ?? "")"
-                         onclick="selectRoom(@room.Id)">
-                        <div class="room-actions-menu">
-                            <button class="room-actions-btn" onclick="event.stopPropagation(); toggleActions(@room.Id)">
-                                <i class="fas fa-ellipsis-v"></i>
-                            </button>
-                            <div class="room-actions-dropdown" id="actions-@room.Id">
-                                @if (room.Status == "Occupied")
-                                {
-                                    <div class="room-action-item status-checkout" onclick="event.stopPropagation(); checkoutRoomFromMenu(@room.Id)">
-                                        <i class="fas fa-sign-out-alt"></i>
-                                        <span>Checkout</span>
+                    var groupAvailable = group.Count(r => r.Status == "Available");
+                    var groupTotal = group.Count();
+                    <div class="room-type-group" data-roomtype="@group.Key">
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; margin-bottom:6px; background:linear-gradient(135deg,#f1f5f9,#e8ecf1); border-radius:8px; border-left:4px solid #6366f1;">
+                            <span style="font-size:0.82rem; font-weight:700; color:#334155;">
+                                <i class="fas fa-bed" style="color:#6366f1; margin-right:6px;"></i>@group.Key
+                            </span>
+                            <span style="font-size:0.72rem; font-weight:600; color:#64748b; background:white; padding:2px 8px; border-radius:12px;">
+                                @groupAvailable / @groupTotal available
+                            </span>
+                        </div>
+                        <div class="room-grid">
+                            @foreach (var room in group.OrderBy(r => r.RoomNumber))
+                            {
+                                <div class="room-card @room.Status.ToLower()" 
+                                     data-room-id="@room.Id" 
+                                     data-floor="@room.Floor"
+                                     data-rate="@room.BaseRate"
+                                     data-room-number="@room.RoomNumber"
+                                     data-room-type="@room.RoomTypeName"
+                                     data-status="@room.Status"
+                                     data-guest-name="@(room.PrimaryGuestName ?? "")"
+                                     onclick="selectRoom(@room.Id)">
+                                    <div class="room-actions-menu">
+                                        <button class="room-actions-btn" onclick="event.stopPropagation(); toggleActions(@room.Id)">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <div class="room-actions-dropdown" id="actions-@room.Id">
+                                            @if (room.Status == "Occupied")
+                                            {
+                                                @if (!string.IsNullOrEmpty(room.BookingNumber))
+                                                {
+                                                    <a class="room-action-item status-view-details" href="@Url.Action("Details", "Booking", new { bookingNumber = room.BookingNumber })" target="_blank" onclick="event.stopPropagation();">
+                                                        <i class="fas fa-eye"></i>
+                                                        <span>View Details</span>
+                                                    </a>
+                                                }
+                                                <div class="room-action-item status-checkout" onclick="event.stopPropagation(); checkoutRoomFromMenu(@room.Id)">
+                                                    <i class="fas fa-sign-out-alt"></i>
+                                                    <span>Checkout</span>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                @if (room.Status != "Available")
+                                                {
+                                                    <div class="room-action-item status-available" onclick="event.stopPropagation(); updateRoomStatus(@room.Id, 'Available')">
+                                                        <i class="fas fa-check-circle"></i>
+                                                        <span>Mark Available</span>
+                                                    </div>
+                                                }
+                                                @if (room.Status != "Cleaning")
+                                                {
+                                                    <div class="room-action-item status-cleaning" onclick="event.stopPropagation(); updateRoomStatus(@room.Id, 'Cleaning')">
+                                                        <i class="fas fa-broom"></i>
+                                                        <span>Need Cleaning</span>
+                                                    </div>
+                                                }
+                                                @if (room.Status != "Maintenance")
+                                                {
+                                                    <div class="room-action-item status-maintenance" onclick="event.stopPropagation(); logMaintenance(@room.Id)">
+                                                        <i class="fas fa-tools"></i>
+                                                        <span>Maintenance</span>
+                                                    </div>
+                                                }
+                                            }
+                                        </div>
                                     </div>
-                                }
-                                else
-                                {
-                                    <div class="room-action-item status-available" onclick="event.stopPropagation(); updateRoomStatus(@room.Id, 'Available')">
-                                        <i class="fas fa-check-circle"></i>
-                                        <span>Mark Available</span>
-                                    </div>
-                                    <div class="room-action-item status-cleaning" onclick="event.stopPropagation(); updateRoomStatus(@room.Id, 'Cleaning')">
-                                        <i class="fas fa-broom"></i>
-                                        <span>Need Cleaning</span>
-                                    </div>
-                                    <div class="room-action-item status-maintenance" onclick="event.stopPropagation(); logMaintenance(@room.Id)">
-                                        <i class="fas fa-tools"></i>
-                                        <span>Maintenance</span>
-                                    </div>
-                                    @if (room.Status == "Maintenance")
+                                    <div class="room-number">@room.RoomNumber</div>
+                                    <div class="room-type">@room.RoomTypeName</div>
+                                    <span class="room-status-badge @room.Status.ToLower()">@room.Status</span>
+                                    @if (room.Status == "Occupied" && !string.IsNullOrEmpty(room.BookingSource))
                                     {
-                                        <div class="room-action-item status-checkout" onclick="event.stopPropagation(); checkoutRoomFromMenu(@room.Id)">
-                                            <i class="fas fa-sign-out-alt"></i>
-                                            <span>Checkout</span>
+                                        var isB2BTop = string.Equals(room.BookingSource, "B2B", StringComparison.OrdinalIgnoreCase);
+                                        <span class="room-source-badge @(isB2BTop ? "b2b" : "b2c")">
+                                            <i class="fas fa-@(isB2BTop ? "building" : "user")"></i> @(isB2BTop ? "B2B" : "B2C")
+                                        </span>
+                                    }
+                                    @if (room.Status == "Maintenance" && !string.IsNullOrWhiteSpace(room.MaintenanceReason))
+                                    {
+                                        <div class="room-maintenance-reason" title="@room.MaintenanceReason">@room.MaintenanceReason</div>
+                                    }
+                                    @if (room.Status == "Occupied")
+                                    {
+                                        var isOverdue = room.CheckOutDate.HasValue && room.CheckOutDate.Value.Date < DateTime.Today;
+                                        var daysRemaining = room.CheckOutDate.HasValue ? (room.CheckOutDate.Value.Date - DateTime.Today).Days : 0;
+                                        
+                                        <div class="room-occupied-info">
+                                            @* Row 1: Guest count + Days remaining *@
+                                            <div class="room-occupied-row">
+                                                @if (room.GuestCount.HasValue && room.GuestCount.Value > 0)
+                                                {
+                                                    <div class="room-guest-count-badge">
+                                                        <i class="fas fa-users"></i>
+                                                        <span>@room.GuestCount @(room.GuestCount == 1 ? "Guest" : "Guests")</span>
+                                                    </div>
+                                                }
+                                                @if (room.CheckOutDate.HasValue)
+                                                {
+                                                    <div class="room-days-remaining @(daysRemaining <= 1 ? "urgent" : daysRemaining <= 3 ? "soon" : "")">
+                                                        <i class="fas fa-clock"></i>
+                                                        <span>
+                                                            @if (daysRemaining < 0)
+                                                            {
+                                                                @($"{Math.Abs(daysRemaining)}d overdue")
+                                                            }
+                                                            else if (daysRemaining == 0)
+                                                            {
+                                                                @("Today")
+                                                            }
+                                                            else
+                                                            {
+                                                                @($"{daysRemaining}d left")
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                }
+                                            </div>
+
+                                            @if (isOverdue)
+                                            {
+                                                <div class="room-overdue-badge">
+                                                    <i class="fas fa-exclamation-circle"></i>
+                                                    <span>OVERDUE</span>
+                                                </div>
+                                            }
+
+                                            @* Row 2: Booking number *@
+                                            @if (!string.IsNullOrEmpty(room.BookingNumber))
+                                            {
+                                                <div class="room-booking-info">
+                                                    <i class="fas fa-ticket-alt"></i>
+                                                    <span>@room.BookingNumber</span>
+                                                </div>
+                                            }
+
+                                            @* Row 3: Guest name *@
+                                            @if (!string.IsNullOrEmpty(room.PrimaryGuestName))
+                                            {
+                                                <div class="room-guest-info">
+                                                    <i class="fas fa-user"></i>
+                                                    <span>@room.PrimaryGuestName</span>
+                                                </div>
+                                            }
+
+                                            @* Row 3b: B2B Client name *@
+                                            @if (!string.IsNullOrEmpty(room.B2BClientName))
+                                            {
+                                                <div class="room-client-name">
+                                                    <i class="fas fa-building"></i>
+                                                    <span>@room.B2BClientName</span>
+                                                </div>
+                                            }
+
+                                            @* Row 4: Check-in + Check-out side by side *@
+                                            <div class="room-occupied-row">
+                                                @if (room.CheckInDate.HasValue)
+                                                {
+                                                    <div class="room-checkin-date">
+                                                        <i class="fas fa-calendar-alt"></i>
+                                                        <span>In: @room.CheckInDate.Value.ToString("dd MMM")</span>
+                                                    </div>
+                                                }
+                                                @if (room.CheckOutDate.HasValue)
+                                                {
+                                                    <div class="room-checkout-date @(isOverdue ? "overdue" : "")">
+                                                        <i class="fas fa-calendar-check"></i>
+                                                        <span>Out: @room.CheckOutDate.Value.ToString("dd MMM")</span>
+                                                    </div>
+                                                }
+                                            </div>
+
+                                            @* Row 5: Due amount *@
+                                            @if (room.BalanceAmount.HasValue && room.BalanceAmount.Value > 0)
+                                            {
+                                                <div class="room-due-amount">
+                                                    <i class="fas fa-rupee-sign"></i>
+                                                    <span>Due: ₹@room.BalanceAmount.Value.ToString("N0")</span>
+                                                </div>
+                                            }
                                         </div>
                                     }
-                                }
-                            </div>
+                                </div>
+                            }
                         </div>
-                        <div class="room-number">@room.RoomNumber</div>
-                        <div class="room-type">@room.RoomTypeName</div>
-                        <span class="room-status-badge @room.Status.ToLower()">@room.Status</span>
-                        @if (room.Status == "Maintenance" && !string.IsNullOrWhiteSpace(room.MaintenanceReason))
-                        {
-                            <div class="room-maintenance-reason" title="@room.MaintenanceReason">@room.MaintenanceReason</div>
-                        }
-                        @if (room.Status == "Occupied")
-                        {
-                            var isOverdue = room.CheckOutDate.HasValue && room.CheckOutDate.Value.Date < DateTime.Today;
-                            var daysRemaining = room.CheckOutDate.HasValue ? (room.CheckOutDate.Value.Date - DateTime.Today).Days : 0;
-                            
-                            @* Guest Count Badge *@
-                            if (room.GuestCount.HasValue && room.GuestCount.Value > 0)
-                            {
-                                <div class="room-guest-count-badge">
-                                    <i class="fas fa-users"></i>
-                                    <span>@room.GuestCount @(room.GuestCount == 1 ? "Guest" : "Guests")</span>
-                                </div>
-                            }
-                            
-                            @* Days Remaining Countdown *@
-                            if (room.CheckOutDate.HasValue)
-                            {
-                                <div class="room-days-remaining @(daysRemaining <= 1 ? "urgent" : daysRemaining <= 3 ? "soon" : "")">
-                                    <i class="fas fa-clock"></i>
-                                    <span>
-                                        @if (daysRemaining < 0)
-                                        {
-                                            @($"{Math.Abs(daysRemaining)} day{(Math.Abs(daysRemaining) != 1 ? "s" : "")} overdue")
-                                        }
-                                        else if (daysRemaining == 0)
-                                        {
-                                            @("Checking out today")
-                                        }
-                                        else if (daysRemaining == 1)
-                                        {
-                                            @("1 day remaining")
-                                        }
-                                        else
-                                        {
-                                            @($"{daysRemaining} days remaining")
-                                        }
-                                    </span>
-                                </div>
-                            }
-                            
-                            if (isOverdue)
-                            {
-                                <div class="room-overdue-badge">
-                                    <i class="fas fa-exclamation-circle"></i>
-                                    <span>OVERDUE CHECKOUT</span>
-                                </div>
-                            }
-                            @if (!string.IsNullOrEmpty(room.BookingNumber))
-                            {
-                                <div class="room-booking-info">
-                                    <i class="fas fa-ticket-alt"></i>
-                                    <span>@room.BookingNumber</span>
-                                </div>
-                            }
-                            @if (!string.IsNullOrEmpty(room.PrimaryGuestName))
-                            {
-                                <div class="room-guest-info">
-                                    <i class="fas fa-user"></i>
-                                    <span>@room.PrimaryGuestName</span>
-                                </div>
-                            }
-                            @if (room.CheckInDate.HasValue)
-                            {
-                                <div class="room-checkin-date">
-                                    <i class="fas fa-calendar-alt"></i>
-                                    <span>Check-in: @room.CheckInDate.Value.ToString("MMM dd, yyyy")</span>
-                                </div>
-                            }
-                            @if (room.CheckOutDate.HasValue)
-                            {
-                                <div class="room-checkout-date @(isOverdue ? "overdue" : "")">
-                                    <i class="fas fa-calendar-check"></i>
-                                    <span>Checkout: @room.CheckOutDate.Value.ToString("MMM dd, yyyy")</span>
-                                </div>
-                            }
-                            @if (room.BalanceAmount.HasValue && room.BalanceAmount.Value > 0)
-                            {
-                                <div class="room-due-amount">
-                                    <i class="fas fa-rupee-sign"></i>
-                                    <span>Due: ₹@room.BalanceAmount.Value.ToString("N2")</span>
-                                </div>
-                            }
-                        }
                     </div>
                 }
-            </div>
+            </div> @* end roomGrid *@
 
             @if (!Model.Rooms.Any())
             {
-                <div class="empty-state" style="text-align: center; padding: 40px; color: #999;">
-                    <i class="fas fa-bed" style="font-size: 48px; margin-bottom: 16px;"></i>
-                    <p>No rooms found for this branch. Please add rooms in Room Master.</p>
+                <div class="empty-state" style="text-align: center; padding: 30px; color: #999;">
+                    <i class="fas fa-bed" style="font-size: 36px; margin-bottom: 12px;"></i>
+                    <p>No rooms found for this branch.</p>
                 </div>
             }
 
@@ -1054,6 +1174,10 @@
                 </div>
                 <div class="calendar-grid" id="calendarGrid">
                     <!-- Calendar will be rendered by JavaScript -->
+                </div>
+                <div id="calendarDateInfo" style="display:none; margin-top:8px; padding:6px 10px; border-radius:6px; background:#f0f4ff; border:1px solid #e0e7ff; font-size:0.75rem; color:#4338ca; font-weight:600; text-align:center;">
+                    <i class="fas fa-calendar-day" style="margin-right:4px;"></i>
+                    <span id="calendarDateLabel"></span>
                 </div>
             </div>
 
@@ -1100,6 +1224,7 @@
     <script>
         let selectedRoomId = null;
         let currentDate = new Date();
+        let selectedCalendarDate = null;
 
         // Calendar Functions
         function renderCalendar() {
@@ -1150,8 +1275,17 @@
                 // Check if this is today
                 if (year === today.getFullYear() && 
                     month === today.getMonth() && 
-                    day === today.getDate()) {
+                    day === today.getDate() &&
+                    !selectedCalendarDate) {
                     dayCell.classList.add('today');
+                }
+                
+                // Check if this is the selected date
+                if (selectedCalendarDate &&
+                    year === selectedCalendarDate.getFullYear() &&
+                    month === selectedCalendarDate.getMonth() &&
+                    day === selectedCalendarDate.getDate()) {
+                    dayCell.classList.add('selected');
                 }
                 
                 // Add weekend classes
@@ -1161,8 +1295,53 @@
                 if (dayOfWeek === 6) dayCell.classList.add('saturday');
                 
                 dayCell.textContent = day;
+                dayCell.style.cursor = 'pointer';
+                
+                // Click handler — fetch availability for this date
+                const clickDate = new Date(year, month, day);
+                dayCell.addEventListener('click', function() {
+                    onCalendarDateClick(clickDate);
+                });
+                
                 calendarGrid.appendChild(dayCell);
             }
+        }
+
+        function onCalendarDateClick(date) {
+            selectedCalendarDate = date;
+            renderCalendar(); // re-render to show selection highlight
+            
+            const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+            const infoEl = document.getElementById('calendarDateInfo');
+            const labelEl = document.getElementById('calendarDateLabel');
+            labelEl.textContent = `Viewing: ${dateStr}`;
+            infoEl.style.display = 'block';
+            
+            // Fetch availability from server for this date
+            const isoDate = date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0') + '-' + String(date.getDate()).padStart(2,'0');
+            
+            fetch(`@Url.Action("GetAvailabilityByDateRange", "Rooms")?startDate=${isoDate}&endDate=${isoDate}`)
+                .then(r => r.json())
+                .then(resp => {
+                    if (resp && resp.success && Array.isArray(resp.data)) {
+                        updateAvailabilityFromCalendar(resp.data, dateStr);
+                    }
+                })
+                .catch(err => console.error('Calendar fetch error:', err));
+        }
+
+        function updateAvailabilityFromCalendar(availData, dateStr) {
+            // Update each room-type-group header with availability for the selected date
+            document.querySelectorAll('.room-type-group').forEach(group => {
+                const typeName = group.dataset.roomtype;
+                const header = group.querySelector('span:last-child');
+                
+                const match = availData.find(a => a.roomTypeName === typeName);
+                if (match && header) {
+                    header.textContent = `${match.availableRooms} / ${match.totalRooms} available`;
+                    header.style.color = match.availableRooms === 0 ? '#dc2626' : '#64748b';
+                }
+            });
         }
 
         function changeMonth(direction) {
@@ -1700,10 +1879,9 @@
             const activeFloor = document.querySelector('.floor-tab.active')?.getAttribute('data-floor') || 'all';
             
             let visibleCount = 0;
-            let filteredRooms = [...allRooms];
             
-            // Apply filters
-            filteredRooms.forEach(room => {
+            // Apply filters to each room card
+            allRooms.forEach(room => {
                 let show = true;
                 
                 // Floor filter
@@ -1741,32 +1919,26 @@
                 if (show) visibleCount++;
             });
             
-            // Sort visible rooms
-            const roomGrid = document.getElementById('roomGrid');
-            const visibleRooms = filteredRooms.filter(room => room.element.style.display !== 'none');
-            
-            visibleRooms.sort((a, b) => {
-                switch (sortBy) {
-                    case 'roomNumber':
-                        return a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true });
-                    case 'roomType':
-                        return a.roomType.localeCompare(b.roomType);
-                    case 'status':
-                        return a.status.localeCompare(b.status);
-                    case 'rate':
-                        return a.rate - b.rate;
-                    case 'rateDesc':
-                        return b.rate - a.rate;
-                    case 'guestName':
-                        return a.guestName.localeCompare(b.guestName);
-                    default:
-                        return 0;
-                }
-            });
-            
-            // Reorder DOM elements
-            visibleRooms.forEach(room => {
-                roomGrid.appendChild(room.element);
+            // Sort visible rooms within each room-type-group
+            document.querySelectorAll('.room-type-group').forEach(group => {
+                const grid = group.querySelector('.room-grid');
+                if (!grid) return;
+                
+                const cards = Array.from(grid.querySelectorAll('.room-card')).filter(c => c.style.display !== 'none');
+                
+                cards.sort((a, b) => {
+                    const aVal = getRoomSortValue(a, sortBy);
+                    const bVal = getRoomSortValue(b, sortBy);
+                    if (sortBy === 'rate') return parseFloat(aVal) - parseFloat(bVal);
+                    if (sortBy === 'rateDesc') return parseFloat(bVal) - parseFloat(aVal);
+                    return String(aVal).localeCompare(String(bVal), undefined, { numeric: true });
+                });
+                
+                cards.forEach(card => grid.appendChild(card));
+                
+                // Show/hide the entire group based on whether any rooms are visible
+                const hasVisible = grid.querySelector('.room-card[style*="display: flex"], .room-card:not([style*="display: none"])');
+                group.style.display = cards.length > 0 ? '' : 'none';
             });
             
             // Show results count
@@ -1778,6 +1950,18 @@
                 filterResults.style.display = 'block';
             } else {
                 filterResults.style.display = 'none';
+            }
+        }
+        
+        function getRoomSortValue(card, sortBy) {
+            switch (sortBy) {
+                case 'roomNumber': return card.getAttribute('data-room-number') || '';
+                case 'roomType': return card.getAttribute('data-room-type') || '';
+                case 'status': return card.getAttribute('data-status') || '';
+                case 'rate':
+                case 'rateDesc': return card.getAttribute('data-rate') || '0';
+                case 'guestName': return card.getAttribute('data-guest-name') || '';
+                default: return '';
             }
         }
         

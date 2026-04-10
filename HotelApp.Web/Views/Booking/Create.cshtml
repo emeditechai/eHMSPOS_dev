@@ -1297,6 +1297,17 @@
             loadCancellationPolicy();
 
             // Function to fetch and display room type rate
+            function getMealTypeLabel(code) {
+                var labels = {
+                    'EP': 'EP - Room Only',
+                    'CP': 'CP - Bed & Breakfast',
+                    'MAP': 'MAP - Half Board',
+                    'AP': 'AP - Full Board',
+                    'AI': 'AI - All Inclusive'
+                };
+                return labels[code] || code;
+            }
+
             function updateRoomTypeRate() {
                 const roomTypeId = $('#RoomTypeId').val();
                 const customerType = $('#CustomerType').val();
@@ -1329,7 +1340,11 @@
                     success: function(response) {
                         if (response.success) {
                             if (response.hasRate) {
-                                $('#roomTypeRate').html('<span style="display: inline-block; background: #d1fae5; color: #065f46; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 13px;"><i class="fas fa-tag"></i> Rate: ' + response.formattedRate + '/night</span>');
+                                var mealLabel = getMealTypeLabel(response.mealType || 'EP');
+                                $('#roomTypeRate').html(
+                                    '<span style="display: inline-block; background: #d1fae5; color: #065f46; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 13px;"><i class="fas fa-tag"></i> Rate: ' + response.formattedRate + '/night</span>' +
+                                    ' <span style="display: inline-block; background: #ede9fe; color: #5b21b6; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 13px; margin-left: 6px;"><i class="fas fa-utensils"></i> ' + mealLabel + '</span>'
+                                );
                             } else {
                                 $('#roomTypeRate').html('<span style="display: inline-block; background: #fee2e2; color: #991b1b; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 13px;"><i class="fas fa-exclamation-triangle"></i> ' + response.message + '</span>');
                             }

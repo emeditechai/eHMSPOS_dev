@@ -322,6 +322,8 @@ public class RoomsController : BaseController
                 BookingNumber = r.BookingNumber,
                 PrimaryGuestName = r.PrimaryGuestName,
                 GuestCount = r.GuestCount,
+                BookingSource = r.BookingSource,
+                B2BClientName = r.B2BClientName,
                 MaintenanceReason = r.MaintenanceReason
             }).ToList(),
             Floors = floorsWithRooms,

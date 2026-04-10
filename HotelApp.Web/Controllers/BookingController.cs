@@ -1686,6 +1686,7 @@ namespace HotelApp.Web.Controllers
                         rate = quote.BaseRatePerNight,
                         formattedRate = $"₹{quote.BaseRatePerNight:N0}",
                         taxPercentage = quote.TaxPercentage,
+                        mealType = quote.MealType ?? "EP",
                         hasRate = true
                     });
                 }
@@ -1697,6 +1698,7 @@ namespace HotelApp.Web.Controllers
                         rate = 0,
                         formattedRate = "Rate not configured",
                         hasRate = false,
+                        mealType = "EP",
                         message = $"No rate configured for {customerType} - {source}"
                     });
                 }
@@ -1865,6 +1867,7 @@ namespace HotelApp.Web.Controllers
                 Source = model.Source,
                 CustomerType = model.CustomerType,
                 RateType = model.RateType,
+                MealPlan = quote.MealType ?? "EP",
                 CancellationPolicyId = policyId,
                 CancellationPolicySnapshot = snapshotJson,
                 CancellationPolicyAccepted = model.CancellationPolicyAccepted,

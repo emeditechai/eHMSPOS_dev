@@ -156,6 +156,7 @@ namespace HotelApp.Web.Repositories
             {
                 Nights = nights,
                 RatePlanId = ratePlan?.Id,
+                MealType = ratePlan?.MealType ?? "EP",
                 BaseRatePerNight = avgOriginalBase, // Original base rate (for display)
                 ExtraPaxRatePerNight = avgOriginalExtra,
                 TaxPercentage = taxPercentage,
@@ -569,7 +570,7 @@ namespace HotelApp.Web.Repositories
                     BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
                     BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
                     PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, BranchID, CreatedBy,
-                    LastModifiedBy)
+                    LastModifiedBy, InvoiceNumber)
                 VALUES (
                     @BookingNumber, @Status, @PaymentStatus, @Channel, @Source, @CustomerType,
                     @B2BClientId, @B2BClientCode, @B2BClientName, @B2BAgreementId, @AgreementCode, @AgreementName,
@@ -582,7 +583,7 @@ namespace HotelApp.Web.Repositories
                     @BaseAmount, @TaxAmount, @CGSTAmount, @SGSTAmount, @DiscountAmount, @TotalAmount, @DepositAmount,
                     @BalanceAmount, @Adults, @Children, @PrimaryGuestFirstName, @PrimaryGuestLastName,
                     @PrimaryGuestEmail, @PrimaryGuestPhone, @LoyaltyId, @SpecialRequests, @BranchID, @CreatedBy,
-                    @LastModifiedBy);
+                    @LastModifiedBy, @InvoiceNumber);
                 SELECT CAST(SCOPE_IDENTITY() as int);";
 
             var bookingId = await _dbConnection.ExecuteScalarAsync<int>(insertBookingSql, booking, transaction);
@@ -818,7 +819,7 @@ namespace HotelApp.Web.Repositories
                     BaseAmount, TaxAmount, DiscountAmount, TotalAmount, DepositAmount,
                     BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
                     PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, BranchID,
-                    CreatedDate, CreatedBy, LastModifiedDate, LastModifiedBy
+                    CreatedDate, CreatedBy, LastModifiedDate, LastModifiedBy, InvoiceNumber
                 FROM Bookings
                 ORDER BY CreatedDate DESC";
 
@@ -841,7 +842,7 @@ namespace HotelApp.Web.Repositories
                     BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
                     BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
                     PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, BranchID,
-                    CreatedDate, CreatedBy, LastModifiedDate, LastModifiedBy
+                    CreatedDate, CreatedBy, LastModifiedDate, LastModifiedBy, InvoiceNumber
                 FROM Bookings
                 WHERE BranchID = @BranchId
                 ORDER BY CreatedDate DESC";
@@ -865,7 +866,7 @@ namespace HotelApp.Web.Repositories
                     b.BaseAmount, b.TaxAmount, b.CGSTAmount, b.SGSTAmount, b.DiscountAmount, b.TotalAmount, b.DepositAmount,
                     b.BalanceAmount, b.Adults, b.Children, b.PrimaryGuestFirstName, b.PrimaryGuestLastName,
                     b.PrimaryGuestEmail, b.PrimaryGuestPhone, b.LoyaltyId, b.SpecialRequests, b.BranchID,
-                    b.CreatedDate, b.CreatedBy, b.LastModifiedDate, b.LastModifiedBy,
+                    b.CreatedDate, b.CreatedBy, b.LastModifiedDate, b.LastModifiedBy, b.InvoiceNumber,
                     bc.AmountPaid AS CancellationAmountPaid,
                     bc.RefundAmount AS CancellationRefundAmount,
                     ISNULL(bc.IsRefunded, 0) AS CancellationIsRefunded
@@ -905,7 +906,7 @@ namespace HotelApp.Web.Repositories
                     BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
                     BalanceAmount, Adults, Children, PrimaryGuestFirstName, PrimaryGuestLastName,
                     PrimaryGuestEmail, PrimaryGuestPhone, LoyaltyId, SpecialRequests, RequiredRooms, BranchID,
-                    CreatedDate, CreatedBy, LastModifiedDate, LastModifiedBy
+                    CreatedDate, CreatedBy, LastModifiedDate, LastModifiedBy, InvoiceNumber
                 FROM Bookings
                 WHERE BookingNumber = @BookingNumber";
 
@@ -3924,6 +3925,32 @@ WHERE BookingID = @BookingID
             // Generate receipt number with sequential number
             var sequenceNumber = (count + 1).ToString("D4");
             return $"RCP-{today}-{sequenceNumber}";
+        }
+
+        /// <summary>
+        /// Generates a unique B2B invoice number: INV/{FY}/{5-digit seq}
+        /// Example: INV/2025-26/00001
+        /// Uses InvoiceSequence table with row-level locking for concurrency safety.
+        /// </summary>
+        public async Task<string> GenerateInvoiceNumberAsync(int branchId, IDbTransaction? transaction = null)
+        {
+            var now = DateTime.Today;
+            int fyStart = now.Month >= 4 ? now.Year : now.Year - 1;
+            int fyEnd = fyStart + 1;
+            var fy = $"{fyStart}-{fyEnd % 100:D2}";
+
+            const string upsertSql = @"
+                MERGE InvoiceSequence WITH (HOLDLOCK) AS target
+                USING (SELECT @FinancialYear AS FinancialYear, @BranchID AS BranchID) AS source
+                ON target.FinancialYear = source.FinancialYear AND target.BranchID = source.BranchID
+                WHEN MATCHED THEN
+                    UPDATE SET LastSequence = target.LastSequence + 1
+                WHEN NOT MATCHED THEN
+                    INSERT (FinancialYear, BranchID, LastSequence) VALUES (source.FinancialYear, source.BranchID, 1)
+                OUTPUT inserted.LastSequence;";
+
+            var seq = await _dbConnection.ExecuteScalarAsync<int>(upsertSql, new { FinancialYear = fy, BranchID = branchId }, transaction);
+            return $"INV/{fy}/{seq:D5}";
         }
 
         private async Task<string?> TryGenerateReceiptGroupNumberAsync(DateTime paidOn, IDbTransaction transaction)

@@ -11,15 +11,24 @@ namespace HotelApp.Web.Controllers
         private readonly IB2BClientRepository _clientRepository;
         private readonly IB2BAgreementRepository _agreementRepository;
         private readonly ILocationRepository _locationRepository;
+        private readonly IHotelSettingsRepository _hotelSettingsRepository;
+        private readonly IB2BTermsConditionRepository _termsConditionRepository;
+        private readonly ICancellationPolicyRepository _cancellationPolicyRepository;
 
         public B2BClientMasterController(
             IB2BClientRepository clientRepository,
             IB2BAgreementRepository agreementRepository,
-            ILocationRepository locationRepository)
+            ILocationRepository locationRepository,
+            IHotelSettingsRepository hotelSettingsRepository,
+            IB2BTermsConditionRepository termsConditionRepository,
+            ICancellationPolicyRepository cancellationPolicyRepository)
         {
             _clientRepository = clientRepository;
             _agreementRepository = agreementRepository;
             _locationRepository = locationRepository;
+            _hotelSettingsRepository = hotelSettingsRepository;
+            _termsConditionRepository = termsConditionRepository;
+            _cancellationPolicyRepository = cancellationPolicyRepository;
         }
 
         public async Task<IActionResult> Index()
@@ -129,6 +138,41 @@ namespace HotelApp.Web.Controllers
             ViewData["Title"] = "View B2B Client";
             ViewBag.IsReadOnly = true;
             return View("Edit", row);
+        }
+
+        public async Task<IActionResult> Print(int id)
+        {
+            var client = await _clientRepository.GetByIdAsync(id);
+            if (client == null || client.BranchID != CurrentBranchID)
+            {
+                return NotFound();
+            }
+
+            var hotelSettings = await _hotelSettingsRepository.GetByBranchAsync(CurrentBranchID);
+            ViewBag.HotelSettings = hotelSettings;
+
+            // Load linked agreement with room rates
+            if (client.AgreementId.HasValue)
+            {
+                var agreement = await _agreementRepository.GetByIdAsync(client.AgreementId.Value);
+                ViewBag.Agreement = agreement;
+
+                // Load terms & conditions from the agreement
+                if (agreement?.TermsConditionId != null)
+                {
+                    var terms = await _termsConditionRepository.GetByIdAsync(agreement.TermsConditionId.Value);
+                    ViewBag.TermsCondition = terms;
+                }
+
+                // Load cancellation policy from the agreement
+                if (agreement?.CancellationPolicyId != null)
+                {
+                    var cancellationPolicy = await _cancellationPolicyRepository.GetByIdAsync(agreement.CancellationPolicyId.Value);
+                    ViewBag.CancellationPolicy = cancellationPolicy;
+                }
+            }
+
+            return View(client);
         }
 
         private async Task PopulateFormOptionsAsync(

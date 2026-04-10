@@ -12,12 +12,54 @@
 }
 
 <style>
+    /* Meal Type Tooltip - pure CSS hover */
+    .meal-type-info-btn {
+        display: inline-flex;
+        cursor: help;
+        color: #667eea;
+        margin-left: 4px;
+        font-size: 13px;
+        position: relative;
+    }
+    .meal-type-info-btn:hover { color: #4c5fd5; }
+    .meal-type-info-btn .meal-type-tooltip {
+        display: none;
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        background: #1e293b;
+        color: #f1f5f9;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        padding: 10px 14px;
+        min-width: 320px;
+        font-weight: 400;
+        font-size: 12px;
+        line-height: 1.6;
+        white-space: nowrap;
+        pointer-events: none;
+    }
+    .meal-type-info-btn .meal-type-tooltip::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 6px solid transparent;
+        border-top-color: #1e293b;
+    }
+    .meal-type-info-btn:hover .meal-type-tooltip { display: block; }
+    .meal-type-tooltip .tt-row { padding: 2px 0; }
+    .meal-type-tooltip .tt-row strong { color: #93c5fd; min-width: 30px; display: inline-block; }
+
     .master-edit-container {
         background: white;
-        border-radius: 12px;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-        padding: 30px 50px;
-        max-width: 95%;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.07);
+        padding: 20px 30px;
+        max-width: 100%;
         width: 100%;
         margin: 0 auto;
     }
@@ -25,74 +67,75 @@
     .master-edit-header {
         display: flex;
         align-items: center;
-        margin-bottom: 30px;
-        padding-bottom: 20px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
         border-bottom: 2px solid #f0f0f0;
     }
 
     .master-edit-header h3 {
         margin: 0;
         color: var(--primary);
-        font-size: 24px;
+        font-size: 18px;
         font-weight: 600;
     }
 
     .audit-info {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 20px;
+        gap: 12px;
         background: #f8f9fa;
-        padding: 20px;
-        border-radius: 8px;
-        margin-bottom: 25px;
+        padding: 12px 16px;
+        border-radius: 6px;
+        margin-bottom: 16px;
     }
 
     .audit-item {
         display: flex;
         flex-direction: column;
-        gap: 5px;
+        gap: 2px;
     }
 
     .audit-label {
         font-weight: 600;
         color: #666;
-        font-size: 12px;
+        font-size: 11px;
         text-transform: uppercase;
     }
 
     .audit-value {
         color: #333;
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 500;
     }
 
     .audit-subtext {
         color: #888;
-        font-size: 13px;
+        font-size: 12px;
     }
 
     .master-form-section {
-        margin-bottom: 25px;
+        margin-bottom: 16px;
     }
 
     .section-title {
-        font-size: 16px;
+        font-size: 14px;
         font-weight: 600;
         color: #333;
-        margin-bottom: 15px;
+        margin-bottom: 10px;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
     }
 
     .section-title i {
         color: var(--primary);
+        font-size: 13px;
     }
 
     .master-form-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        gap: 20px 25px;
+        gap: 12px 16px;
     }
 
     .master-form-group {
@@ -102,17 +145,17 @@
 
     .master-form-group label {
         font-weight: 500;
-        margin-bottom: 8px;
+        margin-bottom: 4px;
         color: #333;
-        font-size: 14px;
+        font-size: 12.5px;
     }
 
     .master-form-group input,
     .master-form-group select {
-        padding: 12px 15px;
+        padding: 8px 10px;
         border: 1px solid #ddd;
-        border-radius: 8px;
-        font-size: 14px;
+        border-radius: 6px;
+        font-size: 13px;
         transition: all 0.2s;
     }
 
@@ -120,7 +163,7 @@
     .master-form-group select:focus {
         outline: none;
         border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(26, 42, 108, 0.1);
+        box-shadow: 0 0 0 2px rgba(26, 42, 108, 0.1);
     }
 
     .master-form-group input:read-only,
@@ -132,13 +175,13 @@
     .form-check {
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding-top: 30px;
+        gap: 6px;
+        padding-top: 24px;
     }
 
     .form-check-input {
-        width: 18px;
-        height: 18px;
+        width: 16px;
+        height: 16px;
         cursor: pointer;
     }
 
@@ -149,24 +192,24 @@
 
     .master-form-actions {
         display: flex;
-        gap: 15px;
+        gap: 12px;
         justify-content: flex-end;
-        padding-top: 25px;
+        padding-top: 16px;
         border-top: 2px solid #f0f0f0;
     }
 
     .master-form-actions .btn-save,
     .master-form-actions .btn-cancel {
-        padding: 12px 30px;
-        font-size: 15px;
+        padding: 8px 24px;
+        font-size: 13px;
         font-weight: 600;
-        border-radius: 8px;
+        border-radius: 6px;
         transition: all 0.2s;
     }
 
     .page-header {
-        max-width: 95%;
-        margin: 0 auto 20px;
+        max-width: 100%;
+        margin: 0 auto 12px;
     }
 
     @@media (max-width: 1400px) {
@@ -186,7 +229,7 @@
 
     @@media screen and (min-width: 1200px) {
         .master-edit-container {
-            max-width: 98%;
+            max-width: 100%;
         }
     }
 
@@ -201,7 +244,7 @@
         }
         .master-edit-container {
             max-width: 100%;
-            padding: 20px;
+            padding: 16px;
         }
     }
 
@@ -209,89 +252,84 @@
     .weekend-days-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 15px;
-        margin-bottom: 15px;
+        gap: 10px;
+        margin-bottom: 10px;
     }
 
     .weekend-day-item {
         display: flex;
         flex-direction: column;
-        gap: 8px;
-        padding: 15px;
+        gap: 6px;
+        padding: 10px;
         background: #f8f9fa;
-        border-radius: 8px;
+        border-radius: 6px;
         border: 2px solid #e9ecef;
     }
 
     .day-checkbox {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         font-weight: 600;
         color: #495057;
         cursor: pointer;
-        margin-bottom: 5px;
+        margin-bottom: 3px;
+        font-size: 13px;
     }
 
     .day-checkbox input[type="checkbox"] {
-        width: 18px;
-        height: 18px;
+        width: 16px;
+        height: 16px;
         cursor: pointer;
     }
 
     .weekend-rate-input {
-        padding: 8px 12px;
+        padding: 6px 10px;
         border: 1px solid #ced4da;
-        border-radius: 6px;
-        font-size: 13px;
+        border-radius: 5px;
+        font-size: 12.5px;
     }
 
-    .weekend-rate-input:enabled {
-        background: white;
-    }
-
-    .weekend-rate-input:disabled {
-        background: #e9ecef;
-        cursor: not-allowed;
-    }
+    .weekend-rate-input:enabled { background: white; }
+    .weekend-rate-input:disabled { background: #e9ecef; cursor: not-allowed; }
 
     /* Special Day Rates Styles */
     .special-day-row {
         display: grid;
-        grid-template-columns: 160px 160px 1fr 1fr 1fr 50px;
-        gap: 12px;
+        grid-template-columns: 140px 140px 1fr 1fr 1fr 40px;
+        gap: 10px;
         align-items: end;
-        margin-bottom: 12px;
-        padding: 12px;
+        margin-bottom: 8px;
+        padding: 10px;
         background: #f8f9fa;
-        border-radius: 8px;
+        border-radius: 6px;
     }
 
     .special-day-field {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 3px;
     }
 
     .special-day-field label {
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 500;
         color: #495057;
     }
 
     .special-day-field input {
-        padding: 8px 12px;
+        padding: 6px 10px;
         border: 1px solid #ced4da;
-        border-radius: 6px;
-        font-size: 13px;
+        border-radius: 5px;
+        font-size: 12.5px;
     }
 
     .btn-add-special-day {
-        padding: 10px 20px;
+        padding: 7px 16px;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         border: none;
-        border-radius: 6px;
+        border-radius: 5px;
         cursor: pointer;
         font-size: 14px;
         font-weight: 600;
@@ -393,6 +431,29 @@
                         }
                     </select>
                     <span asp-validation-for="Source" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="MealType">Meal Type
+                        <span class="meal-type-info-btn">
+                            <i class="fas fa-info-circle"></i>
+                            <span class="meal-type-tooltip">
+                                <div class="tt-row"><strong>EP</strong> (Room Only): No meals included</div>
+                                <div class="tt-row"><strong>CP</strong> (Bed & Breakfast): Includes breakfast only</div>
+                                <div class="tt-row"><strong>MAP</strong> (Half Board): Includes breakfast and dinner</div>
+                                <div class="tt-row"><strong>AP</strong> (Full Board): Includes breakfast, lunch, and dinner</div>
+                                <div class="tt-row"><strong>AI</strong> (All Inclusive): Includes all meals, snacks, and beverages</div>
+                            </span>
+                        </span>
+                    </label>
+                    <select asp-for="MealType" class="form-control" disabled="@(isReadOnly ? "disabled" : null)">
+                        <option value="EP">EP - Room Only</option>
+                        <option value="CP">CP - Bed & Breakfast</option>
+                        <option value="MAP">MAP - Half Board</option>
+                        <option value="AP">AP - Full Board</option>
+                        <option value="AI">AI - All Inclusive</option>
+                    </select>
+                    <span asp-validation-for="MealType" class="text-danger"></span>
                 </div>
 
                 <div class="master-form-group">

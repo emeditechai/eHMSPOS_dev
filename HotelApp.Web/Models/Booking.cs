@@ -6,6 +6,7 @@ namespace HotelApp.Web.Models
     {
         public int Id { get; set; }
         public string BookingNumber { get; set; } = string.Empty;
+        public string? InvoiceNumber { get; set; }
         public string Status { get; set; } = "Pending";
         public string PaymentStatus { get; set; } = "Pending";
         public string Channel { get; set; } = string.Empty;

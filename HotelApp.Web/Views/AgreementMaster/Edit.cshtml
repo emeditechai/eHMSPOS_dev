@@ -11,7 +11,17 @@
             <h2><i class="fas fa-file-contract"></i> Agreement Master</h2>
             <p class="text-muted mb-0">@((isReadOnly ? "Review" : "Update") + " contract scope, billing, terms, approvals, and room-rate commitments.")</p>
         </div>
-        <a asp-action="Index" class="btn-cancel"><i class="fas fa-arrow-left"></i> Back to Agreement List</a>
+        <div style="display:flex; gap:10px; align-items:flex-start;">
+            @if (isReadOnly)
+            {
+                <a asp-action="Print" asp-route-id="@Model.Id" target="_blank"
+                   class="btn-cancel" style="background:#2563eb; color:#fff; border-color:#2563eb;"
+                   title="Print / Save as PDF">
+                    <i class="fas fa-print"></i> Print Agreement
+                </a>
+            }
+            <a asp-action="Index" class="btn-cancel"><i class="fas fa-arrow-left"></i> Back to Agreement List</a>
+        </div>
     </div>
 
     <form asp-action="Edit" method="post" enctype="multipart/form-data" class="agreement-shell">

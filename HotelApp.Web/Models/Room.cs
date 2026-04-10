@@ -22,6 +22,8 @@ namespace HotelApp.Web.Models
         public decimal? BalanceAmount { get; set; }
         public string? PrimaryGuestName { get; set; }
         public int? GuestCount { get; set; }
+        public string? BookingSource { get; set; }
+        public string? B2BClientName { get; set; }
         
         // Navigation property
         public RoomType? RoomType { get; set; }

@@ -29,6 +29,7 @@ namespace HotelApp.Web.Controllers
         private readonly IGstSlabRepository _gstSlabRepository;
         private readonly IRoomTypeRepository _roomTypeRepository;
         private readonly IUserRepository _userRepository;
+        private readonly IHotelSettingsRepository _hotelSettingsRepository;
         private readonly IWebHostEnvironment _environment;
 
         public AgreementMasterController(
@@ -38,6 +39,7 @@ namespace HotelApp.Web.Controllers
             IGstSlabRepository gstSlabRepository,
             IRoomTypeRepository roomTypeRepository,
             IUserRepository userRepository,
+            IHotelSettingsRepository hotelSettingsRepository,
             IWebHostEnvironment environment)
         {
             _agreementRepository = agreementRepository;
@@ -46,6 +48,7 @@ namespace HotelApp.Web.Controllers
             _gstSlabRepository = gstSlabRepository;
             _roomTypeRepository = roomTypeRepository;
             _userRepository = userRepository;
+            _hotelSettingsRepository = hotelSettingsRepository;
             _environment = environment;
         }
 
@@ -186,6 +189,26 @@ namespace HotelApp.Web.Controllers
             ViewData["Title"] = "View Agreement";
             ViewBag.IsReadOnly = true;
             return View("Edit", row);
+        }
+
+        public async Task<IActionResult> Print(int id)
+        {
+            var row = await _agreementRepository.GetByIdAsync(id);
+            if (row == null || row.BranchID != CurrentBranchID)
+            {
+                return NotFound();
+            }
+
+            var hotelSettings = await _hotelSettingsRepository.GetByBranchAsync(CurrentBranchID);
+            ViewBag.HotelSettings = hotelSettings;
+
+            if (row.TermsConditionId.HasValue)
+            {
+                var terms = await _termsConditionRepository.GetByIdAsync(row.TermsConditionId.Value);
+                ViewBag.TermsCondition = terms;
+            }
+
+            return View(row);
         }
 
         private async Task PopulateLookupsAsync()

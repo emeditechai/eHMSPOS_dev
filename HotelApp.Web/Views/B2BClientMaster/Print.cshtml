@@ -1,0 +1,987 @@
+@model HotelApp.Web.Models.B2BClient
+@{
+    Layout = null;
+    var hotelSettings = ViewBag.HotelSettings as HotelApp.Web.Models.HotelSettings;
+    var agreement = ViewBag.Agreement as HotelApp.Web.Models.B2BAgreement;
+    var terms = ViewBag.TermsCondition as HotelApp.Web.Models.B2BTermsCondition;
+    var cancellation = ViewBag.CancellationPolicy as HotelApp.Web.Models.CancellationPolicy;
+    var activeRates = agreement?.RoomRates?.Where(r => r.IsActive).ToList()
+                      ?? new List<HotelApp.Web.Models.B2BAgreementRoomRate>();
+
+    var serviceInclusions = new List<string>();
+    if (agreement != null)
+    {
+        if (agreement.IncludesBreakfast) serviceInclusions.Add("Breakfast");
+        if (agreement.IncludesLunch) serviceInclusions.Add("Lunch");
+        if (agreement.IncludesDinner) serviceInclusions.Add("Dinner");
+        if (agreement.IncludesLaundry) serviceInclusions.Add("Laundry");
+        if (agreement.IncludesAirportTransfer) serviceInclusions.Add("Airport Transfer");
+        if (agreement.IncludesWifi) serviceInclusions.Add("Wi-Fi");
+        if (agreement.IncludesAccessToLounge) serviceInclusions.Add("Lounge Access");
+    }
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>B2B Client — @Model.ClientCode</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #1e293b;
+            background: #f1f5f9;
+        }
+
+        /* ── Print Controls ── */
+        .print-controls {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            padding: 10px;
+            background: #1e293b;
+        }
+        .print-controls .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background .15s;
+        }
+        .btn-print { background: #2563eb; color: #fff; }
+        .btn-print:hover { background: #1d4ed8; }
+        .btn-back { background: #475569; color: #fff; }
+        .btn-back:hover { background: #334155; }
+
+        .client-doc {
+            max-width: 210mm;
+            margin: 70px auto 40px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,.08);
+            overflow: hidden;
+        }
+
+        /* ── Header ── */
+        .doc-header {
+            background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+            color: #fff;
+            padding: 28px 36px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .doc-header .hotel-info h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .doc-header .hotel-info p {
+            font-size: 12px;
+            opacity: .85;
+            line-height: 1.6;
+        }
+        .doc-header .doc-title-box {
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .doc-header .doc-title-box h2 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            color: #93c5fd;
+        }
+        .doc-header .doc-title-box .doc-code {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .doc-header .doc-title-box .doc-date {
+            font-size: 11px;
+            opacity: .8;
+            margin-top: 2px;
+        }
+
+        /* ── Status Strip ── */
+        .status-strip {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+        .status-strip .strip-item {
+            flex: 1;
+            padding: 10px 14px;
+            text-align: center;
+            border-right: 1px solid #e2e8f0;
+            font-size: 12px;
+        }
+        .status-strip .strip-item:last-child { border-right: none; }
+        .strip-label {
+            display: block;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            color: #64748b;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        .strip-value {
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .strip-badge {
+            display: inline-block;
+            padding: 1px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .strip-badge.active { background: #dcfce7; color: #166534; }
+        .strip-badge.inactive { background: #fee2e2; color: #991b1b; }
+        .strip-badge.blacklisted { background: #fef2f2; color: #b91c1c; }
+
+        /* ── Section Divider ── */
+        .section-divider {
+            background: linear-gradient(90deg, #1e3a5f, #334155);
+            color: #fff;
+            padding: 10px 36px;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: .5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-divider i { font-size: 14px; opacity: .8; }
+
+        /* ── Body ── */
+        .doc-body { padding: 24px 36px 32px; }
+
+        /* Section */
+        .section { margin-bottom: 22px; }
+        .section-title {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            color: #1e3a5f;
+            border-bottom: 2px solid #1e3a5f;
+            padding-bottom: 5px;
+            margin-bottom: 14px;
+        }
+
+        /* Key-value grid */
+        .kv-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px 24px;
+        }
+        .kv-grid.two-col { grid-template-columns: repeat(2, 1fr); }
+        .kv-grid.four-col { grid-template-columns: repeat(4, 1fr); }
+        .kv-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            color: #64748b;
+            font-weight: 600;
+        }
+        .kv-value {
+            font-size: 13px;
+            font-weight: 500;
+            color: #1e293b;
+            word-break: break-word;
+        }
+        .kv-value.mono { font-family: 'SF Mono', 'Cascadia Code', monospace; }
+        .kv-span-2 { grid-column: span 2; }
+        .kv-span-3 { grid-column: span 3; }
+
+        /* Tables */
+        .rate-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .rate-table thead th {
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            font-weight: 700;
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 2px solid #cbd5e1;
+        }
+        .rate-table tbody td {
+            padding: 7px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: top;
+        }
+        .rate-table tbody tr:last-child td { border-bottom: none; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+
+        /* Inclusion pills */
+        .inclusion-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .inclusion-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 12px;
+            background: #ecfdf5;
+            color: #065f46;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .inclusion-pill i { font-size: 10px; }
+        .no-data {
+            color: #94a3b8;
+            font-style: italic;
+            font-size: 12px;
+        }
+
+        /* Terms block */
+        .terms-block { margin-bottom: 10px; }
+        .terms-block h5 {
+            font-size: 12px;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 3px;
+        }
+        .terms-block p {
+            font-size: 12px;
+            color: #475569;
+            line-height: 1.6;
+            white-space: pre-line;
+        }
+
+        /* Compliance tag */
+        .compliance-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 8px;
+            margin-bottom: 4px;
+        }
+        .compliance-tag.yes { background: #dbeafe; color: #1e40af; }
+        .compliance-tag.no { background: #f1f5f9; color: #94a3b8; }
+
+        /* Footer */
+        .doc-footer {
+            padding: 14px 36px;
+            border-top: 1px solid #e2e8f0;
+            background: #f8fafc;
+            font-size: 11px;
+            color: #64748b;
+            text-align: center;
+        }
+
+        /* ── Print ── */
+        @@media print {
+            body { background: #fff; }
+            .print-controls { display: none !important; }
+            .client-doc {
+                margin: 0;
+                box-shadow: none;
+                border-radius: 0;
+                max-width: none;
+            }
+            @@page {
+                size: A4;
+                margin: 12mm 14mm;
+            }
+            .section, .rate-table, .kv-grid {
+                page-break-inside: avoid;
+            }
+            .doc-header, .section-divider {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .status-strip, .rate-table thead th {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .inclusion-pill, .strip-badge, .compliance-tag {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body>
+
+<div class="print-controls">
+    <button class="btn btn-print" onclick="window.print()">
+        <i class="fas fa-print"></i> Print / Save as PDF
+    </button>
+    <a href="@Url.Action("Details", "B2BClientMaster", new { id = Model.Id })" class="btn btn-back">
+        <i class="fas fa-arrow-left"></i> Back to Client
+    </a>
+</div>
+
+<div class="client-doc">
+
+    <!-- ═══════════════ HEADER ═══════════════ -->
+    <div class="doc-header">
+        <div class="hotel-info">
+            <h1>@(hotelSettings?.HotelName ?? "Hotel")</h1>
+            <p>
+                @(hotelSettings?.Address ?? "")
+                @if (!string.IsNullOrWhiteSpace(hotelSettings?.ContactNumber1))
+                {
+                    <br /><text>Phone: @hotelSettings.ContactNumber1</text>
+                }
+                @if (!string.IsNullOrWhiteSpace(hotelSettings?.EmailAddress))
+                {
+                    <text> | Email: @hotelSettings.EmailAddress</text>
+                }
+                @if (!string.IsNullOrWhiteSpace(hotelSettings?.GSTCode))
+                {
+                    <br /><text>GSTIN: @hotelSettings.GSTCode</text>
+                }
+            </p>
+        </div>
+        <div class="doc-title-box">
+            <h2>B2B Client Profile</h2>
+            <div class="doc-code">@Model.ClientCode</div>
+            <div class="doc-date">Generated: @DateTime.Now.ToString("dd MMM yyyy")</div>
+        </div>
+    </div>
+
+    <!-- Status Strip -->
+    <div class="status-strip">
+        <div class="strip-item">
+            <span class="strip-label">Company</span>
+            <span class="strip-value">@Model.ClientName</span>
+        </div>
+        <div class="strip-item">
+            <span class="strip-label">Type</span>
+            <span class="strip-value">@Model.CompanyType</span>
+        </div>
+        <div class="strip-item">
+            <span class="strip-label">Billing</span>
+            <span class="strip-value">@Model.BillingType / @Model.BillingCycle</span>
+        </div>
+        <div class="strip-item">
+            <span class="strip-label">Agreement</span>
+            <span class="strip-value">@(Model.AgreementName ?? "—") (@(Model.AgreementCode ?? "—"))</span>
+        </div>
+        <div class="strip-item">
+            <span class="strip-label">Status</span>
+            @if (Model.Blacklisted)
+            {
+                <span class="strip-badge blacklisted">Blacklisted</span>
+            }
+            else
+            {
+                <span class="strip-badge @(Model.IsActive ? "active" : "inactive")">@(Model.IsActive ? "Active" : "Inactive")</span>
+            }
+        </div>
+    </div>
+
+    <!-- ═══════════════ PART 1: CLIENT INFO ═══════════════ -->
+    <div class="doc-body">
+
+        <!-- Basic Information -->
+        <div class="section">
+            <div class="section-title">Basic Information</div>
+            <div class="kv-grid">
+                <div class="kv-item">
+                    <div class="kv-label">Company Code</div>
+                    <div class="kv-value">@Model.ClientCode</div>
+                </div>
+                <div class="kv-item">
+                    <div class="kv-label">Company Name</div>
+                    <div class="kv-value">@Model.ClientName</div>
+                </div>
+                <div class="kv-item">
+                    <div class="kv-label">Display Name</div>
+                    <div class="kv-value">@Model.DisplayName</div>
+                </div>
+                <div class="kv-item">
+                    <div class="kv-label">Company Type</div>
+                    <div class="kv-value">@Model.CompanyType</div>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(Model.Pan))
+                {
+                    <div class="kv-item">
+                        <div class="kv-label">PAN</div>
+                        <div class="kv-value">@Model.Pan</div>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.GstNo))
+                {
+                    <div class="kv-item">
+                        <div class="kv-label">GSTIN</div>
+                        <div class="kv-value">@Model.GstNo</div>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.Cin))
+                {
+                    <div class="kv-item">
+                        <div class="kv-label">CIN</div>
+                        <div class="kv-value">@Model.Cin</div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Address -->
+        <div class="section">
+            <div class="section-title">Address</div>
+            <div class="kv-grid two-col">
+                <div class="kv-item kv-span-2">
+                    <div class="kv-label">Registered Address</div>
+                    <div class="kv-value">
+                        @Model.Address
+                        @if (!string.IsNullOrWhiteSpace(Model.AddressLine2))
+                        {
+                            <text>, @Model.AddressLine2</text>
+                        }
+                    </div>
+                </div>
+                <div class="kv-item">
+                    <div class="kv-label">City</div>
+                    <div class="kv-value">@Model.City</div>
+                </div>
+                <div class="kv-item">
+                    <div class="kv-label">State</div>
+                    <div class="kv-value">@(Model.StateName ?? "—") @(!string.IsNullOrWhiteSpace(Model.StateCode) ? $"({Model.StateCode})" : "")</div>
+                </div>
+                <div class="kv-item">
+                    <div class="kv-label">Country</div>
+                    <div class="kv-value">@(Model.CountryName ?? "India")</div>
+                </div>
+                <div class="kv-item">
+                    <div class="kv-label">Pincode</div>
+                    <div class="kv-value">@Model.Pincode</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact -->
+        <div class="section">
+            <div class="section-title">Contact Details</div>
+            <div class="kv-grid">
+                <div class="kv-item">
+                    <div class="kv-label">Contact Person</div>
+                    <div class="kv-value">@Model.ContactPerson</div>
+                </div>
+                <div class="kv-item">
+                    <div class="kv-label">Phone</div>
+                    <div class="kv-value">@Model.ContactNo</div>
+                </div>
+                <div class="kv-item">
+                    <div class="kv-label">Email</div>
+                    <div class="kv-value">@Model.CorporateEmail</div>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(Model.AlternateContact))
+                {
+                    <div class="kv-item">
+                        <div class="kv-label">Alternate Contact</div>
+                        <div class="kv-value">@Model.AlternateContact</div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Billing & Credit -->
+        <div class="section">
+            <div class="section-title">Billing &amp; Credit</div>
+            <div class="kv-grid">
+                <div class="kv-item">
+                    <div class="kv-label">Billing Type</div>
+                    <div class="kv-value">@Model.BillingType</div>
+                </div>
+                <div class="kv-item">
+                    <div class="kv-label">Billing Cycle</div>
+                    <div class="kv-value">@Model.BillingCycle</div>
+                </div>
+                @if (Model.BillingType == "Credit")
+                {
+                    <div class="kv-item">
+                        <div class="kv-label">Credit Limit</div>
+                        <div class="kv-value mono">₹ @(Model.CreditAmount?.ToString("N2") ?? "0.00")</div>
+                    </div>
+                    <div class="kv-item">
+                        <div class="kv-label">Credit Days</div>
+                        <div class="kv-value">@Model.CreditDays days</div>
+                    </div>
+                    <div class="kv-item">
+                        <div class="kv-label">Exceed Limit Allowed</div>
+                        <div class="kv-value">@(Model.AllowExceedLimit ? "Yes" : "No")</div>
+                    </div>
+                }
+                <div class="kv-item">
+                    <div class="kv-label">Outstanding Amount</div>
+                    <div class="kv-value mono">₹ @Model.OutstandingAmount.ToString("N2")</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GST & Compliance -->
+        <div class="section">
+            <div class="section-title">GST &amp; Compliance</div>
+            <div class="kv-grid">
+                <div class="kv-item">
+                    <div class="kv-label">GST Registration</div>
+                    <div class="kv-value">@(Model.GstRegistrationType ?? "—")</div>
+                </div>
+                <div class="kv-item">
+                    <div class="kv-label">Place of Supply</div>
+                    <div class="kv-value">@(Model.StateName ?? "—") @(!string.IsNullOrWhiteSpace(Model.StateCode) ? $"({Model.StateCode})" : "")</div>
+                </div>
+                <div class="kv-item">
+                    <div class="kv-label">Compliance Flags</div>
+                    <div class="kv-value">
+                        <span class="compliance-tag @(Model.ReverseCharge ? "yes" : "no")">
+                            <i class="fas fa-@(Model.ReverseCharge ? "check" : "times")"></i> Reverse Charge
+                        </span>
+                        <span class="compliance-tag @(Model.EInvoiceApplicable ? "yes" : "no")">
+                            <i class="fas fa-@(Model.EInvoiceApplicable ? "check" : "times")"></i> E-Invoice
+                        </span>
+                        <span class="compliance-tag @(Model.TdsApplicable ? "yes" : "no")">
+                            <i class="fas fa-@(Model.TdsApplicable ? "check" : "times")"></i> TDS
+                        </span>
+                    </div>
+                </div>
+                @if (Model.TdsApplicable && Model.TdsPercentage.HasValue)
+                {
+                    <div class="kv-item">
+                        <div class="kv-label">TDS %</div>
+                        <div class="kv-value">@Model.TdsPercentage.Value.ToString("0.##")%</div>
+                    </div>
+                }
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ═══════════════ PART 2: AGREEMENT ═══════════════ -->
+    @if (agreement != null)
+    {
+        <div class="section-divider">
+            <i class="fas fa-file-contract"></i> Linked Agreement — @agreement.AgreementCode: @agreement.AgreementName
+        </div>
+
+        <div class="doc-body">
+
+            <!-- Agreement Overview -->
+            <div class="section">
+                <div class="section-title">Agreement Overview</div>
+                <div class="kv-grid">
+                    <div class="kv-item">
+                        <div class="kv-label">Agreement Code</div>
+                        <div class="kv-value">@agreement.AgreementCode</div>
+                    </div>
+                    <div class="kv-item kv-span-2">
+                        <div class="kv-label">Agreement Name</div>
+                        <div class="kv-value">@agreement.AgreementName</div>
+                    </div>
+                    <div class="kv-item">
+                        <div class="kv-label">Type</div>
+                        <div class="kv-value">@agreement.AgreementType</div>
+                    </div>
+                    <div class="kv-item">
+                        <div class="kv-label">Effective From</div>
+                        <div class="kv-value">@agreement.EffectiveFrom.ToString("dd MMM yyyy")</div>
+                    </div>
+                    <div class="kv-item">
+                        <div class="kv-label">Effective To</div>
+                        <div class="kv-value">@agreement.EffectiveTo.ToString("dd MMM yyyy")</div>
+                    </div>
+                    <div class="kv-item">
+                        <div class="kv-label">Approval</div>
+                        <div class="kv-value">@agreement.ApprovalStatus</div>
+                    </div>
+                    <div class="kv-item">
+                        <div class="kv-label">Rate Plan</div>
+                        <div class="kv-value">@agreement.RatePlanType</div>
+                    </div>
+                    @if (agreement.DiscountPercent > 0)
+                    {
+                        <div class="kv-item">
+                            <div class="kv-label">Corporate Discount</div>
+                            <div class="kv-value">@agreement.DiscountPercent.ToString("0.##")%</div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(agreement.MealPlan))
+                    {
+                        <div class="kv-item">
+                            <div class="kv-label">Default Meal Plan</div>
+                            <div class="kv-value">@agreement.MealPlan</div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(agreement.GstSlabName))
+                    {
+                        <div class="kv-item">
+                            <div class="kv-label">Default GST Slab</div>
+                            <div class="kv-value">@agreement.GstSlabName</div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Agreement Commercial -->
+            <div class="section">
+                <div class="section-title">Commercial Terms</div>
+                <div class="kv-grid">
+                    <div class="kv-item">
+                        <div class="kv-label">Billing Type</div>
+                        <div class="kv-value">@agreement.BillingType</div>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(agreement.BillingCycle))
+                    {
+                        <div class="kv-item">
+                            <div class="kv-label">Billing Cycle</div>
+                            <div class="kv-value">@agreement.BillingCycle</div>
+                        </div>
+                    }
+                    @if (agreement.BillingType == "Credit")
+                    {
+                        <div class="kv-item">
+                            <div class="kv-label">Credit Days</div>
+                            <div class="kv-value">@agreement.CreditDays days</div>
+                        </div>
+                        @if (agreement.CreditLimit.HasValue && agreement.CreditLimit > 0)
+                        {
+                            <div class="kv-item">
+                                <div class="kv-label">Credit Limit</div>
+                                <div class="kv-value mono">₹ @agreement.CreditLimit.Value.ToString("N2")</div>
+                            </div>
+                        }
+                    }
+                    @if (!string.IsNullOrWhiteSpace(agreement.PaymentTerms))
+                    {
+                        <div class="kv-item kv-span-2">
+                            <div class="kv-label">Payment Terms</div>
+                            <div class="kv-value">@agreement.PaymentTerms</div>
+                        </div>
+                    }
+                    @if (agreement.SecurityDepositAmount.HasValue && agreement.SecurityDepositAmount > 0)
+                    {
+                        <div class="kv-item">
+                            <div class="kv-label">Security Deposit</div>
+                            <div class="kv-value mono">₹ @agreement.SecurityDepositAmount.Value.ToString("N2")</div>
+                        </div>
+                    }
+                    <div class="kv-item">
+                        <div class="kv-label">Amendments Allowed</div>
+                        <div class="kv-value">@(agreement.IsAmendmentAllowed ? "Yes" : "No")</div>
+                    </div>
+                    @if (agreement.IsAmendmentAllowed && agreement.AmendmentChargeAmount.HasValue && agreement.AmendmentChargeAmount > 0)
+                    {
+                        <div class="kv-item">
+                            <div class="kv-label">Amendment Charge</div>
+                            <div class="kv-value mono">₹ @agreement.AmendmentChargeAmount.Value.ToString("N2")</div>
+                        </div>
+                    }
+                    <div class="kv-item">
+                        <div class="kv-label">Auto Renew</div>
+                        <div class="kv-value">@(agreement.AutoRenew ? "Yes" : "No")</div>
+                    </div>
+                    @if (agreement.AutoRenew && agreement.RenewalNoticeDays.HasValue)
+                    {
+                        <div class="kv-item">
+                            <div class="kv-label">Renewal Notice</div>
+                            <div class="kv-value">@agreement.RenewalNoticeDays days</div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Room Rate Schedule -->
+            @if (activeRates.Any())
+            {
+                <div class="section">
+                    <div class="section-title">Room Rate Schedule</div>
+                    <table class="rate-table">
+                        <thead>
+                            <tr>
+                                <th style="width:4%;">#</th>
+                                <th>Room Type</th>
+                                <th>Season</th>
+                                <th>Valid From</th>
+                                <th>Valid To</th>
+                                <th class="text-right">Base Rate</th>
+                                <th class="text-right">Contract Rate</th>
+                                <th class="text-right">Extra Pax</th>
+                                <th>Meal Plan</th>
+                                <th>GST Slab</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{ var rIdx = 0; }
+                            @foreach (var rate in activeRates)
+                            {
+                                rIdx++;
+                                <tr>
+                                    <td class="text-center">@rIdx</td>
+                                    <td><strong>@(rate.RoomTypeName ?? "—")</strong></td>
+                                    <td>@(rate.SeasonLabel ?? "—")</td>
+                                    <td>@rate.ValidFrom.ToString("dd MMM yyyy")</td>
+                                    <td>@rate.ValidTo.ToString("dd MMM yyyy")</td>
+                                    <td class="text-right" style="font-family:monospace;">₹ @rate.BaseRate.ToString("N2")</td>
+                                    <td class="text-right" style="font-family:monospace;">₹ @rate.ContractRate.ToString("N2")</td>
+                                    <td class="text-right" style="font-family:monospace;">₹ @rate.ExtraPaxRate.ToString("N2")</td>
+                                    <td>@(rate.MealPlan ?? "—")</td>
+                                    <td>@(rate.GstSlabName ?? "—")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+            <!-- Service Inclusions -->
+            @if (serviceInclusions.Any() || !string.IsNullOrWhiteSpace(agreement.ServiceRemarks))
+            {
+                <div class="section">
+                    <div class="section-title">Service Inclusions</div>
+                    @if (serviceInclusions.Any())
+                    {
+                        <div class="inclusion-pills">
+                            @foreach (var svc in serviceInclusions)
+                            {
+                                <span class="inclusion-pill"><i class="fas fa-check"></i> @svc</span>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="no-data">No service inclusions configured.</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(agreement.ServiceRemarks))
+                    {
+                        <div style="margin-top:8px; font-size:12px; color:#475569;">
+                            <strong>Remarks:</strong> @agreement.ServiceRemarks
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(agreement.SeasonalRateNotes) || !string.IsNullOrWhiteSpace(agreement.BlackoutDatesNotes))
+            {
+                <div class="section">
+                    <div class="section-title">Rate Notes</div>
+                    @if (!string.IsNullOrWhiteSpace(agreement.SeasonalRateNotes))
+                    {
+                        <div class="terms-block">
+                            <h5>Seasonal Rate Notes</h5>
+                            <p>@agreement.SeasonalRateNotes</p>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(agreement.BlackoutDatesNotes))
+                    {
+                        <div class="terms-block">
+                            <h5>Blackout Dates</h5>
+                            <p>@agreement.BlackoutDatesNotes</p>
+                        </div>
+                    }
+                </div>
+            }
+
+        </div>
+    }
+    else
+    {
+        <div class="section-divider" style="background:#94a3b8;">
+            <i class="fas fa-file-contract"></i> No Agreement Linked
+        </div>
+    }
+
+    <!-- ═══════════════ PART 3: CANCELLATION POLICY ═══════════════ -->
+    @if (cancellation != null)
+    {
+        <div class="section-divider" style="background: linear-gradient(90deg, #7c2d12, #9a3412);">
+            <i class="fas fa-ban"></i> Cancellation Policy — @cancellation.PolicyName
+        </div>
+
+        <div class="doc-body">
+            <div class="section">
+                <div class="section-title">Cancellation Policy Details</div>
+                <div class="kv-grid">
+                    <div class="kv-item">
+                        <div class="kv-label">Policy Name</div>
+                        <div class="kv-value">@cancellation.PolicyName</div>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(cancellation.BookingSource))
+                    {
+                        <div class="kv-item">
+                            <div class="kv-label">Booking Source</div>
+                            <div class="kv-value">@cancellation.BookingSource</div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(cancellation.CustomerType))
+                    {
+                        <div class="kv-item">
+                            <div class="kv-label">Customer Type</div>
+                            <div class="kv-value">@cancellation.CustomerType</div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(cancellation.RateType))
+                    {
+                        <div class="kv-item">
+                            <div class="kv-label">Rate Type</div>
+                            <div class="kv-value">@cancellation.RateType</div>
+                        </div>
+                    }
+                    @if (cancellation.ValidFrom.HasValue)
+                    {
+                        <div class="kv-item">
+                            <div class="kv-label">Valid From</div>
+                            <div class="kv-value">@cancellation.ValidFrom.Value.ToString("dd MMM yyyy")</div>
+                        </div>
+                    }
+                    @if (cancellation.ValidTo.HasValue)
+                    {
+                        <div class="kv-item">
+                            <div class="kv-label">Valid To</div>
+                            <div class="kv-value">@cancellation.ValidTo.Value.ToString("dd MMM yyyy")</div>
+                        </div>
+                    }
+                    <div class="kv-item">
+                        <div class="kv-label">No-Show Refund</div>
+                        <div class="kv-value">@(cancellation.NoShowRefundAllowed ? "Allowed" : "Not Allowed")</div>
+                    </div>
+                    <div class="kv-item">
+                        <div class="kv-label">Approval Required</div>
+                        <div class="kv-value">@(cancellation.ApprovalRequired ? "Yes" : "No")</div>
+                    </div>
+                    @if (cancellation.GatewayFeeDeductionPercent.HasValue && cancellation.GatewayFeeDeductionPercent > 0)
+                    {
+                        <div class="kv-item">
+                            <div class="kv-label">Gateway Fee Deduction</div>
+                            <div class="kv-value">@cancellation.GatewayFeeDeductionPercent.Value.ToString("0.##")%</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- ═══════════════ PART 4: TERMS & CONDITIONS ═══════════════ -->
+    @if (terms != null)
+    {
+        <div class="section-divider" style="background: linear-gradient(90deg, #1e3a5f, #1e40af);">
+            <i class="fas fa-scale-balanced"></i> Terms &amp; Conditions — @terms.TermsTitle
+        </div>
+
+        <div class="doc-body">
+            <div class="section">
+                @if (!string.IsNullOrWhiteSpace(terms.PaymentTerms))
+                {
+                    <div class="terms-block">
+                        <h5>Payment Terms</h5>
+                        <p>@terms.PaymentTerms</p>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(terms.CheckInCheckOutPolicy))
+                {
+                    <div class="terms-block">
+                        <h5>Check-In / Check-Out Policy</h5>
+                        <p>@terms.CheckInCheckOutPolicy</p>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(terms.RefundPolicy))
+                {
+                    <div class="terms-block">
+                        <h5>Refund Policy</h5>
+                        <p>@terms.RefundPolicy</p>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(terms.NoShowPolicy))
+                {
+                    <div class="terms-block">
+                        <h5>No-Show Policy</h5>
+                        <p>@terms.NoShowPolicy</p>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(terms.AmendmentPolicy))
+                {
+                    <div class="terms-block">
+                        <h5>Amendment Policy</h5>
+                        <p>@terms.AmendmentPolicy</p>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(terms.ChildPolicy))
+                {
+                    <div class="terms-block">
+                        <h5>Child Policy</h5>
+                        <p>@terms.ChildPolicy</p>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(terms.ExtraBedPolicy))
+                {
+                    <div class="terms-block">
+                        <h5>Extra Bed Policy</h5>
+                        <p>@terms.ExtraBedPolicy</p>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(terms.BillingInstructions))
+                {
+                    <div class="terms-block">
+                        <h5>Billing Instructions</h5>
+                        <p>@terms.BillingInstructions</p>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(terms.TaxNotes))
+                {
+                    <div class="terms-block">
+                        <h5>Tax Notes</h5>
+                        <p>@terms.TaxNotes</p>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(terms.LegalDisclaimer))
+                {
+                    <div class="terms-block">
+                        <h5>Legal Disclaimer</h5>
+                        <p>@terms.LegalDisclaimer</p>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(terms.SpecialConditions))
+                {
+                    <div class="terms-block">
+                        <h5>Special Conditions</h5>
+                        <p>@terms.SpecialConditions</p>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- ═══════════════ FOOTER ═══════════════ -->
+    <div class="doc-footer">
+        This is a computer-generated B2B client profile document. All amounts are in INR (₹).
+        <br />Generated on @DateTime.Now.ToString("dd MMM yyyy, hh:mm tt")
+    </div>
+
+</div>
+
+</body>
+</html>

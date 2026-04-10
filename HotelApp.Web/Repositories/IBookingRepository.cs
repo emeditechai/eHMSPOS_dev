@@ -41,5 +41,6 @@ namespace HotelApp.Web.Repositories
         Task<BookingCancellationPreview?> GetCancellationPreviewAsync(string bookingNumber, int requestingBranchId, bool isNoShow = false);
         Task<BookingCancellationResult> CancelBookingAsync(BookingCancellationCommand command, int requestingBranchId, int performedBy);
         Task<BookingCancellationRecord?> GetBookingCancellationRecordAsync(string bookingNumber, int branchId);
+        Task<string> GenerateInvoiceNumberAsync(int branchId, System.Data.IDbTransaction? transaction = null);
     }
 }

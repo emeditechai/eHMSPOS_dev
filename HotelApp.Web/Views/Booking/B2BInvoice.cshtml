@@ -252,9 +252,68 @@
         .btn-back:hover { border-color: #6366f1; color: #6366f1; }
 
         @@media print {
+            @@page {
+                size: A4;
+                margin: 10mm 12mm;
+            }
             body { background: white; }
-            .invoice-container { box-shadow: none; margin: 0; max-width: 100%; }
+            .invoice-container { box-shadow: none; margin: 0; max-width: 100%; border-radius: 0; }
             .print-controls { display: none !important; }
+
+            /* Repeat header on every printed page via table thead */
+            .invoice-repeat-header-table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            .invoice-repeat-header-table thead {
+                display: table-header-group;
+            }
+            .invoice-repeat-header-table thead td {
+                padding: 0;
+            }
+            .invoice-repeat-header-table tbody td {
+                padding: 0;
+            }
+
+            /* Hide the screen-only header in print */
+            .invoice-header-screen-only {
+                display: none !important;
+            }
+
+            /* Avoid page breaks inside key sections */
+            .bill-section,
+            .booking-meta,
+            .totals-box,
+            .invoice-footer {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            table.inv-table {
+                page-break-inside: auto;
+            }
+            table.inv-table tr {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+        }
+
+        /* Screen: hide the print-only repeating header table structure */
+        @@media screen {
+            .invoice-repeat-header-table thead {
+                display: none;
+            }
+            .invoice-repeat-header-table {
+                display: contents;
+            }
+            .invoice-repeat-header-table tbody {
+                display: contents;
+            }
+            .invoice-repeat-header-table tbody > tr {
+                display: contents;
+            }
+            .invoice-repeat-header-table tbody > tr > td {
+                display: contents;
+            }
         }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -272,8 +331,8 @@
 
 <div class="invoice-container">
 
-    <!-- Header -->
-    <div class="invoice-header">
+    <!-- Header (screen only) -->
+    <div class="invoice-header invoice-header-screen-only">
         <div class="hotel-info">
             <h1>@(hotelSettings?.HotelName ?? "Hotel")</h1>
             <p>
@@ -294,10 +353,47 @@
         </div>
         <div class="invoice-title-box">
             <h2>Tax Invoice</h2>
-            <div class="invoice-number">Invoice #: @Model.BookingNumber</div>
+            <div class="invoice-number">Invoice #: @(Model.InvoiceNumber ?? Model.BookingNumber)</div>
             <div class="invoice-date">Date: @invoiceDate.ToString("dd MMM yyyy")</div>
         </div>
     </div>
+
+    <!-- Print-only repeating header table -->
+    <table class="invoice-repeat-header-table">
+        <thead>
+            <tr>
+                <td>
+                    <div class="invoice-header">
+                        <div class="hotel-info">
+                            <h1>@(hotelSettings?.HotelName ?? "Hotel")</h1>
+                            <p>
+                                @(hotelSettings?.Address ?? "")<br />
+                                @if (!string.IsNullOrWhiteSpace(hotelSettings?.ContactNumber1))
+                                {
+                                    <text>Phone: @hotelSettings.ContactNumber1</text><br />
+                                }
+                                @if (!string.IsNullOrWhiteSpace(hotelSettings?.EmailAddress))
+                                {
+                                    <text>Email: @hotelSettings.EmailAddress</text><br />
+                                }
+                                @if (!string.IsNullOrWhiteSpace(hotelSettings?.GSTCode))
+                                {
+                                    <text>GSTIN: @hotelSettings.GSTCode</text>
+                                }
+                            </p>
+                        </div>
+                        <div class="invoice-title-box">
+                            <h2>Tax Invoice</h2>
+                            <div class="invoice-number">Invoice #: @(Model.InvoiceNumber ?? Model.BookingNumber)</div>
+                            <div class="invoice-date">Date: @invoiceDate.ToString("dd MMM yyyy")</div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
 
     <!-- Bill To / Ship To -->
     <div class="bill-section">
@@ -609,6 +705,11 @@
             Authorised Signatory
         </div>
     </div>
+
+                </td>
+            </tr>
+        </tbody>
+    </table>
 
 </div>
 

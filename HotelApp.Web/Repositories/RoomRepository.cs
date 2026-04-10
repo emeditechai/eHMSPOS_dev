@@ -46,7 +46,7 @@ namespace HotelApp.Web.Repositories
                        f.FloorName,
                        mh.Reason AS MaintenanceReason,
                        rt.Id AS RoomType_Id, rt.TypeName, rt.Description, rt.BaseRate, rt.MaxOccupancy, rt.Amenities,
-                       b.CheckInDate, b.CheckOutDate, b.BookingNumber, b.BalanceAmount, b.PrimaryGuestName, b.GuestCount
+                       b.CheckInDate, b.CheckOutDate, b.BookingNumber, b.BalanceAmount, b.PrimaryGuestName, b.GuestCount, b.BookingSource, b.B2BClientName
                 FROM Rooms r
                 INNER JOIN RoomTypes rt ON r.RoomTypeId = rt.Id
                 LEFT JOIN Floors f ON r.Floor = f.Id
@@ -58,11 +58,14 @@ namespace HotelApp.Web.Repositories
                 ) mh
                 LEFT JOIN (
                     SELECT br.RoomId, bk.CheckInDate, bk.CheckOutDate, bk.BookingNumber, bk.BalanceAmount,
+                           bk.CustomerType AS BookingSource,
+                           bc.ClientName AS B2BClientName,
                            CONCAT(bk.PrimaryGuestFirstName, ' ', bk.PrimaryGuestLastName) AS PrimaryGuestName,
                            (SELECT COUNT(*) FROM BookingGuests bg WHERE bg.BookingId = bk.Id AND bg.IsActive = 1) AS GuestCount,
                            ROW_NUMBER() OVER (PARTITION BY br.RoomId ORDER BY bk.CheckInDate DESC) as rn
                     FROM BookingRooms br
                     INNER JOIN Bookings bk ON br.BookingId = bk.Id
+                    LEFT JOIN B2BClients bc ON bk.B2BClientId = bc.Id
                     WHERE br.IsActive = 1
                         AND bk.Status IN ('Confirmed', 'CheckedIn')
                         AND CAST(bk.CheckInDate AS DATE) <= CAST(GETDATE() AS DATE)
@@ -98,6 +101,8 @@ namespace HotelApp.Web.Repositories
                     BalanceAmount = row.BalanceAmount,
                     PrimaryGuestName = row.PrimaryGuestName,
                     GuestCount = row.GuestCount,
+                    BookingSource = row.BookingSource,
+                    B2BClientName = row.B2BClientName,
                     RoomType = new RoomType
                     {
                         Id = row.RoomType_Id,

@@ -27,6 +27,7 @@
                     <th>Room Type</th>
                     <th>Customer Type</th>
                     <th>Source</th>
+                    <th>Meal Type</th>
                     <th>Base Rate</th>
                     <th>Extra Pax Rate</th>
                     <th>Tax %</th>
@@ -46,6 +47,7 @@
                         <td><strong>@rate.RoomType?.TypeName</strong></td>
                         <td>@rate.CustomerType</td>
                         <td>@rate.Source</td>
+                        <td>@(rate.MealType ?? "EP")</td>
                         <td>₹@rate.BaseRate.ToString("N0")</td>
                         <td>₹@rate.ExtraPaxRate.ToString("N0")</td>
                         <td>@rate.TaxPercentage%</td>

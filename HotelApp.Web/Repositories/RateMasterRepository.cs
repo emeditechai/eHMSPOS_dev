@@ -83,10 +83,10 @@ namespace HotelApp.Web.Repositories
         public async Task<int> CreateAsync(RateMaster rate)
         {
             var sql = @"
-                INSERT INTO RateMaster (RoomTypeId, CustomerType, Source, BaseRate, ExtraPaxRate, TaxPercentage, 
+                INSERT INTO RateMaster (RoomTypeId, CustomerType, Source, MealType, BaseRate, ExtraPaxRate, TaxPercentage, 
                                        CGSTPercentage, SGSTPercentage, StartDate, EndDate, IsWeekdayRate, 
                                        ApplyDiscount, IsDynamicRate, BranchID, IsActive, CreatedDate, CreatedBy, LastModifiedDate)
-                VALUES (@RoomTypeId, @CustomerType, @Source, @BaseRate, @ExtraPaxRate, @TaxPercentage,
+                VALUES (@RoomTypeId, @CustomerType, @Source, @MealType, @BaseRate, @ExtraPaxRate, @TaxPercentage,
                         @CGSTPercentage, @SGSTPercentage, @StartDate, @EndDate, @IsWeekdayRate, 
                         @ApplyDiscount, @IsDynamicRate, @BranchID, @IsActive, GETDATE(), @CreatedBy, GETDATE());
                 SELECT CAST(SCOPE_IDENTITY() as int)";
@@ -102,6 +102,7 @@ namespace HotelApp.Web.Repositories
                 SET RoomTypeId = @RoomTypeId,
                     CustomerType = @CustomerType,
                     Source = @Source,
+                    MealType = @MealType,
                     BaseRate = @BaseRate,
                     ExtraPaxRate = @ExtraPaxRate,
                     TaxPercentage = @TaxPercentage,
