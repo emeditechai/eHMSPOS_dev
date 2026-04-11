@@ -357,8 +357,8 @@ namespace HotelApp.Web.Controllers
 
             var payments = new List<BookingPayment>();
 
-            // Generate unique B2B invoice number: INV/{FY}/{5-digit seq}
-            booking.InvoiceNumber = await _bookingRepository.GenerateInvoiceNumberAsync(CurrentBranchID);
+            // Generate unique invoice number: INV/{FY}/{5-digit seq}
+            booking.InvoiceNumber = await _bookingRepository.GenerateInvoiceNumberAsync();
 
             var result = await _bookingRepository.CreateBookingAsync(booking, guests, payments, allRoomNights);
             await _bookingRepository.SaveB2BRoomLinesAsync(result.BookingId, roomLineEntities);

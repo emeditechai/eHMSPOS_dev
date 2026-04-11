@@ -847,6 +847,13 @@
             <span class="detail-label">Customer Type</span>
             <span class="detail-value">@Model.CustomerType</span>
         </div>
+        @if (!string.IsNullOrWhiteSpace(Model.InvoiceNumber))
+        {
+            <div class="detail-row">
+                <span class="detail-label">Invoice No</span>
+                <span class="detail-value" style="font-weight: 700; color: #6366f1;">@Model.InvoiceNumber</span>
+            </div>
+        }
         @if (string.Equals(Model.CustomerType, "B2B", StringComparison.OrdinalIgnoreCase))
         {
             <div style="border-top: 1px solid #e5e7eb; margin: 8px 0; padding-top: 8px;">
@@ -854,13 +861,6 @@
                     <i class="fas fa-building" style="margin-right: 4px;"></i> B2B Client Details
                 </div>
             </div>
-            @if (!string.IsNullOrWhiteSpace(Model.InvoiceNumber))
-            {
-                <div class="detail-row">
-                    <span class="detail-label">Invoice No</span>
-                    <span class="detail-value" style="font-weight: 700; color: #6366f1;">@Model.InvoiceNumber</span>
-                </div>
-            }
             @if (!string.IsNullOrWhiteSpace(Model.B2BClientName))
             {
                 <div class="detail-row">

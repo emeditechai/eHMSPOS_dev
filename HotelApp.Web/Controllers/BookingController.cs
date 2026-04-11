@@ -1948,6 +1948,9 @@ namespace HotelApp.Web.Controllers
             // Don't create room nights during booking - will be created when room is assigned
             var roomNights = new List<BookingRoomNight>();
 
+            // Generate unique invoice number: INV/{FY}/{5-digit seq}
+            booking.InvoiceNumber = await _bookingRepository.GenerateInvoiceNumberAsync();
+
             var result = await _bookingRepository.CreateBookingAsync(booking, guests, payments, roomNights);
 
             TempData["BookingCreated"] = "true";

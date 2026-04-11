@@ -3928,11 +3928,12 @@ WHERE BookingID = @BookingID
         }
 
         /// <summary>
-        /// Generates a unique B2B invoice number: INV/{FY}/{5-digit seq}
+        /// Generates a unique invoice number: INV/{FY}/{5-digit seq}
         /// Example: INV/2025-26/00001
         /// Uses InvoiceSequence table with row-level locking for concurrency safety.
+        /// Sequence is global (not branch-scoped) to ensure uniqueness across all branches.
         /// </summary>
-        public async Task<string> GenerateInvoiceNumberAsync(int branchId, IDbTransaction? transaction = null)
+        public async Task<string> GenerateInvoiceNumberAsync(IDbTransaction? transaction = null)
         {
             var now = DateTime.Today;
             int fyStart = now.Month >= 4 ? now.Year : now.Year - 1;
@@ -3940,16 +3941,37 @@ WHERE BookingID = @BookingID
             var fy = $"{fyStart}-{fyEnd % 100:D2}";
 
             const string upsertSql = @"
-                MERGE InvoiceSequence WITH (HOLDLOCK) AS target
-                USING (SELECT @FinancialYear AS FinancialYear, @BranchID AS BranchID) AS source
-                ON target.FinancialYear = source.FinancialYear AND target.BranchID = source.BranchID
-                WHEN MATCHED THEN
-                    UPDATE SET LastSequence = target.LastSequence + 1
-                WHEN NOT MATCHED THEN
-                    INSERT (FinancialYear, BranchID, LastSequence) VALUES (source.FinancialYear, source.BranchID, 1)
-                OUTPUT inserted.LastSequence;";
+                DECLARE @NextSeq INT;
+                DECLARE @MaxBookingSeq INT = ISNULL((
+                    SELECT MAX(CAST(RIGHT(InvoiceNumber, 5) AS INT))
+                    FROM Bookings
+                    WHERE InvoiceNumber LIKE 'INV/' + @FinancialYear + '/%'
+                ), 0);
 
-            var seq = await _dbConnection.ExecuteScalarAsync<int>(upsertSql, new { FinancialYear = fy, BranchID = branchId }, transaction);
+                IF NOT EXISTS (SELECT 1 FROM InvoiceSequence WHERE FinancialYear = @FinancialYear AND BranchID = 0)
+                BEGIN
+                    DECLARE @MaxBranchSeq INT = ISNULL((SELECT MAX(LastSequence) FROM InvoiceSequence WHERE FinancialYear = @FinancialYear), 0);
+                    DECLARE @SeedVal INT = CASE WHEN @MaxBranchSeq > @MaxBookingSeq THEN @MaxBranchSeq ELSE @MaxBookingSeq END;
+
+                    INSERT INTO InvoiceSequence (FinancialYear, BranchID, LastSequence) VALUES (@FinancialYear, 0, @SeedVal + 1);
+                    SET @NextSeq = @SeedVal + 1;
+                END
+                ELSE
+                BEGIN
+                    -- Ensure sequence is always ahead of actual max invoice in Bookings
+                    UPDATE InvoiceSequence WITH (HOLDLOCK)
+                    SET LastSequence = CASE
+                        WHEN LastSequence <= @MaxBookingSeq THEN @MaxBookingSeq + 1
+                        ELSE LastSequence + 1
+                    END
+                    WHERE FinancialYear = @FinancialYear AND BranchID = 0;
+
+                    SELECT @NextSeq = LastSequence FROM InvoiceSequence WHERE FinancialYear = @FinancialYear AND BranchID = 0;
+                END
+
+                SELECT @NextSeq;";
+
+            var seq = await _dbConnection.ExecuteScalarAsync<int>(upsertSql, new { FinancialYear = fy }, transaction);
             return $"INV/{fy}/{seq:D5}";
         }
 

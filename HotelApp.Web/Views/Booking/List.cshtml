@@ -87,10 +87,6 @@
 <!-- Date Filters -->
 <div class="filters-container">
     <form method="get" asp-action="List" class="date-filter-form">
-        @if (!string.IsNullOrEmpty(Model.CustomerType))
-        {
-            <input type="hidden" name="customerType" value="@Model.CustomerType" />
-        }
         <div class="filter-group">
             <label for="fromDate">From Check-In Date:</label>
             <input type="date" id="fromDate" name="fromDate" class="form-control" value="@Model.FromDate?.ToString("yyyy-MM-dd")" />
@@ -113,11 +109,19 @@
                 <option value="fullypaid" selected="@(Model.StatusFilter == "fullypaid")">Fully Paid</option>
             </select>
         </div>
+        <div class="filter-group">
+            <label for="customerType">Booking Type:</label>
+            <select id="customerType" name="customerType" class="form-control" style="padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; transition: all 0.3s; background: white;">
+                <option value="">All Types</option>
+                <option value="B2C" selected="@(Model.CustomerType == "B2C")">B2C</option>
+                <option value="B2B" selected="@(Model.CustomerType == "B2B")">B2B</option>
+            </select>
+        </div>
         <div class="filter-actions">
             <button type="submit" class="btn-filter-apply">
                 <i class="fas fa-filter"></i> Apply Filter
             </button>
-            <a asp-action="List" asp-route-customerType="@Model.CustomerType" class="btn-filter-clear">
+            <a asp-action="List" class="btn-filter-clear">
                 <i class="fas fa-times"></i> Clear
             </a>
         </div>
