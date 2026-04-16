@@ -73,7 +73,16 @@
 
 @if (TempData["SuccessMessage"] != null)
 {
-    <div class="alert alert-success"><i class="fas fa-check-circle"></i> @TempData["SuccessMessage"]</div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            Swal.fire({
+                icon: 'success',
+                title: 'Success',
+                text: '@Html.Raw(TempData["SuccessMessage"].ToString().Replace("'", "\\'"))',
+                confirmButtonColor: '#28a745'
+            });
+        });
+    </script>
 }
 
 @if (rows.Any())

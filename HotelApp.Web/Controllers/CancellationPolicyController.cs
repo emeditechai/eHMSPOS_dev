@@ -121,7 +121,7 @@ public sealed class CancellationPolicyController : BaseController
 
         await _repo.UpdateAsync(policy, rules, performedBy);
         TempData["SuccessMessage"] = "Cancellation policy saved successfully.";
-        return RedirectToAction(nameof(Edit), new { id });
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost]
