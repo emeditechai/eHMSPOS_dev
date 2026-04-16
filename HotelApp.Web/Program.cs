@@ -245,6 +245,10 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
+// Database connectivity gate — serves maintenance page if DB is unreachable
+app.UseMiddleware<DatabaseHealthCheckMiddleware>();
+
 app.UseRouting();
 
 app.UseSession();
