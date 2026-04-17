@@ -1211,57 +1211,89 @@
                 // Keep current workflow unchanged: once rooms are assigned, BookingRoomNights continues to drive totals.
                 // B2B bookings always use BookingRoomNights (they don't create ReservationRoomNights).
                 var isB2BReceipt = string.Equals(Model.CustomerType, "B2B", StringComparison.OrdinalIgnoreCase);
-                var roomNightsForTotals = (hasAssignedRoomsForReceipt || isB2BReceipt)
-                    ? (Model.RoomNights ?? new List<HotelApp.Web.Models.BookingRoomNight>()).Cast<dynamic>().ToList()
-                    : (Model.ReservationRoomNights ?? new List<HotelApp.Web.Models.ReservationRoomNight>()).Cast<dynamic>().ToList();
-                var hasNightBreakdownForTotals = roomNightsForTotals.Any();
+                var hasMultiRoomLines = Model.B2BRoomLines != null && Model.B2BRoomLines.Any();
 
-                // IMPORTANT:
-                // BookingRoomNights may be stored as one row per *room per date*.
-                // In that case, RoomNights sums already represent all rooms and must NOT be multiplied again.
-                var roomsForTotals = Model.RequiredRooms > 0 ? Model.RequiredRooms : 1;
-                var distinctDatesForTotals = roomNightsForTotals.Select(n => n.StayDate.Date).Distinct().Count();
-                var rowsPerDateForTotals = distinctDatesForTotals > 0 ? (decimal)roomNightsForTotals.Count / distinctDatesForTotals : 0m;
-                var roomNightsIncludeAllRooms = hasNightBreakdownForTotals && roomsForTotals > 1 && rowsPerDateForTotals > 1m;
-                // B2B room nights are stored per-room-per-night, so they always include all rooms.
-                var roomMultiplierForTotals = (roomNightsIncludeAllRooms || isB2BReceipt) ? 1 : roomsForTotals;
+                // When multi-room lines exist, use room line totals as the authoritative source
+                // (they store the exact amounts from booking creation / quote).
+                // Otherwise, use room nights for per-night breakdown.
+                decimal afterDiscountTotal;
+                decimal taxTotal;
+                decimal cgstTotal;
+                decimal sgstTotal;
+                decimal discountAmount;
+                decimal preDiscountTotal;
+                bool hasNightBreakdownForTotals;
+                int roomsForTotals;
+                int roomMultiplierForTotals;
+                bool hasNightPricingColumns;
 
-                var hasNightPricingColumns = hasNightBreakdownForTotals
-                    && roomNightsForTotals.Any(n => n.ActualBaseRate > 0 || n.DiscountAmount > 0);
-
-                var afterDiscountTotal = hasNightBreakdownForTotals
-                    ? ((decimal)roomNightsForTotals.Sum(n => (decimal)n.RateAmount) * roomMultiplierForTotals)
-                    : Model.BaseAmount;
-
-                var taxTotal = hasNightBreakdownForTotals
-                    ? ((decimal)roomNightsForTotals.Sum(n => (decimal)n.TaxAmount) * roomMultiplierForTotals)
-                    : Model.TaxAmount;
-
-                var cgstTotal = hasNightBreakdownForTotals
-                    ? ((decimal)roomNightsForTotals.Sum(n => (decimal)n.CGSTAmount) * roomMultiplierForTotals)
-                    : Model.CGSTAmount;
-
-                var sgstTotal = hasNightBreakdownForTotals
-                    ? ((decimal)roomNightsForTotals.Sum(n => (decimal)n.SGSTAmount) * roomMultiplierForTotals)
-                    : Model.SGSTAmount;
-
-                var discountAmount = hasNightPricingColumns
-                    ? Math.Round(((decimal)roomNightsForTotals.Sum(n => (decimal)n.DiscountAmount) * roomMultiplierForTotals), 2, MidpointRounding.AwayFromZero)
-                    : Model.DiscountAmount;
-
-                // Backward-compatible: if older data doesn't have per-night discount, reconstruct from discount percentage.
-                var discountPercentForTotals = ViewBag.DiscountPercentage != null ? (decimal)ViewBag.DiscountPercentage : 0m;
-                if (!hasNightPricingColumns && hasNightBreakdownForTotals && discountPercentForTotals > 0)
+                if (hasMultiRoomLines)
                 {
-                    var divisor = 1 - (discountPercentForTotals / 100m);
-                    if (divisor > 0)
-                    {
-                        var originalTotal = Math.Round(afterDiscountTotal / divisor, 2, MidpointRounding.AwayFromZero);
-                        discountAmount = Math.Round(originalTotal - afterDiscountTotal, 2, MidpointRounding.AwayFromZero);
-                    }
+                    // Multi-room-type: totals from room lines (authoritative)
+                    var lines = Model.B2BRoomLines!;
+                    afterDiscountTotal = lines.Sum(l => l.BaseAmount);
+                    taxTotal = lines.Sum(l => l.TaxAmount);
+                    // Split tax evenly into CGST/SGST
+                    cgstTotal = Math.Round(taxTotal / 2m, 2, MidpointRounding.AwayFromZero);
+                    sgstTotal = taxTotal - cgstTotal;
+                    // Use stored discount from room lines (accurate, includes extra pax in base)
+                    discountAmount = lines.Sum(l => l.DiscountAmount);
+                    preDiscountTotal = afterDiscountTotal + discountAmount;
+                    hasNightBreakdownForTotals = false;
+                    roomsForTotals = Model.RequiredRooms > 0 ? Model.RequiredRooms : 1;
+                    roomMultiplierForTotals = 1;
+                    hasNightPricingColumns = false;
                 }
+                else
+                {
+                    var roomNightsForTotals = (hasAssignedRoomsForReceipt || isB2BReceipt)
+                        ? (Model.RoomNights ?? new List<HotelApp.Web.Models.BookingRoomNight>()).Cast<dynamic>().ToList()
+                        : (Model.ReservationRoomNights ?? new List<HotelApp.Web.Models.ReservationRoomNight>()).Cast<dynamic>().ToList();
+                    hasNightBreakdownForTotals = roomNightsForTotals.Any();
 
-                var preDiscountTotal = afterDiscountTotal + discountAmount;
+                    roomsForTotals = Model.RequiredRooms > 0 ? Model.RequiredRooms : 1;
+                    var distinctDatesForTotals = roomNightsForTotals.Select(n => n.StayDate.Date).Distinct().Count();
+                    var rowsPerDateForTotals = distinctDatesForTotals > 0 ? (decimal)roomNightsForTotals.Count / distinctDatesForTotals : 0m;
+                    var roomNightsIncludeAllRooms = hasNightBreakdownForTotals && roomsForTotals > 1 && rowsPerDateForTotals > 1m;
+                    roomMultiplierForTotals = (roomNightsIncludeAllRooms || isB2BReceipt) ? 1 : roomsForTotals;
+
+                    hasNightPricingColumns = hasNightBreakdownForTotals
+                        && roomNightsForTotals.Any(n => n.ActualBaseRate > 0 || n.DiscountAmount > 0);
+
+                    afterDiscountTotal = hasNightBreakdownForTotals
+                        ? ((decimal)roomNightsForTotals.Sum(n => (decimal)n.RateAmount) * roomMultiplierForTotals)
+                        : Model.BaseAmount;
+
+                    taxTotal = hasNightBreakdownForTotals
+                        ? ((decimal)roomNightsForTotals.Sum(n => (decimal)n.TaxAmount) * roomMultiplierForTotals)
+                        : Model.TaxAmount;
+
+                    cgstTotal = hasNightBreakdownForTotals
+                        ? ((decimal)roomNightsForTotals.Sum(n => (decimal)n.CGSTAmount) * roomMultiplierForTotals)
+                        : Model.CGSTAmount;
+
+                    sgstTotal = hasNightBreakdownForTotals
+                        ? ((decimal)roomNightsForTotals.Sum(n => (decimal)n.SGSTAmount) * roomMultiplierForTotals)
+                        : Model.SGSTAmount;
+
+                    discountAmount = hasNightPricingColumns
+                        ? Math.Round(((decimal)roomNightsForTotals.Sum(n => (decimal)n.DiscountAmount) * roomMultiplierForTotals), 2, MidpointRounding.AwayFromZero)
+                        : Model.DiscountAmount;
+
+                    // Backward-compatible: if older data doesn't have per-night discount, reconstruct from discount percentage.
+                    var discountPercentForTotals = ViewBag.DiscountPercentage != null ? (decimal)ViewBag.DiscountPercentage : 0m;
+                    if (!hasNightPricingColumns && hasNightBreakdownForTotals && discountPercentForTotals > 0)
+                    {
+                        var divisor = 1 - (discountPercentForTotals / 100m);
+                        if (divisor > 0)
+                        {
+                            var originalTotal = Math.Round(afterDiscountTotal / divisor, 2, MidpointRounding.AwayFromZero);
+                            discountAmount = Math.Round(originalTotal - afterDiscountTotal, 2, MidpointRounding.AwayFromZero);
+                        }
+                    }
+
+                    preDiscountTotal = afterDiscountTotal + discountAmount;
+                }
 
                 // Receipt-level adjusted totals (display-only)
                 var adjustedCgstTotal = cgstTotal + ocCgstTotal + rsCgstTotal;
@@ -1290,7 +1322,8 @@
                     <tbody>
                         @{
                             var rooms = Model.RequiredRooms > 0 ? Model.RequiredRooms : 1;
-                            // B2B bookings always use BookingRoomNights (no ReservationRoomNights).
+                            // When multi-room lines exist, the room lines branch renders instead.
+                            // roomNights is only used by the night-breakdown and fallback branches.
                             var roomNights = (hasAssignedRoomsForReceipt || isB2BReceipt)
                                 ? (Model.RoomNights ?? new List<HotelApp.Web.Models.BookingRoomNight>())
                                     .Cast<dynamic>()
@@ -1300,7 +1333,7 @@
                                     .Cast<dynamic>()
                                     .OrderBy(n => n.StayDate)
                                     .ToList();
-                            var hasNightBreakdown = roomNights.Any();
+                            var hasNightBreakdown = !hasMultiRoomLines && roomNights.Any();
 
                             // Group by actual AFTER-discount nightly rate so different dates show separately.
                             // Important: sort groups by date so the receipt reflects the stay chronology.
@@ -1318,7 +1351,7 @@
                             // If nights are missing, fall back to a single summarized row.
                         }
 
-                        @if (isB2BReceipt && Model.B2BRoomLines != null && Model.B2BRoomLines.Any())
+                        @if (hasMultiRoomLines)
                         {
                             // B2B bookings: display one row per room line from the agreement
                             foreach (var rl in Model.B2BRoomLines)
@@ -1332,6 +1365,10 @@
                                         : $"{rl.CheckInDate.Value:dd MMM yyyy}")
                                     : $"{Model.CheckInDate:dd MMM yyyy} - {Model.CheckOutDate:dd MMM yyyy}";
 
+                                // Compute the effective rate per night per room (base + extra pax)
+                                var lineEffectiveRate = lineRate + (rl.ExtraPaxRatePerNight * rl.ExtraPaxCount);
+                                var linePreDiscountTotal = lineEffectiveRate * lineNights * rl.RequiredRooms;
+
                                 <tr>
                                     <td>
                                         @rl.RoomTypeName
@@ -1344,8 +1381,27 @@
                                     <td>@(rl.MealPlan ?? Model.MealPlan ?? "EP")</td>
                                     <td class="text-right">
                                         <span class="mono">@lineRate.ToString("N2")</span>
+                                        @if (rl.ExtraPaxCount > 0)
+                                        {
+                                            <br /><small style="color: #6366f1; font-weight: 500;" class="mono">
+                                                + ₹@(rl.ExtraPaxRatePerNight.ToString("N2")) × @rl.ExtraPaxCount Extra Pax
+                                            </small>
+                                        }
+                                        @if (rl.DiscountPercentage > 0)
+                                        {
+                                            <br /><small style="color: #e74c3c; font-weight: 500;" class="mono">
+                                                @rl.DiscountPercentage.ToString("0.##")% Discount
+                                            </small>
+                                        }
                                     </td>
-                                    <td class="text-right mono">₹ @lineTotal.ToString("N2")</td>
+                                    <td class="text-right mono">
+                                        @if (rl.DiscountAmount > 0 || rl.ExtraPaxCount > 0)
+                                        {
+                                            <span style="text-decoration: line-through; color: #999; font-size: 0.85em;">₹ @linePreDiscountTotal.ToString("N2")</span>
+                                            <br />
+                                        }
+                                        ₹ @lineTotal.ToString("N2")
+                                    </td>
                                 </tr>
                             }
                         }

@@ -17,5 +17,9 @@ namespace HotelApp.Web.Models
         public int Adults { get; set; } = 1;
         public int Children { get; set; }
         public string? MealPlan { get; set; }
+        public int ExtraPaxCount { get; set; }
+        public decimal ExtraPaxRatePerNight { get; set; }
+        public decimal DiscountPercentage { get; set; }
+        public decimal DiscountAmount { get; set; }
     }
 }

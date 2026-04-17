@@ -1709,6 +1709,37 @@ namespace HotelApp.Web.Controllers
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> CheckRoomAvailability(int roomTypeId, int requiredRooms, DateTime checkInDate, DateTime checkOutDate)
+        {
+            try
+            {
+                if (roomTypeId <= 0 || requiredRooms <= 0 || checkOutDate <= checkInDate)
+                    return Json(new { success = false, message = "Invalid parameters" });
+
+                var isAvailable = await _bookingRepository.CheckRoomCapacityAvailabilityAsync(
+                    roomTypeId, CurrentBranchID, checkInDate, checkOutDate, requiredRooms);
+
+                var roomType = await _roomRepository.GetRoomTypeByIdAsync(roomTypeId);
+                var roomTypeName = roomType?.TypeName ?? "Selected room type";
+
+                if (!isAvailable)
+                {
+                    return Json(new { 
+                        success = true, 
+                        available = false, 
+                        message = $"No rooms available for '{roomTypeName}' from {checkInDate:dd-MMM-yyyy} to {checkOutDate:dd-MMM-yyyy}. Required: {requiredRooms}, Available: 0. Please choose different dates or another room type."
+                    });
+                }
+
+                return Json(new { success = true, available = true });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
         public async Task<IActionResult> Create()
         {
             var hotelSettings = await _hotelSettingsRepository.GetByBranchAsync(CurrentBranchID);
@@ -1739,6 +1770,14 @@ namespace HotelApp.Web.Controllers
         public async Task<IActionResult> Create(BookingCreateViewModel model)
         {
             await PopulateLookupsAsync(model);
+
+            // Trim guest name and email fields
+            model.PrimaryGuestFirstName = model.PrimaryGuestFirstName?.Trim() ?? string.Empty;
+            model.PrimaryGuestLastName = model.PrimaryGuestLastName?.Trim() ?? string.Empty;
+            model.PrimaryGuestEmail = string.IsNullOrWhiteSpace(model.PrimaryGuestEmail)
+                ? null
+                : model.PrimaryGuestEmail.Trim();
+
             byte[]? primaryGuestPhotoBytes = null;
             string? primaryGuestPhotoContentType = null;
             if (!string.IsNullOrWhiteSpace(model.PrimaryGuestPhotoBase64))
@@ -1754,10 +1793,6 @@ namespace HotelApp.Web.Controllers
                 }
             }
 
-            var primaryGuestEmail = string.IsNullOrWhiteSpace(model.PrimaryGuestEmail)
-                ? null
-                : model.PrimaryGuestEmail.Trim();
-
             if (model.CheckOutDate <= model.CheckInDate)
             {
                 ModelState.AddModelError(nameof(model.CheckOutDate), "Check-out date must be after check-in date.");
@@ -1771,69 +1806,132 @@ namespace HotelApp.Web.Controllers
                 ModelState.AddModelError(nameof(model.CancellationPolicyAccepted), "Cancellation policy must be accepted for website bookings.");
             }
 
+            // Validate room lines
+            var selectedLines = model.RoomLines?.Where(l => l.RoomTypeId > 0 && l.RequiredRooms > 0).ToList()
+                                ?? new List<BookingRoomLineItem>();
+            if (!selectedLines.Any())
+            {
+                ModelState.AddModelError(string.Empty, "Please select at least one room type and enter the number of rooms required.");
+            }
+
             if (!ModelState.IsValid)
             {
                 return View(model);
             }
 
-            var quoteRequest = new BookingQuoteRequest
-            {
-                RoomTypeId = model.RoomTypeId,
-                CheckInDate = model.CheckInDate,
-                CheckOutDate = model.CheckOutDate,
-                CustomerType = model.CustomerType,
-                Source = model.Source,
-                Adults = model.Adults,
-                Children = model.Children,
-                BranchID = CurrentBranchID,
-                RequiredRooms = model.RequiredRooms
-            };
+            // Multi-room-type quote and capacity check
+            var roomLineEntities = new List<B2BBookingRoomLine>();
+            var allRoomNights = new List<BookingRoomNight>();
+            decimal grandBase = 0, grandTax = 0, grandTotal = 0, grandDiscount = 0;
+            decimal grandCGST = 0, grandSGST = 0;
+            int totalRooms = 0, totalAdults = 0, totalChildren = 0;
+            int primaryRoomTypeId = selectedLines[0].RoomTypeId;
+            int? primaryRatePlanId = null;
+            string? primaryMealType = null;
 
-            var quote = await _bookingRepository.GetQuoteAsync(quoteRequest);
-            if (quote == null)
+            foreach (var line in selectedLines)
             {
-                var roomType = await _roomRepository.GetRoomTypeByIdAsync(model.RoomTypeId);
-                var roomTypeName = roomType?.TypeName ?? "selected room type";
-                ModelState.AddModelError(string.Empty, 
-                    $"No active rate configured for {roomTypeName} with Customer Type: {model.CustomerType}, Source: {model.Source}. " +
-                    $"Please configure the rate in Rate Master or select a different combination.");
-                return View(model);
+                var lineQuoteRequest = new BookingQuoteRequest
+                {
+                    RoomTypeId = line.RoomTypeId,
+                    CheckInDate = model.CheckInDate,
+                    CheckOutDate = model.CheckOutDate,
+                    CustomerType = model.CustomerType,
+                    Source = model.Source,
+                    Adults = line.Adults,
+                    Children = line.Children,
+                    BranchID = CurrentBranchID,
+                    RequiredRooms = line.RequiredRooms
+                };
+
+                var lineQuote = await _bookingRepository.GetQuoteAsync(lineQuoteRequest);
+                if (lineQuote == null)
+                {
+                    var roomType = await _roomRepository.GetRoomTypeByIdAsync(line.RoomTypeId);
+                    var roomTypeName = roomType?.TypeName ?? "selected room type";
+                    ModelState.AddModelError(string.Empty,
+                        $"No active rate configured for {roomTypeName} with Customer Type: {model.CustomerType}, Source: {model.Source}. " +
+                        $"Please configure the rate in Rate Master or select a different combination.");
+                    return View(model);
+                }
+
+                var hasCapacity = await _bookingRepository.CheckRoomCapacityAvailabilityAsync(
+                    line.RoomTypeId, CurrentBranchID, model.CheckInDate, model.CheckOutDate, line.RequiredRooms);
+                if (!hasCapacity)
+                {
+                    var roomType = await _roomRepository.GetRoomTypeByIdAsync(line.RoomTypeId);
+                    var roomTypeName = roomType?.TypeName ?? "selected room type";
+                    ModelState.AddModelError(string.Empty,
+                        $"Insufficient room capacity for {roomTypeName}. Please reduce the number of rooms or select different dates.");
+                    return View(model);
+                }
+
+                var lineBaseAfterDiscount = lineQuote.TotalRoomRate;
+                var lineTax = lineQuote.TotalTaxAmount;
+                var lineTotal = Math.Round(lineBaseAfterDiscount + lineTax, 2, MidpointRounding.AwayFromZero);
+
+                grandBase += lineBaseAfterDiscount;
+                grandTax += lineTax;
+                grandCGST += lineQuote.TotalCGSTAmount;
+                grandSGST += lineQuote.TotalSGSTAmount;
+                grandDiscount += lineQuote.DiscountAmount;
+                grandTotal += lineTotal;
+                totalRooms += line.RequiredRooms;
+                totalAdults += line.Adults;
+                totalChildren += line.Children;
+
+                if (line.RoomTypeId == primaryRoomTypeId)
+                {
+                    primaryRatePlanId = lineQuote.RatePlanId;
+                    primaryMealType = lineQuote.MealType;
+                }
+
+                var lineRoomType = await _roomRepository.GetRoomTypeByIdAsync(line.RoomTypeId);
+                var lineExtraPax = Math.Max(0, line.Adults + line.Children - (lineRoomType?.MaxOccupancy ?? 0));
+
+                roomLineEntities.Add(new B2BBookingRoomLine
+                {
+                    RoomTypeId = line.RoomTypeId,
+                    RoomTypeName = lineRoomType?.TypeName ?? $"Room Type {line.RoomTypeId}",
+                    RequiredRooms = line.RequiredRooms,
+                    RatePerNight = lineQuote.BaseRatePerNight,
+                    Nights = lineQuote.Nights,
+                    BaseAmount = lineBaseAfterDiscount,
+                    TaxAmount = lineTax,
+                    GrandTotal = lineTotal,
+                    CheckInDate = model.CheckInDate,
+                    CheckOutDate = model.CheckOutDate,
+                    Adults = line.Adults,
+                    Children = line.Children,
+                    MealPlan = lineQuote.MealType ?? "EP",
+                    ExtraPaxCount = lineExtraPax,
+                    ExtraPaxRatePerNight = lineQuote.ExtraPaxRatePerNight,
+                    DiscountPercentage = lineQuote.DiscountPercentage,
+                    DiscountAmount = lineQuote.DiscountAmount
+                });
             }
 
-            model.QuotedBaseAmount = quote.TotalRoomRate;
-            model.QuotedTaxAmount = quote.TotalTaxAmount;
-            model.QuotedGrandTotal = quote.GrandTotal;
-            model.QuoteMessage = $"Rate locked for {quote.Nights} night(s)";
+            grandBase = Math.Round(grandBase, 2, MidpointRounding.AwayFromZero);
+            grandTax = Math.Round(grandTax, 2, MidpointRounding.AwayFromZero);
+            grandCGST = Math.Round(grandCGST, 2, MidpointRounding.AwayFromZero);
+            grandSGST = Math.Round(grandSGST, 2, MidpointRounding.AwayFromZero);
+            grandDiscount = Math.Round(grandDiscount, 2, MidpointRounding.AwayFromZero);
+            grandTotal = Math.Round(grandTotal, 2, MidpointRounding.AwayFromZero);
 
-            if (model.DepositAmount < 0 || model.DepositAmount > quote.GrandTotal)
+            model.QuotedBaseAmount = grandBase;
+            model.QuotedTaxAmount = grandTax;
+            model.QuotedGrandTotal = grandTotal;
+            model.QuoteMessage = $"Rate locked for {roomLineEntities.FirstOrDefault()?.Nights ?? 0} night(s) — {selectedLines.Count} room type(s)";
+
+            if (model.DepositAmount < 0 || model.DepositAmount > grandTotal)
             {
                 ModelState.AddModelError(nameof(model.DepositAmount), "Deposit must be between 0 and the total stay amount.");
-                return View(model);
-            }
-
-            // Check room capacity availability (supports multi-room bookings)
-            var hasCapacity = await _bookingRepository.CheckRoomCapacityAvailabilityAsync(
-                model.RoomTypeId, 
-                CurrentBranchID, 
-                model.CheckInDate, 
-                model.CheckOutDate, 
-                model.RequiredRooms
-            );
-            
-            if (!hasCapacity)
-            {
-                var roomType = await _roomRepository.GetRoomTypeByIdAsync(model.RoomTypeId);
-                var roomTypeName = roomType?.TypeName ?? "selected room type";
-                ModelState.AddModelError(string.Empty, 
-                    $"Insufficient room capacity for {roomTypeName}. Only limited rooms are available for the selected dates. " +
-                    $"Please reduce the number of required rooms or select different dates.");
                 return View(model);
             }
 
             var bookingNumber = GenerateBookingNumber();
             var createdBy = GetCurrentUserId();
 
-            // Attach applicable cancellation policy snapshot at booking time (prevents retroactive changes).
             var (policyId, snapshotJson) = await _cancellationPolicyRepository.GetApplicablePolicySnapshotAsync(
                 CurrentBranchID,
                 model.Source,
@@ -1846,52 +1944,43 @@ namespace HotelApp.Web.Controllers
                 ModelState.AddModelError(string.Empty, "No cancellation policy configured for the selected combination (Source/Customer Type/Rate Type). Please configure one in Settings → Cancellation Policies.");
                 return View(model);
             }
-            // Persist consistent monetary totals from the start:
-            // - BaseAmount: amount AFTER discount (what we charge for rooms)
-            // - DiscountAmount: total discount across all nights/rooms
-            // - TotalAmount: BaseAmount + TaxAmount
-            // This prevents multi-night bookings from showing wrong discounts on receipts/details
-            // even before room nights are created.
-            var baseAmountAfterDiscount = quote.TotalRoomRate;
-            var discountAmount = quote.DiscountAmount;
-            var totalAmount = Math.Round(baseAmountAfterDiscount + quote.TotalTaxAmount, 2, MidpointRounding.AwayFromZero);
 
-            var balanceAmount = totalAmount - model.DepositAmount;
+            var balanceAmount = grandTotal - model.DepositAmount;
 
             var booking = new Booking
             {
                 BookingNumber = bookingNumber,
                 Status = "Confirmed",
-                PaymentStatus = model.DepositAmount >= quote.GrandTotal ? "Paid" : (model.DepositAmount > 0 ? "Partially Paid" : "Pending"),
+                PaymentStatus = model.DepositAmount >= grandTotal ? "Paid" : (model.DepositAmount > 0 ? "Partially Paid" : "Pending"),
                 Channel = model.Channel,
                 Source = model.Source,
                 CustomerType = model.CustomerType,
                 RateType = model.RateType,
-                MealPlan = quote.MealType ?? "EP",
+                MealPlan = primaryMealType ?? "EP",
                 CancellationPolicyId = policyId,
                 CancellationPolicySnapshot = snapshotJson,
                 CancellationPolicyAccepted = model.CancellationPolicyAccepted,
                 CancellationPolicyAcceptedAt = model.CancellationPolicyAccepted ? DateTime.UtcNow : null,
                 CheckInDate = model.CheckInDate,
                 CheckOutDate = model.CheckOutDate,
-                Nights = quote.Nights,
-                RoomTypeId = model.RoomTypeId,
-                RequiredRooms = model.RequiredRooms,
+                Nights = roomLineEntities.FirstOrDefault()?.Nights ?? 1,
+                RoomTypeId = primaryRoomTypeId,
+                RequiredRooms = totalRooms,
                 RoomId = null,
-                RatePlanId = quote.RatePlanId,
-                BaseAmount = baseAmountAfterDiscount,
-                TaxAmount = quote.TotalTaxAmount,
-                CGSTAmount = quote.TotalCGSTAmount,
-                SGSTAmount = quote.TotalSGSTAmount,
-                DiscountAmount = discountAmount,
-                TotalAmount = totalAmount,
+                RatePlanId = primaryRatePlanId,
+                BaseAmount = grandBase,
+                TaxAmount = grandTax,
+                CGSTAmount = grandCGST,
+                SGSTAmount = grandSGST,
+                DiscountAmount = grandDiscount,
+                TotalAmount = grandTotal,
                 DepositAmount = model.DepositAmount,
                 BalanceAmount = balanceAmount,
-                Adults = model.Adults,
-                Children = model.Children,
+                Adults = totalAdults,
+                Children = totalChildren,
                 PrimaryGuestFirstName = model.PrimaryGuestFirstName,
                 PrimaryGuestLastName = model.PrimaryGuestLastName,
-                PrimaryGuestEmail = primaryGuestEmail ?? string.Empty,
+                PrimaryGuestEmail = model.PrimaryGuestEmail ?? string.Empty,
                 PrimaryGuestPhone = model.PrimaryGuestPhone,
                 LoyaltyId = model.LoyaltyId,
                 SpecialRequests = model.SpecialRequests,
@@ -1922,7 +2011,7 @@ namespace HotelApp.Web.Controllers
                 new BookingGuest
                 {
                     FullName = $"{model.PrimaryGuestFirstName} {model.PrimaryGuestLastName}".Trim(),
-                    Email = primaryGuestEmail,
+                    Email = model.PrimaryGuestEmail,
                     Phone = model.PrimaryGuestPhone,
                     Gender = model.Gender?.Trim(),
                     GuestType = "Primary",
@@ -1943,19 +2032,21 @@ namespace HotelApp.Web.Controllers
             };
 
             var payments = new List<BookingPayment>();
-            // Payments will be collected via modal after redirect if CollectAdvancePayment is true
-
-            // Don't create room nights during booking - will be created when room is assigned
             var roomNights = new List<BookingRoomNight>();
 
-            // Generate unique invoice number: INV/{FY}/{5-digit seq}
             booking.InvoiceNumber = await _bookingRepository.GenerateInvoiceNumberAsync();
 
             var result = await _bookingRepository.CreateBookingAsync(booking, guests, payments, roomNights);
 
+            // Save multi-room-type lines (reuse B2BBookingRoomLines table for all customer types)
+            if (roomLineEntities.Count > 0)
+            {
+                await _bookingRepository.SaveB2BRoomLinesAsync(result.BookingId, roomLineEntities);
+            }
+
             TempData["BookingCreated"] = "true";
             TempData["BookingNumber"] = result.BookingNumber;
-            TempData["BookingAmount"] = quote.GrandTotal.ToString("N2");
+            TempData["BookingAmount"] = grandTotal.ToString("N2");
             TempData["ShowAdvancePaymentModal"] = model.CollectAdvancePayment ? "true" : "false";
             return RedirectToAction(nameof(Details), new { bookingNumber = result.BookingNumber });
         }
@@ -2798,12 +2889,11 @@ namespace HotelApp.Web.Controllers
             }
 
             var allRooms = await _roomRepository.GetAllByBranchAsync(CurrentBranchID);
-            var isB2BMultiType = string.Equals(booking.CustomerType, "B2B", StringComparison.OrdinalIgnoreCase)
-                                 && booking.B2BRoomLines != null && booking.B2BRoomLines.Any();
+            var isMultiRoomType = booking.B2BRoomLines != null && booking.B2BRoomLines.Any();
 
-            if (isB2BMultiType)
+            if (isMultiRoomType)
             {
-                // B2B: group available rooms by each room-type line
+                // Multi-room-type (B2B or B2C): group available rooms by each room-type line
                 var roomTypeIds = booking.B2BRoomLines!.Select(l => l.RoomTypeId).Distinct().ToList();
                 var availableRoomsByType = allRooms
                     .Where(r => roomTypeIds.Contains(r.RoomTypeId) && r.Status == "Available")
@@ -2819,6 +2909,8 @@ namespace HotelApp.Web.Controllers
                 ViewBag.AvailableRooms = availableRooms;
                 ViewBag.IsB2BMultiType = false;
             }
+
+            ViewBag.IsB2B = string.Equals(booking.CustomerType, "B2B", StringComparison.OrdinalIgnoreCase);
 
             ViewBag.Booking = booking;
 
@@ -2865,12 +2957,11 @@ namespace HotelApp.Web.Controllers
                 return RedirectToAction(nameof(AssignRoom), new { bookingNumber });
             }
 
-            var isB2BMultiType = string.Equals(booking.CustomerType, "B2B", StringComparison.OrdinalIgnoreCase)
-                                 && booking.B2BRoomLines != null && booking.B2BRoomLines.Any();
+            var isMultiRoomType = booking.B2BRoomLines != null && booking.B2BRoomLines.Any();
 
-            if (isB2BMultiType)
+            if (isMultiRoomType)
             {
-                // B2B: validate per room-type line
+                // Multi-room-type: validate per room-type line
                 foreach (var line in booking.B2BRoomLines!)
                 {
                     var roomsForType = selectedRooms.Where(r => r.RoomTypeId == line.RoomTypeId).ToList();

@@ -540,7 +540,7 @@
                 
                 <div class="form-field">
                     <label asp-for="PrimaryGuestPhone">Mobile Number <span style="color: #e53e3e;">*</span></label>
-                    <input asp-for="PrimaryGuestPhone" id="guestPhone" placeholder="Enter mobile number" />
+                    <input asp-for="PrimaryGuestPhone" id="guestPhone" placeholder="Enter 10-digit mobile number" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" autocomplete="off" />
                     <span asp-validation-for="PrimaryGuestPhone" class="text-danger"></span>
                     <div id="phoneLoader" style="display:none; margin-top: 5px; color: #667eea; font-size: 13px;">
                         <i class="fas fa-spinner fa-spin"></i> Looking up guest...
@@ -715,51 +715,76 @@
                     </div>
                 </div>
 
-                <div class="form-row-inline">
-                    <div class="form-field">
-                        <label asp-for="RoomTypeId">Room Type <span style="color: #e53e3e;">*</span></label>
-                        <select asp-for="RoomTypeId">
-                            <option value="">-- Select Room Type --</option>
-                            @foreach (var room in roomTypes)
-                            {
-                                <option value="@room.Id">@room.TypeName</option>
-                            }
-                        </select>
-                        <span asp-validation-for="RoomTypeId" class="text-danger"></span>
-                        <div id="roomTypeRate" style="margin-top: 8px; min-height: 24px;">
-                            <span style="color: #9ca3af; font-size: 13px;">Select room type, customer type, and source to see rate</span>
-                        </div>
-                    </div>
-                    <div class="form-field">
-                        <label asp-for="RequiredRooms">Required Rooms <span style="color: #e53e3e;">*</span></label>
-                        <div class="number-stepper" data-stepper>
-                            <button type="button" class="stepper-btn step-down" aria-label="Decrease required rooms">-</button>
-                            <input asp-for="RequiredRooms" type="number" min="1" max="50" />
-                            <button type="button" class="stepper-btn step-up" aria-label="Increase required rooms">+</button>
-                        </div>
-                        <span asp-validation-for="RequiredRooms" class="text-danger"></span>
-                    </div>
-                </div>
+                <input type="hidden" asp-for="RoomTypeId" />
+                <input type="hidden" asp-for="RequiredRooms" />
+                <input type="hidden" asp-for="Adults" />
+                <input type="hidden" asp-for="Children" />
 
-                <div class="form-row-inline">
-                    <div class="form-field">
-                        <label asp-for="Adults">Adults <span style="color: #e53e3e;">*</span></label>
-                        <div class="number-stepper" data-stepper>
-                            <button type="button" class="stepper-btn step-down" aria-label="Decrease adults">-</button>
-                            <input asp-for="Adults" type="number" min="1" max="10" />
-                            <button type="button" class="stepper-btn step-up" aria-label="Increase adults">+</button>
-                        </div>
-                        <span asp-validation-for="Adults" class="text-danger"></span>
+                <div class="form-field" style="margin-bottom: 0;">
+                    <label style="font-weight: 600;">Room Type Selection <span style="color: #e53e3e;">*</span></label>
+                    <div style="overflow-x: auto;">
+                        <table id="roomLinesTable" style="width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 0.88rem;">
+                            <thead>
+                                <tr style="background: #f1f5f9; border-bottom: 2px solid #e2e8f0;">
+                                    <th style="padding: 8px 6px; text-align: left; font-weight: 600; color: #475569;">Room Type *</th>
+                                    <th style="padding: 8px 6px; text-align: center; font-weight: 600; color: #475569; width: 80px;">Rooms</th>
+                                    <th style="padding: 8px 6px; text-align: center; font-weight: 600; color: #475569; width: 80px;">Adults</th>
+                                    <th style="padding: 8px 6px; text-align: center; font-weight: 600; color: #475569; width: 80px;">Children</th>
+                                    <th style="padding: 8px 6px; text-align: left; font-weight: 600; color: #475569; min-width: 140px;">Rate</th>
+                                    <th style="padding: 8px 6px; text-align: center; font-weight: 600; color: #475569; width: 50px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (Model.RoomLines != null && Model.RoomLines.Any())
+                                {
+                                    for (var i = 0; i < Model.RoomLines.Count; i++)
+                                    {
+                                        <tr class="room-line-row" style="border-bottom: 1px solid #e2e8f0;">
+                                            <td style="padding: 6px;">
+                                                <select name="RoomLines[@i].RoomTypeId" class="form-control room-line-type" style="min-width: 140px;" required>
+                                                    <option value="">-- Select --</option>
+                                                    @foreach (var room in roomTypes)
+                                                    {
+                                                        <option value="@room.Id" selected="@(Model.RoomLines[i].RoomTypeId == room.Id)">@room.TypeName</option>
+                                                    }
+                                                </select>
+                                            </td>
+                                            <td style="padding: 6px;"><input name="RoomLines[@i].RequiredRooms" type="number" min="1" max="50" value="@Model.RoomLines[i].RequiredRooms" class="form-control text-center room-line-rooms" style="width: 70px;" required /></td>
+                                            <td style="padding: 6px;"><input name="RoomLines[@i].Adults" type="number" min="1" max="10" value="@Model.RoomLines[i].Adults" class="form-control text-center room-line-adults" style="width: 70px;" required /></td>
+                                            <td style="padding: 6px;"><input name="RoomLines[@i].Children" type="number" min="0" max="10" value="@Model.RoomLines[i].Children" class="form-control text-center room-line-children" style="width: 70px;" /></td>
+                                            <td style="padding: 6px;"><div class="line-rate-badge" style="font-size: 12px; color: #9ca3af;">Loading...</div></td>
+                                            <td style="padding: 6px; text-align: center;"><button type="button" class="btn-remove-line" onclick="removeRoomLine(this)" title="Remove" style="background: none; border: none; color: #e53e3e; cursor: pointer; font-size: 16px;"><i class="fas fa-trash-alt"></i></button></td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr class="room-line-row" style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 6px;">
+                                            <select name="RoomLines[0].RoomTypeId" class="form-control room-line-type" style="min-width: 140px;" required>
+                                                <option value="">-- Select --</option>
+                                                @foreach (var room in roomTypes)
+                                                {
+                                                    <option value="@room.Id">@room.TypeName</option>
+                                                }
+                                            </select>
+                                        </td>
+                                        <td style="padding: 6px;"><input name="RoomLines[0].RequiredRooms" type="number" min="1" max="50" value="1" class="form-control text-center room-line-rooms" style="width: 70px;" required /></td>
+                                        <td style="padding: 6px;"><input name="RoomLines[0].Adults" type="number" min="1" max="10" value="2" class="form-control text-center room-line-adults" style="width: 70px;" required /></td>
+                                        <td style="padding: 6px;"><input name="RoomLines[0].Children" type="number" min="0" max="10" value="0" class="form-control text-center room-line-children" style="width: 70px;" /></td>
+                                        <td style="padding: 6px;"><div class="line-rate-badge" style="font-size: 12px; color: #9ca3af;">Select room type</div></td>
+                                        <td style="padding: 6px; text-align: center;"><button type="button" class="btn-remove-line" onclick="removeRoomLine(this)" title="Remove" style="background: none; border: none; color: #e53e3e; cursor: pointer; font-size: 16px;"><i class="fas fa-trash-alt"></i></button></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="form-field">
-                        <label asp-for="Children">Children</label>
-                        <div class="number-stepper" data-stepper>
-                            <button type="button" class="stepper-btn step-down" aria-label="Decrease children">-</button>
-                            <input asp-for="Children" type="number" min="0" max="10" />
-                            <button type="button" class="stepper-btn step-up" aria-label="Increase children">+</button>
-                        </div>
-                        <span asp-validation-for="Children" class="text-danger"></span>
+                    <div style="margin-top: 8px; display: flex; justify-content: flex-end;">
+                        <button type="button" class="btn-filter-apply" onclick="addRoomLine()" style="font-size: 13px; padding: 6px 14px;">
+                            <i class="fas fa-plus"></i> Add Room Type
+                        </button>
                     </div>
+                    <span class="text-danger" id="roomLinesValidation"></span>
                 </div>
 
                 <input type="hidden" asp-for="CancellationPolicyId" />
@@ -1131,10 +1156,14 @@
             const cancellationPolicyEnabled = @(((bool)(ViewBag.EnableCancellationPolicy ?? true)) ? "true" : "false");
 
             function updateSteps() {
-                const guestOk = isFilled('#guestPhone') && isFilled('#guestFirstName') && isFilled('#guestLastName');
-                // Acceptance is always satisfied: checkbox is auto-checked+disabled when policy enabled, hidden otherwise.
+                const guestOk = ($('#guestPhone').val().trim().length === 10) && isFilled('#guestFirstName') && isFilled('#guestLastName');
                 const acceptanceOk = true;
-                const stayOk = isFilled('#CheckInDate') && isFilled('#CheckOutDate') && isFilled('#RoomTypeId') && isFilled('#RequiredRooms') && isFilled('#Adults') && isFilled('#CustomerType') && isFilled('#Source') && isFilled('#Channel') && isFilled('#RateType') && acceptanceOk;
+                // Check that at least one room line has a room type selected
+                var hasRoomLine = false;
+                document.querySelectorAll('#roomLinesTable tbody .room-line-row').forEach(function (row) {
+                    if (row.querySelector('.room-line-type')?.value) hasRoomLine = true;
+                });
+                const stayOk = isFilled('#CheckInDate') && isFilled('#CheckOutDate') && hasRoomLine && isFilled('#CustomerType') && isFilled('#Source') && isFilled('#Channel') && isFilled('#RateType') && acceptanceOk;
 
                 setStepCompleted(1, guestOk);
                 setStepCompleted(2, stayOk);
@@ -1308,76 +1337,203 @@
                 return labels[code] || code;
             }
 
-            function updateRoomTypeRate() {
-                const roomTypeId = $('#RoomTypeId').val();
+            // Room type options HTML for dynamic rows
+            var roomTypeOptionsHtml = '<option value="">-- Select --</option>';
+            @foreach (var room in roomTypes)
+            {
+                @:roomTypeOptionsHtml += '<option value="@room.Id">@Html.Raw(room.TypeName.Replace("'", "\\'"))</option>';
+            }
+
+            function addRoomLine() {
+                const tbody = document.querySelector('#roomLinesTable tbody');
+                const index = tbody.querySelectorAll('.room-line-row').length;
+                const tr = document.createElement('tr');
+                tr.className = 'room-line-row';
+                tr.style.borderBottom = '1px solid #e2e8f0';
+                tr.innerHTML = `
+                    <td style="padding: 6px;"><select name="RoomLines[${index}].RoomTypeId" class="form-control room-line-type" style="min-width: 140px;" required>${roomTypeOptionsHtml}</select></td>
+                    <td style="padding: 6px;"><input name="RoomLines[${index}].RequiredRooms" type="number" min="1" max="50" value="1" class="form-control text-center room-line-rooms" style="width: 70px;" required /></td>
+                    <td style="padding: 6px;"><input name="RoomLines[${index}].Adults" type="number" min="1" max="10" value="2" class="form-control text-center room-line-adults" style="width: 70px;" required /></td>
+                    <td style="padding: 6px;"><input name="RoomLines[${index}].Children" type="number" min="0" max="10" value="0" class="form-control text-center room-line-children" style="width: 70px;" /></td>
+                    <td style="padding: 6px;"><div class="line-rate-badge" style="font-size: 12px; color: #9ca3af;">Select room type</div></td>
+                    <td style="padding: 6px; text-align: center;"><button type="button" class="btn-remove-line" onclick="removeRoomLine(this)" title="Remove" style="background: none; border: none; color: #e53e3e; cursor: pointer; font-size: 16px;"><i class="fas fa-trash-alt"></i></button></td>`;
+                tbody.appendChild(tr);
+                bindRoomLineEvents(tr);
+                updateSteps();
+            }
+
+            function removeRoomLine(btn) {
+                const tbody = document.querySelector('#roomLinesTable tbody');
+                const rows = tbody.querySelectorAll('.room-line-row');
+                if (rows.length <= 1) {
+                    Swal.fire({ icon: 'warning', title: 'Required', text: 'At least one room type is required.', confirmButtonColor: '#e53e3e' });
+                    return;
+                }
+                btn.closest('.room-line-row').remove();
+                reindexRoomLines();
+                updateSteps();
+            }
+
+            function reindexRoomLines() {
+                const rows = document.querySelectorAll('#roomLinesTable tbody .room-line-row');
+                rows.forEach(function (row, idx) {
+                    row.querySelectorAll('input, select').forEach(function (el) {
+                        const name = el.getAttribute('name');
+                        if (name) {
+                            el.setAttribute('name', name.replace(/RoomLines\[\d+\]/g, `RoomLines[${idx}]`));
+                        }
+                    });
+                });
+            }
+
+            function updateLineRate(row) {
+                const select = row.querySelector('.room-line-type');
+                const badge = row.querySelector('.line-rate-badge');
+                const roomTypeId = select ? select.value : '';
                 const customerType = $('#CustomerType').val();
                 const source = $('#Source').val();
                 const checkInDate = $('#CheckInDate').val();
                 const checkOutDate = $('#CheckOutDate').val();
-                
+
                 if (!roomTypeId || !customerType || !source) {
-                    $('#roomTypeRate').html('<span style="color: #9ca3af; font-size: 13px;">Select room type, customer type, and source to see rate</span>');
+                    badge.innerHTML = '<span style="color: #9ca3af;">Select room type</span>';
                     return;
                 }
-                
                 if (!checkInDate || !checkOutDate) {
-                    $('#roomTypeRate').html('<span style="color: #f59e0b; font-size: 13px;"><i class="fas fa-calendar-alt"></i> Select check-in and check-out dates</span>');
+                    badge.innerHTML = '<span style="color: #f59e0b; font-size: 12px;"><i class="fas fa-calendar-alt"></i> Set dates</span>';
                     return;
                 }
-                
-                $('#roomTypeRate').html('<i class="fas fa-spinner fa-spin" style="color: #667eea;"></i> Loading rate...');
-                
+                badge.innerHTML = '<i class="fas fa-spinner fa-spin" style="color: #667eea;"></i>';
                 $.ajax({
                     url: '@Url.Action("GetRoomTypeRate", "Booking")',
                     type: 'GET',
-                    data: { 
-                        roomTypeId: roomTypeId,
-                        customerType: customerType,
-                        source: source,
-                        checkInDate: checkInDate,
-                        checkOutDate: checkOutDate
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            if (response.hasRate) {
-                                var mealLabel = getMealTypeLabel(response.mealType || 'EP');
-                                $('#roomTypeRate').html(
-                                    '<span style="display: inline-block; background: #d1fae5; color: #065f46; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 13px;"><i class="fas fa-tag"></i> Rate: ' + response.formattedRate + '/night</span>' +
-                                    ' <span style="display: inline-block; background: #ede9fe; color: #5b21b6; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 13px; margin-left: 6px;"><i class="fas fa-utensils"></i> ' + mealLabel + '</span>'
-                                );
-                            } else {
-                                $('#roomTypeRate').html('<span style="display: inline-block; background: #fee2e2; color: #991b1b; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 13px;"><i class="fas fa-exclamation-triangle"></i> ' + response.message + '</span>');
-                            }
+                    data: { roomTypeId: roomTypeId, customerType: customerType, source: source, checkInDate: checkInDate, checkOutDate: checkOutDate },
+                    success: function (response) {
+                        if (response.success && response.hasRate) {
+                            var mealLabel = getMealTypeLabel(response.mealType || 'EP');
+                            badge.innerHTML = '<span style="display:inline-block; background:#d1fae5; color:#065f46; padding:3px 8px; border-radius:5px; font-weight:600; font-size:12px;"><i class="fas fa-tag"></i> ' + response.formattedRate + '/n</span> <span style="display:inline-block; background:#ede9fe; color:#5b21b6; padding:3px 8px; border-radius:5px; font-weight:600; font-size:12px;"><i class="fas fa-utensils"></i> ' + mealLabel + '</span>';
                         } else {
-                            $('#roomTypeRate').html('<span style="color: #ef4444; font-size: 13px;">Error loading rate</span>');
+                            badge.innerHTML = '<span style="display:inline-block; background:#fee2e2; color:#991b1b; padding:3px 8px; border-radius:5px; font-size:12px;"><i class="fas fa-exclamation-triangle"></i> No rate</span>';
                         }
                     },
-                    error: function() {
-                        $('#roomTypeRate').html('<span style="color: #ef4444; font-size: 13px;">Error loading rate</span>');
+                    error: function () {
+                        badge.innerHTML = '<span style="color:#ef4444; font-size:12px;">Error</span>';
                     }
                 });
             }
-            
-            // Bind change events to update rate
-            $('#RoomTypeId, #CustomerType, #Source, #CheckInDate, #CheckOutDate').on('change', function() {
-                updateRoomTypeRate();
-            });
-            
-            // Load initial rate if values are pre-selected
-            if ($('#RoomTypeId').val() && $('#CustomerType').val() && $('#Source').val() && $('#CheckInDate').val() && $('#CheckOutDate').val()) {
-                updateRoomTypeRate();
+
+            function checkRoomAvailability(row) {
+                const select = row.querySelector('.room-line-type');
+                const roomTypeId = select ? select.value : '';
+                const requiredRooms = parseInt(row.querySelector('.room-line-rooms')?.value, 10) || 0;
+                const checkInDate = $('#CheckInDate').val();
+                const checkOutDate = $('#CheckOutDate').val();
+
+                if (!roomTypeId || !requiredRooms || !checkInDate || !checkOutDate) return;
+
+                $.ajax({
+                    url: '@Url.Action("CheckRoomAvailability", "Booking")',
+                    type: 'GET',
+                    data: { roomTypeId: roomTypeId, requiredRooms: requiredRooms, checkInDate: checkInDate, checkOutDate: checkOutDate },
+                    success: function (response) {
+                        if (response.success && !response.available) {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'No Rooms Available',
+                                text: response.message,
+                                confirmButtonText: 'OK',
+                                confirmButtonColor: '#f59e0b'
+                            });
+                            if (select) {
+                                select.value = '';
+                                select.focus();
+                            }
+                            var badge = row.querySelector('.line-rate-badge');
+                            if (badge) badge.innerHTML = '<span style="color: #9ca3af;">Select room type</span>';
+                        }
+                    }
+                });
             }
 
+            function checkAllRoomAvailability() {
+                document.querySelectorAll('#roomLinesTable tbody .room-line-row').forEach(function (row) {
+                    checkRoomAvailability(row);
+                });
+            }
+
+            function updateAllLineRates() {
+                document.querySelectorAll('#roomLinesTable tbody .room-line-row').forEach(function (row) {
+                    updateLineRate(row);
+                });
+            }
+
+            function bindRoomLineEvents(row) {
+                var select = row.querySelector('.room-line-type');
+                if (select) {
+                    select.addEventListener('change', function () { updateLineRate(row); checkRoomAvailability(row); updateSteps(); });
+                }
+                row.querySelectorAll('.room-line-rooms').forEach(function (inp) {
+                    inp.addEventListener('change', function () { checkRoomAvailability(row); updateSteps(); });
+                });
+                row.querySelectorAll('.room-line-adults, .room-line-children').forEach(function (inp) {
+                    inp.addEventListener('change', function () { updateSteps(); });
+                });
+            }
+
+            // Bind events on existing rows and update rates
+            document.querySelectorAll('#roomLinesTable tbody .room-line-row').forEach(function (row) {
+                bindRoomLineEvents(row);
+                updateLineRate(row);
+            });
+
+            // Refresh all line rates and check availability when customer type, source, or dates change
+            $('#CustomerType, #Source, #CheckInDate, #CheckOutDate').on('change', function() {
+                updateAllLineRates();
+                checkAllRoomAvailability();
+            });
+
+            function syncRoomLineHiddenFields() {
+                const rows = document.querySelectorAll('#roomLinesTable tbody .room-line-row');
+                let totalRooms = 0, totalAdults = 0, totalChildren = 0;
+                let firstRoomTypeId = '';
+                rows.forEach(function (row, idx) {
+                    const rtId = row.querySelector('.room-line-type')?.value || '';
+                    const rooms = parseInt(row.querySelector('.room-line-rooms')?.value, 10) || 0;
+                    const adults = parseInt(row.querySelector('.room-line-adults')?.value, 10) || 0;
+                    const children = parseInt(row.querySelector('.room-line-children')?.value, 10) || 0;
+                    if (idx === 0) firstRoomTypeId = rtId;
+                    totalRooms += rooms;
+                    totalAdults += adults;
+                    totalChildren += children;
+                });
+                document.getElementById('RoomTypeId').value = firstRoomTypeId;
+                document.getElementById('RequiredRooms').value = Math.max(1, totalRooms);
+                document.getElementById('Adults').value = Math.max(1, totalAdults);
+                document.getElementById('Children').value = totalChildren;
+            }
+
+            // Expose functions to global scope for inline onclick handlers
+            window.addRoomLine = addRoomLine;
+            window.removeRoomLine = removeRoomLine;
+            window.syncRoomLineHiddenFields = syncRoomLineHiddenFields;
+
+            // Allow only numeric input in phone field
+            $('#guestPhone').on('keypress', function(e) {
+                if (!/[0-9]/.test(String.fromCharCode(e.which))) { e.preventDefault(); }
+            });
             $('#guestPhone').on('input', function() {
+                // Strip non-numeric characters
+                var cleaned = $(this).val().replace(/[^0-9]/g, '').slice(0, 10);
+                if ($(this).val() !== cleaned) $(this).val(cleaned);
                 clearTimeout(typingTimer);
-                const phone = $(this).val().trim();
+                const phone = cleaned;
                 
                 // Hide previous results
                 $('#guestFoundBadge').hide();
                 $('#lastBookingInfo').hide();
                 $('#phoneLoader').hide();
                 
-                if (phone.length >= 10) {
+                if (phone.length === 10) {
                     $('#phoneLoader').show();
                     typingTimer = setTimeout(function() {
                         lookupGuest(phone);
@@ -1387,6 +1543,20 @@
                     if (phone.length === 0) {
                         clearGuestFields();
                     }
+                }
+            });
+            $('#guestPhone').on('blur', function() {
+                const phone = $(this).val().trim();
+                if (phone.length > 0 && phone.length !== 10) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Mobile Number',
+                        text: 'Mobile number must be exactly 10 digits.',
+                        confirmButtonText: 'OK',
+                        confirmButtonColor: '#e53e3e'
+                    }).then(function() {
+                        $('#guestPhone').val('').focus();
+                    });
                 }
             });
 
@@ -1733,9 +1903,29 @@
             $('#bookingForm').on('submit', function(e) {
                 $('.booking-card').removeClass('has-errors');
 
+                // Validate room lines
+                var hasValidLine = false;
+                var validationMsg = '';
+                document.querySelectorAll('#roomLinesTable tbody .room-line-row').forEach(function (row) {
+                    var rtId = row.querySelector('.room-line-type')?.value;
+                    var rooms = parseInt(row.querySelector('.room-line-rooms')?.value, 10) || 0;
+                    if (rtId && rooms > 0) hasValidLine = true;
+                });
+                if (!hasValidLine) {
+                    validationMsg = 'Please select at least one room type with rooms > 0.';
+                    document.getElementById('roomLinesValidation').textContent = validationMsg;
+                    e.preventDefault();
+                    document.getElementById('roomLinesTable').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return false;
+                }
+                document.getElementById('roomLinesValidation').textContent = '';
+
+                // Sync hidden fields from room lines
+                reindexRoomLines();
+                syncRoomLineHiddenFields();
+
                 const validator = $(this).data('validator');
                 if (validator && !$(this).valid()) {
-                    // Add error styles to cards containing invalid fields
                     $('.input-validation-error').each(function() {
                         $(this).closest('.booking-card').addClass('has-errors');
                     });
@@ -1756,6 +1946,7 @@
             });
 
             // Initialize step state
+            syncRoomLineHiddenFields();
             updateSteps();
         });
     </script>

@@ -499,36 +499,15 @@ namespace HotelApp.Web.Repositories
         {
             var sql = @"
                 -- Count required rooms by room type in the date range
-                -- For B2B bookings with room lines, use B2BBookingRoomLines for accurate per-room-type counts
+                -- Bookings with room lines use B2BBookingRoomLines for accurate per-room-type counts
                 WITH BookingsByRoomType AS (
-                    -- Non-B2B bookings (B2C, Walk-In, etc.) — use Bookings table directly
+                    -- Bookings WITHOUT room lines (any customer type) — use Bookings table directly
                     SELECT 
                         b.RoomTypeId,
                         SUM(b.RequiredRooms) AS TotalRequiredRooms
                     FROM Bookings b
                     WHERE b.BranchID = @BranchId
                         AND b.Status IN ('Confirmed', 'CheckedIn')
-                        AND ISNULL(b.CustomerType, '') <> 'B2B'
-                        AND CAST(b.CheckInDate AS DATE) <= CAST(@EndDate AS DATE)
-                        AND (
-                            CASE 
-                                WHEN b.ActualCheckOutDate IS NOT NULL 
-                                THEN CAST(b.ActualCheckOutDate AS DATE)
-                                ELSE CAST(b.CheckOutDate AS DATE)
-                            END > CAST(@StartDate AS DATE)
-                        )
-                    GROUP BY b.RoomTypeId
-
-                    UNION ALL
-
-                    -- B2B bookings without room lines (legacy) — use Bookings table
-                    SELECT 
-                        b.RoomTypeId,
-                        SUM(b.RequiredRooms) AS TotalRequiredRooms
-                    FROM Bookings b
-                    WHERE b.BranchID = @BranchId
-                        AND b.Status IN ('Confirmed', 'CheckedIn')
-                        AND b.CustomerType = 'B2B'
                         AND NOT EXISTS (SELECT 1 FROM B2BBookingRoomLines brl WHERE brl.BookingId = b.Id)
                         AND CAST(b.CheckInDate AS DATE) <= CAST(@EndDate AS DATE)
                         AND (
@@ -542,7 +521,7 @@ namespace HotelApp.Web.Repositories
 
                     UNION ALL
 
-                    -- B2B bookings with room lines — use per-line RoomTypeId and RequiredRooms with per-line dates
+                    -- Bookings WITH room lines (any customer type) — use per-line RoomTypeId and RequiredRooms with per-line dates
                     SELECT 
                         brl.RoomTypeId,
                         SUM(brl.RequiredRooms) AS TotalRequiredRooms
@@ -550,7 +529,6 @@ namespace HotelApp.Web.Repositories
                     INNER JOIN Bookings b ON brl.BookingId = b.Id
                     WHERE b.BranchID = @BranchId
                         AND b.Status IN ('Confirmed', 'CheckedIn')
-                        AND b.CustomerType = 'B2B'
                         AND CAST(ISNULL(brl.CheckInDate, b.CheckInDate) AS DATE) <= CAST(@EndDate AS DATE)
                         AND CAST(ISNULL(brl.CheckOutDate, b.CheckOutDate) AS DATE) > CAST(@StartDate AS DATE)
                     GROUP BY brl.RoomTypeId

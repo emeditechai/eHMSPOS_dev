@@ -59,9 +59,22 @@
     
     .details-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        grid-template-columns: 1fr 2fr 1fr;
         gap: 1.5rem;
         margin-bottom: 2rem;
+    }
+    @@media (max-width: 1200px) {
+        .details-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    .detail-card.card-stay {
+        overflow: hidden;
+        min-width: 0;
+    }
+    .detail-card.card-stay .stay-table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
     
     .detail-card {
@@ -941,7 +954,7 @@
         }
     </div>
 
-    <div class="detail-card">
+    <div class="detail-card card-stay">
         <div class="card-header">
             <div class="card-icon icon-stay">
                 <i class="fas fa-bed"></i>
@@ -949,14 +962,13 @@
             <h3 class="card-title">Stay Details</h3>
         </div>
         @{
-            var isB2BMultiType = string.Equals(Model.CustomerType, "B2B", StringComparison.OrdinalIgnoreCase)
-                                 && Model.B2BRoomLines != null && Model.B2BRoomLines.Any();
+            var isMultiType = Model.B2BRoomLines != null && Model.B2BRoomLines.Any();
         }
-        @if (isB2BMultiType)
+        @if (isMultiType)
         {
             @* --- B2B: show per-room-type lines --- *@
-            <div style="margin-bottom: 10px;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem;">
+            <div class="stay-table-wrapper" style="margin-bottom: 10px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 620px;">
                     <thead>
                         <tr style="background: #f1f5f9; border-bottom: 2px solid #e2e8f0;">
                             <th style="padding: 8px 10px; text-align: left; font-weight: 600; color: #475569;">Room Type</th>
@@ -964,6 +976,7 @@
                             <th style="padding: 8px 10px; text-align: center; font-weight: 600; color: #475569;">Nights</th>
                             <th style="padding: 8px 10px; text-align: left; font-weight: 600; color: #475569;">Check-In / Out</th>
                             <th style="padding: 8px 10px; text-align: left; font-weight: 600; color: #475569;">Guests</th>
+                            <th style="padding: 8px 10px; text-align: right; font-weight: 600; color: #475569;">Rate / Night</th>
                             <th style="padding: 8px 10px; text-align: left; font-weight: 600; color: #475569;">Assigned</th>
                         </tr>
                     </thead>
@@ -988,11 +1001,40 @@
                                 <td style="padding: 8px 10px; font-size: 0.82rem;">
                                     @lineCheckIn.ToString("dd MMM") &ndash; @lineCheckOut.ToString("dd MMM yyyy")
                                 </td>
-                                <td style="padding: 8px 10px; font-size: 0.82rem;">
-                                    @line.Adults A, @line.Children C
-                                    @if (!string.IsNullOrWhiteSpace(line.MealPlan))
+                                <td style="padding: 8px 10px; font-size: 0.85rem;">
+                                    <div>@line.Adults Adults, @line.Children Children</div>
+                                    @if (!string.IsNullOrWhiteSpace(line.MealPlan) || line.ExtraPaxCount > 0)
                                     {
-                                        <span style="color: #6366f1; margin-left: 4px;">(@line.MealPlan)</span>
+                                        <div style="margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap;">
+                                            @if (!string.IsNullOrWhiteSpace(line.MealPlan))
+                                            {
+                                                <span style="display: inline-flex; align-items: center; background: #ede9fe; color: #5b21b6; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">
+                                                    <i class="fas fa-utensils" style="margin-right: 4px; font-size: 0.65rem;"></i>@line.MealPlan
+                                                </span>
+                                            }
+                                            @if (line.ExtraPaxCount > 0)
+                                            {
+                                                <span style="display: inline-flex; align-items: center; background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">
+                                                    <i class="fas fa-user-plus" style="margin-right: 4px; font-size: 0.65rem;"></i>+@line.ExtraPaxCount Extra Pax
+                                                </span>
+                                            }
+                                        </div>
+                                    }
+                                </td>
+                                <td style="padding: 8px 10px; text-align: right; font-size: 0.85rem;">
+                                    <div style="font-weight: 600;">₹@line.RatePerNight.ToString("N2")</div>
+                                    @if (line.ExtraPaxCount > 0 || line.DiscountPercentage > 0)
+                                    {
+                                        <div style="margin-top: 4px; display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap;">
+                                            @if (line.ExtraPaxCount > 0)
+                                            {
+                                                <span style="font-size: 0.75rem; color: #4f46e5; font-weight: 500;">+ ₹@(line.ExtraPaxRatePerNight.ToString("N2")) × @line.ExtraPaxCount</span>
+                                            }
+                                            @if (line.DiscountPercentage > 0)
+                                            {
+                                                <span style="display: inline-flex; align-items: center; background: #fef2f2; color: #dc2626; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">-@line.DiscountPercentage.ToString("0.##")%</span>
+                                            }
+                                        </div>
                                     }
                                 </td>
                                 <td style="padding: 8px 10px;">

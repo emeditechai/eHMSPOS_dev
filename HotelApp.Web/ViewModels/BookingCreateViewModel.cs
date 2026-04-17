@@ -2,6 +2,21 @@ using System.ComponentModel.DataAnnotations;
 
 namespace HotelApp.Web.ViewModels
 {
+    public class BookingRoomLineItem
+    {
+        [Required]
+        public int RoomTypeId { get; set; }
+
+        [Range(1, 50)]
+        public int RequiredRooms { get; set; } = 1;
+
+        [Range(1, 10)]
+        public int Adults { get; set; } = 2;
+
+        [Range(0, 10)]
+        public int Children { get; set; }
+    }
+
     public class BookingCreateViewModel
     {
         [Required]
@@ -12,20 +27,19 @@ namespace HotelApp.Web.ViewModels
         [DataType(DataType.Date)]
         public DateTime CheckOutDate { get; set; }
 
-        [Required]
-        [Range(1, 10)]
-        public int Adults { get; set; } = 1;
+        [Range(1, 500)]
+        public int Adults { get; set; } = 2;
 
-        [Range(0, 10)]
+        [Range(0, 500)]
         public int Children { get; set; }
 
-        [Required]
         public int RoomTypeId { get; set; }
 
-        [Required]
-        [Range(1, 50, ErrorMessage = "Required Rooms must be between 1 and 50")]
+        [Range(1, 500, ErrorMessage = "Required Rooms must be at least 1")]
         [Display(Name = "Required Rooms")]
         public int RequiredRooms { get; set; } = 1;
+
+        public List<BookingRoomLineItem> RoomLines { get; set; } = new();
 
         [Required]
         public string CustomerType { get; set; } = string.Empty;
