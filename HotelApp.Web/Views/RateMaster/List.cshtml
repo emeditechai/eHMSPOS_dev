@@ -20,8 +20,37 @@
 
 @if (Model.Any())
 {
+    <div class="filter-bar" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:16px; background:#f8f9fa; padding:14px 18px; border-radius:8px; border:1px solid #e2e8f0;">
+        <div style="display:flex; flex-direction:column; gap:4px; min-width:160px;">
+            <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:.5px;">Room Type</label>
+            <select id="filterRoomType" class="form-select" style="border:1px solid #cbd5e0; border-radius:6px; padding:6px 10px; font-size:13px; background:#fff; color:#2d3748; cursor:pointer;">
+                <option value="">All Room Types</option>
+            </select>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:4px; min-width:160px;">
+            <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:.5px;">Customer Type</label>
+            <select id="filterCustomerType" class="form-select" style="border:1px solid #cbd5e0; border-radius:6px; padding:6px 10px; font-size:13px; background:#fff; color:#2d3748; cursor:pointer;">
+                <option value="">All Customer Types</option>
+            </select>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:4px; min-width:160px;">
+            <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:.5px;">Source</label>
+            <select id="filterSource" class="form-select" style="border:1px solid #cbd5e0; border-radius:6px; padding:6px 10px; font-size:13px; background:#fff; color:#2d3748; cursor:pointer;">
+                <option value="">All Sources</option>
+            </select>
+        </div>
+        <div style="display:flex; align-items:flex-end;">
+            <button id="clearRateFilters" onclick="clearRateFilters()" style="padding:6px 16px; border:1px solid #cbd5e0; border-radius:6px; background:#fff; color:#4a5568; font-size:13px; cursor:pointer; display:none;">
+                <i class="fas fa-times"></i> Clear
+            </button>
+        </div>
+        <div style="margin-left:auto; display:flex; align-items:flex-end;">
+            <span id="filterResultCount" style="font-size:13px; color:#718096;"></span>
+        </div>
+    </div>
+
     <div class="table-container">
-        <table class="data-table">
+        <table class="data-table" id="rateMasterTable">
             <thead>
                 <tr>
                     <th>Room Type</th>
@@ -112,4 +141,74 @@ else
             <i class="fas fa-plus"></i> Add New Rate
         </a>
     </div>
+}
+
+@section Scripts {
+<script>
+(function () {
+    var table = document.getElementById('rateMasterTable');
+    if (!table) return;
+
+    var rows = Array.from(table.querySelectorAll('tbody tr'));
+
+    // Column indices: 0=RoomType, 1=CustomerType, 2=Source
+    function getColText(row, idx) {
+        var cell = row.cells[idx];
+        return cell ? cell.innerText.trim() : '';
+    }
+
+    function populateFilter(selectId, colIdx) {
+        var sel = document.getElementById(selectId);
+        if (!sel) return;
+        var values = new Set();
+        rows.forEach(function (r) { values.add(getColText(r, colIdx)); });
+        values.forEach(function (v) {
+            if (!v) return;
+            var opt = document.createElement('option');
+            opt.value = v; opt.textContent = v;
+            sel.appendChild(opt);
+        });
+    }
+
+    populateFilter('filterRoomType', 0);
+    populateFilter('filterCustomerType', 1);
+    populateFilter('filterSource', 2);
+
+    function applyFilters() {
+        var rt  = document.getElementById('filterRoomType').value.toLowerCase();
+        var ct  = document.getElementById('filterCustomerType').value.toLowerCase();
+        var src = document.getElementById('filterSource').value.toLowerCase();
+        var visible = 0;
+
+        rows.forEach(function (r) {
+            var match =
+                (!rt  || getColText(r, 0).toLowerCase() === rt)  &&
+                (!ct  || getColText(r, 1).toLowerCase() === ct)  &&
+                (!src || getColText(r, 2).toLowerCase() === src);
+            r.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+
+        var anyFilter = rt || ct || src;
+        var clearBtn = document.getElementById('clearRateFilters');
+        if (clearBtn) clearBtn.style.display = anyFilter ? '' : 'none';
+
+        var countEl = document.getElementById('filterResultCount');
+        if (countEl) countEl.textContent = anyFilter ? 'Showing ' + visible + ' of ' + rows.length + ' record(s)' : '';
+    }
+
+    ['filterRoomType', 'filterCustomerType', 'filterSource'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('change', applyFilters);
+    });
+
+    window.clearRateFilters = function () {
+        ['filterRoomType', 'filterCustomerType', 'filterSource'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        applyFilters();
+    };
+})();
+</script>
 }

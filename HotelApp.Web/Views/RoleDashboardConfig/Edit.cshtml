@@ -1,0 +1,132 @@
+@model HotelApp.Web.ViewModels.RoleDashboardConfigEditViewModel
+@{
+    ViewData["Title"] = "Edit Role Dashboard — " + Model.RoleName;
+}
+
+@section Styles {
+<style>
+    .rdc-edit-page { padding: 1.5rem; max-width: 640px; }
+    .rdc-edit-hero {
+        background: linear-gradient(135deg, #1a2a6c 0%, #2d6a9f 60%, #56a0d3 100%);
+        border-radius: 14px; padding: 1.5rem 2rem; margin-bottom: 1.75rem;
+        display: flex; align-items: center; gap: 1.25rem;
+        box-shadow: 0 6px 24px rgba(26,42,108,0.2);
+        position: relative; overflow: hidden;
+    }
+    .rdc-edit-hero::before { content:''; position:absolute; top:-40px; right:-40px; width:180px; height:180px; background:rgba(255,255,255,0.06); border-radius:50%; }
+    .rdc-edit-hero-icon { width:52px; height:52px; border-radius:12px; background:rgba(255,255,255,0.18); border:2px solid rgba(255,255,255,0.3); display:flex; align-items:center; justify-content:center; font-size:1.3rem; color:#fff; flex-shrink:0; z-index:1; }
+    .rdc-edit-hero-text { z-index:1; }
+    .rdc-edit-hero-title { color:#fff; font-size:1.2rem; font-weight:700; margin:0 0 .2rem; }
+    .rdc-edit-hero-sub   { color:rgba(255,255,255,.75); font-size:.85rem; margin:0; }
+    .rdc-form-card { background:#fff; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04); padding:1.75rem; }
+    .form-label-sm { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#64748b; margin-bottom:.4rem; display:block; }
+    .form-control, .form-select { border:1px solid #e2e8f0; border-radius:8px; padding:.6rem .85rem; font-size:.875rem; color:#1e293b; transition:border-color .2s,box-shadow .2s; }
+    .form-control:focus, .form-select:focus { border-color:#1a2a6c; box-shadow:0 0 0 3px rgba(26,42,108,0.1); outline:none; }
+    .readonly-field { background:#f8fafc; color:#475569; }
+    .form-group { margin-bottom:1.25rem; }
+    .toggle-wrap { display:flex; align-items:center; gap:.75rem; margin-top:.5rem; }
+    .toggle-wrap label { font-size:.875rem; color:#374151; font-weight:500; cursor:pointer; }
+    .form-check-input { width:1.15em; height:1.15em; cursor:pointer; accent-color:#1a2a6c; }
+    .btn-save   { background:#1a2a6c; color:#fff; border:none; padding:.65rem 1.6rem; border-radius:8px; font-weight:700; font-size:.875rem; cursor:pointer; display:inline-flex; align-items:center; gap:.5rem; transition:background .2s; }
+    .btn-save:hover { background:#2d3d8f; }
+    .btn-cancel { background:#f8fafc; color:#475569; border:1px solid #e2e8f0; padding:.65rem 1.4rem; border-radius:8px; font-weight:600; font-size:.875rem; text-decoration:none; display:inline-flex; align-items:center; gap:.5rem; transition:background .2s; }
+    .btn-cancel:hover { background:#e9edf3; color:#374151; }
+    .btn-row { display:flex; align-items:center; gap:.75rem; margin-top:1.75rem; flex-wrap:wrap; }
+    .hint-text { font-size:.78rem; color:#94a3b8; margin-top:.3rem; }
+</style>
+}
+
+<div class="rdc-edit-page">
+    <div class="rdc-edit-hero">
+        <div class="rdc-edit-hero-icon"><i class="fas fa-tachometer-alt"></i></div>
+        <div class="rdc-edit-hero-text">
+            <div class="rdc-edit-hero-title">Edit Dashboard — @Model.RoleName</div>
+            <div class="rdc-edit-hero-sub">Choose which dashboard this role lands on after login</div>
+        </div>
+    </div>
+
+    <div class="rdc-form-card">
+
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div class="alert alert-danger mb-4" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <asp-validation-summary asp-validation-summary="All"></asp-validation-summary>
+            </div>
+        }
+
+        <form asp-action="Edit" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="RoleId" />
+
+            <div class="form-group">
+                <label class="form-label-sm"><i class="fas fa-user-tag me-1"></i>Role</label>
+                <input type="text" class="form-control readonly-field" value="@Model.RoleName" readonly />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label-sm" for="dashboardSelect"><i class="fas fa-desktop me-1"></i>Dashboard</label>
+                <select id="dashboardSelect" name="DashboardValue" class="form-select" onchange="splitDashboardValue(this.value)">
+                    @foreach (var item in Model.AvailableDashboards)
+                    {
+                        if (item.Selected)
+                        {
+                            <option value="@item.Value" selected="selected">@item.Text</option>
+                        }
+                        else
+                        {
+                            <option value="@item.Value">@item.Text</option>
+                        }
+                    }
+                </select>
+                <input type="hidden" asp-for="DashboardController" id="hdnController" />
+                <input type="hidden" asp-for="DashboardAction" id="hdnAction" />
+                <div class="hint-text">Route: <code id="routePreview">/@Model.DashboardController/@Model.DashboardAction</code></div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label-sm" asp-for="DisplayName"><i class="fas fa-tag me-1"></i>Display Name <span style="font-weight:400;text-transform:none;color:#94a3b8;">(optional label)</span></label>
+                <input type="text" asp-for="DisplayName" class="form-control" placeholder="e.g. Main Dashboard" maxlength="200" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label-sm"><i class="fas fa-toggle-on me-1"></i>Status</label>
+                <div class="toggle-wrap">
+                    <input type="checkbox" asp-for="IsActive" class="form-check-input" id="isActiveCheck" />
+                    <label for="isActiveCheck">Active — users with this role will be redirected to the configured dashboard</label>
+                </div>
+                <div class="hint-text">When inactive, the role falls back to the Main Dashboard.</div>
+            </div>
+
+            <div class="btn-row">
+                <button type="submit" class="btn-save"><i class="fas fa-save"></i> Save Changes</button>
+                <a asp-action="Index" class="btn-cancel"><i class="fas fa-arrow-left"></i> Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    (function () {
+        function splitDashboardValue(val) {
+            if (!val) return;
+            var parts = val.split('/');
+            document.getElementById('hdnController').value = parts[0] || '';
+            document.getElementById('hdnAction').value     = parts[1] || '';
+            document.getElementById('routePreview').textContent = '/' + parts[0] + '/' + parts[1];
+        }
+
+        // Initialise on page load from the pre-selected hidden fields
+        var initVal = '@(Model.DashboardController)' + '/' + '@(Model.DashboardAction)';
+        document.getElementById('dashboardSelect').value = initVal;
+        document.getElementById('routePreview').textContent = '/' + initVal;
+        document.getElementById('hdnController').value = '@Model.DashboardController';
+        document.getElementById('hdnAction').value     = '@Model.DashboardAction';
+
+        document.getElementById('dashboardSelect').addEventListener('change', function () {
+            splitDashboardValue(this.value);
+        });
+    })();
+</script>
+}

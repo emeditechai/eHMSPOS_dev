@@ -115,6 +115,36 @@
         font-size: 13px;
         color: #333;
     }
+
+    .role-card.kbd-focus {
+        border-color: #8e24aa;
+        box-shadow: 0 0 0 3px rgba(142, 36, 170, 0.25), 0 10px 24px rgba(0,0,0,0.12);
+        transform: translateY(-1px);
+        background: #fdf6ff;
+        outline: none;
+    }
+
+    .role-card.kbd-focus .role-btn {
+        background: #8e24aa;
+    }
+
+    .kbd-hint {
+        text-align: center;
+        margin-top: 14px;
+        font-size: 11px;
+        color: #999;
+    }
+
+    .kbd-hint kbd {
+        display: inline-block;
+        padding: 1px 6px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background: #f5f5f5;
+        color: #555;
+        font-size: 11px;
+        font-family: inherit;
+    }
 </style>
 
 <div class="role-modal-backdrop" role="dialog" aria-modal="true" aria-label="Select Role">
@@ -131,10 +161,10 @@
                 Multiple roles are assigned to your user. Select one to proceed to the dashboard.
             </div>
 
-            <div class="role-grid">
+            <div class="role-grid" id="roleGrid">
                 @foreach (var role in Model.AvailableRoles)
                 {
-                    <div class="role-card">
+                    <div class="role-card" tabindex="-1">
                         <div class="role-name">
                             @if (!string.IsNullOrWhiteSpace(role.IconClass))
                             {
@@ -152,6 +182,60 @@
                     </div>
                 }
             </div>
+            <div class="kbd-hint">
+                <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> navigate &nbsp;·&nbsp; <kbd>Enter</kbd> select
+            </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+(function () {
+    var grid  = document.getElementById('roleGrid');
+    var cards = Array.from(grid.querySelectorAll('.role-card'));
+    var idx   = 0;
+
+    function colsPerRow() {
+        if (cards.length < 2) return 1;
+        var top = cards[0].getBoundingClientRect().top;
+        var c = 0;
+        for (var i = 0; i < cards.length; i++) {
+            if (cards[i].getBoundingClientRect().top === top) c++; else break;
+        }
+        return c || 1;
+    }
+
+    function highlight(i) {
+        cards.forEach(function(c){ c.classList.remove('kbd-focus'); });
+        idx = (i + cards.length) % cards.length;
+        cards[idx].classList.add('kbd-focus');
+        cards[idx].scrollIntoView({ block: 'nearest' });
+    }
+
+    function submit() {
+        var btn = cards[idx].querySelector('button[type="submit"]');
+        if (btn) btn.click();
+    }
+
+    // focus first card automatically
+    highlight(0);
+
+    document.addEventListener('keydown', function (e) {
+        var cols = colsPerRow();
+        switch (e.key) {
+            case 'ArrowRight': e.preventDefault(); highlight(idx + 1);    break;
+            case 'ArrowLeft':  e.preventDefault(); highlight(idx - 1);    break;
+            case 'ArrowDown':  e.preventDefault(); highlight(idx + cols); break;
+            case 'ArrowUp':    e.preventDefault(); highlight(idx - cols); break;
+            case 'Enter':      e.preventDefault(); submit();              break;
+        }
+    });
+
+    // clicking a card also sets focus index
+    cards.forEach(function(card, i) {
+        card.addEventListener('mouseenter', function() { highlight(i); });
+    });
+})();
+</script>
+}

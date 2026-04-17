@@ -5,315 +5,523 @@
     var selectedRoleName = ViewBag.SelectedRoleName as string
         ?? User.Claims.FirstOrDefault(c => c.Type == "SelectedRoleName")?.Value
         ?? "";
-    var statistics = ViewBag.Statistics as DashboardStatistics;
-    var revenueData = ViewBag.RevenueData as IEnumerable<RevenueData>;
-    var roomTypeDistribution = ViewBag.RoomTypeDistribution as IEnumerable<RoomTypeDistribution>;
-    var recentBookings = ViewBag.RecentBookings as IEnumerable<RecentBooking>;
+    var statistics      = ViewBag.Statistics as DashboardStatistics;
+    var revenueData     = ViewBag.RevenueData as IEnumerable<RevenueData>;
+    var roomTypeDist    = ViewBag.RoomTypeDistribution as IEnumerable<RoomTypeDistribution>;
+    var recentBookings  = (ViewBag.RecentBookings as IEnumerable<RecentBooking>)?.ToList() ?? new List<RecentBooking>();
     var currentBranchName = ViewBag.CurrentBranchName as string ?? "Head Office";
-    var isHOBranch = (bool)(ViewBag.CurrentBranchIsHO ?? false);
-    var hotelName = ViewBag.HotelName as string;
-    var displayTitle = !string.IsNullOrWhiteSpace(hotelName) ? hotelName : currentBranchName;
+    var isHOBranch      = (bool)(ViewBag.CurrentBranchIsHO ?? false);
+    var hotelName       = ViewBag.HotelName as string;
+    var displayTitle    = !string.IsNullOrWhiteSpace(hotelName) ? hotelName : currentBranchName;
+    var alertMessage    = ViewBag.AlertMessage as string;
+
+    /* derived metrics */
+    var totalBookings   = recentBookings.Count;
+    var totalAmount     = recentBookings.Sum(b => b.TotalAmount);
+    var totalBalance    = recentBookings.Sum(b => b.BalanceAmount);
+    var checkedOut      = recentBookings.Count(b => b.Status.Equals("CheckedOut", StringComparison.OrdinalIgnoreCase) || b.Status.Equals("Checked Out", StringComparison.OrdinalIgnoreCase));
+    var confirmedCount  = recentBookings.Count(b => b.Status.Equals("Confirmed", StringComparison.OrdinalIgnoreCase));
+    var topRoomType     = roomTypeDist?.OrderByDescending(r => r.BookingCount).FirstOrDefault()?.TypeName ?? "—";
+    var avgRevenue      = (revenueData != null && revenueData.Any()) ? revenueData.Average(r => r.Revenue) : 0m;
 }
 
-<div class="main-content dashboard-main-content">
-    @{
-        var alertMessage = ViewBag.AlertMessage as string;
-    }
+@section Styles {
+<style>
+/* ========= Main Dashboard — Colourful Professional ========= */
+.main-content.md-page {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: .5rem 1.2rem 2rem !important;
+    box-sizing: border-box;
+}
+.md-page { padding: .5rem 1.2rem 2rem; background: #eef1f8; min-height: 100vh; }
+
+/* Hero bar */
+.md-hero { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.6rem;
+           background:linear-gradient(135deg,#1a2a6c 0%,#2d3e9e 50%,#b21f1f 100%);
+           border-radius:16px; padding:1rem 1.4rem; margin-bottom:.9rem;
+           box-shadow:0 6px 24px rgba(26,42,108,.22); }
+.md-hero-left { display:flex; align-items:center; gap:1rem; }
+.md-hero-icon { width:52px; height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center;
+                background:rgba(255,255,255,.18); border:1.5px solid rgba(255,255,255,.3);
+                color:#fff; font-size:1.4rem; flex-shrink:0; }
+.md-hero-title { font-size:1.3rem; font-weight:800; color:#fff; letter-spacing:-.2px; }
+.md-hero-sub { font-size:.81rem; color:rgba(255,255,255,.75); display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; margin-top:.2rem; }
+.md-badge { display:inline-flex; align-items:center; gap:.25rem; padding:.18rem .55rem; border-radius:20px; font-size:.73rem; font-weight:600; }
+.md-badge-ho     { background:rgba(255,255,255,.22); color:#fff; }
+.md-badge-branch { background:rgba(255,200,100,.25); color:#ffe082; }
+.md-badge-role   { background:rgba(100,255,180,.2); color:#a5d6a7; }
+.md-today { font-size:.78rem; color:rgba(255,255,255,.75); font-weight:500; }
+
+/* KPI Grid */
+.md-kpi-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:.75rem; margin-bottom:.9rem; }
+.md-kpi { border-radius:16px; padding:1.1rem 1.2rem; color:#fff; position:relative; overflow:hidden;
+          box-shadow:0 6px 20px rgba(0,0,0,.14); display:flex; flex-direction:column; justify-content:space-between; min-height:112px; }
+.md-kpi::before { content:''; position:absolute; right:-20px; top:-20px; width:100px; height:100px;
+                  border-radius:50%; background:rgba(255,255,255,.13); }
+.md-kpi::after  { content:''; position:absolute; left:-15px; bottom:-25px; width:80px; height:80px;
+                  border-radius:50%; background:rgba(255,255,255,.07); }
+.md-kpi-label { font-size:.7rem; font-weight:700; opacity:.9; text-transform:uppercase; letter-spacing:.06em; }
+.md-kpi-value { font-size:1.7rem; font-weight:800; line-height:1.1; margin:.25rem 0; }
+.md-kpi-change { font-size:.72rem; display:flex; align-items:center; gap:.3rem; opacity:.9; }
+.md-kpi-icon  { position:absolute; right:14px; top:50%; transform:translateY(-50%); font-size:2.2rem; opacity:.18; }
+
+.md-kpi-blue   { background:linear-gradient(140deg,#1565c0,#42a5f5); }
+.md-kpi-red    { background:linear-gradient(140deg,#c62828,#ef5350); }
+.md-kpi-amber  { background:linear-gradient(140deg,#e65100,#ffa726); }
+.md-kpi-green  { background:linear-gradient(140deg,#2e7d32,#66bb6a); }
+.md-kpi-purple { background:linear-gradient(140deg,#6a1b9a,#ab47bc); }
+.md-kpi-teal   { background:linear-gradient(140deg,#00695c,#4db6ac); }
+
+/* Insight grid */
+.md-insight-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.75rem; margin-bottom:.9rem; }
+.md-insight { background:#fff; border-radius:14px; padding:1rem 1.2rem;
+              box-shadow:0 2px 10px rgba(0,0,0,.07); display:flex; align-items:center; gap:.9rem;
+              border-left:4px solid transparent; transition:transform .15s,box-shadow .15s; }
+.md-insight:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.1); }
+.md-insight:nth-child(1){ border-left-color:#42a5f5; }
+.md-insight:nth-child(2){ border-left-color:#ef5350; }
+.md-insight:nth-child(3){ border-left-color:#66bb6a; }
+.md-insight:nth-child(4){ border-left-color:#ffa726; }
+.md-insight-ico { width:46px; height:46px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0; }
+.md-insight-lbl { font-size:.7rem; color:#6c757d; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+.md-insight-val { font-size:1.2rem; font-weight:800; color:#1a2a6c; }
+.md-insight-sub { font-size:.71rem; color:#868e96; }
+
+/* Chart rows */
+.md-row { display:grid; gap:.8rem; margin-bottom:.9rem; }
+.md-row-2-1  { grid-template-columns:2fr 1fr; }
+.md-row-1-2  { grid-template-columns:1fr 2fr; }
+.md-card { background:#fff; border-radius:16px; padding:1.1rem 1.3rem;
+           box-shadow:0 2px 10px rgba(0,0,0,.07); }
+.md-card-title { font-size:.8rem; font-weight:800; color:#1a2a6c; text-transform:uppercase;
+                 letter-spacing:.05em; margin-bottom:.9rem;
+                 display:flex; align-items:center; justify-content:space-between;
+                 padding-bottom:.6rem; border-bottom:2px solid #eef1f8; }
+.md-chart-box    { position:relative; height:230px; }
+.md-chart-box-sm { position:relative; height:210px; }
+
+/* Bookings table */
+.md-table-wrap { overflow-x:auto; }
+.md-bookings-table { width:100%; border-collapse:collapse; font-size:.81rem; }
+.md-bookings-table thead th { background:linear-gradient(135deg,#1a2a6c,#283593); color:#fff;
+                               padding:.6rem .8rem; font-size:.71rem; font-weight:700;
+                               text-transform:uppercase; letter-spacing:.05em; text-align:left;
+                               white-space:nowrap; }
+.md-bookings-table thead th:first-child { border-radius:8px 0 0 8px; }
+.md-bookings-table thead th:last-child  { border-radius:0 8px 8px 0; }
+.md-bookings-table tbody tr { border-bottom:1px solid #f0f2f8; transition:background .15s; }
+.md-bookings-table tbody tr:hover { background:#f5f7ff; }
+.md-bookings-table td { padding:.55rem .8rem; color:#374151; vertical-align:middle; }
+.md-status-badge { display:inline-block; padding:.2rem .65rem; border-radius:20px; font-size:.69rem; font-weight:700; white-space:nowrap; }
+.md-status-confirmed  { background:#dbeafe; color:#1d4ed8; }
+.md-status-checkedin  { background:#dcfce7; color:#166534; }
+.md-status-checkedout { background:#ede9fe; color:#5b21b6; }
+.md-status-cancelled  { background:#fee2e2; color:#991b1b; }
+.md-status-pending    { background:#fef9c3; color:#92400e; }
+.md-status-default    { background:#f3f4f6; color:#374151; }
+.md-action-btn { display:inline-flex; align-items:center; gap:.3rem; padding:.24rem .7rem;
+                 border-radius:6px; background:#e8f0fe; color:#1a2a6c; font-size:.71rem; font-weight:700;
+                 text-decoration:none; transition:all .15s; }
+.md-action-btn:hover { background:#1a2a6c; color:#fff; text-decoration:none; }
+.md-balance-due { color:#dc3545; font-weight:700; }
+.md-balance-ok  { color:#28a745; font-weight:600; }
+.md-no-data { text-align:center; padding:2rem; color:#868e96; font-size:.85rem; }
+.md-no-data i { font-size:2rem; margin-bottom:.5rem; opacity:.3; display:block; color:#1a2a6c; }
+
+/* Summary stats */
+.md-stat-row { display:flex; justify-content:space-between; align-items:center;
+               padding:.5rem .6rem; border-radius:8px; margin-bottom:.3rem;
+               transition:background .15s; }
+.md-stat-row:hover { background:#f5f7ff; }
+.md-stat-label { font-size:.78rem; color:#6c757d; font-weight:500; display:flex; align-items:center; gap:.45rem; }
+.md-stat-value { font-size:.92rem; font-weight:800; color:#1a2a6c; }
+
+/* Occupancy bar */
+.md-occ-bar  { height:8px; background:#e5e7eb; border-radius:4px; overflow:hidden; margin-top:5px; }
+.md-occ-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,#c62828,#ef5350); }
+
+@@media(max-width:1400px){ .md-kpi-grid{grid-template-columns:repeat(3,1fr)} }
+@@media(max-width:1100px){ .md-insight-grid{grid-template-columns:repeat(2,1fr)} }
+@@media(max-width:992px) { .md-row-2-1,.md-row-1-2{grid-template-columns:1fr} }
+@@media(max-width:600px) { .md-kpi-grid{grid-template-columns:1fr 1fr} .md-insight-grid{grid-template-columns:1fr 1fr} }
+</style>
+}
+
+<div class="main-content md-page">
+
     @if (!string.IsNullOrWhiteSpace(alertMessage))
     {
         <div class="dashboard-alert-banner">
-            <div class="alert-icon-box">
-                <i class="fas fa-bullhorn"></i>
-            </div>
+            <div class="alert-icon-box"><i class="fas fa-bullhorn"></i></div>
             <div class="alert-marquee-wrap">
-                <marquee behavior="scroll" direction="left" scrollamount="4" onmouseover="this.stop();" onmouseout="this.start();">
-                    @alertMessage
-                </marquee>
+                <marquee behavior="scroll" direction="left" scrollamount="4" onmouseover="this.stop();" onmouseout="this.start();">@alertMessage</marquee>
             </div>
         </div>
     }
-    <div class="top-bar">
-        <div class="page-title">
-            <h1>@displayTitle</h1>
-            <div class="dashboard-branch-row">
-                <span class="db-branch-label"><i class="fas fa-building"></i> Active Branch:</span>
-                <span class="db-branch-name">@currentBranchName</span>
-                @if (isHOBranch)
-                {
-                    <span class="db-branch-badge db-badge-ho"><i class="fas fa-star"></i> Head Office</span>
-                }
-                else
-                {
-                    <span class="db-branch-badge db-badge-branch"><i class="fas fa-map-marker-alt"></i> Branch</span>
-                }
-                @if (!string.IsNullOrWhiteSpace(selectedRoleName))
-                {
-                    <span class="db-role-badge"><i class="fas fa-user-shield"></i> @selectedRoleName</span>
-                }
+
+    <!-- Hero Bar -->
+    <div class="md-hero">
+        <div class="md-hero-left">
+            <div class="md-hero-icon"><i class="fas fa-hotel"></i></div>
+            <div>
+                <div class="md-hero-title">@displayTitle</div>
+                <div class="md-hero-sub">
+                    <span><i class="fas fa-building"></i> @currentBranchName</span>
+                    @if (isHOBranch)
+                    {
+                        <span class="md-badge md-badge-ho"><i class="fas fa-star"></i> Head Office</span>
+                    }
+                    else
+                    {
+                        <span class="md-badge md-badge-branch"><i class="fas fa-map-marker-alt"></i> Branch</span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(selectedRoleName))
+                    {
+                        <span class="md-badge md-badge-role"><i class="fas fa-user-shield"></i> @selectedRoleName</span>
+                    }
+                </div>
             </div>
         </div>
+        <div class="md-today"><i class="fas fa-calendar-alt"></i> @DateTime.Now.ToString("dddd, dd MMMM yyyy")</div>
     </div>
 
-    <div class="dashboard-cards">
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title">Total Guests</div>
-                <div class="card-icon" style="background-color: var(--primary);">
-                    <i class="fas fa-users"></i>
-                </div>
-            </div>
-            <div class="card-value">@(statistics?.TotalGuests.ToString("N0") ?? "0")</div>
-            <div class="card-change @(statistics?.GuestsChangePercent >= 0 ? "positive" : "negative")">
-                <i class="fas fa-arrow-@(statistics?.GuestsChangePercent >= 0 ? "up" : "down")"></i> 
-                @Math.Abs(statistics?.GuestsChangePercent ?? 0)% from last month
+    <!-- KPI Cards -->
+    <div class="md-kpi-grid">
+        <div class="md-kpi md-kpi-blue">
+            <i class="fas fa-users md-kpi-icon"></i>
+            <div class="md-kpi-label">Total Guests</div>
+            <div class="md-kpi-value">@(statistics?.TotalGuests.ToString("N0") ?? "0")</div>
+            <div class="md-kpi-change">
+                <i class="fas fa-arrow-@(statistics?.GuestsChangePercent >= 0 ? "up" : "down")"></i>
+                @Math.Abs(statistics?.GuestsChangePercent ?? 0).ToString("N1")% vs last month
             </div>
         </div>
-
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title">Occupancy Rate</div>
-                <div class="card-icon" style="background-color: var(--secondary);">
-                    <i class="fas fa-bed"></i>
+        <div class="md-kpi md-kpi-red">
+            <i class="fas fa-bed md-kpi-icon"></i>
+            <div class="md-kpi-label">Occupancy Rate</div>
+            <div class="md-kpi-value">@(statistics?.OccupancyRate.ToString("N0") ?? "0")%</div>
+            <div>
+                <div class="md-occ-bar" style="margin-top:.35rem">
+                    <div class="md-occ-fill" style="width:@(Math.Min(statistics?.OccupancyRate ?? 0, 100))%"></div>
                 </div>
-            </div>
-            <div class="card-value">@(statistics?.OccupancyRate.ToString("N0") ?? "0")%</div>
-            <div class="card-change @(statistics?.OccupancyChangePercent >= 0 ? "positive" : "negative")">
-                <i class="fas fa-arrow-@(statistics?.OccupancyChangePercent >= 0 ? "up" : "down")"></i> 
-                @Math.Abs(statistics?.OccupancyChangePercent ?? 0)% from last week
             </div>
         </div>
-
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title">Revenue</div>
-                <div class="card-icon" style="background-color: var(--accent);">
-                    <i class="fas fa-rupee-sign"></i>
-                </div>
-            </div>
-            <div class="card-value">₹@(statistics?.Revenue.ToString("N0") ?? "0")</div>
-            <div class="card-change @(statistics?.RevenueChangePercent >= 0 ? "positive" : "negative")">
-                <i class="fas fa-arrow-@(statistics?.RevenueChangePercent >= 0 ? "up" : "down")"></i> 
-                @Math.Abs(statistics?.RevenueChangePercent ?? 0)% from last month
+        <div class="md-kpi md-kpi-amber">
+            <i class="fas fa-rupee-sign md-kpi-icon"></i>
+            <div class="md-kpi-label">Revenue</div>
+            <div class="md-kpi-value">₹@(statistics?.Revenue.ToString("N0") ?? "0")</div>
+            <div class="md-kpi-change">
+                <i class="fas fa-arrow-@(statistics?.RevenueChangePercent >= 0 ? "up" : "down")"></i>
+                @Math.Abs(statistics?.RevenueChangePercent ?? 0).ToString("N1")% vs last month
             </div>
         </div>
-
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title">Check-ins Today</div>
-                <div class="card-icon" style="background-color: var(--success);">
-                    <i class="fas fa-door-open"></i>
-                </div>
-            </div>
-            <div class="card-value">@(statistics?.CheckInsToday ?? 0)</div>
-            <div class="card-change @(statistics?.CheckInsChange >= 0 ? "positive" : "negative")">
-                <i class="fas fa-arrow-@(statistics?.CheckInsChange >= 0 ? "up" : "down")"></i> 
+        <div class="md-kpi md-kpi-green">
+            <i class="fas fa-door-open md-kpi-icon"></i>
+            <div class="md-kpi-label">Check-ins Today</div>
+            <div class="md-kpi-value">@(statistics?.CheckInsToday ?? 0)</div>
+            <div class="md-kpi-change">
+                <i class="fas fa-arrow-@(statistics?.CheckInsChange >= 0 ? "up" : "down")"></i>
                 @Math.Abs(statistics?.CheckInsChange ?? 0) from yesterday
             </div>
         </div>
-    </div>
-
-    <div class="charts-section">
-        <div class="chart-card">
-            <div class="chart-header">
-                <div class="chart-title">Revenue Overview</div>
-                <div>
-                    <select class="chart-filter" id="revenuePeriodFilter" onchange="updateRevenueChart(this.value)">
-                        <option value="7">Last 7 Days</option>
-                        <option value="30">Last 30 Days</option>
-                        <option value="90">Last 3 Months</option>
-                    </select>
-                </div>
-            </div>
-            <div class="chart-container">
-                <canvas id="revenueChart"></canvas>
-            </div>
+        <div class="md-kpi md-kpi-purple">
+            <i class="fas fa-file-alt md-kpi-icon"></i>
+            <div class="md-kpi-label">Today's Bookings</div>
+            <div class="md-kpi-value">@totalBookings</div>
+            <div class="md-kpi-change"><i class="fas fa-rupee-sign"></i> ₹@totalAmount.ToString("N0") total value</div>
         </div>
-
-        <div class="chart-card">
-            <div class="chart-header">
-                <div class="chart-title">Room Types</div>
-            </div>
-            <div class="chart-container">
-                <canvas id="roomTypeChart"></canvas>
-            </div>
+        <div class="md-kpi md-kpi-teal">
+            <i class="fas fa-exclamation-circle md-kpi-icon"></i>
+            <div class="md-kpi-label">Balance Due</div>
+            <div class="md-kpi-value">₹@totalBalance.ToString("N0")</div>
+            <div class="md-kpi-change"><i class="fas fa-clock"></i> Across @totalBookings bookings</div>
         </div>
     </div>
 
-    <div class="recent-bookings">
-        <div class="section-header">
-            <div class="section-title">Today's Checkouts</div>
-            <a href="@Url.Action("Index", "Booking")" class="view-all">View All</a>
+    <!-- Insight Cards -->
+    <div class="md-insight-grid">
+        <div class="md-insight">
+            <div class="md-insight-ico" style="background:#e8f0fe;color:#1a2a6c"><i class="fas fa-chart-line"></i></div>
+            <div>
+                <div class="md-insight-lbl">Avg Daily Revenue</div>
+                <div class="md-insight-val">₹@avgRevenue.ToString("N0")</div>
+                <div class="md-insight-sub">Last 7 days average</div>
+            </div>
         </div>
+        <div class="md-insight">
+            <div class="md-insight-ico" style="background:#fce8e8;color:#b21f1f"><i class="fas fa-door-closed"></i></div>
+            <div>
+                <div class="md-insight-lbl">Checked Out Today</div>
+                <div class="md-insight-val">@checkedOut</div>
+                <div class="md-insight-sub">of @totalBookings today's bookings</div>
+            </div>
+        </div>
+        <div class="md-insight">
+            <div class="md-insight-ico" style="background:#e8f5e9;color:#2e7d32"><i class="fas fa-check-circle"></i></div>
+            <div>
+                <div class="md-insight-lbl">Confirmed Bookings</div>
+                <div class="md-insight-val">@confirmedCount</div>
+                <div class="md-insight-sub">Awaiting check-in</div>
+            </div>
+        </div>
+        <div class="md-insight">
+            <div class="md-insight-ico" style="background:#fff3e0;color:#e65100"><i class="fas fa-star"></i></div>
+            <div>
+                <div class="md-insight-lbl">Top Room Type</div>
+                <div class="md-insight-val">@topRoomType</div>
+                <div class="md-insight-sub">Most booked category</div>
+            </div>
+        </div>
+    </div>
 
-        <table class="bookings-table">
-            <thead>
-                <tr>
-                    <th>Booking #</th>
-                    <th>Guest Name</th>
-                    <th>Room Type</th>
-                    <th>Check-in</th>
-                    <th>Check-out</th>
-                    <th>Rooms</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (recentBookings != null && recentBookings.Any())
+    <!-- Charts Row 1 -->
+    <div class="md-row md-row-2-1">
+        <div class="md-card">
+            <div class="md-card-title">
+                <span><i class="fas fa-chart-area" style="color:#1a2a6c;margin-right:.4rem"></i>Revenue Trend</span>
+                <select id="revenuePeriodFilter" onchange="updateRevenueChart(this.value)"
+                        style="font-size:.72rem;padding:.2rem .5rem;border:1px solid #d1d5db;border-radius:6px;background:#fff;color:#374151;cursor:pointer">
+                    <option value="7">Last 7 Days</option>
+                    <option value="30">Last 30 Days</option>
+                    <option value="90">Last 3 Months</option>
+                </select>
+            </div>
+            <div class="md-chart-box"><canvas id="revenueChart"></canvas></div>
+        </div>
+        <div class="md-card">
+            <div class="md-card-title"><span><i class="fas fa-chart-pie" style="color:#b21f1f;margin-right:.4rem"></i>Room Type Mix</span></div>
+            <div class="md-chart-box-sm"><canvas id="roomTypeChart"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Charts Row 2 -->
+    <div class="md-row md-row-1-2">
+        <div class="md-card">
+            <div class="md-card-title"><span><i class="fas fa-list" style="color:#1a2a6c;margin-right:.4rem"></i>Room Distribution</span></div>
+            @{
+                var rtList = roomTypeDist?.ToList() ?? new List<RoomTypeDistribution>();
+                var rtTotal = rtList.Sum(r => r.BookingCount);
+                var rtColors = new[]{"#1a2a6c","#b21f1f","#fdbb2d","#28a745","#17a2b8","#6c757d","#9c27b0","#ff5722"};
+            }
+            <div style="max-height:210px;overflow-y:auto;padding-right:.2rem">
+                @for (int i = 0; i < rtList.Count; i++)
                 {
-                    foreach (var booking in recentBookings)
-                    {
+                    var rt = rtList[i];
+                    var pct = rtTotal > 0 ? (rt.BookingCount * 100.0 / rtTotal) : 0;
+                    var col = rtColors[i % rtColors.Length];
+                    <div style="margin-bottom:.6rem">
+                        <div style="display:flex;justify-content:space-between;font-size:.78rem;font-weight:600;margin-bottom:.2rem">
+                            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:@col;margin-right:.4rem"></span>@rt.TypeName</span>
+                            <span style="color:@col">@rt.BookingCount &nbsp;<span style="color:#868e96;font-weight:400">(@pct.ToString("N0")%)</span></span>
+                        </div>
+                        <div style="height:6px;background:#e9ecef;border-radius:3px"><div style="height:100%;width:@pct.ToString("N0")%;background:@col;border-radius:3px"></div></div>
+                    </div>
+                }
+                @if (!rtList.Any()) { <p style="color:#868e96;font-size:.8rem;text-align:center;padding:2rem 0">No data available</p> }
+            </div>
+        </div>
+        <div class="md-card">
+            <div class="md-card-title"><span><i class="fas fa-chart-bar" style="color:#2e7d32;margin-right:.4rem"></i>Room Type Bookings</span></div>
+            <div class="md-chart-box"><canvas id="roomTypeBarChart"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Summary + Quick Stats -->
+    <div class="md-row md-row-2-1">
+        <div class="md-card">
+            <div class="md-card-title"><span><i class="fas fa-table" style="color:#1a2a6c;margin-right:.4rem"></i>Active &amp; Recent Bookings</span>
+                <a href="@Url.Action("Index", "Booking")" style="font-size:.72rem;color:#1a2a6c;font-weight:600;text-decoration:none">View All →</a>
+            </div>
+            <div class="md-table-wrap">
+                <table class="md-bookings-table">
+                    <thead>
                         <tr>
-                            <td>@booking.BookingNumber</td>
-                            <td>@booking.GuestName</td>
-                            <td>@booking.RoomType</td>
-                            <td>@booking.CheckInDate.ToString("MMM dd, yyyy")</td>
-                            <td>@booking.CheckOutDate.ToString("MMM dd, yyyy")</td>
-                            <td>@booking.RequiredRooms</td>
-                            <td>₹@booking.TotalAmount.ToString("N2")</td>
-                            <td>
-                                <span class="status @booking.Status.ToLower()">@booking.Status</span>
-                            </td>
-                            <td>
-                                <a href="@Url.Action("Details", "Booking", new { bookingNumber = booking.BookingNumber })" class="action-btn">Details</a>
-                            </td>
+                            <th>#</th>
+                            <th>Booking #</th>
+                            <th>Guest</th>
+                            <th>Room Type</th>
+                            <th>Check-in</th>
+                            <th>Check-out</th>
+                            <th>Amount</th>
+                            <th>Balance</th>
+                            <th>Status</th>
+                            <th>Action</th>
                         </tr>
-                    }
-                }
-                else
-                {
-                    <tr>
-                        <td colspan="9" style="text-align: center; padding: 20px;">No recent bookings found.</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+                    </thead>
+                    <tbody>
+                        @if (recentBookings.Any())
+                        {
+                            int sno = 1;
+                            foreach (var booking in recentBookings)
+                            {
+                                var stLower = booking.Status.ToLower().Replace(" ", "");
+                                var badgeClass = stLower switch {
+                                    "confirmed"  => "md-status-confirmed",
+                                    "checkedin"  => "md-status-checkedin",
+                                    "checkedout" => "md-status-checkedout",
+                                    "cancelled"  => "md-status-cancelled",
+                                    "pending"    => "md-status-pending",
+                                    _            => "md-status-default"
+                                };
+                                <tr>
+                                    <td>@(sno++)</td>
+                                    <td><strong>@booking.BookingNumber</strong></td>
+                                    <td>@booking.GuestName</td>
+                                    <td>@booking.RoomType</td>
+                                    <td>@booking.CheckInDate.ToString("dd MMM")</td>
+                                    <td>@booking.CheckOutDate.ToString("dd MMM")</td>
+                                    <td>₹@booking.TotalAmount.ToString("N0")</td>
+                                    <td class="@(booking.BalanceAmount > 0 ? "md-balance-due" : "md-balance-ok")">
+                                        @(booking.BalanceAmount > 0 ? "₹" + booking.BalanceAmount.ToString("N0") : "✓ Settled")
+                                    </td>
+                                    <td><span class="md-status-badge @badgeClass">@booking.Status</span></td>
+                                    <td><a href="@Url.Action("Details", "Booking", new { bookingNumber = booking.BookingNumber })" class="md-action-btn"><i class="fas fa-eye"></i> View</a></td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr><td colspan="10"><div class="md-no-data"><i class="fas fa-calendar-times"></i>No active bookings found</div></td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="md-card">
+            <div class="md-card-title"><i class="fas fa-tachometer-alt" style="color:#1a2a6c;margin-right:.4rem"></i>Quick Stats</div>
+            <div class="md-stat-row">
+                <span class="md-stat-label"><i class="fas fa-rupee-sign" style="color:#fdbb2d"></i> Total Revenue</span>
+                <span class="md-stat-value">₹@(statistics?.Revenue.ToString("N0") ?? "0")</span>
+            </div>
+            <div class="md-stat-row">
+                <span class="md-stat-label"><i class="fas fa-users" style="color:#1a2a6c"></i> Total Guests</span>
+                <span class="md-stat-value">@(statistics?.TotalGuests.ToString("N0") ?? "0")</span>
+            </div>
+            <div class="md-stat-row">
+                <span class="md-stat-label"><i class="fas fa-bed" style="color:#b21f1f"></i> Occupancy</span>
+                <span class="md-stat-value">@(statistics?.OccupancyRate.ToString("N1") ?? "0")%</span>
+            </div>
+            <div class="md-stat-row">
+                <span class="md-stat-label"><i class="fas fa-door-open" style="color:#28a745"></i> Check-ins Today</span>
+                <span class="md-stat-value">@(statistics?.CheckInsToday ?? 0)</span>
+            </div>
+            <div class="md-stat-row">
+                <span class="md-stat-label"><i class="fas fa-check-double" style="color:#3730a3"></i> Checked Out</span>
+                <span class="md-stat-value">@checkedOut</span>
+            </div>
+            <div class="md-stat-row">
+                <span class="md-stat-label"><i class="fas fa-chart-line" style="color:#e65100"></i> Avg Daily Revenue</span>
+                <span class="md-stat-value">₹@avgRevenue.ToString("N0")</span>
+            </div>
+            <div class="md-stat-row">
+                <span class="md-stat-label"><i class="fas fa-exclamation-triangle" style="color:#dc3545"></i> Balance Due</span>
+                <span class="md-stat-value" style="color:#dc3545">₹@totalBalance.ToString("N0")</span>
+            </div>
+            <div class="md-stat-row">
+                <span class="md-stat-label"><i class="fas fa-star" style="color:#fdbb2d"></i> Top Room Type</span>
+                <span class="md-stat-value">@topRoomType</span>
+            </div>
+        </div>
     </div>
+
 </div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        let revenueChart;
-        let roomTypeChart;
-        
-        const revenueData = @Html.Raw(Json.Serialize(revenueData));
-        const roomTypeData = @Html.Raw(Json.Serialize(roomTypeDistribution));
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+let revenueChart, roomTypeChart, roomTypeBarChart;
 
-        document.addEventListener('DOMContentLoaded', function () {
-            initializeRevenueChart(revenueData);
-            initializeRoomTypeChart(roomTypeData);
-        });
+const revenueData    = @Html.Raw(Json.Serialize(revenueData));
+const roomTypeData   = @Html.Raw(Json.Serialize(roomTypeDist));
+const rtColors       = ['#1565c0','#c62828','#f57c00','#2e7d32','#00695c','#6a1b9a','#ad1457','#e65100'];
 
-        function initializeRevenueChart(data) {
-            const revenueCtx = document.getElementById('revenueChart')?.getContext('2d');
-            if (!revenueCtx) return;
+document.addEventListener('DOMContentLoaded', function () {
+    initRevenue(revenueData);
+    initDonut(roomTypeData);
+    initRoomBar(roomTypeData);
+});
 
-            const labels = data.map(d => {
-                const date = new Date(d.date);
-                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            });
-            const values = data.map(d => d.revenue);
-
-            if (revenueChart) {
-                revenueChart.destroy();
-            }
-
-            revenueChart = new Chart(revenueCtx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Revenue (₹)',
-                        data: values,
-                        borderColor: '#1a2a6c',
-                        backgroundColor: 'rgba(26, 42, 108, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { 
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return '₹' + context.parsed.y.toLocaleString();
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: { 
-                            beginAtZero: true, 
-                            grid: { drawBorder: false },
-                            ticks: {
-                                callback: function(value) {
-                                    return '₹' + value.toLocaleString();
-                                }
-                            }
-                        },
-                        x: { grid: { display: false } }
-                    }
-                }
-            });
+function initRevenue(data) {
+    const ctx = document.getElementById('revenueChart')?.getContext('2d');
+    if (!ctx) return;
+    const labels = data.map(d => { const dt = new Date(d.date); return dt.toLocaleDateString('en-IN', { month:'short', day:'numeric' }); });
+    const values = data.map(d => d.revenue);
+    if (revenueChart) revenueChart.destroy();
+    revenueChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { type:'bar',  label:'Revenue', data: values,
+                  backgroundColor: values.map((_,i) => `hsla(${210 + i*12},80%,55%,0.65)`),
+                  borderColor: values.map((_,i) => `hsla(${210 + i*12},80%,45%,1)`),
+                  borderWidth:1, borderRadius:6, order:2 },
+                { type:'line', label:'Trend',   data: values,
+                  borderColor:'#f57c00', backgroundColor:'rgba(245,124,0,.08)',
+                  borderWidth:3, tension:.4, fill:true, pointRadius:4,
+                  pointBackgroundColor:'#fff', pointBorderColor:'#f57c00', pointBorderWidth:2, order:1 }
+            ]
+        },
+        options: {
+            responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{ display:false },
+                tooltip:{ callbacks:{ label: c => '₹' + c.parsed.y.toLocaleString('en-IN') }}},
+            scales:{ y:{ beginAtZero:true, grid:{ color:'#f0f2f8' },
+                         ticks:{ callback: v => '₹' + v.toLocaleString('en-IN') }},
+                     x:{ grid:{ display:false }} }
         }
+    });
+}
 
-        function initializeRoomTypeChart(data) {
-            const roomTypeCtx = document.getElementById('roomTypeChart')?.getContext('2d');
-            if (!roomTypeCtx) return;
-
-            const labels = data.map(d => d.typeName);
-            const values = data.map(d => d.bookingCount);
-            const colors = ['#1a2a6c', '#b21f1f', '#fdbb2d', '#28a745', '#17a2b8', '#6c757d'];
-
-            if (roomTypeChart) {
-                roomTypeChart.destroy();
-            }
-
-            roomTypeChart = new Chart(roomTypeCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: values,
-                        backgroundColor: colors.slice(0, labels.length),
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { 
-                        legend: { position: 'bottom' },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.parsed || 0;
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = ((value / total) * 100).toFixed(1);
-                                    return label + ': ' + value + ' (' + percentage + '%)';
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+function initDonut(data) {
+    const ctx = document.getElementById('roomTypeChart')?.getContext('2d');
+    if (!ctx) return;
+    const labels = data.map(d => d.typeName);
+    const values = data.map(d => d.bookingCount);
+    if (roomTypeChart) roomTypeChart.destroy();
+    roomTypeChart = new Chart(ctx, {
+        type:'doughnut',
+        data:{ labels, datasets:[{ data:values, backgroundColor:rtColors.slice(0,labels.length), borderWidth:2, borderColor:'#fff' }] },
+        options:{
+            responsive:true, maintainAspectRatio:false, cutout:'60%',
+            plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, font:{ size:11 }}},
+                tooltip:{ callbacks:{ label: c => {
+                    const total = c.dataset.data.reduce((a,b)=>a+b,0);
+                    return c.label + ': ' + c.parsed + ' (' + ((c.parsed/total)*100).toFixed(1) + '%)';
+                }}}}
         }
+    });
+}
 
-        async function updateRevenueChart(days) {
-            try {
-                const response = await fetch(`@Url.Action("GetRevenueData", "Dashboard")?days=${days}`);
-                const data = await response.json();
-                initializeRevenueChart(data);
-            } catch (error) {
-                console.error('Error updating revenue chart:', error);
-            }
+function initRoomBar(data) {
+    const ctx = document.getElementById('roomTypeBarChart')?.getContext('2d');
+    if (!ctx) return;
+    const labels = data.map(d => d.typeName);
+    const values = data.map(d => d.bookingCount);
+    if (roomTypeBarChart) roomTypeBarChart.destroy();
+    roomTypeBarChart = new Chart(ctx, {
+        type:'bar',
+        data:{ labels, datasets:[{ label:'Bookings', data:values,
+               backgroundColor: rtColors.slice(0,labels.length).map(c => c + 'cc'),
+               borderColor: rtColors.slice(0,labels.length), borderWidth:1.5, borderRadius:6 }] },
+        options:{
+            responsive:true, maintainAspectRatio:false, indexAxis:'y',
+            plugins:{ legend:{ display:false },
+                tooltip:{ callbacks:{ label: c => c.parsed.x + ' Bookings' }}},
+            scales:{ x:{ beginAtZero:true, grid:{ color:'#f0f2f8' }, ticks:{ stepSize:1 }},
+                     y:{ grid:{ display:false }} }
         }
-    </script>
+    });
+}
+
+async function updateRevenueChart(days) {
+    try {
+        const res = await fetch('@Url.Action("GetRevenueData","Dashboard")?days=' + days);
+        const data = await res.json();
+        initRevenue(data);
+    } catch(e) { console.error(e); }
+}
+</script>
 }

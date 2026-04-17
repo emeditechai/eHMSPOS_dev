@@ -128,6 +128,8 @@ builder.Services.AddScoped<IUserBranchRoleRepository, UserBranchRoleRepository>(
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<INavMenuRepository, NavMenuRepository>();
 builder.Services.AddScoped<IRoleNavMenuRepository, RoleNavMenuRepository>();
+builder.Services.AddScoped<IRoleDashboardConfigRepository, RoleDashboardConfigRepository>();
+builder.Services.AddScoped<IPaymentDashboardRepository, PaymentDashboardRepository>();
 builder.Services.AddScoped<IAuthorizationResourceRepository, AuthorizationResourceRepository>();
 builder.Services.AddScoped<IAuthorizationPermissionRepository, AuthorizationPermissionRepository>();
 builder.Services.AddScoped<IAuthorizationMatrixService, AuthorizationMatrixService>();

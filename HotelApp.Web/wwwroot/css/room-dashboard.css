@@ -82,72 +82,102 @@
 .status-cards {
     display: grid;
     grid-template-columns: repeat(4, 1fr) !important;
-    gap: 10px;
-    margin-bottom: 14px;
+    gap: .75rem;
+    margin-bottom: .9rem;
 }
 
+/* ── matches Home Dashboard md-kpi card exactly ── */
 .status-card {
-    background: #ffffff;
-    padding: 12px 14px;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(26, 42, 108, 0.10);
-    min-width: 0;
-    border: 1px solid rgba(102, 126, 234, 0.18);
-    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    border-radius: 16px;
+    padding: 1.1rem 1.2rem;
+    color: #fff;
     position: relative;
     overflow: hidden;
+    box-shadow: 0 6px 20px rgba(0,0,0,.14);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 110px;
+    min-width: 0;
+    transition: transform .15s, box-shadow .15s;
 }
 
+/* bubble top-right */
 .status-card::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 5px;
-    background: linear-gradient(90deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%);
+    right: -20px;
+    top: -20px;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.13);
 }
 
+/* bubble bottom-left */
 .status-card::after {
     content: '';
     position: absolute;
-    inset: 0;
-    background: radial-gradient(80% 80% at 85% 10%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 60%);
+    left: -15px;
+    bottom: -25px;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.07);
     pointer-events: none;
 }
 
 .status-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 14px 34px rgba(102, 126, 234, 0.20);
-    border-color: rgba(102, 126, 234, 0.35);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 28px rgba(0,0,0,.18);
 }
 
 .status-card h3 {
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.88);
+    font-size: .7rem;
+    color: rgba(255,255,255,.9);
     font-weight: 700;
-    margin-bottom: 8px;
+    margin-bottom: .15rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: .06em;
     position: relative;
     z-index: 1;
 }
 
 .status-card .value {
-    font-size: 1.6rem;
+    font-size: 1.7rem;
     font-weight: 800;
-    margin-bottom: 4px;
-    color: #ffffff;
-    letter-spacing: 0.3px;
+    line-height: 1.1;
+    color: #fff;
+    margin: .2rem 0;
     position: relative;
     z-index: 1;
 }
 
 .status-card .change {
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.85);
+    font-size: .72rem;
+    color: rgba(255,255,255,.85);
     position: relative;
     z-index: 1;
+}
+
+/* large translucent icon — add <i class="fas fa-xxx sc-icon"> */
+.sc-icon {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 2.2rem;
+    opacity: .18;
+    z-index: 0;
+}
+
+/* small sub-label below value */
+.sc-sub {
+    font-size: .7rem;
+    opacity: .8;
+    position: relative;
+    z-index: 1;
+    margin-top: .05rem;
 }
 
 /* Change indicators with arrows */
@@ -184,27 +214,11 @@
     border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
-/* Colorful, theme-aligned card variants */
-.status-card.available {
-    background: linear-gradient(135deg, #1fa97a 0%, #18c08f 45%, #0fb7ff 130%);
-}
-
-.status-card.occupied {
-    background: linear-gradient(135deg, #ff4b7d 0%, #ff6a00 55%, #ffb703 140%);
-}
-
-.status-card.maintenance {
-    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 55%, #ec4899 140%);
-}
-
-.status-card.cleaning {
-    background: linear-gradient(135deg, #1d4ed8 0%, #2dd4bf 60%, #22c55e 160%);
-}
-
-.status-card.available::before { background: linear-gradient(90deg, rgba(255,255,255,0.55), rgba(255,255,255,0.15)); }
-.status-card.occupied::before { background: linear-gradient(90deg, rgba(255,255,255,0.55), rgba(255,255,255,0.15)); }
-.status-card.maintenance::before { background: linear-gradient(90deg, rgba(255,255,255,0.55), rgba(255,255,255,0.15)); }
-.status-card.cleaning::before { background: linear-gradient(90deg, rgba(255,255,255,0.55), rgba(255,255,255,0.15)); }
+/* ── Colorful card variants — match Home Dashboard md-kpi gradients ── */
+.status-card.available   { background: linear-gradient(140deg,#2e7d32,#66bb6a); }
+.status-card.occupied    { background: linear-gradient(140deg,#c62828,#ef5350); }
+.status-card.maintenance { background: linear-gradient(140deg,#6a1b9a,#ab47bc); }
+.status-card.cleaning    { background: linear-gradient(140deg,#1565c0,#42a5f5); }
 
 /* Occupancy Bar Styles */
 .occupancy-bar-container {
@@ -324,21 +338,10 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.legend-dot.available {
-    background: linear-gradient(135deg, #1fa97a 0%, #18c08f 100%);
-}
-
-.legend-dot.occupied {
-    background: linear-gradient(135deg, #ff4b7d 0%, #ff6a00 100%);
-}
-
-.legend-dot.maintenance {
-    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
-}
-
-.legend-dot.cleaning {
-    background: linear-gradient(135deg, #1d4ed8 0%, #2dd4bf 100%);
-}
+.legend-dot.available   { background: linear-gradient(140deg,#2e7d32,#66bb6a); }
+.legend-dot.occupied    { background: linear-gradient(140deg,#c62828,#ef5350); }
+.legend-dot.maintenance { background: linear-gradient(140deg,#6a1b9a,#ab47bc); }
+.legend-dot.cleaning    { background: linear-gradient(140deg,#1565c0,#42a5f5); }
 
 /* Room Grid */
 .room-content {

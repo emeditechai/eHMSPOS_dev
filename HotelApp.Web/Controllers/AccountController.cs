@@ -18,8 +18,9 @@ public class AccountController : Controller
     private readonly IUserRoleRepository _userRoleRepository;
     private readonly IUserRepository _userRepository;
     private readonly IUserBranchRoleRepository _userBranchRoleRepository;
+    private readonly IRoleDashboardConfigRepository _roleDashboardConfigRepository;
 
-    public AccountController(IAuthService authService, IBranchRepository branchRepository, IUserBranchRepository userBranchRepository, IUserRoleRepository userRoleRepository, IUserRepository userRepository, IUserBranchRoleRepository userBranchRoleRepository)
+    public AccountController(IAuthService authService, IBranchRepository branchRepository, IUserBranchRepository userBranchRepository, IUserRoleRepository userRoleRepository, IUserRepository userRepository, IUserBranchRoleRepository userBranchRoleRepository, IRoleDashboardConfigRepository roleDashboardConfigRepository)
     {
         _authService = authService;
         _branchRepository = branchRepository;
@@ -27,6 +28,22 @@ public class AccountController : Controller
         _userRoleRepository = userRoleRepository;
         _userRepository = userRepository;
         _userBranchRoleRepository = userBranchRoleRepository;
+        _roleDashboardConfigRepository = roleDashboardConfigRepository;
+    }
+
+    private async Task<IActionResult> RedirectToRoleDashboardAsync(int roleId, string? returnUrl = null)
+    {
+        if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+            return Redirect(returnUrl);
+
+        if (roleId > 0)
+        {
+            var config = await _roleDashboardConfigRepository.GetByRoleIdAsync(roleId);
+            if (config != null && config.IsActive)
+                return RedirectToAction(config.DashboardAction, config.DashboardController);
+        }
+
+        return RedirectToAction("Index", "Dashboard");
     }
 
     [HttpGet]
@@ -202,12 +219,7 @@ public class AccountController : Controller
             return RedirectToAction(nameof(SelectRole));
         }
 
-        if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
-        {
-            return Redirect(returnUrl);
-        }
-
-        return RedirectToAction("Index", "Dashboard");
+        return await RedirectToRoleDashboardAsync(selectedRoleId, returnUrl);
     }
 
     [HttpGet]
@@ -229,7 +241,8 @@ public class AccountController : Controller
         var currentUsername = User.Identity?.Name ?? "";
         if (currentUsername.Equals("admin", StringComparison.OrdinalIgnoreCase))
         {
-            return RedirectToAction("Index", "Dashboard");
+            var adminRoleId = HttpContext.Session.GetInt32("SelectedRoleId") ?? 0;
+            return await RedirectToRoleDashboardAsync(adminRoleId);
         }
 
         var branchSpecificRoles = branchId > 0
@@ -241,7 +254,8 @@ public class AccountController : Controller
 
         if (roles.Count <= 1)
         {
-            return RedirectToAction("Index", "Dashboard");
+            var currentRoleId = roles.Count == 1 ? roles[0].Id : (HttpContext.Session.GetInt32("SelectedRoleId") ?? 0);
+            return await RedirectToRoleDashboardAsync(currentRoleId);
         }
 
         var displayName = User.FindFirst("displayName")?.Value ?? User.Identity?.Name ?? "User";
@@ -285,12 +299,7 @@ public class AccountController : Controller
         var selectedRoleName = roles.First(r => r.Id == model.SelectedRoleId).Name;
         await UpdateSelectedRoleAsync(model.SelectedRoleId, selectedRoleName);
 
-        if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
-        {
-            return Redirect(model.ReturnUrl);
-        }
-
-        return RedirectToAction("Index", "Dashboard");
+        return await RedirectToRoleDashboardAsync(model.SelectedRoleId, model.ReturnUrl);
     }
 
     [HttpPost]

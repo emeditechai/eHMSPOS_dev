@@ -1,0 +1,133 @@
+@model HotelApp.Web.ViewModels.RoleDashboardConfigIndexViewModel
+@{
+    ViewData["Title"] = "Role Dashboard Configuration";
+}
+
+@section Styles {
+<style>
+    .rdc-page { padding: 1.5rem; }
+    .rdc-hero {
+        background: linear-gradient(135deg, #1a2a6c 0%, #2d6a9f 60%, #56a0d3 100%);
+        border-radius: 14px; padding: 1.75rem 2rem; margin-bottom: 1.75rem;
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 1.5rem; flex-wrap: wrap;
+        box-shadow: 0 6px 24px rgba(26,42,108,0.22);
+        position: relative; overflow: hidden;
+    }
+    .rdc-hero::before { content:''; position:absolute; top:-40px; right:-40px; width:200px; height:200px; background:rgba(255,255,255,0.06); border-radius:50%; }
+    .rdc-hero-left { display:flex; align-items:center; gap:1.25rem; z-index:1; }
+    .rdc-hero-icon {
+        width:56px; height:56px; border-radius:14px;
+        background:rgba(255,255,255,0.18); border:2px solid rgba(255,255,255,0.3);
+        display:flex; align-items:center; justify-content:center;
+        font-size:1.4rem; color:#fff; flex-shrink:0;
+    }
+    .rdc-hero-title { color:#fff; font-size:1.35rem; font-weight:700; margin:0 0 .2rem; }
+    .rdc-hero-sub   { color:rgba(255,255,255,.78); font-size:.875rem; margin:0; }
+    .rdc-card { background:#fff; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04); overflow:hidden; }
+    .rdc-card-header { display:flex; align-items:center; gap:.75rem; padding:1rem 1.5rem; border-bottom:1px solid #f0f2f5; background:#fafbfd; }
+    .rdc-card-header-icon { width:34px; height:34px; border-radius:8px; background:#1a2a6c; display:flex; align-items:center; justify-content:center; color:#fff; font-size:.85rem; flex-shrink:0; }
+    .rdc-card-header h3 { margin:0; font-size:.95rem; font-weight:700; color:#1e293b; }
+    .rdc-card-header span { margin-left:auto; font-size:.8rem; color:#64748b; }
+    .rdc-table { width:100%; border-collapse:collapse; }
+    .rdc-table thead tr { background:#f8fafc; }
+    .rdc-table th { padding:.75rem 1.25rem; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#64748b; border-bottom:1px solid #e9edf3; white-space:nowrap; }
+    .rdc-table td { padding:.9rem 1.25rem; border-bottom:1px solid #f0f2f5; font-size:.875rem; color:#374151; vertical-align:middle; }
+    .rdc-table tbody tr:last-child td { border-bottom:none; }
+    .rdc-table tbody tr:hover td { background:#f8fafc; }
+    .role-badge { display:inline-flex; align-items:center; gap:.4rem; padding:.28rem .75rem; border-radius:20px; font-size:.78rem; font-weight:600; background:#e0e7ff; color:#3730a3; }
+    .role-badge i { font-size:.75rem; }
+    .dash-badge { display:inline-flex; align-items:center; gap:.4rem; padding:.28rem .75rem; border-radius:8px; font-size:.8rem; font-weight:600; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
+    .dash-badge i { font-size:.75rem; }
+    .status-active   { display:inline-flex; align-items:center; gap:.3rem; padding:.2rem .6rem; border-radius:20px; font-size:.75rem; font-weight:700; background:#dcfce7; color:#166534; }
+    .status-inactive { display:inline-flex; align-items:center; gap:.3rem; padding:.2rem .6rem; border-radius:20px; font-size:.75rem; font-weight:700; background:#fee2e2; color:#991b1b; }
+    .btn-edit-sm { display:inline-flex; align-items:center; gap:.35rem; padding:.35rem .85rem; border-radius:7px; background:#1a2a6c; color:#fff; font-size:.78rem; font-weight:600; text-decoration:none; border:none; cursor:pointer; transition:background .2s; }
+    .btn-edit-sm:hover { background:#2d3d8f; color:#fff; }
+    @@media (max-width:767px) { .rdc-table th:nth-child(3), .rdc-table td:nth-child(3) { display:none; } }
+</style>
+}
+
+<div class="rdc-page">
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="rdc-hero">
+        <div class="rdc-hero-left">
+            <div class="rdc-hero-icon"><i class="fas fa-tachometer-alt"></i></div>
+            <div>
+                <div class="rdc-hero-title">Role Dashboard Configuration</div>
+                <div class="rdc-hero-sub">Configure which dashboard each role lands on after login</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="rdc-card">
+        <div class="rdc-card-header">
+            <div class="rdc-card-header-icon"><i class="fas fa-list"></i></div>
+            <h3>All Role Mappings</h3>
+            <span>@Model.Configs.Count() role(s)</span>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="rdc-table">
+                <thead>
+                    <tr>
+                        <th>Role</th>
+                        <th>Dashboard</th>
+                        <th>Display Name</th>
+                        <th>Route</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model.Configs)
+                    {
+                        <tr>
+                            <td>
+                                <span class="role-badge">
+                                    <i class="fas fa-user-tag"></i>@c.RoleName
+                                </span>
+                            </td>
+                            <td>
+                                <span class="dash-badge">
+                                    <i class="fas fa-desktop"></i>@(string.IsNullOrWhiteSpace(c.DisplayName) ? c.DashboardController + "/" + c.DashboardAction : c.DisplayName)
+                                </span>
+                            </td>
+                            <td style="color:#64748b;font-size:.82rem;">@(c.DisplayName ?? "—")</td>
+                            <td style="font-family:monospace;font-size:.8rem;color:#475569;">/@c.DashboardController/@c.DashboardAction</td>
+                            <td>
+                                @if (c.IsActive)
+                                {
+                                    <span class="status-active"><i class="fas fa-circle" style="font-size:.5rem;"></i> Active</span>
+                                }
+                                else
+                                {
+                                    <span class="status-inactive"><i class="fas fa-circle" style="font-size:.5rem;"></i> Inactive</span>
+                                }
+                            </td>
+                            <td>
+                                <a asp-action="Edit" asp-route-roleId="@c.RoleId" class="btn-edit-sm">
+                                    <i class="fas fa-pen"></i> Edit
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>

@@ -6,26 +6,67 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
+<style>
+/* ── Booking page hero bar ── */
+.bk-hero{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.7rem;
+         background:linear-gradient(135deg,#1a2a6c 0%,#2d3e9e 50%,#b21f1f 100%);
+         border-radius:16px;padding:1rem 1.4rem;margin-bottom:.9rem;
+         box-shadow:0 6px 24px rgba(26,42,108,.22);position:relative;overflow:hidden;}
+.bk-hero::before{content:'';position:absolute;right:-60px;top:-60px;width:200px;height:200px;background:rgba(255,255,255,.07);border-radius:50%;}
+.bk-hero::after {content:'';position:absolute;left:10%;bottom:-70px;width:240px;height:240px;background:rgba(255,255,255,.04);border-radius:50%;}
+.bk-hero-left{display:flex;align-items:center;gap:1rem;z-index:1;}
+.bk-hero-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+              background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.3);color:#fff;font-size:1.4rem;flex-shrink:0;}
+.bk-hero-title{font-size:1.3rem;font-weight:800;color:#fff;letter-spacing:-.2px;}
+.bk-hero-sub{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-top:.25rem;}
+.bk-badge{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .6rem;border-radius:20px;font-size:.72rem;font-weight:700;}
+.bk-badge-branch{background:rgba(255,255,255,.18);color:#fff;}
+.bk-badge-b2c{background:rgba(100,255,200,.18);color:#a7f3d0;}
+.bk-badge-b2b{background:rgba(255,220,80,.22);color:#ffe082;}
+.bk-today{font-size:.75rem;color:rgba(255,255,255,.7);}
+.bk-hero-right{display:flex;gap:.55rem;z-index:1;flex-wrap:wrap;}
+.bk-hero-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.45rem 1rem;border-radius:9px;font-size:.81rem;font-weight:700;text-decoration:none;transition:all .18s;}
+.bk-hero-btn-pri{background:#fff;color:#1a2a6c;}
+.bk-hero-btn-pri:hover{background:#e8f0fe;color:#1a2a6c;text-decoration:none;transform:translateY(-1px);}
+.bk-hero-btn-sec{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);}
+.bk-hero-btn-sec:hover{background:rgba(255,255,255,.25);color:#fff;text-decoration:none;}
+</style>
 }
 
-<div class="page-header">
-    <h2><i class="fas fa-calendar-check"></i> @(isB2B ? "B2B Bookings Dashboard" : "Bookings Dashboard")</h2>
-    <div style="display:flex; gap:10px; align-items:center;">
+@{
+    var bkBranch = ViewBag.CurrentBranchName as string ?? "Head Office";
+    var bkRoleName = ViewBag.SelectedRoleName as string ?? User.Claims.FirstOrDefault(c => c.Type == "SelectedRoleName")?.Value ?? "";
+}
+<div class="bk-hero">
+    <div class="bk-hero-left">
+        <div class="bk-hero-icon"><i class="fas fa-@(isB2B ? "briefcase" : "calendar-check")"></i></div>
+        <div>
+            <div class="bk-hero-title">@(isB2B ? "B2B Bookings" : "Bookings Dashboard")</div>
+            <div class="bk-hero-sub">
+                <span class="bk-badge bk-badge-branch"><i class="fas fa-code-branch"></i> @bkBranch</span>
+                @if (isB2B) { <span class="bk-badge bk-badge-b2b"><i class="fas fa-building"></i> B2B</span> }
+                else        { <span class="bk-badge bk-badge-b2c"><i class="fas fa-user"></i> B2C</span> }
+                @if (!string.IsNullOrWhiteSpace(bkRoleName)) { <span class="bk-badge bk-badge-b2c"><i class="fas fa-id-badge"></i> @bkRoleName</span> }
+                <span class="bk-today"><i class="fas fa-calendar"></i> @DateTime.Today.ToString("dddd, dd MMM yyyy")</span>
+            </div>
+        </div>
+    </div>
+    <div class="bk-hero-right">
         @if (isB2B)
         {
-            <a asp-action="Create" asp-controller="B2BBooking" class="btn-create">
+            <a asp-action="Create" asp-controller="B2BBooking" class="bk-hero-btn bk-hero-btn-pri">
                 <i class="fas fa-plus"></i> New B2B Booking
             </a>
-            <a asp-action="List" asp-controller="Booking" class="btn-create" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">
+            <a asp-action="List" asp-controller="Booking" class="bk-hero-btn bk-hero-btn-sec">
                 <i class="fas fa-list"></i> All Bookings
             </a>
         }
         else
         {
-            <a asp-action="Create" class="btn-create">
+            <a asp-action="Create" class="bk-hero-btn bk-hero-btn-pri">
                 <i class="fas fa-plus"></i> New Booking
             </a>
-            <a asp-action="List" asp-controller="Booking" asp-route-customerType="B2B" class="btn-create" style="background:linear-gradient(135deg,#f59e0b,#d97706);">
+            <a asp-action="List" asp-controller="Booking" asp-route-customerType="B2B" class="bk-hero-btn bk-hero-btn-sec">
                 <i class="fas fa-building"></i> B2B Bookings
             </a>
         }
@@ -61,26 +102,30 @@
     </div>
 }
 
-<!-- Dashboard Cards (match Rooms Dashboard style) -->
-<div class="status-cards booking-status-cards">
+<div class="status-cards">
     <div class="status-card available">
+        <i class="fas fa-calendar-plus sc-icon"></i>
         <h3>Today's Bookings</h3>
         <div class="value">@Model.TodayBookingCount</div>
+        <div class="sc-sub">New bookings today</div>
     </div>
-
     <div class="status-card occupied">
-        <h3>Today's Advance Amount</h3>
+        <i class="fas fa-rupee-sign sc-icon"></i>
+        <h3>Today's Advance</h3>
         <div class="value">₹@Model.TodayAdvanceAmount.ToString("N0")</div>
+        <div class="sc-sub">Advance collected</div>
     </div>
-
     <div class="status-card maintenance">
+        <i class="fas fa-sign-in-alt sc-icon"></i>
         <h3>Today's Check-ins</h3>
         <div class="value">@Model.TodayCheckInCount</div>
+        <div class="sc-sub">Arriving today</div>
     </div>
-
     <div class="status-card cleaning">
+        <i class="fas fa-sign-out-alt sc-icon"></i>
         <h3>Today's Check-outs</h3>
         <div class="value">@Model.TodayCheckOutCount</div>
+        <div class="sc-sub">Departing today</div>
     </div>
 </div>
 

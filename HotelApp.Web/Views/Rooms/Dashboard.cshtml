@@ -659,202 +659,202 @@
             color: #667eea;
         }
         
-        /* Responsive breakpoints for availability cards */
-        @@media (min-width: 1600px) {
-            .availability-cards {
-                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            }
+        /* ===== NEW: Hero + KPI Strip + Analytics ===== */
+        .rd-hero {
+            display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.7rem;
+            background:linear-gradient(135deg,#1a2a6c 0%,#2563eb 50%,#0d9488 100%);
+            border-radius:16px; padding:1rem 1.4rem; margin-bottom:.9rem;
+            box-shadow:0 6px 24px rgba(26,42,108,.25); position:relative; overflow:hidden;
         }
-        
-        @@media (max-width: 1200px) {
-            .availability-cards {
-                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            }
-        }
-        
-        @@media (max-width: 768px) {
-            .availability-cards {
-                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-            }
-        }
-        
-        @@media (max-width: 480px) {
-            .availability-cards {
-                grid-template-columns: 1fr;
-            }
-        }
+        .rd-hero::before { content:''; position:absolute; right:-60px; top:-60px; width:200px; height:200px;
+                           background:rgba(255,255,255,.07); border-radius:50%; }
+        .rd-hero::after  { content:''; position:absolute; left:10%; bottom:-70px; width:240px; height:240px;
+                           background:rgba(255,255,255,.04); border-radius:50%; }
+        .rd-hero-left { display:flex; align-items:center; gap:1rem; z-index:1; }
+        .rd-hero-icon { width:54px; height:54px; border-radius:14px; display:flex; align-items:center; justify-content:center;
+                        background:rgba(255,255,255,.18); border:1.5px solid rgba(255,255,255,.3);
+                        color:#fff; font-size:1.5rem; flex-shrink:0; }
+        .rd-hero-title { font-size:1.3rem; font-weight:800; color:#fff; letter-spacing:-.2px; }
+        .rd-hero-sub   { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; margin-top:.25rem; }
+        .rd-badge      { display:inline-flex; align-items:center; gap:.3rem; padding:.2rem .6rem; border-radius:20px; font-size:.72rem; font-weight:700; }
+        .rd-badge-role   { background:rgba(255,255,255,.18); color:#fff; }
+        .rd-badge-branch { background:rgba(255,220,80,.22); color:#ffe082; }
+        .rd-badge-occ    { background:rgba(100,255,200,.18); color:#a7f3d0; }
+        .rd-today        { font-size:.75rem; color:rgba(255,255,255,.7); }
+        .rd-hero-right { display:flex; gap:.55rem; z-index:1; flex-wrap:wrap; }
+        .rd-hero-btn { display:inline-flex; align-items:center; gap:.4rem; padding:.45rem 1rem; border-radius:9px; font-size:.81rem; font-weight:700; text-decoration:none; transition:all .18s; }
+        .rd-hero-btn-pri { background:#fff; color:#1a2a6c; }
+        .rd-hero-btn-pri:hover { background:#e8f0fe; color:#1a2a6c; text-decoration:none; transform:translateY(-1px); }
+        .rd-hero-btn-sec { background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.3); }
+        .rd-hero-btn-sec:hover { background:rgba(255,255,255,.25); color:#fff; text-decoration:none; }
+
+        /* KPI Strip */
+        .rd-kpi-strip { display:grid; grid-template-columns:repeat(8,1fr); gap:.6rem; margin-bottom:.9rem; }
+        .rd-kpi-card { border-radius:14px; padding:.85rem 1rem; color:#fff; position:relative; overflow:hidden;
+                       box-shadow:0 4px 16px rgba(0,0,0,.13); display:flex; flex-direction:column; align-items:flex-start; gap:.12rem;
+                       transition:transform .15s,box-shadow .15s; }
+        .rd-kpi-card:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,0,0,.18); }
+        .rd-kpi-card::before { content:''; position:absolute; right:-16px; top:-16px; width:72px; height:72px;
+                                border-radius:50%; background:rgba(255,255,255,.12); }
+        .rd-kpi-ico { font-size:1.5rem; opacity:.22; position:absolute; right:10px; top:50%; transform:translateY(-50%); }
+        .rd-kpi-val { font-size:1.4rem; font-weight:800; line-height:1.1; }
+        .rd-kpi-lbl { font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; opacity:.9; }
+        .rd-kpi-sub { font-size:.64rem; opacity:.75; }
+        .rd-kpi-green  { background:linear-gradient(140deg,#1fa97a,#4ade80); }
+        .rd-kpi-red    { background:linear-gradient(140deg,#c62828,#ef5350); }
+        .rd-kpi-blue   { background:linear-gradient(140deg,#1565c0,#42a5f5); }
+        .rd-kpi-amber  { background:linear-gradient(140deg,#e65100,#ffa726); }
+        .rd-kpi-purple { background:linear-gradient(140deg,#6a1b9a,#ab47bc); }
+        .rd-kpi-teal   { background:linear-gradient(140deg,#00695c,#4db6ac); }
+        .rd-kpi-indigo { background:linear-gradient(140deg,#283593,#5c6bc0); }
+        .rd-kpi-danger { background:linear-gradient(140deg,#b71c1c,#ff5252); }
+        .rd-kpi-orange { background:linear-gradient(140deg,#bf360c,#ff7043); }
+
+        /* Analytics row */
+        .rd-analytics-row { display:grid; grid-template-columns:1fr 2fr 1fr; gap:.8rem; margin-bottom:.9rem; }
+        .rd-analytics-card { background:#fff; border-radius:14px; padding:1rem 1.2rem;
+                             box-shadow:0 2px 10px rgba(0,0,0,.07); }
+        .rd-card-head { font-size:.78rem; font-weight:800; color:#1a2a6c; text-transform:uppercase;
+                        letter-spacing:.05em; margin-bottom:.8rem; padding-bottom:.55rem;
+                        border-bottom:2px solid #eef1f8; display:flex; align-items:center; gap:.4rem; }
+
+        /* Type availability bars */
+        .rd-type-list { display:flex; flex-direction:column; gap:.6rem; }
+        .rd-type-row  { display:grid; grid-template-columns:120px 1fr 48px; align-items:center; gap:.5rem; }
+        .rd-type-name { font-size:.76rem; font-weight:700; color:#374151; display:flex; align-items:center; gap:.4rem;
+                        white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .rd-type-dot  { width:9px; height:9px; border-radius:50%; flex-shrink:0; display:inline-block; }
+        .rd-type-bar-wrap { height:8px; background:#f1f5f9; border-radius:4px; overflow:hidden; }
+        .rd-type-bar  { height:100%; border-radius:4px; transition:width .6s ease; }
+        .rd-type-stat { font-size:.72rem; font-weight:700; color:#1a2a6c; text-align:right; }
+
+        /* Quick stats */
+        .rd-quick-list { display:flex; flex-direction:column; gap:.3rem; }
+        .rd-quick-row  { display:flex; align-items:center; gap:.6rem; padding:.4rem .5rem; border-radius:8px; transition:background .15s; }
+        .rd-quick-row:hover { background:#f8f9ff; }
+        .rd-quick-ico  { width:28px; height:28px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:.75rem; flex-shrink:0; }
+        .rd-quick-lbl  { font-size:.76rem; color:#6c757d; flex:1; }
+        .rd-quick-val  { font-size:.85rem; font-weight:800; }
+
+        @@media(max-width:1400px){ .rd-kpi-strip{grid-template-columns:repeat(4,1fr)} }
+        @@media(max-width:992px) { .rd-analytics-row{grid-template-columns:1fr 1fr} }
+        @@media(max-width:600px) { .rd-kpi-strip{grid-template-columns:repeat(2,1fr)} .rd-analytics-row{grid-template-columns:1fr} }
     </style>
 }
 
 <!-- Main Content -->
 <div class="main-content room-dashboard-fullwidth">
-    <!-- Header -->
-    <div class="room-dashboard-header">
-        <h1><i class="fas fa-bed" style="font-size:0.9em;margin-right:6px;"></i> Room Dashboard</h1>
-        <div class="header-actions">
-            <button class="btn-filter" onclick="window.location.href='@Url.Action("List", "Booking")'">
-                <i class="fas fa-calendar-check"></i>
-                Bookings
-            </button>
-            <button class="btn-new-booking" onclick="window.location.href='@Url.Action("Create", "Booking")'">
-                <i class="fas fa-plus"></i>
-                New Booking
-            </button>
+    @{
+        var alertMessage = ViewBag.AlertMessage as string;
+    }
+    @if (!string.IsNullOrWhiteSpace(alertMessage))
+    {
+        <div class="dashboard-alert-banner">
+            <div class="alert-icon-box">
+                <i class="fas fa-bullhorn"></i>
+            </div>
+            <div class="alert-marquee-wrap">
+                <marquee behavior="scroll" direction="left" scrollamount="4" onmouseover="this.stop();" onmouseout="this.start();">
+                    @alertMessage
+                </marquee>
+            </div>
+        </div>
+    }
+    @{
+        var rdHotelName  = ViewBag.HotelName as string ?? ViewBag.CurrentBranchName as string ?? "Room Dashboard";
+        var rdBranch     = ViewBag.CurrentBranchName as string ?? "";
+        var rdRoleName   = ViewBag.SelectedRoleName as string ?? User.Claims.FirstOrDefault(c => c.Type == "SelectedRoleName")?.Value ?? "Front Desk";
+        var rdToday      = DateTime.Today;
+        var rdTotalRooms = Model.AvailableCount + Model.OccupiedCount + Model.MaintenanceCount + Model.CleaningCount;
+        var rdOccPct     = rdTotalRooms > 0 ? Math.Round((decimal)Model.OccupiedCount / rdTotalRooms * 100, 0) : 0;
+        // Derived from room items
+        var rdCheckoutsToday = Model.Rooms.Count(r => r.CheckOutDate.HasValue && r.CheckOutDate.Value.Date == rdToday);
+        var rdCheckinsToday  = Model.Rooms.Count(r => r.CheckInDate.HasValue  && r.CheckInDate.Value.Date  == rdToday);
+        var rdOverdue        = Model.Rooms.Count(r => r.CheckOutDate.HasValue && r.CheckOutDate.Value.Date  < rdToday);
+        var rdTotalDues      = Model.Rooms.Where(r => r.BalanceAmount.HasValue && r.BalanceAmount > 0).Sum(r => r.BalanceAmount ?? 0);
+        var rdB2BRooms       = Model.Rooms.Count(r => string.Equals(r.BookingSource, "B2B", StringComparison.OrdinalIgnoreCase));
+        var rdAvgRate        = Model.Rooms.Any() ? Math.Round(Model.Rooms.Average(r => r.BaseRate), 0) : 0;
+    }
+
+    <!-- Colorful Hero Bar -->
+    <div class="rd-hero">
+        <div class="rd-hero-left">
+            <div class="rd-hero-icon"><i class="fas fa-hotel"></i></div>
+            <div>
+                <div class="rd-hero-title">@rdHotelName</div>
+                <div class="rd-hero-sub">
+                    <span class="rd-badge rd-badge-role"><i class="fas fa-bed"></i> Room Dashboard</span>
+                    @if (!string.IsNullOrWhiteSpace(rdBranch))
+                    {
+                        <span class="rd-badge rd-badge-branch"><i class="fas fa-code-branch"></i> @rdBranch</span>
+                    }
+                    <span class="rd-badge rd-badge-occ"><i class="fas fa-chart-pie"></i> @rdOccPct% Occupied</span>
+                    <span class="rd-today"><i class="fas fa-calendar"></i> @rdToday.ToString("dddd, dd MMM yyyy")</span>
+                </div>
+            </div>
+        </div>
+        <div class="rd-hero-right">
+            <a href="@Url.Action("RoomAvailabilityCalendar", "Booking")" target="_blank" class="rd-hero-btn rd-hero-btn-sec">
+                <i class="fas fa-calendar-alt"></i> Availability Calendar
+            </a>
+            <a href="@Url.Action("List", "Booking")" class="rd-hero-btn rd-hero-btn-sec">
+                <i class="fas fa-calendar-check"></i> Bookings
+            </a>
+            <a href="@Url.Action("Create", "Booking")" class="rd-hero-btn rd-hero-btn-pri">
+                <i class="fas fa-plus"></i> New Booking
+            </a>
         </div>
     </div>
 
-    <!-- Status Cards -->
-    <div class="status-cards">
-        <div class="status-card available">
-            <h3>Available Rooms</h3>
-            <div class="value">@Model.AvailableCount</div>
-            <div class="change">
-                @{
-                    var totalRooms = Model.AvailableCount + Model.OccupiedCount + Model.MaintenanceCount + Model.CleaningCount;
-                    var availableYesterday = Model.AvailableCount - Model.AvailableChange;
-                    var availablePercentChange = availableYesterday > 0 ? Math.Round((decimal)Model.AvailableChange / availableYesterday * 100, 1) : 0;
-                }
-                @if (Model.AvailableChange > 0)
-                {
-                    <span class="change-indicator positive">
-                        <i class="fas fa-arrow-up"></i> @Model.AvailableChange (@availablePercentChange%)
-                    </span>
-                }
-                else if (Model.AvailableChange < 0)
-                {
-                    <span class="change-indicator negative">
-                        <i class="fas fa-arrow-down"></i> @Model.AvailableChange (@availablePercentChange%)
-                    </span>
-                }
-                else
-                {
-                    <span class="change-indicator neutral">
-                        <i class="fas fa-minus"></i> No change
-                    </span>
-                }
-            </div>
+    <!-- Analytics KPI Strip -->
+    <div class="rd-kpi-strip">
+        <div class="rd-kpi-card rd-kpi-green">
+            <i class="fas fa-door-open rd-kpi-ico"></i>
+            <div class="rd-kpi-val">@Model.AvailableCount</div>
+            <div class="rd-kpi-lbl">Available</div>
+            <div class="rd-kpi-sub">of @rdTotalRooms rooms</div>
         </div>
-        <div class="status-card occupied">
-            <h3>Occupied Rooms</h3>
-            <div class="value">@Model.OccupiedCount</div>
-            <div class="change">
-                @{
-                    var occupiedYesterday = Model.OccupiedCount - Model.OccupiedChange;
-                    var occupiedPercentChange = occupiedYesterday > 0 ? Math.Round((decimal)Model.OccupiedChange / occupiedYesterday * 100, 1) : 0;
-                }
-                @if (Model.OccupiedChange > 0)
-                {
-                    <span class="change-indicator positive">
-                        <i class="fas fa-arrow-up"></i> @Model.OccupiedChange (@occupiedPercentChange%)
-                    </span>
-                }
-                else if (Model.OccupiedChange < 0)
-                {
-                    <span class="change-indicator negative">
-                        <i class="fas fa-arrow-down"></i> @Model.OccupiedChange (@occupiedPercentChange%)
-                    </span>
-                }
-                else
-                {
-                    <span class="change-indicator neutral">
-                        <i class="fas fa-minus"></i> No change
-                    </span>
-                }
-            </div>
+        <div class="rd-kpi-card rd-kpi-red">
+            <i class="fas fa-bed rd-kpi-ico"></i>
+            <div class="rd-kpi-val">@Model.OccupiedCount</div>
+            <div class="rd-kpi-lbl">Occupied</div>
+            <div class="rd-kpi-sub">@rdOccPct% occupancy</div>
         </div>
-        <div class="status-card maintenance">
-            <h3>Under Maintenance</h3>
-            <div class="value">@Model.MaintenanceCount</div>
-            <div class="change">
-                @{
-                    var maintenanceYesterday = Model.MaintenanceCount - Model.MaintenanceChange;
-                    var maintenancePercentChange = maintenanceYesterday > 0 ? Math.Round((decimal)Model.MaintenanceChange / maintenanceYesterday * 100, 1) : 0;
-                }
-                @if (Model.MaintenanceChange > 0)
-                {
-                    <span class="change-indicator positive">
-                        <i class="fas fa-arrow-up"></i> @Model.MaintenanceChange (@maintenancePercentChange%)
-                    </span>
-                }
-                else if (Model.MaintenanceChange < 0)
-                {
-                    <span class="change-indicator negative">
-                        <i class="fas fa-arrow-down"></i> @Model.MaintenanceChange (@maintenancePercentChange%)
-                    </span>
-                }
-                else
-                {
-                    <span class="change-indicator neutral">
-                        <i class="fas fa-minus"></i> No change
-                    </span>
-                }
-            </div>
+        <div class="rd-kpi-card rd-kpi-blue">
+            <i class="fas fa-sign-in-alt rd-kpi-ico"></i>
+            <div class="rd-kpi-val">@rdCheckinsToday</div>
+            <div class="rd-kpi-lbl">Check-ins Today</div>
+            <div class="rd-kpi-sub">Arriving today</div>
         </div>
-        <div class="status-card cleaning">
-            <h3>Cleaning in Progress</h3>
-            <div class="value">@Model.CleaningCount</div>
-            <div class="change">
-                @{
-                    var cleaningYesterday = Model.CleaningCount - Model.CleaningChange;
-                    var cleaningPercentChange = cleaningYesterday > 0 ? Math.Round((decimal)Model.CleaningChange / cleaningYesterday * 100, 1) : 0;
-                }
-                @if (Model.CleaningChange > 0)
-                {
-                    <span class="change-indicator positive">
-                        <i class="fas fa-arrow-up"></i> @Model.CleaningChange (@cleaningPercentChange%)
-                    </span>
-                }
-                else if (Model.CleaningChange < 0)
-                {
-                    <span class="change-indicator negative">
-                        <i class="fas fa-arrow-down"></i> @Model.CleaningChange (@cleaningPercentChange%)
-                    </span>
-                }
-                else
-                {
-                    <span class="change-indicator neutral">
-                        <i class="fas fa-minus"></i> No change
-                    </span>
-                }
-            </div>
+        <div class="rd-kpi-card rd-kpi-amber">
+            <i class="fas fa-sign-out-alt rd-kpi-ico"></i>
+            <div class="rd-kpi-val">@rdCheckoutsToday</div>
+            <div class="rd-kpi-lbl">Check-outs Today</div>
+            <div class="rd-kpi-sub">Departing today</div>
         </div>
-    </div>
-    
-    <!-- Occupancy Percentage Bar -->
-    @{
-        var totalRoomsCount = Model.AvailableCount + Model.OccupiedCount + Model.MaintenanceCount + Model.CleaningCount;
-        var occupancyPercentage = totalRoomsCount > 0 ? Math.Round((decimal)Model.OccupiedCount / totalRoomsCount * 100, 1) : 0;
-    }
-    <div class="occupancy-bar-container">
-        <div class="occupancy-bar-header">
-            <div class="occupancy-info">
-                <h3><i class="fas fa-chart-line"></i> Occupancy</h3>
-                <span class="occupancy-stats">@Model.OccupiedCount / @totalRoomsCount rooms</span>
-            </div>
-            <div class="occupancy-percentage">
-                <span class="percentage-value">@occupancyPercentage%</span>
-            </div>
+        <div class="rd-kpi-card rd-kpi-purple">
+            <i class="fas fa-tools rd-kpi-ico"></i>
+            <div class="rd-kpi-val">@Model.MaintenanceCount</div>
+            <div class="rd-kpi-lbl">Maintenance</div>
+            <div class="rd-kpi-sub">+@Model.CleaningCount cleaning</div>
         </div>
-        <div class="occupancy-bar">
-            <div class="occupancy-bar-fill" style="width: @occupancyPercentage%" data-percentage="@occupancyPercentage"></div>
+        <div class="rd-kpi-card @(rdOverdue > 0 ? "rd-kpi-danger" : "rd-kpi-teal")">
+            <i class="fas fa-exclamation-circle rd-kpi-ico"></i>
+            <div class="rd-kpi-val">@rdOverdue</div>
+            <div class="rd-kpi-lbl">Overdue</div>
+            <div class="rd-kpi-sub">Past checkout date</div>
         </div>
-        <div class="occupancy-legend">
-            <div class="legend-item">
-                <span class="legend-dot available"></span>
-                <span>Available (@Model.AvailableCount)</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-dot occupied"></span>
-                <span>Occupied (@Model.OccupiedCount)</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-dot maintenance"></span>
-                <span>Maintenance (@Model.MaintenanceCount)</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-dot cleaning"></span>
-                <span>Cleaning (@Model.CleaningCount)</span>
-            </div>
+        <div class="rd-kpi-card @(rdTotalDues > 0 ? "rd-kpi-orange" : "rd-kpi-teal")">
+            <i class="fas fa-rupee-sign rd-kpi-ico"></i>
+            <div class="rd-kpi-val">₹@((rdTotalDues >= 1000 ? (rdTotalDues/1000).ToString("N0") + "K" : rdTotalDues.ToString("N0")))</div>
+            <div class="rd-kpi-lbl">Pending Dues</div>
+            <div class="rd-kpi-sub">Outstanding balance</div>
+        </div>
+        <div class="rd-kpi-card rd-kpi-indigo">
+            <i class="fas fa-building rd-kpi-ico"></i>
+            <div class="rd-kpi-val">@rdB2BRooms</div>
+            <div class="rd-kpi-lbl">B2B Rooms</div>
+            <div class="rd-kpi-sub">Corporate occupied</div>
         </div>
     </div>
 
@@ -1218,9 +1218,93 @@
             </div>
         </div>
     </div>
+
+    <!-- Analytics Row: Donut + Distribution bars -->
+    <div class="rd-analytics-row">
+        <div class="rd-analytics-card">
+            <div class="rd-card-head"><i class="fas fa-chart-pie" style="color:#6366f1"></i> Room Status Distribution</div>
+            <div style="position:relative;height:200px"><canvas id="rdDonutChart"></canvas></div>
+        </div>
+        <div class="rd-analytics-card">
+            <div class="rd-card-head"><i class="fas fa-layer-group" style="color:#0d9488"></i> Room Type Availability</div>
+            <div class="rd-type-list">
+                @{
+                    var rdTypeGroups = Model.Rooms.GroupBy(r => r.RoomTypeName).OrderBy(g => g.Key).ToList();
+                    var rdTypeColors = new[] { "#6366f1","#0d9488","#f59e0b","#ef4444","#22c55e","#ec4899","#3b82f6","#8b5cf6" };
+                }
+                @for (int ti = 0; ti < rdTypeGroups.Count; ti++)
+                {
+                    var grp     = rdTypeGroups[ti];
+                    var avail   = grp.Count(r => r.Status == "Available");
+                    var total   = grp.Count();
+                    var occPct  = total > 0 ? avail * 100 / total : 0;
+                    var col     = rdTypeColors[ti % rdTypeColors.Length];
+                    <div class="rd-type-row">
+                        <div class="rd-type-name"><span class="rd-type-dot" style="background:@col"></span>@grp.Key</div>
+                        <div class="rd-type-bar-wrap">
+                            <div class="rd-type-bar" style="width:@(total > 0 ? (avail * 100 / total) : 0)%;background:@col"></div>
+                        </div>
+                        <div class="rd-type-stat">@avail / @total</div>
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="rd-analytics-card">
+            <div class="rd-card-head"><i class="fas fa-info-circle" style="color:#1d4ed8"></i> Quick Stats</div>
+            <div class="rd-quick-list">
+                @{
+                    var rdQuickItems = new (string Icon, string Label, string Value, string Color)[]
+                    {
+                        ("fa-home",       "Total Rooms",        rdTotalRooms.ToString(),         "#6366f1"),
+                        ("fa-percent",    "Occupancy Rate",     rdOccPct + "%",                  Model.OccupiedCount > rdTotalRooms * 0.7m ? "#ef4444" : "#22c55e"),
+                        ("fa-star",       "Avg Base Rate",      "₹" + rdAvgRate.ToString("N0"),  "#f59e0b"),
+                        ("fa-users",      "Total Guests",       Model.Rooms.Where(r => r.GuestCount.HasValue).Sum(r => r.GuestCount ?? 0).ToString(), "#3b82f6"),
+                        ("fa-building",   "B2B Occupied",       rdB2BRooms.ToString(),           "#8b5cf6"),
+                        ("fa-clock",      "Overdue Rooms",      rdOverdue.ToString(),            rdOverdue > 0 ? "#ef4444" : "#22c55e"),
+                        ("fa-calendar-check","Check-outs Today",rdCheckoutsToday.ToString(),     "#f59e0b"),
+                        ("fa-calendar-plus","Check-ins Today",  rdCheckinsToday.ToString(),      "#0d9488"),
+                    };
+                }
+                @foreach (var (icon, label, value, color) in rdQuickItems)
+                {
+                    <div class="rd-quick-row">
+                        <span class="rd-quick-ico" style="background:@(color + "22");color:@color"><i class="fas @icon"></i></span>
+                        <span class="rd-quick-lbl">@label</span>
+                        <span class="rd-quick-val" style="color:@color">@value</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function(){
+    var rdDonut = document.getElementById('rdDonutChart');
+    if (rdDonut) {
+        new Chart(rdDonut, {
+            type: 'doughnut',
+            data: {
+                labels: ['Available','Occupied','Maintenance','Cleaning'],
+                datasets:[{
+                    data: [@Model.AvailableCount, @Model.OccupiedCount, @Model.MaintenanceCount, @Model.CleaningCount],
+                    backgroundColor: ['#1fa97a','#ef5350','#ab47bc','#42a5f5'],
+                    borderWidth: 2.5, borderColor:'#fff', hoverOffset:6
+                }]
+            },
+            options: {
+                responsive:true, maintainAspectRatio:false, cutout:'62%',
+                plugins:{
+                    legend:{ position:'bottom', labels:{ boxWidth:10, padding:8, font:{size:11} } },
+                    tooltip:{ callbacks:{ label: ctx => ' ' + ctx.label + ': ' + ctx.parsed } }
+                }
+            }
+        });
+    }
+})();
+</script>
     <script>
         let selectedRoomId = null;
         let currentDate = new Date();

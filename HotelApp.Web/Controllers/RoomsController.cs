@@ -20,6 +20,7 @@ public class RoomsController : BaseController
     private readonly IMailSender _mailSender;
     private readonly IHotelSettingsRepository _hotelSettingsRepository;
     private readonly IGuestFeedbackLinkService _guestFeedbackLinkService;
+    private readonly ILicenseRepository _licenseRepository;
 
     public RoomsController(
         IRoomRepository roomRepository, 
@@ -30,7 +31,8 @@ public class RoomsController : BaseController
                 IBookingOtherChargeRepository bookingOtherChargeRepository,
                 IMailSender mailSender,
                 IHotelSettingsRepository hotelSettingsRepository,
-                IGuestFeedbackLinkService guestFeedbackLinkService)
+                IGuestFeedbackLinkService guestFeedbackLinkService,
+                ILicenseRepository licenseRepository)
     {
         _roomRepository = roomRepository;
         _floorRepository = floorRepository;
@@ -41,6 +43,7 @@ public class RoomsController : BaseController
                 _mailSender = mailSender;
                 _hotelSettingsRepository = hotelSettingsRepository;
                 _guestFeedbackLinkService = guestFeedbackLinkService;
+                _licenseRepository = licenseRepository;
     }
 
         private async Task TrySendGuestFeedbackEmailAsync(Booking booking)
@@ -344,6 +347,24 @@ public class RoomsController : BaseController
         };
 
         ViewData["Title"] = "Room Dashboard";
+
+        // License alert (same logic as main Dashboard)
+        string? alertMessage = null;
+        var appUrl = $"{Request.Scheme}://{Request.Host}";
+        var license = await _licenseRepository.GetActiveLicenseAsync(appUrl);
+        if (license is { IsDisplayAlerts: true, AlertStartDate: not null, AlertEndDate: not null, AlertStartTime: not null, AlertEndTime: not null }
+            && !string.IsNullOrWhiteSpace(license.AlertMessage))
+        {
+            var now = DateTime.Now;
+            var alertStart = license.AlertStartDate.Value.Date + license.AlertStartTime.Value;
+            var alertEnd   = license.AlertEndDate.Value.Date   + license.AlertEndTime.Value;
+            if (now >= alertStart && now <= alertEnd)
+                alertMessage = license.AlertMessage;
+        }
+        var roomHotelSettings = await _hotelSettingsRepository.GetByBranchAsync(CurrentBranchID);
+        ViewBag.HotelName    = roomHotelSettings?.HotelName;
+        ViewBag.AlertMessage      = alertMessage;
+
         return View(viewModel);
     }
 

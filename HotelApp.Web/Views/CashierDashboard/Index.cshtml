@@ -1,0 +1,685 @@
+@model HotelApp.Web.Models.PaymentDashboardData
+@{
+    ViewData["Title"] = "Payment Dashboard";
+    var hotelName    = ViewBag.HotelName as string ?? ViewBag.CurrentBranchName as string ?? "Payment Dashboard";
+    var alertMessage = ViewBag.AlertMessage as string;
+    var fromStr      = Model.FromDate.ToString("yyyy-MM-dd");
+    var toStr        = Model.ToDate.ToString("yyyy-MM-dd");
+    var isSingleDay  = Model.FromDate.Date == Model.ToDate.Date;
+    var periodLabel  = isSingleDay
+                         ? Model.FromDate.ToString("dd MMM yyyy")
+                         : Model.FromDate.ToString("dd MMM") + " – " + Model.ToDate.ToString("dd MMM yyyy");
+
+    // ── Derived KPIs ──────────────────────────────────────────────
+    var netRevenue      = Model.Summary.TotalPayments - Model.Summary.TotalDiscount;
+    var gstRatePct      = Model.Summary.TotalPayments > 0
+                            ? (double)Model.Summary.TotalGST / (double)Model.Summary.TotalPayments * 100
+                            : 0d;
+    var settledCount    = Model.RecentPayments.Count(p => p.BookingBalance <= 0);
+    var pendingCount    = Model.RecentPayments.Count(p => p.BookingBalance > 0);
+    var totalOutstanding= Model.RecentPayments.Where(p => p.BookingBalance > 0).Sum(p => p.BookingBalance);
+    var methodTotal     = Model.MethodBreakdown.Any() ? Model.MethodBreakdown.Sum(m => m.TotalAmount) : 1m;
+    var topMethod       = Model.MethodBreakdown.FirstOrDefault();
+    var topHead         = Model.BillingHeadBreakdown.FirstOrDefault();
+
+    // ── Chart data serialisation ──────────────────────────────────
+    var trendLabels  = System.Text.Json.JsonSerializer.Serialize(Model.DailyTrend.Select(d => d.PaymentDate.ToString("dd MMM")));
+    var trendAmounts = System.Text.Json.JsonSerializer.Serialize(Model.DailyTrend.Select(d => d.TotalAmount));
+    var trendCounts  = System.Text.Json.JsonSerializer.Serialize(Model.DailyTrend.Select(d => d.TransactionCount));
+    var methodLabels = System.Text.Json.JsonSerializer.Serialize(Model.MethodBreakdown.Select(m => m.PaymentMethod));
+    var methodAmts   = System.Text.Json.JsonSerializer.Serialize(Model.MethodBreakdown.Select(m => m.TotalAmount));
+    var methodCounts = System.Text.Json.JsonSerializer.Serialize(Model.MethodBreakdown.Select(m => m.TransactionCount));
+    var headLabels   = System.Text.Json.JsonSerializer.Serialize(Model.BillingHeadBreakdown.Select(b => b.BillingHead));
+    var headAmts     = System.Text.Json.JsonSerializer.Serialize(Model.BillingHeadBreakdown.Select(b => b.TotalAmount));
+    var headGstAmts  = System.Text.Json.JsonSerializer.Serialize(Model.BillingHeadBreakdown.Select(b => b.TotalGST));
+    var headCounts   = System.Text.Json.JsonSerializer.Serialize(Model.BillingHeadBreakdown.Select(b => b.TransactionCount));
+}
+
+@section Styles {
+<style>
+/* ── Base ─────────────────────────────────────────────── */
+.cd-page{padding:1.25rem 1.5rem}
+
+/* ── Hero ─────────────────────────────────────────────── */
+.cd-hero{background:linear-gradient(135deg,#1a2a6c 0%,#1d4ed8 40%,#0d9488 80%,#065f46 100%);border-radius:16px;padding:1.4rem 2rem;margin-bottom:1.4rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;box-shadow:0 8px 28px rgba(26,42,108,.3);position:relative;overflow:hidden}
+.cd-hero::before{content:'';position:absolute;top:-60px;right:-60px;width:240px;height:240px;background:rgba(255,255,255,.07);border-radius:50%}
+.cd-hero::after{content:'';position:absolute;bottom:-70px;left:15%;width:280px;height:280px;background:rgba(255,255,255,.04);border-radius:50%}
+.cd-hero-left{display:flex;align-items:center;gap:1rem;z-index:1}
+.cd-hero-icon{width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:1.3rem;color:#fff;flex-shrink:0}
+.cd-hero-title{color:#fff;font-size:1.3rem;font-weight:800;margin:0 0 .1rem;letter-spacing:-.3px}
+.cd-hero-sub{color:rgba(255,255,255,.6);font-size:.82rem;margin:0}
+.cd-hero-right{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;z-index:1}
+.cd-date-form{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap}
+.cd-date-input{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;padding:.4rem .7rem;font-size:.81rem;min-width:128px}
+.cd-date-input::-webkit-calendar-picker-indicator{filter:invert(1)}
+.cd-date-btn{background:rgba(255,255,255,.92);color:#0f2027;border:none;border-radius:8px;padding:.4rem .95rem;font-size:.81rem;font-weight:700;cursor:pointer;transition:background .2s}
+.cd-date-btn:hover{background:#fff}
+.cd-period-badge{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.9);border-radius:20px;padding:.28rem .8rem;font-size:.77rem;font-weight:600;white-space:nowrap;z-index:1}
+
+/* ── KPI grid ─────────────────────────────────────────── */
+.cd-kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.9rem;margin-bottom:1rem}
+.cd-kpi{border-radius:12px;padding:1.1rem 1.2rem 1rem;display:flex;flex-direction:column;gap:.4rem;position:relative;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.09)}
+.cd-kpi::before{content:'';position:absolute;right:-18px;top:-18px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.12)}
+.cd-kpi-label{font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:rgba(255,255,255,.82)}
+.cd-kpi-value{font-size:1.45rem;font-weight:800;line-height:1.1;color:#fff}
+.cd-kpi-sub{font-size:.7rem;color:rgba(255,255,255,.68)}
+.cd-kpi-icon{position:absolute;right:13px;top:50%;transform:translateY(-50%);font-size:1.9rem;opacity:.17;color:#fff}
+.kpi-teal  {background:linear-gradient(140deg,#00695c,#4db6ac)}
+.kpi-blue  {background:linear-gradient(140deg,#1565c0,#42a5f5)}
+.kpi-indigo{background:linear-gradient(140deg,#4527a0,#7c4dff)}
+.kpi-amber {background:linear-gradient(140deg,#e65100,#ffa726)}
+.kpi-green {background:linear-gradient(140deg,#2e7d32,#66bb6a)}
+
+/* ── Insight cards row ────────────────────────────────── */
+.cd-insight-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.9rem;margin-bottom:1rem}
+.cd-insight{background:#fff;border-radius:12px;padding:1rem 1.2rem;display:flex;align-items:center;gap:.9rem;box-shadow:0 1px 4px rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.04);position:relative;overflow:hidden}
+.cd-insight::after{content:'';position:absolute;right:0;top:0;bottom:0;width:4px;border-radius:0 12px 12px 0}
+.ins-icon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.ins-body{flex:1;min-width:0}
+.ins-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-bottom:.18rem}
+.ins-value{font-size:1.22rem;font-weight:800;color:#1e293b;line-height:1}
+.ins-sub{font-size:.7rem;color:#94a3b8;margin-top:.18rem}
+.ins-badge{display:inline-block;padding:.15rem .5rem;border-radius:20px;font-size:.67rem;font-weight:700;margin-top:.22rem}
+.ins-navy  .ins-icon{background:#eff6ff;color:#1d4ed8} .ins-navy::after{background:#1d4ed8}
+.ins-emerald .ins-icon{background:#d1fae5;color:#065f46} .ins-emerald::after{background:#10b981}
+.ins-red   .ins-icon{background:#fee2e2;color:#991b1b} .ins-red::after{background:#ef4444}
+.ins-violet .ins-icon{background:#ede9fe;color:#5b21b6} .ins-violet::after{background:#8b5cf6}
+
+/* ── Cards + charts ──────────────────────────────────── */
+.cd-row{display:grid;gap:.9rem;margin-bottom:.9rem}
+.cd-row-2-1{grid-template-columns:2fr 1fr}
+.cd-row-3{grid-template-columns:1fr 1fr 1fr}
+.cd-row-1-2{grid-template-columns:1fr 2fr}
+.cd-card{background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.07),0 6px 20px rgba(0,0,0,.04);overflow:hidden}
+.cd-card-header{display:flex;align-items:center;gap:.6rem;padding:.85rem 1.2rem;border-bottom:1px solid #eef1f8;background:linear-gradient(135deg,#fafbff,#f5f7fe)}
+.cd-card-icon{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.78rem;flex-shrink:0}
+.cd-card-title{font-size:.85rem;font-weight:700;color:#1e293b;margin:0}
+.cd-card-meta{margin-left:auto;font-size:.72rem;color:#94a3b8}
+.cd-card-body{padding:1rem 1.2rem}
+.chart-wrap{position:relative}
+.chart-h220{height:220px}
+.chart-h260{height:260px}
+.chart-h300{height:300px}
+
+/* ── Method tiles ─────────────────────────────────────── */
+.method-tiles{display:flex;flex-direction:column;gap:.55rem}
+.method-tile{display:flex;align-items:center;gap:.65rem;padding:.65rem .8rem;border-radius:10px;background:#f8fafc;transition:background .15s}
+.method-tile:hover{background:#f1f5f9}
+.mt-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.mt-name{font-size:.82rem;font-weight:700;color:#374151;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mt-right{text-align:right;flex-shrink:0}
+.mt-amt{font-size:.88rem;font-weight:800;color:#1e293b;display:block}
+.mt-meta{font-size:.69rem;color:#94a3b8}
+.mt-pct-bar{height:4px;border-radius:4px;margin-top:.3rem;background:#e2e8f0;overflow:hidden}
+.mt-pct-fill{height:100%;border-radius:4px;transition:width .5s ease}
+
+/* ── Billing head detail cards ───────────────────────── */
+.bh-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:.9rem;margin-bottom:.9rem}
+.bh-card{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.04);overflow:hidden}
+.bh-card-top{padding:.9rem 1.1rem .7rem;border-bottom:1px solid #f0f2f5}
+.bh-card-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#94a3b8;margin-bottom:.4rem;display:flex;align-items:center;gap:.4rem}
+.bh-card-amount{font-size:1.4rem;font-weight:800;color:#1e293b}
+.bh-card-bottom{display:grid;grid-template-columns:1fr 1fr;padding:.55rem 1.1rem;gap:.5rem}
+.bh-stat{text-align:center}
+.bh-stat-val{font-size:.85rem;font-weight:700;color:#374151}
+.bh-stat-lbl{font-size:.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.3px}
+
+/* ── Progress list ───────────────────────────────────── */
+.prog-list{display:flex;flex-direction:column;gap:.7rem}
+.prog-row{display:flex;flex-direction:column;gap:.2rem}
+.prog-header{display:flex;justify-content:space-between;align-items:center}
+.prog-name{font-size:.8rem;font-weight:600;color:#374151}
+.prog-amt{font-size:.8rem;font-weight:700;color:#1e293b}
+.prog-bar-bg{height:8px;background:#f1f5f9;border-radius:8px;overflow:hidden}
+.prog-bar-fill{height:100%;border-radius:8px;transition:width .6s ease}
+.prog-sub{font-size:.68rem;color:#94a3b8}
+
+/* ── Table ───────────────────────────────────────────── */
+.cd-table-wrap{overflow-x:auto}
+.cd-table{width:100%;border-collapse:collapse}
+.cd-table thead tr{background:linear-gradient(135deg,#1a2a6c,#283593)}
+.cd-table th{padding:.6rem 1rem;font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#fff;border-bottom:none;white-space:nowrap}
+.cd-table td{padding:.7rem 1rem;border-bottom:1px solid #f0f2f5;font-size:.81rem;color:#374151;vertical-align:middle}
+.cd-table tbody tr:last-child td{border-bottom:none}
+.cd-table tbody tr:hover td{background:#f8fafc}
+.pm-badge{display:inline-flex;align-items:center;gap:.3rem;padding:.18rem .55rem;border-radius:6px;font-size:.71rem;font-weight:600;white-space:nowrap}
+.pm-cash   {background:#dcfce7;color:#166534}
+.pm-card   {background:#dbeafe;color:#1e40af}
+.pm-upi    {background:#ede9fe;color:#5b21b6}
+.pm-cheque {background:#fef9c3;color:#854d0e}
+.pm-other  {background:#f1f5f9;color:#475569}
+.amt-pos{color:#166534;font-weight:700}
+.bal-due{color:#b91c1c;font-weight:700}
+.bal-ok {color:#166534}
+.serial-cell{width:32px;text-align:center;color:#94a3b8;font-size:.72rem;font-weight:600}
+
+/* ── Empty ───────────────────────────────────────────── */
+.cd-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2.2rem 1rem;color:#94a3b8;gap:.45rem}
+.cd-empty i{font-size:2.2rem}
+.cd-empty span{font-size:.85rem}
+
+/* ── Responsive ──────────────────────────────────────── */
+@@media(max-width:1300px){.cd-kpi-grid{grid-template-columns:repeat(3,1fr)}.cd-insight-grid{grid-template-columns:repeat(2,1fr)}}
+@@media(max-width:992px){.cd-row-2-1,.cd-row-1-2,.cd-row-3{grid-template-columns:1fr}.bh-cards{grid-template-columns:1fr 1fr}}
+@@media(max-width:600px){.cd-kpi-grid{grid-template-columns:1fr 1fr}.cd-insight-grid{grid-template-columns:1fr 1fr}.bh-cards{grid-template-columns:1fr}}
+</style>
+}
+
+<div class="cd-page">
+
+@* ── Alert Banner ── *@
+@if (!string.IsNullOrWhiteSpace(alertMessage))
+{
+    <div class="dashboard-alert-banner">
+        <div class="alert-icon-box"><i class="fas fa-bullhorn"></i></div>
+        <div class="alert-marquee-wrap">
+            <marquee behavior="scroll" direction="left" scrollamount="4" onmouseover="this.stop();" onmouseout="this.start();">@alertMessage</marquee>
+        </div>
+    </div>
+}
+
+@* ── Hero ── *@
+<div class="cd-hero">
+    <div class="cd-hero-left">
+        <div class="cd-hero-icon"><i class="fas fa-cash-register"></i></div>
+        <div>
+            <div class="cd-hero-title">@hotelName</div>
+            <div class="cd-hero-sub"><i class="fas fa-cash-register" style="margin-right:.3rem"></i>Payment Dashboard &nbsp;·&nbsp; Cashier Summary</div>
+        </div>
+    </div>
+    <div class="cd-hero-right">
+        <span class="cd-period-badge"><i class="fas fa-calendar-alt me-1"></i>@periodLabel</span>
+        <form class="cd-date-form" method="get">
+            <input type="date" name="fromDate" value="@fromStr" class="cd-date-input" title="From Date" />
+            <input type="date" name="toDate"   value="@toStr"   class="cd-date-input" title="To Date" />
+            <button type="submit" class="cd-date-btn"><i class="fas fa-search me-1"></i>Apply</button>
+        </form>
+    </div>
+</div>
+
+@* ── KPI Row 1 — 5 cards ── *@
+<div class="cd-kpi-grid">
+    <div class="cd-kpi kpi-teal">
+        <span class="cd-kpi-label">Total Collected</span>
+        <span class="cd-kpi-value">₹@Model.Summary.TotalPayments.ToString("N2")</span>
+        <span class="cd-kpi-sub">Gross receipts for period</span>
+        <i class="fas fa-rupee-sign cd-kpi-icon"></i>
+    </div>
+    <div class="cd-kpi kpi-blue">
+        <span class="cd-kpi-label">Transactions</span>
+        <span class="cd-kpi-value">@Model.Summary.PaymentCount</span>
+        <span class="cd-kpi-sub">Successful payments</span>
+        <i class="fas fa-receipt cd-kpi-icon"></i>
+    </div>
+    <div class="cd-kpi kpi-indigo">
+        <span class="cd-kpi-label">Total GST</span>
+        <span class="cd-kpi-value">₹@Model.Summary.TotalGST.ToString("N2")</span>
+        <span class="cd-kpi-sub">Tax collected · @gstRatePct.ToString("F1")% effective</span>
+        <i class="fas fa-percent cd-kpi-icon"></i>
+    </div>
+    <div class="cd-kpi kpi-amber">
+        <span class="cd-kpi-label">Avg. Payment</span>
+        <span class="cd-kpi-value">₹@Model.Summary.AveragePayment.ToString("N2")</span>
+        <span class="cd-kpi-sub">Per transaction</span>
+        <i class="fas fa-chart-line cd-kpi-icon"></i>
+    </div>
+    <div class="cd-kpi kpi-green">
+        <span class="cd-kpi-label">Total Discount</span>
+        <span class="cd-kpi-value">₹@Model.Summary.TotalDiscount.ToString("N2")</span>
+        <span class="cd-kpi-sub">Discount at payment</span>
+        <i class="fas fa-tag cd-kpi-icon"></i>
+    </div>
+</div>
+
+@* ── Insight Row 2 — 4 derived cards ── *@
+<div class="cd-insight-grid">
+    <div class="cd-insight ins-navy">
+        <div class="ins-icon"><i class="fas fa-coins"></i></div>
+        <div class="ins-body">
+            <div class="ins-label">Net Revenue</div>
+            <div class="ins-value">₹@netRevenue.ToString("N2")</div>
+            <div class="ins-sub">After discounts applied</div>
+        </div>
+    </div>
+    <div class="cd-insight ins-emerald">
+        <div class="ins-icon"><i class="fas fa-check-circle"></i></div>
+        <div class="ins-body">
+            <div class="ins-label">Settled Payments</div>
+            <div class="ins-value">@settledCount</div>
+            <div class="ins-sub">Balance cleared to ₹0</div>
+        </div>
+    </div>
+    <div class="cd-insight ins-red">
+        <div class="ins-icon"><i class="fas fa-clock"></i></div>
+        <div class="ins-body">
+            <div class="ins-label">Pending Dues</div>
+            <div class="ins-value">₹@totalOutstanding.ToString("N0")</div>
+            <div class="ins-sub">@pendingCount booking(s) outstanding</div>
+        </div>
+    </div>
+    <div class="cd-insight ins-violet">
+        <div class="ins-icon"><i class="fas fa-star"></i></div>
+        <div class="ins-body">
+            <div class="ins-label">Top Payment Mode</div>
+            <div class="ins-value" style="font-size:1rem">@(topMethod?.PaymentMethod ?? "—")</div>
+            <div class="ins-sub">@(topMethod != null ? "₹" + topMethod.TotalAmount.ToString("N0") + " · " + topMethod.TransactionCount + " txns" : "No data")</div>
+        </div>
+    </div>
+</div>
+
+@* ── Row 3: Daily Trend (2/3) + Method Doughnut (1/3) ── *@
+<div class="cd-row cd-row-2-1">
+    <div class="cd-card">
+        <div class="cd-card-header">
+            <div class="cd-card-icon" style="background:#3b82f6"><i class="fas fa-chart-area"></i></div>
+            <span class="cd-card-title">Daily Collection Trend</span>
+            <span class="cd-card-meta">Amount + Transactions</span>
+        </div>
+        <div class="cd-card-body">
+            @if (Model.DailyTrend.Any())
+            {
+                <div class="chart-wrap chart-h260"><canvas id="trendChart"></canvas></div>
+            }
+            else
+            {
+                <div class="cd-empty"><i class="fas fa-chart-area"></i><span>No trend data for this period</span></div>
+            }
+        </div>
+    </div>
+    <div class="cd-card">
+        <div class="cd-card-header">
+            <div class="cd-card-icon" style="background:#f59e0b"><i class="fas fa-chart-pie"></i></div>
+            <span class="cd-card-title">Share by Method</span>
+        </div>
+        <div class="cd-card-body">
+            @if (Model.MethodBreakdown.Any())
+            {
+                <div class="chart-wrap chart-h260"><canvas id="donutChart"></canvas></div>
+            }
+            else
+            {
+                <div class="cd-empty"><i class="fas fa-chart-pie"></i><span>No data</span></div>
+            }
+        </div>
+    </div>
+</div>
+
+@* ── Row 4: Method Tiles (1/3) + Billing Head Bar Chart (2/3) ── *@
+<div class="cd-row cd-row-1-2">
+    <div class="cd-card">
+        <div class="cd-card-header">
+            <div class="cd-card-icon" style="background:#6366f1"><i class="fas fa-wallet"></i></div>
+            <span class="cd-card-title">Payment Methods</span>
+        </div>
+        <div class="cd-card-body">
+            @if (Model.MethodBreakdown.Any())
+            {
+                var palette = new[] { "#3b82f6","#6366f1","#14b8a6","#f59e0b","#ec4899","#22c55e","#ef4444","#8b5cf6" };
+                <div class="method-tiles">
+                    @for (int i = 0; i < Model.MethodBreakdown.Count(); i++)
+                    {
+                        var m    = Model.MethodBreakdown.ElementAt(i);
+                        var pct  = methodTotal > 0 ? (double)m.TotalAmount / (double)methodTotal * 100 : 0;
+                        var col  = palette[i % palette.Length];
+                        <div class="method-tile">
+                            <div class="mt-dot" style="background:@col"></div>
+                            <span class="mt-name">@m.PaymentMethod</span>
+                            <div class="mt-right">
+                                <span class="mt-amt">₹@m.TotalAmount.ToString("N0")</span>
+                                <span class="mt-meta">@m.TransactionCount tx &nbsp;·&nbsp; @pct.ToString("F1")%</span>
+                            </div>
+                        </div>
+                        <div class="mt-pct-bar" style="margin:-4px 0 4px 22px">
+                            <div class="mt-pct-fill" style="width:@pct.ToString("F0")%;background:@col"></div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="cd-empty"><i class="fas fa-wallet"></i><span>No payment data</span></div>
+            }
+        </div>
+    </div>
+    <div class="cd-card">
+        <div class="cd-card-header">
+            <div class="cd-card-icon" style="background:#0d9488"><i class="fas fa-tags"></i></div>
+            <span class="cd-card-title">Revenue by Billing Head</span>
+            <span class="cd-card-meta">Amount vs GST</span>
+        </div>
+        <div class="cd-card-body">
+            @if (Model.BillingHeadBreakdown.Any())
+            {
+                <div class="chart-wrap chart-h260"><canvas id="headChart"></canvas></div>
+            }
+            else
+            {
+                <div class="cd-empty"><i class="fas fa-tags"></i><span>No billing head data</span></div>
+            }
+        </div>
+    </div>
+</div>
+
+@* ── Row 5: Billing Head Detail Cards ── *@
+@if (Model.BillingHeadBreakdown.Any())
+{
+    var bhPalette = new[] { "#3b82f6","#0d9488","#f59e0b","#ec4899","#8b5cf6","#22c55e" };
+    var bhMax = Model.BillingHeadBreakdown.Max(b => b.TotalAmount);
+    <div class="bh-cards">
+        @for (int i = 0; i < Model.BillingHeadBreakdown.Count(); i++)
+        {
+            var bh  = Model.BillingHeadBreakdown.ElementAt(i);
+            var col = bhPalette[i % bhPalette.Length];
+            var pct = bhMax > 0 ? (double)bh.TotalAmount / (double)bhMax * 100 : 0;
+            <div class="bh-card" style="border-top:3px solid @col">
+                <div class="bh-card-top">
+                    <div class="bh-card-label">
+                        <span style="width:8px;height:8px;border-radius:50%;background:@col;display:inline-block"></span>
+                        @bh.BillingHead
+                    </div>
+                    <div class="bh-card-amount">₹@bh.TotalAmount.ToString("N2")</div>
+                    <div class="mt-pct-bar" style="margin-top:.5rem">
+                        <div class="mt-pct-fill" style="width:@pct.ToString("F0")%;background:@col"></div>
+                    </div>
+                </div>
+                <div class="bh-card-bottom">
+                    <div class="bh-stat">
+                        <div class="bh-stat-val">₹@bh.TotalGST.ToString("N0")</div>
+                        <div class="bh-stat-lbl">GST</div>
+                    </div>
+                    <div class="bh-stat">
+                        <div class="bh-stat-val">@bh.TransactionCount</div>
+                        <div class="bh-stat-lbl">Txns</div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@* ── Row 6: Payment Method Progress + Trend Summary ── *@
+<div class="cd-row cd-row-2-1" style="margin-bottom:.9rem">
+    <div class="cd-card">
+        <div class="cd-card-header">
+            <div class="cd-card-icon" style="background:#1d4ed8"><i class="fas fa-chart-bar"></i></div>
+            <span class="cd-card-title">Method vs Billing Head Stacked</span>
+            <span class="cd-card-meta">Amount distribution</span>
+        </div>
+        <div class="cd-card-body">
+            @if (Model.MethodBreakdown.Any())
+            {
+                <div class="chart-wrap chart-h220"><canvas id="methodBarChart"></canvas></div>
+            }
+            else
+            {
+                <div class="cd-empty"><i class="fas fa-chart-bar"></i><span>No data</span></div>
+            }
+        </div>
+    </div>
+    <div class="cd-card">
+        <div class="cd-card-header">
+            <div class="cd-card-icon" style="background:#10b981"><i class="fas fa-list-ul"></i></div>
+            <span class="cd-card-title">Collection Breakdown</span>
+        </div>
+        <div class="cd-card-body">
+            @{
+                var summaryItems = new[]
+                {
+                    ("Total Collected",    "₹" + Model.Summary.TotalPayments.ToString("N2"), "#3b82f6"),
+                    ("GST Component",      "₹" + Model.Summary.TotalGST.ToString("N2"),      "#6366f1"),
+                    ("Discounts Given",    "₹" + Model.Summary.TotalDiscount.ToString("N2"), "#f59e0b"),
+                    ("Net Revenue",        "₹" + netRevenue.ToString("N2"),                  "#10b981"),
+                    ("Outstanding Dues",   "₹" + totalOutstanding.ToString("N2"),            "#ef4444"),
+                };
+            }
+            <div class="prog-list">
+                @foreach (var (lbl, val, col) in summaryItems)
+                {
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:.45rem .6rem;border-radius:8px;background:#f8fafc">
+                        <span style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;font-weight:600;color:#374151">
+                            <span style="width:10px;height:10px;border-radius:50%;background:@col;flex-shrink:0;display:inline-block"></span>
+                            @lbl
+                        </span>
+                        <span style="font-size:.88rem;font-weight:800;color:@col">@val</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ── Row 7: Recent Transactions Table ── *@
+<div class="cd-card">
+    <div class="cd-card-header">
+        <div class="cd-card-icon" style="background:#1d4ed8"><i class="fas fa-list-alt"></i></div>
+        <span class="cd-card-title">Recent Transactions</span>
+        <span class="cd-card-meta">Latest 20 of selected period</span>
+    </div>
+    <div class="cd-table-wrap">
+        @if (Model.RecentPayments.Any())
+        {
+            <table class="cd-table">
+                <thead>
+                    <tr>
+                        <th class="serial-cell">#</th>
+                        <th>Receipt #</th>
+                        <th>Booking #</th>
+                        <th>Date &amp; Time</th>
+                        <th>Method</th>
+                        <th>Billing Head</th>
+                        <th style="text-align:right">Amount</th>
+                        <th style="text-align:right">GST</th>
+                        <th style="text-align:right">Discount</th>
+                        <th style="text-align:right">Balance</th>
+                        <th>By</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ int rowNo = 0; }
+                    @foreach (var p in Model.RecentPayments)
+                    {
+                        rowNo++;
+                        var pmClass = p.PaymentMethod?.ToLower() switch {
+                            "cash"   => "pm-cash",
+                            "card"   => "pm-card",
+                            "upi"    => "pm-upi",
+                            "cheque" => "pm-cheque",
+                            _        => "pm-other"
+                        };
+                        <tr>
+                            <td class="serial-cell">@rowNo</td>
+                            <td style="font-family:monospace;font-size:.76rem;color:#475569">@(p.ReceiptNumber ?? "—")</td>
+                            <td style="font-weight:700;color:#1e293b">@p.BookingNumber</td>
+                            <td style="color:#64748b;white-space:nowrap;font-size:.76rem">@p.PaidOn.ToString("dd MMM yy, hh:mm tt")</td>
+                            <td><span class="pm-badge @pmClass">@p.PaymentMethod</span></td>
+                            <td style="font-size:.76rem;color:#475569">@p.BillingHead</td>
+                            <td style="text-align:right" class="amt-pos">₹@p.Amount.ToString("N2")</td>
+                            <td style="text-align:right;color:#6366f1;font-weight:600">₹@p.GSTAmount.ToString("N2")</td>
+                            <td style="text-align:right;color:#f59e0b;font-weight:600">—</td>
+                            <td style="text-align:right" class="@(p.BookingBalance > 0 ? "bal-due" : "bal-ok")">
+                                @(p.BookingBalance > 0 ? "₹" + p.BookingBalance.ToString("N2") : "✓ Settled")
+                            </td>
+                            <td style="font-size:.75rem;color:#64748b">@(string.IsNullOrWhiteSpace(p.CreatedBy) ? "—" : p.CreatedBy)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="cd-empty">
+                <i class="fas fa-receipt"></i>
+                <span>No transactions found for the selected period</span>
+            </div>
+        }
+    </div>
+</div>
+
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    Chart.defaults.font.family = "'Segoe UI', Arial, sans-serif";
+    Chart.defaults.color = '#64748b';
+
+    var trendLabels  = @Html.Raw(trendLabels);
+    var trendAmounts = @Html.Raw(trendAmounts);
+    var trendCounts  = @Html.Raw(trendCounts);
+    var methodLabels = @Html.Raw(methodLabels);
+    var methodAmts   = @Html.Raw(methodAmts);
+    var methodCounts = @Html.Raw(methodCounts);
+    var headLabels   = @Html.Raw(headLabels);
+    var headAmts     = @Html.Raw(headAmts);
+    var headGstAmts  = @Html.Raw(headGstAmts);
+
+    var palette  = ['#3b82f6','#6366f1','#14b8a6','#f59e0b','#ec4899','#22c55e','#ef4444','#8b5cf6'];
+    var fmt      = v => '₹' + (v >= 1000 ? (v/1000).toFixed(1) + 'K' : v);
+    var fmtFull  = v => '₹' + Number(v).toLocaleString('en-IN', {minimumFractionDigits: 2});
+
+    /* ── 1. Daily Trend — combo bar+line ── */
+    var trendCtx = document.getElementById('trendChart');
+    if (trendCtx && trendLabels.length) {
+        new Chart(trendCtx, {
+            data: {
+                labels: trendLabels,
+                datasets: [
+                    {
+                        type: 'bar', label: 'Collected (₹)',
+                        data: trendAmounts,
+                        backgroundColor: 'rgba(59,130,246,0.72)',
+                        borderColor: '#3b82f6', borderWidth: 1.5, borderRadius: 5,
+                        yAxisID: 'y'
+                    },
+                    {
+                        type: 'line', label: 'Transactions',
+                        data: trendCounts,
+                        borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.10)',
+                        borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#f59e0b',
+                        tension: 0.4, fill: true, yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top', labels: { boxWidth: 11, padding: 14 } },
+                    tooltip: { callbacks: { label: ctx => ctx.datasetIndex === 0 ? ' ' + fmtFull(ctx.parsed.y) : ' ' + ctx.parsed.y + ' txns' } }
+                },
+                scales: {
+                    y:  { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { callback: fmt } },
+                    y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { stepSize: 1 } }
+                }
+            }
+        });
+    }
+
+    /* ── 2. Method Doughnut ── */
+    var donutCtx = document.getElementById('donutChart');
+    if (donutCtx && methodLabels.length) {
+        new Chart(donutCtx, {
+            type: 'doughnut',
+            data: {
+                labels: methodLabels,
+                datasets: [{
+                    data: methodAmts,
+                    backgroundColor: palette.slice(0, methodLabels.length),
+                    borderWidth: 2.5, borderColor: '#fff', hoverOffset: 7
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '64%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 11, padding: 10, font: { size: 11 } } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                var total = ctx.dataset.data.reduce((a,b)=>a+b,0);
+                                var pct   = total > 0 ? ((ctx.parsed/total)*100).toFixed(1) : 0;
+                                return ' ' + fmtFull(ctx.parsed) + ' (' + pct + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    /* ── 3. Billing Head Grouped Bar (Amount + GST) ── */
+    var headCtx = document.getElementById('headChart');
+    if (headCtx && headLabels.length) {
+        new Chart(headCtx, {
+            type: 'bar',
+            data: {
+                labels: headLabels,
+                datasets: [
+                    {
+                        label: 'Amount (₹)',
+                        data: headAmts,
+                        backgroundColor: headLabels.map((_, i) => palette[i % palette.length] + 'cc'),
+                        borderColor:     headLabels.map((_, i) => palette[i % palette.length]),
+                        borderWidth: 1.5, borderRadius: 6
+                    },
+                    {
+                        label: 'GST (₹)',
+                        data: headGstAmts,
+                        backgroundColor: 'rgba(245,158,11,0.7)',
+                        borderColor: '#f59e0b', borderWidth: 1.5, borderRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { position: 'top', labels: { boxWidth: 11, padding: 12 } } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { callback: fmt } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    /* ── 4. Method Horizontal Bar ── */
+    var methodBarCtx = document.getElementById('methodBarChart');
+    if (methodBarCtx && methodLabels.length) {
+        new Chart(methodBarCtx, {
+            type: 'bar',
+            data: {
+                labels: methodLabels,
+                datasets: [
+                    {
+                        label: 'Amount (₹)',
+                        data: methodAmts,
+                        backgroundColor: palette.slice(0, methodLabels.length).map(c => c + 'bb'),
+                        borderColor:     palette.slice(0, methodLabels.length),
+                        borderWidth: 1.5, borderRadius: 5
+                    },
+                    {
+                        label: 'Transactions',
+                        data: methodCounts,
+                        backgroundColor: 'rgba(100,116,139,0.25)',
+                        borderColor: '#94a3b8', borderWidth: 1.5, borderRadius: 5,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { position: 'top', labels: { boxWidth: 11, padding: 12 } } },
+                scales: {
+                    y:  { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { callback: fmt } },
+                    y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { stepSize: 1 } },
+                    x:  { grid: { display: false } }
+                }
+            }
+        });
+    }
+})();
+</script>
+}
+
+

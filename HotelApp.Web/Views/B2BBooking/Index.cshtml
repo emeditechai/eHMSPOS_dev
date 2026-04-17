@@ -5,11 +5,54 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
+<style>
+.bk-hero{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.7rem;
+         background:linear-gradient(135deg,#b45309 0%,#1a2a6c 45%,#4338ca 100%);
+         border-radius:16px;padding:1rem 1.4rem;margin-bottom:.9rem;
+         box-shadow:0 6px 24px rgba(26,42,108,.22);position:relative;overflow:hidden;}
+.bk-hero::before{content:'';position:absolute;right:-60px;top:-60px;width:200px;height:200px;background:rgba(255,255,255,.07);border-radius:50%;}
+.bk-hero::after {content:'';position:absolute;left:10%;bottom:-70px;width:240px;height:240px;background:rgba(255,255,255,.04);border-radius:50%;}
+.bk-hero-left{display:flex;align-items:center;gap:1rem;z-index:1;}
+.bk-hero-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+              background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.3);color:#fff;font-size:1.4rem;flex-shrink:0;}
+.bk-hero-title{font-size:1.3rem;font-weight:800;color:#fff;letter-spacing:-.2px;}
+.bk-hero-sub{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-top:.25rem;}
+.bk-badge{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .6rem;border-radius:20px;font-size:.72rem;font-weight:700;}
+.bk-badge-branch{background:rgba(255,255,255,.18);color:#fff;}
+.bk-badge-b2b{background:rgba(255,220,80,.22);color:#ffe082;}
+.bk-today{font-size:.75rem;color:rgba(255,255,255,.7);}
+.bk-hero-right{display:flex;gap:.55rem;z-index:1;flex-wrap:wrap;}
+.bk-hero-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.45rem 1rem;border-radius:9px;font-size:.81rem;font-weight:700;text-decoration:none;transition:all .18s;}
+.bk-hero-btn-pri{background:#fff;color:#1a2a6c;}
+.bk-hero-btn-pri:hover{background:#e8f0fe;color:#1a2a6c;text-decoration:none;transform:translateY(-1px);}
+.bk-hero-btn-sec{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);}
+.bk-hero-btn-sec:hover{background:rgba(255,255,255,.25);color:#fff;text-decoration:none;}
+/* B2B-specific: amber card for outstanding */
+.status-card.b2b-outstanding { background:linear-gradient(140deg,#e65100,#ffa726); }
+</style>
 }
 
-<div class="page-header">
-    <h2><i class="fas fa-briefcase"></i> B2B Booking Dashboard</h2>
-    <a asp-action="Create" class="btn-create"><i class="fas fa-plus"></i> New B2B Booking</a>
+@{
+    var b2bBranch = ViewBag.CurrentBranchName as string ?? "Head Office";
+    var b2bRole   = ViewBag.SelectedRoleName as string ?? User.Claims.FirstOrDefault(c => c.Type == "SelectedRoleName")?.Value ?? "";
+}
+<div class="bk-hero">
+    <div class="bk-hero-left">
+        <div class="bk-hero-icon"><i class="fas fa-briefcase"></i></div>
+        <div>
+            <div class="bk-hero-title">B2B Booking Dashboard</div>
+            <div class="bk-hero-sub">
+                <span class="bk-badge bk-badge-branch"><i class="fas fa-code-branch"></i> @b2bBranch</span>
+                <span class="bk-badge bk-badge-b2b"><i class="fas fa-building"></i> B2B</span>
+                @if (!string.IsNullOrWhiteSpace(b2bRole)) { <span class="bk-badge bk-badge-b2b"><i class="fas fa-id-badge"></i> @b2bRole</span> }
+                <span class="bk-today"><i class="fas fa-calendar"></i> @DateTime.Today.ToString("dddd, dd MMM yyyy")</span>
+            </div>
+        </div>
+    </div>
+    <div class="bk-hero-right">
+        <a asp-action="Create" class="bk-hero-btn bk-hero-btn-pri"><i class="fas fa-plus"></i> New B2B Booking</a>
+        <a asp-action="List" asp-controller="Booking" class="bk-hero-btn bk-hero-btn-sec"><i class="fas fa-list"></i> All Bookings</a>
+    </div>
 </div>
 
 @if (TempData["SuccessMessage"] != null)
@@ -17,22 +60,30 @@
     <div class="alert alert-success"><i class="fas fa-check-circle"></i> @TempData["SuccessMessage"]</div>
 }
 
-<div class="status-cards booking-status-cards">
+<div class="status-cards">
     <div class="status-card available">
+        <i class="fas fa-calendar-plus sc-icon"></i>
         <h3>Today's B2B Bookings</h3>
         <div class="value">@Model.TodayBookingCount</div>
+        <div class="sc-sub">Corporate bookings today</div>
     </div>
     <div class="status-card occupied">
+        <i class="fas fa-rupee-sign sc-icon"></i>
         <h3>Today's Advance</h3>
         <div class="value">₹@Model.TodayAdvanceAmount.ToString("N0")</div>
+        <div class="sc-sub">Advance received today</div>
     </div>
     <div class="status-card maintenance">
+        <i class="fas fa-building sc-icon"></i>
         <h3>Active Clients</h3>
         <div class="value">@Model.ActiveClientCount</div>
+        <div class="sc-sub">B2B clients with bookings</div>
     </div>
-    <div class="status-card cleaning">
+    <div class="status-card b2b-outstanding">
+        <i class="fas fa-exclamation-circle sc-icon"></i>
         <h3>Total Outstanding</h3>
         <div class="value">₹@Model.TotalOutstandingAmount.ToString("N0")</div>
+        <div class="sc-sub">Pending dues from clients</div>
     </div>
 </div>
 

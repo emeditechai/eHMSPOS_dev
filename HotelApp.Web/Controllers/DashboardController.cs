@@ -10,23 +10,38 @@ public class DashboardController : BaseController
     private readonly IDashboardRepository _dashboardRepository;
     private readonly IHotelSettingsRepository _hotelSettingsRepository;
     private readonly ILicenseRepository _licenseRepository;
+    private readonly IRoleDashboardConfigRepository _roleDashboardConfigRepository;
 
-    public DashboardController(IDashboardRepository dashboardRepository, IHotelSettingsRepository hotelSettingsRepository, ILicenseRepository licenseRepository)
+    public DashboardController(IDashboardRepository dashboardRepository, IHotelSettingsRepository hotelSettingsRepository, ILicenseRepository licenseRepository, IRoleDashboardConfigRepository roleDashboardConfigRepository)
     {
         _dashboardRepository = dashboardRepository;
         _hotelSettingsRepository = hotelSettingsRepository;
         _licenseRepository = licenseRepository;
+        _roleDashboardConfigRepository = roleDashboardConfigRepository;
     }
 
     public async Task<IActionResult> Index()
     {
+        // If this role is configured to a different dashboard, redirect there
+        var roleId = HttpContext.Session.GetInt32("SelectedRoleId") ?? 0;
+        if (roleId > 0)
+        {
+            var config = await _roleDashboardConfigRepository.GetByRoleIdAsync(roleId);
+            if (config != null && config.IsActive &&
+                !(config.DashboardController.Equals("Dashboard", StringComparison.OrdinalIgnoreCase) &&
+                  config.DashboardAction.Equals("Index", StringComparison.OrdinalIgnoreCase)))
+            {
+                return RedirectToAction(config.DashboardAction, config.DashboardController);
+            }
+        }
+
         ViewData["Title"] = "Dashboard";
         
         // Get dashboard data
         var statistics = await _dashboardRepository.GetDashboardStatisticsAsync(CurrentBranchID);
         var revenueData = await _dashboardRepository.GetRevenueOverviewAsync(CurrentBranchID, 7);
         var roomTypeDistribution = await _dashboardRepository.GetRoomTypeDistributionAsync(CurrentBranchID);
-        var recentBookings = await _dashboardRepository.GetRecentBookingsAsync(CurrentBranchID, 5);
+        var recentBookings = await _dashboardRepository.GetRecentBookingsAsync(CurrentBranchID, 10);
         var hotelSettings = await _hotelSettingsRepository.GetByBranchAsync(CurrentBranchID);
 
         // Get alert message from active license matched by AppUrl
