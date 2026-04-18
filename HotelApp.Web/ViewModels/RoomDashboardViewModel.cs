@@ -53,4 +53,16 @@ namespace HotelApp.Web.ViewModels
         public string? B2BClientName { get; set; }
         public string? MaintenanceReason { get; set; }
     }
+
+    public class UpcomingForecastBooking
+    {
+        public string BookingNumber { get; set; } = string.Empty;
+        public string PrimaryGuestName { get; set; } = string.Empty;
+        public string Mobile { get; set; } = string.Empty;
+        public string Source { get; set; } = string.Empty;
+        public string RoomTypeName { get; set; } = string.Empty;
+        public DateTime CheckInDate { get; set; }
+        public DateTime CheckOutDate { get; set; }
+        public string Status { get; set; } = string.Empty;
+    }
 }

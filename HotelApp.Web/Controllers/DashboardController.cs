@@ -42,6 +42,8 @@ public class DashboardController : BaseController
         var revenueData = await _dashboardRepository.GetRevenueOverviewAsync(CurrentBranchID, 7);
         var roomTypeDistribution = await _dashboardRepository.GetRoomTypeDistributionAsync(CurrentBranchID);
         var recentBookings = await _dashboardRepository.GetRecentBookingsAsync(CurrentBranchID, 10);
+        var roomOccupancy = await _dashboardRepository.GetRoomOccupancyAsync(CurrentBranchID);
+        var bookingTrends = await _dashboardRepository.GetBookingTrendsAsync(CurrentBranchID, 7);
         var hotelSettings = await _hotelSettingsRepository.GetByBranchAsync(CurrentBranchID);
 
         // Get alert message from active license matched by AppUrl
@@ -66,6 +68,8 @@ public class DashboardController : BaseController
         ViewBag.RevenueData = revenueData;
         ViewBag.RoomTypeDistribution = roomTypeDistribution;
         ViewBag.RecentBookings = recentBookings;
+        ViewBag.RoomOccupancy = roomOccupancy;
+        ViewBag.BookingTrends = bookingTrends;
         ViewBag.HotelName = hotelSettings?.HotelName;
         ViewBag.AlertMessage = alertMessage;
         
@@ -77,5 +81,12 @@ public class DashboardController : BaseController
     {
         var revenueData = await _dashboardRepository.GetRevenueOverviewAsync(CurrentBranchID, days);
         return Json(revenueData);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetBookingTrends(int days = 7)
+    {
+        var trends = await _dashboardRepository.GetBookingTrendsAsync(CurrentBranchID, days);
+        return Json(trends);
     }
 }

@@ -12,6 +12,19 @@ namespace HotelApp.Web.Models
         public int CheckInsChange { get; set; }
     }
 
+    public class RoomOccupancy
+    {
+        public int TotalRooms { get; set; }
+        public int OccupiedRooms { get; set; }
+        public int VacantRooms => TotalRooms - OccupiedRooms;
+    }
+
+    public class BookingTrendData
+    {
+        public DateTime Date { get; set; }
+        public int BookingCount { get; set; }
+    }
+
     public class RevenueData
     {
         public DateTime Date { get; set; }

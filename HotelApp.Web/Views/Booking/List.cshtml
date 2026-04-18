@@ -248,8 +248,28 @@
                             <div class="subtext">@booking.Nights night(s)</div>
                         </td>
                         <td>
-                            <div>@booking.RoomType?.TypeName</div>
-                            @if (booking.Room != null)
+                            @if (booking.B2BRoomLines != null && booking.B2BRoomLines.Count > 0)
+                            {
+                                @foreach (var line in booking.B2BRoomLines)
+                                {
+                                    <div style="margin-bottom:2px">
+                                        <span style="font-weight:600">@line.RoomTypeName</span>
+                                        @if (line.RequiredRooms > 1)
+                                        {
+                                            <span class="subtext" style="color:#6366f1;font-weight:600"> ×@line.RequiredRooms</span>
+                                        }
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div>@booking.RoomType?.TypeName</div>
+                            }
+                            @if (booking.AssignedRooms != null && booking.AssignedRooms.Any())
+                            {
+                                <div class="subtext">Room: @string.Join(", ", booking.AssignedRooms.Where(r => r.Room != null).Select(r => r.Room!.RoomNumber))</div>
+                            }
+                            else if (booking.Room != null)
                             {
                                 <div class="subtext">Room: @booking.Room.RoomNumber</div>
                             }

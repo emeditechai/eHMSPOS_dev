@@ -55,7 +55,7 @@
         /* ── Calendar wrapper ── */
         .calendar-wrapper {
             background:#fff; border-radius:0 0 16px 16px;
-            box-shadow:0 8px 32px rgba(0,0,0,.10); position:relative; overflow:auto; max-height:620px;
+            box-shadow:0 8px 32px rgba(0,0,0,.10); position:relative; overflow:auto; max-height:720px;
         }
         .calendar-flex-container { display:flex; width:100%; position:relative; }
 
@@ -70,8 +70,8 @@
         .calendar-fixed-body { background:#fff; overflow:hidden; pointer-events:none; }
         .fixed-room-row {
             padding:14px 16px; border-bottom:1px solid #f1f5f9; background:#fff;
-            height:110px; display:flex; flex-direction:column; justify-content:center;
-            box-sizing:border-box; position:relative; min-height:110px; max-height:110px;
+            height:155px; display:flex; flex-direction:column; justify-content:center;
+            box-sizing:border-box; position:relative; min-height:155px; max-height:155px;
         }
         .fixed-room-row::before {
             content:''; position:absolute; left:0; top:0; bottom:0; width:3px;
@@ -100,7 +100,7 @@
             background:linear-gradient(135deg,#f1f5f9,#e2e8f0)!important;
             font-size:.82rem; color:#1e293b; box-shadow:3px 0 10px rgba(0,0,0,.12);
         }
-        .calendar-table th.date-header { min-width:110px; padding:10px 12px; }
+        .calendar-table th.date-header { min-width:125px; padding:10px 12px; }
 
         .date-header-day  { display:block; font-size:.95rem; font-weight:800; color:#1e293b; margin-bottom:2px; }
         .date-header-date { display:block; font-size:.68rem; color:#64748b; font-weight:500; }
@@ -114,11 +114,11 @@
         .date-header.today .date-header-date { color:rgba(255,255,255,.8); }
 
         /* ── Table rows ── */
-        .calendar-table tbody tr { height:110px; min-height:110px; max-height:110px; }
+        .calendar-table tbody tr { height:155px; min-height:155px; max-height:155px; }
         .calendar-table tbody tr:hover { background:#f8fafc; }
         .calendar-table td {
             padding:0; border-bottom:1px solid #e2e8f0; border-right:1px solid #f1f5f9;
-            position:relative; height:110px; min-height:110px; max-height:110px;
+            position:relative; height:155px; min-height:155px; max-height:155px;
             box-sizing:border-box; vertical-align:top;
         }
         .room-type-cell {
@@ -145,7 +145,7 @@
         .availability-cell {
             padding:9px 7px; text-align:center; cursor:pointer;
             transition:transform .15s, box-shadow .15s;
-            height:calc(110px - 8px); min-height:102px; max-height:102px;
+            height:calc(155px - 8px); min-height:147px; max-height:147px;
             display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
             border-radius:10px; position:relative; overflow:hidden;
             margin:4px; box-sizing:border-box;

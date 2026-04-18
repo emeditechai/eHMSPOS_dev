@@ -1150,15 +1150,10 @@ namespace HotelApp.Web.Controllers
                 templateKey = "classic";
             }
 
-            var viewName = templateKey switch
-            {
-                "modern" => "Receipt_Modern",
-                "compact" => "Receipt_Compact",
-                "minimal" => "Receipt_Minimal",
-                _ => "Receipt"
-            };
-
-            return View(viewName, booking);
+            // Pass template key to the single Receipt view which applies
+            // different CSS styling while keeping identical inner logic.
+            ViewBag.ReceiptTemplateKey = templateKey;
+            return View("Receipt", booking);
         }
 
         [HttpGet]

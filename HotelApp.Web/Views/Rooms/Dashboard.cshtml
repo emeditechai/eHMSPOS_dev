@@ -1276,6 +1276,42 @@
             </div>
         </div>
     </div>
+
+    <!-- Upcoming Forecast Bookings -->
+    <div class="rd-analytics-card" style="margin-bottom:.9rem">
+        <div class="rd-card-head" style="justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+            <span><i class="fas fa-calendar-alt" style="color:#6366f1"></i> Upcoming Forecast Booking Details</span>
+            <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+                <label style="font-size:.72rem;font-weight:600;color:#6c757d;margin:0">From</label>
+                <input type="date" id="forecastFromDate" style="font-size:.72rem;padding:.25rem .5rem;border:1px solid #dee2e6;border-radius:6px;color:#495057" />
+                <label style="font-size:.72rem;font-weight:600;color:#6c757d;margin:0">To</label>
+                <input type="date" id="forecastToDate" style="font-size:.72rem;padding:.25rem .5rem;border:1px solid #dee2e6;border-radius:6px;color:#495057" />
+                <button onclick="loadForecastBookings()" style="font-size:.72rem;padding:.25rem .7rem;background:#6366f1;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">
+                    <i class="fas fa-filter"></i> Filter
+                </button>
+            </div>
+        </div>
+        <div class="rd-table-wrap" style="max-height:350px;overflow-y:auto">
+            <table id="forecastTable" style="width:100%;border-collapse:collapse;font-size:.78rem">
+                <thead>
+                    <tr style="background:#f8f9ff;position:sticky;top:0;z-index:1">
+                        <th style="padding:.5rem .6rem;text-align:left;font-weight:700;color:#1a2a6c;border-bottom:2px solid #eef1f8;white-space:nowrap">#</th>
+                        <th style="padding:.5rem .6rem;text-align:left;font-weight:700;color:#1a2a6c;border-bottom:2px solid #eef1f8;white-space:nowrap">Booking #</th>
+                        <th style="padding:.5rem .6rem;text-align:left;font-weight:700;color:#1a2a6c;border-bottom:2px solid #eef1f8;white-space:nowrap">Primary Guest</th>
+                        <th style="padding:.5rem .6rem;text-align:left;font-weight:700;color:#1a2a6c;border-bottom:2px solid #eef1f8;white-space:nowrap">Mobile</th>
+                        <th style="padding:.5rem .6rem;text-align:left;font-weight:700;color:#1a2a6c;border-bottom:2px solid #eef1f8;white-space:nowrap">Source</th>
+                        <th style="padding:.5rem .6rem;text-align:left;font-weight:700;color:#1a2a6c;border-bottom:2px solid #eef1f8;white-space:nowrap">Room Type</th>
+                        <th style="padding:.5rem .6rem;text-align:left;font-weight:700;color:#1a2a6c;border-bottom:2px solid #eef1f8;white-space:nowrap">Check-in</th>
+                        <th style="padding:.5rem .6rem;text-align:left;font-weight:700;color:#1a2a6c;border-bottom:2px solid #eef1f8;white-space:nowrap">Check-out</th>
+                        <th style="padding:.5rem .6rem;text-align:left;font-weight:700;color:#1a2a6c;border-bottom:2px solid #eef1f8;white-space:nowrap">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="forecastTableBody">
+                    <tr><td colspan="9" style="text-align:center;padding:2rem;color:#868e96"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
@@ -2069,4 +2105,55 @@
         });
 
     </script>
+
+<script>
+    // Upcoming Forecast Bookings
+    (function() {
+        var today = new Date();
+        var fromInput = document.getElementById('forecastFromDate');
+        var toInput = document.getElementById('forecastToDate');
+        fromInput.value = today.toISOString().split('T')[0];
+        var toDate = new Date(today);
+        toDate.setDate(toDate.getDate() + 7);
+        toInput.value = toDate.toISOString().split('T')[0];
+        loadForecastBookings();
+    })();
+
+    async function loadForecastBookings() {
+        var fromDate = document.getElementById('forecastFromDate').value;
+        var toDate = document.getElementById('forecastToDate').value;
+        var tbody = document.getElementById('forecastTableBody');
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:#868e96"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
+        try {
+            var url = '@Url.Action("GetUpcomingForecastBookings","Rooms")?fromDate=' + encodeURIComponent(fromDate) + '&toDate=' + encodeURIComponent(toDate);
+            var res = await fetch(url);
+            var data = await res.json();
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:#868e96"><i class="fas fa-calendar-times" style="margin-right:.3rem"></i>No upcoming bookings found</td></tr>';
+                return;
+            }
+            var html = '';
+            for (var i = 0; i < data.length; i++) {
+                var b = data[i];
+                var ci = new Date(b.checkInDate).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+                var co = new Date(b.checkOutDate).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+                html += '<tr style="border-bottom:1px solid #f1f3f5">' +
+                    '<td style="padding:.45rem .6rem;color:#6c757d">' + (i+1) + '</td>' +
+                    '<td style="padding:.45rem .6rem;font-weight:700;color:#1a2a6c">' + (b.bookingNumber || '-') + '</td>' +
+                    '<td style="padding:.45rem .6rem;font-weight:600">' + (b.primaryGuestName || '-') + '</td>' +
+                    '<td style="padding:.45rem .6rem">' + (b.mobile || '-') + '</td>' +
+                    '<td style="padding:.45rem .6rem"><span style="background:#e8f5e9;color:#2e7d32;padding:.15rem .45rem;border-radius:4px;font-size:.7rem;font-weight:600">' + (b.source || '-') + '</span></td>' +
+                    '<td style="padding:.45rem .6rem">' + (b.roomTypeName || '-') + '</td>' +
+                    '<td style="padding:.45rem .6rem;color:#0d9488;font-weight:600">' + ci + '</td>' +
+                    '<td style="padding:.45rem .6rem;color:#c62828;font-weight:600">' + co + '</td>' +
+                    '<td style="padding:.45rem .6rem"><span style="padding:.15rem .45rem;border-radius:4px;font-size:.7rem;font-weight:600;' + (b.status === 'Confirmed' ? 'background:#e8f5e9;color:#2e7d32' : b.status === 'Pending' ? 'background:#fff3e0;color:#e65100' : 'background:#e3f2fd;color:#1565c0') + '">' + (b.status || '-') + '</span></td>' +
+                    '</tr>';
+            }
+            tbody.innerHTML = html;
+        } catch(e) {
+            console.error('Forecast load error:', e);
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:#ef4444"><i class="fas fa-exclamation-triangle"></i> Error loading data</td></tr>';
+        }
+    }
+</script>
 }

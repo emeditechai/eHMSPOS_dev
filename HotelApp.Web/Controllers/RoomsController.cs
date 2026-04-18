@@ -368,6 +368,15 @@ public class RoomsController : BaseController
         return View(viewModel);
     }
 
+    [HttpGet]
+    public async Task<IActionResult> GetUpcomingForecastBookings(DateTime? fromDate, DateTime? toDate)
+    {
+        var from = fromDate ?? DateTime.Today;
+        var to = toDate ?? DateTime.Today.AddDays(7);
+        var bookings = await _roomRepository.GetUpcomingForecastBookingsAsync(CurrentBranchID, from, to);
+        return Json(bookings);
+    }
+
     [HttpPost]
     [HttpPost]
     public async Task<IActionResult> UpdateRoomStatus([FromBody] UpdateRoomStatusRequest request)

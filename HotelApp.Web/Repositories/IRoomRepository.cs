@@ -24,5 +24,6 @@ namespace HotelApp.Web.Repositories
         Task<(bool hasActiveBooking, string? bookingNumber, decimal balanceAmount)> GetActiveBookingForRoomAsync(int roomId);
         Task<(bool hasBooking, string? bookingNumber, decimal balanceAmount, DateTime? checkOutDate)> GetAnyBookingForRoomAsync(int roomId);
         Task<Dictionary<int, (string roomTypeName, int totalRooms, int availableRooms, decimal baseRate, int maxOccupancy, List<string> availableRoomNumbers, string? discount)>> GetRoomAvailabilityByDateRangeAsync(int branchId, DateTime startDate, DateTime endDate);
+        Task<IEnumerable<HotelApp.Web.ViewModels.UpcomingForecastBooking>> GetUpcomingForecastBookingsAsync(int branchId, DateTime fromDate, DateTime toDate);
     }
 }

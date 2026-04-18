@@ -2,6 +2,7 @@ using System;
 using System.Data;
 using Dapper;
 using HotelApp.Web.Models;
+using HotelApp.Web.ViewModels;
 
 namespace HotelApp.Web.Repositories
 {
@@ -69,7 +70,7 @@ namespace HotelApp.Web.Repositories
                     WHERE br.IsActive = 1
                         AND bk.Status IN ('Confirmed', 'CheckedIn')
                         AND CAST(bk.CheckInDate AS DATE) <= CAST(GETDATE() AS DATE)
-                        AND CAST(bk.CheckOutDate AS DATE) > CAST(GETDATE() AS DATE)
+                        AND CAST(bk.CheckOutDate AS DATE) >= CAST(GETDATE() AS DATE)
                         AND bk.ActualCheckOutDate IS NULL
                 ) b ON r.Id = b.RoomId AND b.rn = 1
                 WHERE r.IsActive = 1 AND r.BranchID = @BranchId
@@ -647,6 +648,30 @@ namespace HotelApp.Web.Repositories
             }
             
             return availability;
+        }
+
+        public async Task<IEnumerable<ViewModels.UpcomingForecastBooking>> GetUpcomingForecastBookingsAsync(int branchId, DateTime fromDate, DateTime toDate)
+        {
+            var sql = @"
+                SELECT 
+                    b.BookingNumber,
+                    LTRIM(RTRIM(b.PrimaryGuestFirstName + ' ' + b.PrimaryGuestLastName)) AS PrimaryGuestName,
+                    ISNULL(b.PrimaryGuestPhone, '') AS Mobile,
+                    ISNULL(b.Source, '') AS Source,
+                    ISNULL(rt.TypeName, '') AS RoomTypeName,
+                    b.CheckInDate,
+                    b.CheckOutDate,
+                    b.Status
+                FROM Bookings b
+                LEFT JOIN RoomTypes rt ON b.RoomTypeId = rt.Id
+                WHERE b.BranchID = @BranchId
+                    AND b.Status IN ('Confirmed', 'Pending')
+                    AND CAST(b.CheckInDate AS DATE) >= CAST(@FromDate AS DATE)
+                    AND CAST(b.CheckInDate AS DATE) <= CAST(@ToDate AS DATE)
+                    AND NOT EXISTS (SELECT 1 FROM BookingRooms br WHERE br.BookingId = b.Id AND br.IsActive = 1)
+                ORDER BY b.CheckInDate ASC, b.BookingNumber ASC";
+
+            return await _dbConnection.QueryAsync<ViewModels.UpcomingForecastBooking>(sql, new { BranchId = branchId, FromDate = fromDate, ToDate = toDate });
         }
     }
 }
