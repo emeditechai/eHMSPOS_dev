@@ -1278,6 +1278,33 @@ else
             if (d.success) preview = d;
         } catch (e) { console.error('Preview error:', e); }
 
+        // ── Step 1b: Multi-room-type? Ask full or partial ─────────────────────
+        if (preview && preview.isMultiRoomType && preview.roomLines && preview.roomLines.length > 1) {
+            const choiceResult = await Swal.fire({
+                title: 'Cancellation Type',
+                html: `<p>Booking <strong>${bookingNumber}</strong> has <strong>${preview.roomLines.length}</strong> room type(s).</p>
+                       <p style="margin-top:8px;">How would you like to cancel?</p>`,
+                icon: 'question',
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonText: '<i class="fas fa-times-circle"></i>&nbsp;Cancel Entire Booking',
+                denyButtonText: '<i class="fas fa-edit"></i>&nbsp;Cancel Specific Room Type(s)',
+                cancelButtonText: 'Go Back',
+                confirmButtonColor: '#ef4444',
+                denyButtonColor: '#f59e0b',
+                cancelButtonColor: '#6c757d',
+                width: 520
+            });
+
+            if (choiceResult.isDenied) {
+                // Partial cancellation flow
+                await partialCancelBooking(bookingNumber, preview);
+                return;
+            }
+            if (!choiceResult.isConfirmed) return;
+            // else: fall through to full cancellation
+        }
+
         // ── Step 2: Build preview card ────────────────────────────────────────
         function buildPreviewHtml(title) {
             let html = `<p style="margin-bottom:10px;">${title}</p>`;
@@ -1384,6 +1411,103 @@ else
         } catch (err) {
             console.error('Cancel error:', err);
             Swal.fire({ icon: 'error', title: 'Request Failed', text: 'Unable to reach the server. Please try again.', confirmButtonColor: '#ef4444' });
+        }
+    }
+
+    async function partialCancelBooking(bookingNumber, preview) {
+        const antiForgeryToken = () => document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+        const lines = preview.roomLines;
+
+        // Step 1: Show room line selection checkboxes
+        let linesHtml = `<p style="margin-bottom:10px;">Select the room type(s) to cancel for booking <strong>${bookingNumber}</strong>:</p>`;
+        linesHtml += `<div style="text-align:left;max-height:250px;overflow-y:auto;">`;
+        for (const line of lines) {
+            linesHtml += `<label style="display:flex;align-items:center;padding:8px 12px;margin:4px 0;background:#f8f9fa;border-radius:8px;border:1px solid #e5e7eb;cursor:pointer;font-size:0.9rem;">
+                <input type="checkbox" class="partial-cancel-line" value="${line.id}" style="margin-right:10px;width:18px;height:18px;">
+                <div style="flex:1;">
+                    <strong>${line.roomTypeName}</strong> × ${line.requiredRooms} room(s)
+                    <div style="font-size:0.8rem;color:#6b7280;">₹${Number(line.grandTotal).toLocaleString('en-IN',{minimumFractionDigits:2})}</div>
+                </div>
+            </label>`;
+        }
+        linesHtml += `</div>`;
+        linesHtml += `<div id="partial-preview-area" style="margin-top:12px;display:none;"></div>`;
+        linesHtml += `<div style="margin-top:12px;text-align:left;">
+            <label style="font-size:0.85rem;color:#6b7280;display:block;margin-bottom:4px;">Reason for cancellation <span style="opacity:.6;">(optional)</span></label>
+            <textarea id="swal-partial-reason" class="swal2-textarea" placeholder="Enter reason…" style="margin:0;width:100%;box-sizing:border-box;font-size:0.9rem;min-height:64px;"></textarea>
+        </div>
+        <p style="margin-top:10px;color:#ef4444;font-size:0.8rem;">⚠️ This action cannot be undone.</p>`;
+
+        const selectResult = await Swal.fire({
+            title: 'Partial Cancellation',
+            html: linesHtml,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-times-circle"></i>&nbsp;Cancel Selected',
+            cancelButtonText: 'Go Back',
+            width: 560,
+            didOpen: () => {
+                // Live preview on checkbox change
+                const checkboxes = Swal.getPopup().querySelectorAll('.partial-cancel-line');
+                const previewArea = Swal.getPopup().querySelector('#partial-preview-area');
+                checkboxes.forEach(cb => cb.addEventListener('change', async () => {
+                    const selected = Array.from(checkboxes).filter(c => c.checked).map(c => parseInt(c.value));
+                    if (selected.length === 0) { previewArea.style.display = 'none'; return; }
+                    previewArea.style.display = 'block';
+                    previewArea.innerHTML = '<div style="text-align:center;color:#6b7280;padding:8px;"><i class="fas fa-spinner fa-spin"></i> Calculating refund…</div>';
+                    try {
+                        const qs = selected.map(id => 'roomLineIds=' + id).join('&');
+                        const resp = await fetch('/Booking/PartialCancellationPreview?bookingNumber=' + encodeURIComponent(bookingNumber) + '&' + qs);
+                        const pData = await resp.json();
+                        if (pData.success) {
+                            const paid = '₹' + Number(pData.amountPaid).toLocaleString('en-IN',{minimumFractionDigits:2});
+                            const ref = '₹' + Number(pData.refundAmount).toLocaleString('en-IN',{minimumFractionDigits:2});
+                            const refColor = pData.refundAmount > 0 ? '#059669' : '#dc2626';
+                            previewArea.innerHTML = `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:0.85rem;">
+                                <div style="display:flex;justify-content:space-between;padding:3px 0;"><span style="color:#6b7280;">Proportional Paid</span><strong>${paid}</strong></div>
+                                <div style="display:flex;justify-content:space-between;padding:3px 0;"><span style="color:#6b7280;">Eligible Refund</span><strong style="color:${refColor};">${ref}</strong></div>
+                                ${pData.refundBreakdownNote ? '<div style="font-size:0.78rem;color:#6b7280;margin-top:4px;"><i class="fas fa-info-circle"></i> ' + pData.refundBreakdownNote + '</div>' : ''}
+                            </div>`;
+                        } else {
+                            previewArea.innerHTML = '<div style="color:#ef4444;font-size:0.85rem;"><i class="fas fa-exclamation-triangle"></i> ' + (pData.message || 'Preview error') + '</div>';
+                        }
+                    } catch (e) { previewArea.innerHTML = '<div style="color:#ef4444;font-size:0.85rem;">Error loading preview</div>'; }
+                }));
+            },
+            preConfirm: () => {
+                const selected = Array.from(Swal.getPopup().querySelectorAll('.partial-cancel-line:checked')).map(c => parseInt(c.value));
+                if (selected.length === 0) { Swal.showValidationMessage('Please select at least one room type to cancel.'); return false; }
+                const reason = Swal.getPopup().querySelector('#swal-partial-reason')?.value?.trim() || '';
+                return { roomLineIds: selected, reason };
+            }
+        });
+
+        if (!selectResult.isConfirmed) return;
+
+        const { roomLineIds, reason } = selectResult.value;
+
+        // Step 2: POST partial cancel
+        Swal.fire({ title: 'Processing Partial Cancellation…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        try {
+            const resp = await fetch('/Booking/PartialCancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': antiForgeryToken() },
+                body: JSON.stringify({ bookingNumber, reason, roomLineIds })
+            });
+            const data = await resp.json();
+            if (data.success) {
+                let html = `<p>${data.message || 'Partial cancellation completed.'}</p>`;
+                if (data.refundAmount > 0) html += `<p>Refund of <strong>₹${Number(data.refundAmount).toLocaleString('en-IN',{minimumFractionDigits:2})}</strong> is applicable.</p>`;
+                if (data.approvalStatus === 'Pending') html += `<p style="color:#d97706;font-size:0.85rem;">⏳ Awaiting manager approval.</p>`;
+                await Swal.fire({ icon: 'success', title: 'Partial Cancellation Done', html, confirmButtonColor: '#059669', timer: 3500, timerProgressBar: true });
+                window.location.reload();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Cancellation Failed', text: data.message, confirmButtonColor: '#ef4444' });
+            }
+        } catch (err) {
+            Swal.fire({ icon: 'error', title: 'Request Failed', text: 'Unable to reach the server.', confirmButtonColor: '#ef4444' });
         }
     }
 

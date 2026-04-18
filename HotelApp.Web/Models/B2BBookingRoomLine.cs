@@ -21,5 +21,8 @@ namespace HotelApp.Web.Models
         public decimal ExtraPaxRatePerNight { get; set; }
         public decimal DiscountPercentage { get; set; }
         public decimal DiscountAmount { get; set; }
+        public bool IsCancelled { get; set; }
+        public DateTime? CancelledDate { get; set; }
+        public int? CancelledBy { get; set; }
     }
 }

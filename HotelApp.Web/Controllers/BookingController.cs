@@ -1087,6 +1087,20 @@ namespace HotelApp.Web.Controllers
                 }
             }
 
+            // Always load all cancellation records (includes partial cancellations for active bookings)
+            try
+            {
+                var allCancellationRecords = (await _bookingRepository.GetAllBookingCancellationRecordsAsync(bookingNumber, CurrentBranchID)).ToList();
+                ViewBag.AllCancellationRecords = allCancellationRecords;
+                var hasPartialCancellations = allCancellationRecords.Any(r => r.IsPartial);
+                ViewBag.HasPartialCancellations = hasPartialCancellations;
+            }
+            catch
+            {
+                ViewBag.AllCancellationRecords = new List<BookingCancellationRecord>();
+                ViewBag.HasPartialCancellations = false;
+            }
+
             // Get rate master to determine actual tax percentage (not recalculated from amounts)
             if (booking.RatePlanId.HasValue)
             {
@@ -3284,6 +3298,16 @@ namespace HotelApp.Web.Controllers
                 return Json(new { success = false, message = "Unable to calculate cancellation preview" });
             }
 
+            // Check if booking has multi-room-type lines
+            var booking = await _bookingRepository.GetByBookingNumberAsync(bookingNumber);
+            var roomLines = booking?.B2BRoomLines?.Where(l => !l.IsCancelled).Select(l => new
+            {
+                id = l.Id,
+                roomTypeName = l.RoomTypeName,
+                requiredRooms = l.RequiredRooms,
+                grandTotal = l.GrandTotal
+            }).ToList();
+
             return Json(new
             {
                 success = true,
@@ -3294,8 +3318,78 @@ namespace HotelApp.Web.Controllers
                 hoursBeforeCheckIn = preview.HoursBeforeCheckIn,
                 approvalStatus = preview.ApprovalStatus,
                 policyName = preview.PolicyName,
-                refundBreakdownNote = preview.RefundBreakdownNote
+                refundBreakdownNote = preview.RefundBreakdownNote,
+                isMultiRoomType = roomLines != null && roomLines.Count > 1,
+                roomLines = roomLines
             });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> PartialCancellationPreview(string bookingNumber, [FromQuery] int[] roomLineIds)
+        {
+            if (string.IsNullOrWhiteSpace(bookingNumber) || roomLineIds == null || roomLineIds.Length == 0)
+                return Json(new { success = false, message = "Invalid parameters" });
+
+            var preview = await _bookingRepository.GetPartialCancellationPreviewAsync(bookingNumber, roomLineIds, CurrentBranchID);
+            if (preview == null)
+                return Json(new { success = false, message = "Unable to calculate partial cancellation preview" });
+
+            return Json(new
+            {
+                success = true,
+                bookingNumber = preview.BookingNumber,
+                isPartial = preview.IsPartial,
+                amountPaid = preview.AmountPaid,
+                refundAmount = preview.RefundAmount,
+                refundPercent = preview.RefundPercent,
+                hoursBeforeCheckIn = preview.HoursBeforeCheckIn,
+                approvalStatus = preview.ApprovalStatus,
+                policyName = preview.PolicyName,
+                refundBreakdownNote = preview.RefundBreakdownNote,
+                lines = preview.Lines?.Select(l => new
+                {
+                    roomLineId = l.RoomLineId,
+                    roomTypeName = l.RoomTypeName,
+                    requiredRooms = l.RequiredRooms,
+                    lineGrandTotal = l.LineGrandTotal,
+                    proportionalAmountPaid = l.ProportionalAmountPaid,
+                    refundAmount = l.RefundAmount
+                })
+            });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> PartialCancel([FromBody] CancelBookingRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request?.BookingNumber))
+                return Json(new { success = false, message = "Invalid booking number" });
+
+            if (request.RoomLineIds == null || request.RoomLineIds.Length == 0)
+                return Json(new { success = false, message = "No room lines selected for cancellation" });
+
+            if (CurrentUserId == null || CurrentUserId.Value <= 0)
+                return Json(new { success = false, message = "Unable to identify user. Please refresh the page and try again." });
+
+            var result = await _bookingRepository.PartialCancelBookingAsync(
+                new BookingCancellationCommand
+                {
+                    BookingNumber = request.BookingNumber,
+                    CancellationType = "Staff",
+                    Reason = request.Reason,
+                    IsOverride = request.IsOverride,
+                    OverrideReason = request.OverrideReason,
+                    IsNoShow = false,
+                    RoomLineIds = request.RoomLineIds
+                },
+                CurrentBranchID,
+                CurrentUserId.Value);
+
+            if (!result.Success)
+                return Json(new { success = false, message = result.Message });
+
+            TempData["SuccessMessage"] = result.Message;
+            return Json(new { success = true, message = result.Message, refundAmount = result.Preview?.RefundAmount, approvalStatus = result.Preview?.ApprovalStatus });
         }
 
         [HttpGet]
@@ -3408,5 +3502,6 @@ namespace HotelApp.Web.Controllers
         public string? Reason { get; set; }
         public bool IsOverride { get; set; }
         public string? OverrideReason { get; set; }
+        public int[]? RoomLineIds { get; set; }
     }
 }

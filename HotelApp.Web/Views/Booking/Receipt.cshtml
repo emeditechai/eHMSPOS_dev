@@ -67,6 +67,21 @@
 
     // Template key for CSS-only style variants (logic stays identical)
     var receiptTemplateKey = (ViewBag.ReceiptTemplateKey as string ?? "classic").ToLowerInvariant();
+
+    // Partial cancellation records
+    var allCancellationRecords = ViewBag.AllCancellationRecords as List<HotelApp.Web.Models.BookingCancellationRecord>
+        ?? new List<HotelApp.Web.Models.BookingCancellationRecord>();
+    var hasPartialCancellations = ViewBag.HasPartialCancellations is bool hpc && hpc;
+    // Build a set of cancelled room line IDs from partial cancellation records
+    var cancelledRoomLineIdSet = new HashSet<int>();
+    foreach (var cr in allCancellationRecords.Where(r => r.IsPartial && !string.IsNullOrWhiteSpace(r.CancelledRoomLineIds)))
+    {
+        foreach (var idStr in cr.CancelledRoomLineIds!.Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (int.TryParse(idStr.Trim(), out var lineId))
+                cancelledRoomLineIdSet.Add(lineId);
+        }
+    }
 }
 
 <!DOCTYPE html>
@@ -565,6 +580,46 @@
             padding: 2px 10px;
             border-radius: 4px;
             text-transform: uppercase;
+        }
+
+        /* Cancelled room line styles */
+        tr.cancelled-line {
+            background: #fef2f2 !important;
+            opacity: 0.75;
+        }
+        tr.cancelled-line td {
+            text-decoration: line-through;
+            color: #9ca3af !important;
+        }
+        tr.cancelled-line td .cancelled-badge {
+            text-decoration: none;
+        }
+        .cancelled-badge {
+            display: inline-block;
+            background: #dc2626;
+            color: #fff !important;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 1px 7px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-left: 5px;
+            vertical-align: middle;
+        }
+
+        /* Partial cancellation details card */
+        .partial-cancellation-card {
+            border: 1px solid #fca5a5;
+            border-radius: 10px;
+            background: #fff9f9;
+            padding: 14px 16px;
+            margin-top: 16px;
+            page-break-inside: avoid;
+        }
+        .partial-cancellation-card .section-title {
+            color: #dc2626;
+            margin-bottom: 10px;
         }
 
         .assigned-rooms-section {
@@ -1458,10 +1513,15 @@
                                 // Compute the effective rate per night per room (base + extra pax)
                                 var lineEffectiveRate = lineRate + (rl.ExtraPaxRatePerNight * rl.ExtraPaxCount);
                                 var linePreDiscountTotal = lineEffectiveRate * lineNights * rl.RequiredRooms;
+                                var isLineCancelled = rl.IsCancelled || cancelledRoomLineIdSet.Contains(rl.Id);
 
-                                <tr>
+                                <tr class="@(isLineCancelled ? "cancelled-line" : "")">
                                     <td>
                                         @rl.RoomTypeName
+                                        @if (isLineCancelled)
+                                        {
+                                            <span class="cancelled-badge">CANCELLED</span>
+                                        }
                                         <br /><small style="color:#888;">@lineDateHint</small>
                                     </td>
                                     <td class="text-center">@lineNights</td>
@@ -1782,6 +1842,97 @@
                             <tr style="font-weight: 600; background: #f8f9fa;">
                                 <td colspan="6" class="text-right" style="padding: 8px;">Total Paid:</td>
                                 <td class="text-right" style="padding: 8px; color: #4caf50;">₹ @totalPaid.ToString("N2")</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            }
+
+            <!-- Cancellation & Refund Details (partial or full) -->
+            @if (allCancellationRecords.Any())
+            {
+                <div class="partial-cancellation-card">
+                    <h2 class="section-title" style="color: #dc2626;">Cancellation & Refund Details</h2>
+                    <table class="detail-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Reason</th>
+                                <th>Room Types Cancelled</th>
+                                <th class="text-right">Amount Paid</th>
+                                <th class="text-right">Deducted</th>
+                                <th class="text-right">Refund</th>
+                                <th>Refund Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var cr in allCancellationRecords)
+                            {
+                                var crDeduct = cr.AmountPaid - cr.RefundAmount;
+                                // Resolve cancelled room type names
+                                var cancelledTypeNames = "";
+                                if (cr.IsPartial && !string.IsNullOrWhiteSpace(cr.CancelledRoomLineIds) && Model.B2BRoomLines != null)
+                                {
+                                    var lineIds = cr.CancelledRoomLineIds.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                                        .Select(s => int.TryParse(s.Trim(), out var id) ? id : 0)
+                                        .Where(id => id > 0)
+                                        .ToHashSet();
+                                    cancelledTypeNames = string.Join(", ", Model.B2BRoomLines.Where(l => lineIds.Contains(l.Id)).Select(l => l.RoomTypeName));
+                                }
+                                <tr>
+                                    <td class="mono">@cr.CreatedDate.ToString("dd MMM yyyy")<br /><small>@cr.CreatedDate.ToString("hh:mm tt")</small></td>
+                                    <td>
+                                        @if (cr.IsPartial)
+                                        {
+                                            <span style="display: inline-block; background: #f59e0b; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 3px; text-transform: uppercase;">Partial</span>
+                                        }
+                                        else
+                                        {
+                                            <span style="display: inline-block; background: #dc2626; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 3px; text-transform: uppercase;">Full</span>
+                                        }
+                                    </td>
+                                    <td>@(cr.Reason ?? "-")</td>
+                                    <td>
+                                        @if (cr.IsPartial && !string.IsNullOrWhiteSpace(cancelledTypeNames))
+                                        {
+                                            @cancelledTypeNames
+                                        }
+                                        else if (!cr.IsPartial)
+                                        {
+                                            <span style="color: #dc2626; font-weight: 600;">All Room Types</span>
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
+                                    </td>
+                                    <td class="text-right mono">₹ @cr.AmountPaid.ToString("N2")</td>
+                                    <td class="text-right mono" style="color: #dc2626;">₹ @crDeduct.ToString("N2")</td>
+                                    <td class="text-right mono" style="color: #16a34a; font-weight: 700;">₹ @cr.RefundAmount.ToString("N2")</td>
+                                    <td>
+                                        @if (cr.IsRefunded)
+                                        {
+                                            <span class="refunded-badge">Refunded</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="refund-pending-badge">Pending</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            @{
+                                var totalRefundAmount = allCancellationRecords.Sum(r => r.RefundAmount);
+                                var totalDeductAmount = allCancellationRecords.Sum(r => r.AmountPaid - r.RefundAmount);
+                            }
+                            <tr style="font-weight: 600; background: #fef2f2;">
+                                <td colspan="5" class="text-right" style="padding: 8px;">Total:</td>
+                                <td class="text-right mono" style="padding: 8px; color: #dc2626;">₹ @totalDeductAmount.ToString("N2")</td>
+                                <td class="text-right mono" style="padding: 8px; color: #16a34a;">₹ @totalRefundAmount.ToString("N2")</td>
+                                <td></td>
                             </tr>
                         </tfoot>
                     </table>

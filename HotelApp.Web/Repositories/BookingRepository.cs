@@ -402,7 +402,7 @@ namespace HotelApp.Web.Repositories
                     FROM Bookings b
                     WHERE b.RoomTypeId = @RoomTypeId
                         AND b.BranchID = @BranchId
-                        AND b.Status IN ('Confirmed', 'CheckedIn')
+                        AND b.Status IN ('Confirmed', 'CheckedIn', 'PartialCancelled')
                         AND NOT EXISTS (SELECT 1 FROM B2BBookingRoomLines brl WHERE brl.BookingId = b.Id)
                         AND CAST(b.CheckInDate AS DATE) < CAST(@CheckOut AS DATE)
                         AND (
@@ -420,7 +420,8 @@ namespace HotelApp.Web.Repositories
                     INNER JOIN Bookings b ON brl.BookingId = b.Id
                     WHERE brl.RoomTypeId = @RoomTypeId
                         AND b.BranchID = @BranchId
-                        AND b.Status IN ('Confirmed', 'CheckedIn')
+                        AND b.Status IN ('Confirmed', 'CheckedIn', 'PartialCancelled')
+                        AND ISNULL(brl.IsCancelled, 0) = 0
                         AND CAST(ISNULL(brl.CheckInDate, b.CheckInDate) AS DATE) < CAST(@CheckOut AS DATE)
                         AND CAST(ISNULL(brl.CheckOutDate, b.CheckOutDate) AS DATE) > CAST(@CheckIn AS DATE);
 
@@ -1420,6 +1421,343 @@ namespace HotelApp.Web.Repositories
             };
         }
 
+        public async Task<BookingCancellationPreview?> GetPartialCancellationPreviewAsync(string bookingNumber, int[] roomLineIds, int requestingBranchId)
+        {
+            if (string.IsNullOrWhiteSpace(bookingNumber) || roomLineIds == null || roomLineIds.Length == 0)
+                return null;
+
+            var booking = await GetByBookingNumberAsync(bookingNumber);
+            if (booking == null || booking.BranchID != requestingBranchId)
+                return null;
+
+            var allLines = booking.B2BRoomLines;
+            if (allLines == null || !allLines.Any())
+                return null;
+
+            var activeLines = allLines.Where(l => !l.IsCancelled).ToList();
+            var linesToCancel = activeLines.Where(l => roomLineIds.Contains(l.Id)).ToList();
+            if (!linesToCancel.Any())
+                return null;
+
+            // If cancelling ALL remaining active lines, delegate to full cancellation preview
+            if (linesToCancel.Count == activeLines.Count)
+                return await ComputeCancellationPreviewAsync(booking, false, transaction: null);
+
+            // Compute proportional amount paid for these lines
+            var bookingTotal = booking.TotalAmount;
+            var cancelledLinesTotal = linesToCancel.Sum(l => l.GrandTotal);
+            var proportion = bookingTotal > 0 ? cancelledLinesTotal / bookingTotal : 0m;
+
+            var totalPaid = Math.Max(0m, Math.Round(booking.Payments?.Sum(p => p.Amount) ?? 0m, 2, MidpointRounding.AwayFromZero));
+            var proportionalPaid = Math.Round(totalPaid * proportion, 2, MidpointRounding.AwayFromZero);
+
+            // Use existing ComputeCancellationPreviewAsync to get policy-based refund calculation
+            var fullPreview = await ComputeCancellationPreviewAsync(booking, false, transaction: null);
+            if (fullPreview == null) return null;
+
+            // Scale the refund proportionally
+            decimal refundForLines;
+            if (fullPreview.AmountPaid > 0 && fullPreview.RefundAmount > 0)
+            {
+                var fullRefundRatio = fullPreview.RefundAmount / fullPreview.AmountPaid;
+                refundForLines = Math.Round(proportionalPaid * fullRefundRatio, 2, MidpointRounding.AwayFromZero);
+            }
+            else
+            {
+                refundForLines = 0m;
+            }
+            if (refundForLines > proportionalPaid) refundForLines = proportionalPaid;
+
+            var lineBreakdown = linesToCancel.Select(l => new PartialCancellationLinePreview
+            {
+                RoomLineId = l.Id,
+                RoomTypeName = l.RoomTypeName,
+                RequiredRooms = l.RequiredRooms,
+                LineGrandTotal = l.GrandTotal,
+                ProportionalAmountPaid = bookingTotal > 0 ? Math.Round(totalPaid * (l.GrandTotal / bookingTotal), 2) : 0m,
+                RefundAmount = bookingTotal > 0 && fullPreview.AmountPaid > 0
+                    ? Math.Round(totalPaid * (l.GrandTotal / bookingTotal) * (fullPreview.RefundAmount / fullPreview.AmountPaid), 2)
+                    : 0m
+            }).ToList();
+
+            return new BookingCancellationPreview
+            {
+                BookingNumber = booking.BookingNumber,
+                BookingId = booking.Id,
+                BranchID = booking.BranchID,
+                CheckInAt = fullPreview.CheckInAt,
+                HoursBeforeCheckIn = fullPreview.HoursBeforeCheckIn,
+                RateType = fullPreview.RateType,
+                IsNoShow = false,
+                IsPartial = true,
+                CancelledRoomLineIds = roomLineIds,
+                AmountPaid = proportionalPaid,
+                RefundPercent = fullPreview.RefundPercent,
+                FlatDeduction = fullPreview.FlatDeduction,
+                GatewayFeeDeductionPercent = fullPreview.GatewayFeeDeductionPercent,
+                DeductionAmount = Math.Round(proportionalPaid - refundForLines, 2),
+                RefundAmount = refundForLines,
+                PolicyId = fullPreview.PolicyId,
+                PolicyName = fullPreview.PolicyName,
+                PolicySnapshotJson = fullPreview.PolicySnapshotJson,
+                ApprovalThreshold = fullPreview.ApprovalThreshold,
+                ApprovalStatus = fullPreview.ApprovalStatus,
+                RefundBreakdownNote = $"Partial cancellation: {linesToCancel.Count} room type(s) of {activeLines.Count}. " + (fullPreview.RefundBreakdownNote ?? string.Empty),
+                Lines = lineBreakdown
+            };
+        }
+
+        public async Task<BookingCancellationResult> PartialCancelBookingAsync(BookingCancellationCommand command, int requestingBranchId, int performedBy)
+        {
+            if (string.IsNullOrWhiteSpace(command?.BookingNumber))
+                return new BookingCancellationResult { Success = false, Message = "Invalid booking number" };
+
+            if (command.RoomLineIds == null || command.RoomLineIds.Length == 0)
+                return new BookingCancellationResult { Success = false, Message = "No room lines specified for cancellation" };
+
+            if (_dbConnection.State != ConnectionState.Open)
+                _dbConnection.Open();
+
+            using var transaction = _dbConnection.BeginTransaction();
+            try
+            {
+                int? performedByNullable = performedBy > 0 ? (int?)performedBy : null;
+
+                var booking = await _dbConnection.QueryFirstOrDefaultAsync<Booking>(
+                    @"SELECT Id, BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
+                        RateType, CancellationPolicyId, CancellationPolicySnapshot,
+                        CheckInDate, CheckOutDate, Nights, RoomTypeId, RoomId, RequiredRooms,
+                        BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount,
+                        DepositAmount, BalanceAmount, Adults, Children,
+                        PrimaryGuestFirstName, PrimaryGuestLastName, PrimaryGuestEmail, PrimaryGuestPhone,
+                        BranchID, CreatedDate, CreatedBy, LastModifiedDate, LastModifiedBy
+                      FROM Bookings WHERE BookingNumber = @BookingNumber",
+                    new { BookingNumber = command.BookingNumber }, transaction);
+
+                if (booking == null)
+                    return Rollback(transaction, "Booking not found");
+                if (booking.BranchID != requestingBranchId)
+                    return Rollback(transaction, "Access denied for this branch");
+                if (string.Equals(booking.Status, "Cancelled", StringComparison.OrdinalIgnoreCase))
+                    return Rollback(transaction, "Booking is already cancelled");
+
+                // Load room lines within transaction
+                var allLines = (await _dbConnection.QueryAsync<B2BBookingRoomLine>(
+                    "SELECT * FROM B2BBookingRoomLines WHERE BookingId = @BookingId",
+                    new { BookingId = booking.Id }, transaction)).ToList();
+
+                var activeLines = allLines.Where(l => !l.IsCancelled).ToList();
+                var linesToCancel = activeLines.Where(l => command.RoomLineIds.Contains(l.Id)).ToList();
+
+                if (!linesToCancel.Any())
+                    return Rollback(transaction, "No valid active room lines found to cancel");
+
+                bool isCancellingAll = linesToCancel.Count == activeLines.Count;
+
+                // If cancelling all remaining lines, delegate to full cancellation
+                if (isCancellingAll)
+                {
+                    transaction.Rollback();
+                    return await CancelBookingAsync(new BookingCancellationCommand
+                    {
+                        BookingNumber = command.BookingNumber,
+                        CancellationType = command.CancellationType,
+                        Reason = command.Reason,
+                        IsOverride = command.IsOverride,
+                        OverrideReason = command.OverrideReason,
+                        IsNoShow = command.IsNoShow
+                    }, requestingBranchId, performedBy);
+                }
+
+                // Load payments
+                booking.Payments = (await _dbConnection.QueryAsync<BookingPayment>(
+                    "SELECT * FROM BookingPayments WHERE BookingId = @BookingId ORDER BY PaidOn DESC",
+                    new { BookingId = booking.Id }, transaction)).ToList();
+
+                // Compute proportional refund
+                var bookingTotal = booking.TotalAmount;
+                var cancelledLinesTotal = linesToCancel.Sum(l => l.GrandTotal);
+                var proportion = bookingTotal > 0 ? cancelledLinesTotal / bookingTotal : 0m;
+
+                var totalPaid = Math.Max(0m, Math.Round(booking.Payments.Sum(p => p.Amount), 2, MidpointRounding.AwayFromZero));
+                var proportionalPaid = Math.Round(totalPaid * proportion, 2, MidpointRounding.AwayFromZero);
+
+                // Get full preview for policy-based calculations
+                var fullPreview = await ComputeCancellationPreviewAsync(booking, command.IsNoShow, transaction);
+                if (fullPreview == null)
+                    return Rollback(transaction, "Unable to calculate refund");
+
+                decimal refundForLines;
+                if (fullPreview.AmountPaid > 0 && fullPreview.RefundAmount > 0)
+                {
+                    var fullRefundRatio = fullPreview.RefundAmount / fullPreview.AmountPaid;
+                    refundForLines = Math.Round(proportionalPaid * fullRefundRatio, 2, MidpointRounding.AwayFromZero);
+                }
+                else
+                {
+                    refundForLines = 0m;
+                }
+                if (refundForLines > proportionalPaid) refundForLines = proportionalPaid;
+
+                var approvalStatus = fullPreview.ApprovalStatus;
+                if (command.IsOverride) approvalStatus = "Pending";
+
+                var cancelledLineIdsStr = string.Join(",", command.RoomLineIds);
+
+                // Insert partial cancellation record
+                const string insertCancSql = @"
+                    INSERT INTO BookingCancellations (
+                        BookingId, BookingNumber, BranchID,
+                        Channel, Source, CustomerType, RateType,
+                        CancellationType, Reason, IsOverride, OverrideReason,
+                        CancelRequestedBy,
+                        CheckInAt, HoursBeforeCheckIn,
+                        AmountPaid, RefundPercent, FlatDeduction, GatewayFeeDeductionPercent, DeductionAmount, RefundAmount,
+                        ApprovalStatus,
+                        PolicyId, PolicySnapshot,
+                        IsPartial, CancelledRoomLineIds
+                    )
+                    VALUES (
+                        @BookingId, @BookingNumber, @BranchID,
+                        @Channel, @Source, @CustomerType, @RateType,
+                        @CancellationType, @Reason, @IsOverride, @OverrideReason,
+                        @CancelRequestedBy,
+                        @CheckInAt, @HoursBeforeCheckIn,
+                        @AmountPaid, @RefundPercent, @FlatDeduction, @GatewayFeeDeductionPercent, @DeductionAmount, @RefundAmount,
+                        @ApprovalStatus,
+                        @PolicyId, @PolicySnapshot,
+                        @IsPartial, @CancelledRoomLineIds
+                    );
+                    SELECT CAST(SCOPE_IDENTITY() as int);";
+
+                await _dbConnection.ExecuteScalarAsync<int>(insertCancSql, new
+                {
+                    BookingId = booking.Id,
+                    BookingNumber = booking.BookingNumber,
+                    BranchID = booking.BranchID,
+                    Channel = booking.Channel,
+                    Source = booking.Source,
+                    CustomerType = booking.CustomerType,
+                    RateType = booking.RateType,
+                    CancellationType = string.IsNullOrWhiteSpace(command.CancellationType) ? "Staff" : command.CancellationType,
+                    Reason = (command.Reason ?? string.Empty).Trim(),
+                    IsOverride = command.IsOverride,
+                    OverrideReason = (command.OverrideReason ?? string.Empty).Trim(),
+                    CancelRequestedBy = performedByNullable,
+                    CheckInAt = fullPreview.CheckInAt,
+                    HoursBeforeCheckIn = fullPreview.HoursBeforeCheckIn,
+                    AmountPaid = proportionalPaid,
+                    RefundPercent = fullPreview.RefundPercent,
+                    FlatDeduction = fullPreview.FlatDeduction,
+                    GatewayFeeDeductionPercent = fullPreview.GatewayFeeDeductionPercent,
+                    DeductionAmount = Math.Round(proportionalPaid - refundForLines, 2),
+                    RefundAmount = refundForLines,
+                    ApprovalStatus = approvalStatus,
+                    PolicyId = fullPreview.PolicyId,
+                    PolicySnapshot = fullPreview.PolicySnapshotJson,
+                    IsPartial = true,
+                    CancelledRoomLineIds = cancelledLineIdsStr
+                }, transaction);
+
+                // Mark room lines as cancelled
+                await _dbConnection.ExecuteAsync(
+                    "UPDATE B2BBookingRoomLines SET IsCancelled = 1, CancelledDate = GETUTCDATE(), CancelledBy = @UserId WHERE Id IN @Ids AND BookingId = @BookingId",
+                    new { Ids = command.RoomLineIds, BookingId = booking.Id, UserId = performedByNullable }, transaction);
+
+                // Release any assigned rooms for the cancelled room types
+                var cancelledRoomTypeIds = linesToCancel.Select(l => l.RoomTypeId).Distinct().ToArray();
+                var assignedRoomsForCancelledTypes = (await _dbConnection.QueryAsync<int>(
+                    @"SELECT br.RoomId FROM BookingRooms br
+                      INNER JOIN Rooms r ON r.Id = br.RoomId
+                      WHERE br.BookingId = @BookingId AND br.IsActive = 1 AND r.RoomTypeId IN @RoomTypeIds",
+                    new { BookingId = booking.Id, RoomTypeIds = cancelledRoomTypeIds }, transaction)).ToList();
+
+                if (assignedRoomsForCancelledTypes.Any())
+                {
+                    await _dbConnection.ExecuteAsync(
+                        "UPDATE Rooms SET Status = 'Available', LastModifiedDate = GETDATE() WHERE Id IN @Ids",
+                        new { Ids = assignedRoomsForCancelledTypes }, transaction);
+                    await _dbConnection.ExecuteAsync(
+                        "UPDATE BookingRooms SET IsActive = 0, UnassignedDate = GETUTCDATE() WHERE BookingId = @BookingId AND RoomId IN @Ids AND IsActive = 1",
+                        new { BookingId = booking.Id, Ids = assignedRoomsForCancelledTypes }, transaction);
+                }
+
+                // Recalculate booking totals from remaining active lines
+                var remainingLines = activeLines.Where(l => !command.RoomLineIds.Contains(l.Id)).ToList();
+                var newBaseAmount = remainingLines.Sum(l => l.BaseAmount);
+                var newTaxAmount = remainingLines.Sum(l => l.TaxAmount);
+                var newTotalAmount = remainingLines.Sum(l => l.GrandTotal);
+                var newRequiredRooms = remainingLines.Sum(l => l.RequiredRooms);
+
+                // Pro-rate CGST/SGST
+                var newCGST = Math.Round(newTaxAmount / 2, 2, MidpointRounding.AwayFromZero);
+                var newSGST = newTaxAmount - newCGST;
+
+                await _dbConnection.ExecuteAsync(
+                    @"UPDATE Bookings SET
+                        BaseAmount = @BaseAmount, TaxAmount = @TaxAmount,
+                        CGSTAmount = @CGSTAmount, SGSTAmount = @SGSTAmount,
+                        TotalAmount = @TotalAmount, RequiredRooms = @RequiredRooms,
+                        Status = 'PartialCancelled',
+                        LastModifiedDate = GETDATE(), LastModifiedBy = @UserId
+                      WHERE Id = @BookingId",
+                    new
+                    {
+                        BaseAmount = newBaseAmount,
+                        TaxAmount = newTaxAmount,
+                        CGSTAmount = newCGST,
+                        SGSTAmount = newSGST,
+                        TotalAmount = newTotalAmount,
+                        RequiredRooms = newRequiredRooms,
+                        UserId = performedByNullable,
+                        BookingId = booking.Id
+                    }, transaction);
+
+                var cancelledNames = string.Join(", ", linesToCancel.Select(l => $"{l.RoomTypeName} ×{l.RequiredRooms}"));
+                var approvalNote = approvalStatus == "Pending" ? " (approval pending)" : string.Empty;
+                await AddAuditLogAsync(
+                    booking.Id,
+                    booking.BookingNumber,
+                    "PartialCancelled",
+                    $"Partial cancellation: {cancelledNames}. Refund: ₹{refundForLines:N2}{approvalNote}. New total: ₹{newTotalAmount:N2}",
+                    booking.Status,
+                    "PartialCancelled",
+                    performedByNullable,
+                    transaction);
+
+                transaction.Commit();
+
+                return new BookingCancellationResult
+                {
+                    Success = true,
+                    Message = approvalStatus == "Pending"
+                        ? $"Partial cancellation done. Refund ₹{refundForLines:N2} is pending approval."
+                        : $"Partial cancellation done. Refund ₹{refundForLines:N2}.",
+                    Preview = new BookingCancellationPreview
+                    {
+                        BookingNumber = booking.BookingNumber,
+                        BookingId = booking.Id,
+                        IsPartial = true,
+                        AmountPaid = proportionalPaid,
+                        RefundAmount = refundForLines,
+                        RefundPercent = fullPreview.RefundPercent,
+                        ApprovalStatus = approvalStatus
+                    }
+                };
+            }
+            catch (Exception ex)
+            {
+                try { transaction.Rollback(); } catch { }
+                return new BookingCancellationResult { Success = false, Message = ex.GetBaseException().Message };
+            }
+        }
+
+        private static BookingCancellationResult Rollback(IDbTransaction tx, string message)
+        {
+            try { tx.Rollback(); } catch { }
+            return new BookingCancellationResult { Success = false, Message = message };
+        }
+
         private async Task PopulateRelatedCollectionsAsync(IList<Booking> bookings)
         {
             if (!bookings.Any())
@@ -1547,7 +1885,7 @@ namespace HotelApp.Web.Repositories
                 SELECT COUNT(*) 
                 FROM Bookings 
                 WHERE CAST(CheckOutDate AS DATE) = @Today 
-                AND Status IN ('Confirmed', 'CheckedIn')";
+                AND Status IN ('Confirmed', 'CheckedIn', 'PartialCancelled')";
             
             return await _dbConnection.ExecuteScalarAsync<int>(sql, new { Today = today });
         }
@@ -4088,7 +4426,9 @@ WHERE BookingID = @BookingID
                     ISNULL(bc.IsOverride, 0)                 AS IsOverride,
                     bc.OverrideReason,
                     bc.HoursBeforeCheckIn,
-                    bc.CreatedDate
+                    bc.CreatedDate,
+                    ISNULL(bc.IsPartial, 0)                  AS IsPartial,
+                    bc.CancelledRoomLineIds
                 FROM BookingCancellations bc
                 INNER JOIN Bookings b ON b.Id = bc.BookingId
                 WHERE b.BookingNumber = @BookingNumber
@@ -4096,6 +4436,40 @@ WHERE BookingID = @BookingID
                 ORDER BY bc.Id DESC";
 
             return await _dbConnection.QueryFirstOrDefaultAsync<BookingCancellationRecord>(
+                sql,
+                new { BookingNumber = bookingNumber, BranchId = branchId });
+        }
+
+        public async Task<IEnumerable<BookingCancellationRecord>> GetAllBookingCancellationRecordsAsync(string bookingNumber, int branchId)
+        {
+            const string sql = @"
+                SELECT
+                    bc.Id,
+                    bc.BookingId,
+                    b.BookingNumber,
+                    bc.AmountPaid,
+                    bc.RefundPercent,
+                    ISNULL(bc.FlatDeduction, 0)              AS FlatDeduction,
+                    ISNULL(bc.GatewayFeeDeductionPercent, 0) AS GatewayFeeDeductionPercent,
+                    bc.AmountPaid - bc.RefundAmount           AS DeductionAmount,
+                    bc.RefundAmount,
+                    ISNULL(bc.IsRefunded, 0)                 AS IsRefunded,
+                    ISNULL(bc.ApprovalStatus, 'None')        AS ApprovalStatus,
+                    bc.Reason,
+                    ISNULL(bc.CancellationType, 'Staff')     AS CancellationType,
+                    ISNULL(bc.IsOverride, 0)                 AS IsOverride,
+                    bc.OverrideReason,
+                    bc.HoursBeforeCheckIn,
+                    bc.CreatedDate,
+                    ISNULL(bc.IsPartial, 0)                  AS IsPartial,
+                    bc.CancelledRoomLineIds
+                FROM BookingCancellations bc
+                INNER JOIN Bookings b ON b.Id = bc.BookingId
+                WHERE b.BookingNumber = @BookingNumber
+                  AND b.BranchID      = @BranchId
+                ORDER BY bc.Id DESC";
+
+            return await _dbConnection.QueryAsync<BookingCancellationRecord>(
                 sql,
                 new { BookingNumber = bookingNumber, BranchId = branchId });
         }

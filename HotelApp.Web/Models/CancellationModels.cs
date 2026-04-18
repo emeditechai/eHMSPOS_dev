@@ -9,6 +9,8 @@ public class BookingCancellationPreview
     public int HoursBeforeCheckIn { get; set; }
     public string RateType { get; set; } = "Standard";
     public bool IsNoShow { get; set; }
+    public bool IsPartial { get; set; }
+    public int[]? CancelledRoomLineIds { get; set; }
 
     public decimal AmountPaid { get; set; }
     public decimal RefundPercent { get; set; }
@@ -25,6 +27,9 @@ public class BookingCancellationPreview
 
     public decimal? ApprovalThreshold { get; set; }
     public string ApprovalStatus { get; set; } = "None";
+
+    /// <summary>Per-line breakdown for partial cancellation preview.</summary>
+    public List<PartialCancellationLinePreview>? Lines { get; set; }
 }
 
 public class BookingCancellationCommand
@@ -35,6 +40,8 @@ public class BookingCancellationCommand
     public bool IsOverride { get; set; }
     public string? OverrideReason { get; set; }
     public bool IsNoShow { get; set; }
+    /// <summary>When set, only these room lines are cancelled (partial). Null = full cancellation.</summary>
+    public int[]? RoomLineIds { get; set; }
 }
 
 public class BookingCancellationResult
@@ -66,6 +73,8 @@ public class BookingCancellationRecord
     public string? OverrideReason { get; set; }
     public int? HoursBeforeCheckIn { get; set; }
     public DateTime CreatedDate { get; set; }
+    public bool IsPartial { get; set; }
+    public string? CancelledRoomLineIds { get; set; }
 }
 
 public class CancellationPolicy
@@ -95,4 +104,15 @@ public class CancellationPolicyRule
     public decimal? GatewayFeeDeductionPercent { get; set; }
     public bool IsActive { get; set; }
     public int SortOrder { get; set; }
+}
+
+/// <summary>Per-line breakdown shown in the partial cancellation preview UI.</summary>
+public class PartialCancellationLinePreview
+{
+    public int RoomLineId { get; set; }
+    public string RoomTypeName { get; set; } = string.Empty;
+    public int RequiredRooms { get; set; }
+    public decimal LineGrandTotal { get; set; }
+    public decimal ProportionalAmountPaid { get; set; }
+    public decimal RefundAmount { get; set; }
 }

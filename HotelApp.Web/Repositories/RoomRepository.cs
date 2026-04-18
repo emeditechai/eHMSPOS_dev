@@ -68,7 +68,7 @@ namespace HotelApp.Web.Repositories
                     INNER JOIN Bookings bk ON br.BookingId = bk.Id
                     LEFT JOIN B2BClients bc ON bk.B2BClientId = bc.Id
                     WHERE br.IsActive = 1
-                        AND bk.Status IN ('Confirmed', 'CheckedIn')
+                        AND bk.Status IN ('Confirmed', 'CheckedIn', 'PartialCancelled')
                         AND CAST(bk.CheckInDate AS DATE) <= CAST(GETDATE() AS DATE)
                         AND CAST(bk.CheckOutDate AS DATE) >= CAST(GETDATE() AS DATE)
                         AND bk.ActualCheckOutDate IS NULL
@@ -402,7 +402,7 @@ namespace HotelApp.Web.Repositories
                 INNER JOIN Bookings b ON br.BookingId = b.Id
                 WHERE br.RoomId = @RoomId
                     AND br.IsActive = 1
-                    AND b.Status IN ('Confirmed', 'CheckedIn')
+                    AND b.Status IN ('Confirmed', 'CheckedIn', 'PartialCancelled')
                     -- A room is occupied on a date if: CheckInDate <= today AND (ActualCheckOutDate ?? CheckOutDate) > today
                     AND CAST(b.CheckInDate AS DATE) <= CAST(GETDATE() AS DATE)
                     AND (
@@ -420,7 +420,7 @@ namespace HotelApp.Web.Repositories
                     PaymentStatus
                 FROM Bookings
                 WHERE RoomId = @RoomId 
-                    AND Status IN ('Confirmed', 'CheckedIn')
+                    AND Status IN ('Confirmed', 'CheckedIn', 'PartialCancelled')
                     -- A room is active on checkout date: CheckInDate <= today AND (ActualCheckOutDate ?? CheckOutDate) >= today
                     AND CAST(CheckInDate AS DATE) <= CAST(GETDATE() AS DATE)
                     AND (
@@ -461,7 +461,7 @@ namespace HotelApp.Web.Repositories
                 INNER JOIN Bookings b ON br.BookingId = b.Id
                 WHERE br.RoomId = @RoomId
                     AND br.IsActive = 1
-                    AND b.Status IN ('Confirmed', 'CheckedIn')
+                    AND b.Status IN ('Confirmed', 'CheckedIn', 'PartialCancelled')
                 ORDER BY b.CheckInDate DESC;
 
                 -- Fallback for legacy single-room assignment
@@ -472,7 +472,7 @@ namespace HotelApp.Web.Repositories
                     PaymentStatus
                 FROM Bookings
                 WHERE RoomId = @RoomId 
-                    AND Status IN ('Confirmed', 'CheckedIn')
+                    AND Status IN ('Confirmed', 'CheckedIn', 'PartialCancelled')
                 ORDER BY CheckInDate DESC";
 
             // Dapper will return the first result set's first row (if any). If none, it will move to the next.
@@ -508,7 +508,7 @@ namespace HotelApp.Web.Repositories
                         SUM(b.RequiredRooms) AS TotalRequiredRooms
                     FROM Bookings b
                     WHERE b.BranchID = @BranchId
-                        AND b.Status IN ('Confirmed', 'CheckedIn')
+                        AND b.Status IN ('Confirmed', 'CheckedIn', 'PartialCancelled')
                         AND NOT EXISTS (SELECT 1 FROM B2BBookingRoomLines brl WHERE brl.BookingId = b.Id)
                         AND CAST(b.CheckInDate AS DATE) <= CAST(@EndDate AS DATE)
                         AND (
@@ -529,7 +529,8 @@ namespace HotelApp.Web.Repositories
                     FROM B2BBookingRoomLines brl
                     INNER JOIN Bookings b ON brl.BookingId = b.Id
                     WHERE b.BranchID = @BranchId
-                        AND b.Status IN ('Confirmed', 'CheckedIn')
+                        AND b.Status IN ('Confirmed', 'CheckedIn', 'PartialCancelled')
+                        AND ISNULL(brl.IsCancelled, 0) = 0
                         AND CAST(ISNULL(brl.CheckInDate, b.CheckInDate) AS DATE) <= CAST(@EndDate AS DATE)
                         AND CAST(ISNULL(brl.CheckOutDate, b.CheckOutDate) AS DATE) > CAST(@StartDate AS DATE)
                     GROUP BY brl.RoomTypeId
@@ -551,7 +552,7 @@ namespace HotelApp.Web.Repositories
                             INNER JOIN Bookings b2 ON br.BookingId = b2.Id
                             WHERE br.RoomId = r.Id
                                 AND br.IsActive = 1
-                                AND b2.Status IN ('Confirmed', 'CheckedIn')
+                                AND b2.Status IN ('Confirmed', 'CheckedIn', 'PartialCancelled')
                                 AND CAST(b2.CheckInDate AS DATE) <= CAST(@EndDate AS DATE)
                                 AND (
                                     -- If ActualCheckOutDate is set, use it; otherwise use CheckOutDate
@@ -665,7 +666,7 @@ namespace HotelApp.Web.Repositories
                 FROM Bookings b
                 LEFT JOIN RoomTypes rt ON b.RoomTypeId = rt.Id
                 WHERE b.BranchID = @BranchId
-                    AND b.Status IN ('Confirmed', 'Pending')
+                    AND b.Status IN ('Confirmed', 'Pending', 'PartialCancelled')
                     AND CAST(b.CheckInDate AS DATE) >= CAST(@FromDate AS DATE)
                     AND CAST(b.CheckInDate AS DATE) <= CAST(@ToDate AS DATE)
                     AND NOT EXISTS (SELECT 1 FROM BookingRooms br WHERE br.BookingId = b.Id AND br.IsActive = 1)
