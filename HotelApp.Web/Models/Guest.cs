@@ -21,6 +21,10 @@ namespace HotelApp.Web.Models
         public DateTime? DateOfBirth { get; set; }
         public int? Age { get; set; }
         public string? LoyaltyId { get; set; }
+        public int? NationalityId { get; set; }
+        public string? PurposeOfVisit { get; set; }
+        public string? ComingFrom { get; set; }
+        public string? GoingTo { get; set; }
 
         public byte[]? Photo { get; set; }
         public string? PhotoContentType { get; set; }

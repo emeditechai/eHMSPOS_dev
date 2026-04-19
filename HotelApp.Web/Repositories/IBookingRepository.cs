@@ -32,6 +32,7 @@ namespace HotelApp.Web.Repositories
         Task<bool> RecalculateBookingFinancialsAsync(int bookingId, int performedBy);
         Task<IEnumerable<string>> GetAssignedRoomNumbersAsync(int bookingId);
         Task<Booking?> GetLastBookingByGuestPhoneAsync(string phone);
+        Task<IEnumerable<Booking>> GetBookingsByGuestPhoneAsync(string phone);
         Task<bool> AddGuestToBookingAsync(BookingGuest guest, int branchId);
         Task<bool> UpdateGuestAsync(BookingGuest guest);
         Task<bool> DeleteGuestAsync(int guestId, int deletedBy);

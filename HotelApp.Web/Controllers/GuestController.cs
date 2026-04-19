@@ -10,15 +10,18 @@ namespace HotelApp.Web.Controllers
         private readonly IGuestRepository _guestRepository;
         private readonly ILocationRepository _locationRepository;
         private readonly IBookingRepository _bookingRepository;
+        private readonly INationalityRepository _nationalityRepository;
 
         public GuestController(
             IGuestRepository guestRepository,
             ILocationRepository locationRepository,
-            IBookingRepository bookingRepository)
+            IBookingRepository bookingRepository,
+            INationalityRepository nationalityRepository)
         {
             _guestRepository = guestRepository;
             _locationRepository = locationRepository;
             _bookingRepository = bookingRepository;
+            _nationalityRepository = nationalityRepository;
         }
 
         public async Task<IActionResult> Index()
@@ -67,6 +70,8 @@ namespace HotelApp.Web.Controllers
 
             // Load location data for dropdowns
             await PopulateLocationDataAsync(guest.CountryId, guest.StateId, guest.CityId);
+
+            ViewBag.Nationalities = await _nationalityRepository.GetAllActiveAsync();
 
             return View(guest);
         }
@@ -125,6 +130,7 @@ namespace HotelApp.Web.Controllers
                 
                 // Reload location data on validation failure
                 await PopulateLocationDataAsync(guest.CountryId, guest.StateId, guest.CityId);
+                ViewBag.Nationalities = await _nationalityRepository.GetAllActiveAsync();
                 
                 return View(guest);
             }
@@ -143,6 +149,7 @@ namespace HotelApp.Web.Controllers
                     }
 
                     await PopulateLocationDataAsync(guest.CountryId, guest.StateId, guest.CityId);
+                    ViewBag.Nationalities = await _nationalityRepository.GetAllActiveAsync();
                     return View(guest);
                 }
 
@@ -184,6 +191,7 @@ namespace HotelApp.Web.Controllers
             
             // Reload location data on update failure
             await PopulateLocationDataAsync(guest.CountryId, guest.StateId, guest.CityId);
+            ViewBag.Nationalities = await _nationalityRepository.GetAllActiveAsync();
             
             return View(guest);
         }
@@ -260,6 +268,13 @@ namespace HotelApp.Web.Controllers
                 }
             }
 
+            // Resolve nationality name
+            if (guest.NationalityId.HasValue)
+            {
+                var nationality = await _nationalityRepository.GetByIdAsync(guest.NationalityId.Value);
+                ViewBag.NationalityName = nationality?.Name;
+            }
+
             // Get child guests if this is a parent
             if (guest.GuestType == "Primary")
             {
@@ -275,6 +290,28 @@ namespace HotelApp.Web.Controllers
             }
 
             return View(guest);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> BookingHistory(int id)
+        {
+            var guest = await _guestRepository.GetByIdAsync(id);
+            if (guest == null)
+            {
+                TempData["ErrorMessage"] = "Guest not found.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (string.IsNullOrWhiteSpace(guest.Phone))
+            {
+                TempData["ErrorMessage"] = "Guest does not have a phone number. Booking history requires a phone number.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            var bookings = await _bookingRepository.GetBookingsByGuestPhoneAsync(guest.Phone);
+
+            ViewBag.Guest = guest;
+            return View(bookings);
         }
 
         [HttpGet]

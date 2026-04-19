@@ -1,6 +1,9 @@
 @model HotelApp.Web.Models.Booking
+@using HotelApp.Web.Models
 @{
     ViewData["Title"] = $"Booking {Model.BookingNumber}";
+    var nationalities = ViewBag.Nationalities as IEnumerable<Nationality> ?? Enumerable.Empty<Nationality>();
+    var nationalityLookup = nationalities.ToDictionary(n => n.Id, n => n.Name);
     var statusClass = Model.Status switch
     {
         "Confirmed" => "status-confirmed",
@@ -1628,12 +1631,12 @@
                             <span class="guest-type-badge">@guest.GuestType</span>
                         }
                         <div style="margin-left: 0.5rem; display: flex; gap: 0.5rem; align-items: center;">
-                            <button type="button" class="modern-icon-btn modern-icon-view" onclick="showViewGuestModal(@guest.Id, @guest.GuestId, '@Html.Raw(guest.FullName?.Replace("'", "\\'"))', '@guest.Email', '@guest.Phone', '@guest.GuestType', '@guest.RelationshipToPrimary', @(guest.Age?.ToString() ?? "null"), '@(guest.DateOfBirth?.ToString("yyyy-MM-dd") ?? "")', '@guest.Gender', '@guest.IdentityType', '@guest.IdentityNumber', '@guest.Country', '@guest.State', '@guest.City', '@guest.Address', '@guest.Pincode', '@guest.DocumentPath')" title="View Guest Details">
+                            <button type="button" class="modern-icon-btn modern-icon-view" onclick="showViewGuestModal(@guest.Id, @guest.GuestId, '@Html.Raw(guest.FullName?.Replace("'", "\\'"))', '@guest.Email', '@guest.Phone', '@guest.GuestType', '@guest.RelationshipToPrimary', @(guest.Age?.ToString() ?? "null"), '@(guest.DateOfBirth?.ToString("yyyy-MM-dd") ?? "")', '@guest.Gender', '@guest.IdentityType', '@guest.IdentityNumber', '@guest.Country', '@guest.State', '@guest.City', '@guest.Address', '@guest.Pincode', '@guest.DocumentPath', '@(guest.NationalityId.HasValue && nationalityLookup.ContainsKey(guest.NationalityId.Value) ? nationalityLookup[guest.NationalityId.Value] : "")', '@Html.Raw(guest.PurposeOfVisit?.Replace("'", "\\'") ?? "")', '@Html.Raw(guest.ComingFrom?.Replace("'", "\\'") ?? "")', '@Html.Raw(guest.GoingTo?.Replace("'", "\\'") ?? "")')" title="View Guest Details">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" style="width: 20px; height: 20px;">
                                     <path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM144 256a144 144 0 1 1 288 0 144 144 0 1 1 -288 0zm144-64c0 35.3-28.7 64-64 64c-7.1 0-13.9-1.2-20.3-3.3c-5.5-1.8-11.9 1.6-11.7 7.4c.3 6.9 1.3 13.8 3.2 20.7c13.7 51.2 66.4 81.6 117.6 67.9s81.6-66.4 67.9-117.6c-11.1-41.5-47.8-69.4-88.6-71.1c-5.8-.2-9.2 6.1-7.4 11.7c2.1 6.4 3.3 13.2 3.3 20.3z"/>
                                 </svg>
                             </button>
-                            <button type="button" class="modern-icon-btn modern-icon-edit" onclick="showEditGuestModal(@guest.Id, @guest.GuestId, @guest.IsPrimary.ToString().ToLower(), '@Html.Raw(guest.FullName?.Replace("'", "\\'"))', '@Html.Raw(guest.Email?.Replace("'", "\\'") ?? "")', '@Html.Raw(guest.Phone?.Replace("'", "\\'") ?? "")', '@Html.Raw(guest.GuestType?.Replace("'", "\\'") ?? "")', '@Html.Raw(guest.RelationshipToPrimary?.Replace("'", "\\'") ?? "")', @(guest.Age?.ToString() ?? "null"), '@(guest.DateOfBirth?.ToString("yyyy-MM-dd") ?? "")', '@Html.Raw(guest.Gender?.Replace("'", "\\'") ?? "")', '@Html.Raw(guest.IdentityType?.Replace("'", "\\'") ?? "")', '@Html.Raw(guest.IdentityNumber?.Replace("'", "\\'") ?? "")', @(guest.CountryId?.ToString() ?? "null"), '@Html.Raw(guest.Country?.Replace("'", "\\'") ?? "")', @(guest.StateId?.ToString() ?? "null"), '@Html.Raw(guest.State?.Replace("'", "\\'") ?? "")', @(guest.CityId?.ToString() ?? "null"), '@Html.Raw(guest.City?.Replace("'", "\\'") ?? "")', '@Html.Raw(guest.Address?.Replace("'", "\\'") ?? "")', '@Html.Raw(guest.Pincode?.Replace("'", "\\'") ?? "")')" title="@(isCancelled ? "Booking is cancelled — no changes allowed" : "Edit Guest")"
+                            <button type="button" class="modern-icon-btn modern-icon-edit" onclick="showEditGuestModal(@guest.Id, @guest.GuestId, @guest.IsPrimary.ToString().ToLower(), '@Html.Raw(guest.FullName?.Replace("'", "\\'"))', '@Html.Raw(guest.Email?.Replace("'", "\\'") ?? "")', '@Html.Raw(guest.Phone?.Replace("'", "\\'") ?? "")', '@Html.Raw(guest.GuestType?.Replace("'", "\\'") ?? "")', '@Html.Raw(guest.RelationshipToPrimary?.Replace("'", "\\'") ?? "")', @(guest.Age?.ToString() ?? "null"), '@(guest.DateOfBirth?.ToString("yyyy-MM-dd") ?? "")', '@Html.Raw(guest.Gender?.Replace("'", "\\'") ?? "")', '@Html.Raw(guest.IdentityType?.Replace("'", "\\'") ?? "")', '@Html.Raw(guest.IdentityNumber?.Replace("'", "\\'") ?? "")', @(guest.CountryId?.ToString() ?? "null"), '@Html.Raw(guest.Country?.Replace("'", "\\'") ?? "")', @(guest.StateId?.ToString() ?? "null"), '@Html.Raw(guest.State?.Replace("'", "\\'") ?? "")', @(guest.CityId?.ToString() ?? "null"), '@Html.Raw(guest.City?.Replace("'", "\\'") ?? "")', '@Html.Raw(guest.Address?.Replace("'", "\\'") ?? "")', '@Html.Raw(guest.Pincode?.Replace("'", "\\'") ?? "")', @(guest.NationalityId?.ToString() ?? "null"), '@Html.Raw(guest.PurposeOfVisit?.Replace("'", "\\'") ?? "")', '@Html.Raw(guest.ComingFrom?.Replace("'", "\\'") ?? "")', '@Html.Raw(guest.GoingTo?.Replace("'", "\\'") ?? "")')" title="@(isCancelled ? "Booking is cancelled — no changes allowed" : "Edit Guest")"
                                 @(isCancelled ? "disabled" : null)>
                                 <i class="fas fa-pen"></i>
                             </button>
@@ -1656,6 +1659,27 @@
                             @if (!string.IsNullOrWhiteSpace(guest.IdentityNumber))
                             {
                                 <span style="margin-left: 1rem;">@guest.IdentityNumber</span>
+                            }
+                        </div>
+                    }
+                    @if (guest.NationalityId.HasValue || !string.IsNullOrWhiteSpace(guest.PurposeOfVisit) || !string.IsNullOrWhiteSpace(guest.ComingFrom) || !string.IsNullOrWhiteSpace(guest.GoingTo))
+                    {
+                        <div style="padding-left: 3.5rem; color: #6b7280; font-size: 0.875rem; margin-top: 0.25rem;">
+                            @if (guest.NationalityId.HasValue && nationalityLookup.ContainsKey(guest.NationalityId.Value))
+                            {
+                                <span><i class="fas fa-globe-asia"></i> @nationalityLookup[guest.NationalityId.Value]</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(guest.PurposeOfVisit))
+                            {
+                                <span style="margin-left: 1rem;"><i class="fas fa-briefcase"></i> @guest.PurposeOfVisit</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(guest.ComingFrom))
+                            {
+                                <span style="margin-left: 1rem;"><i class="fas fa-plane-arrival"></i> @guest.ComingFrom</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(guest.GoingTo))
+                            {
+                                <span style="margin-left: 1rem;"><i class="fas fa-plane-departure"></i> @guest.GoingTo</span>
                             }
                         </div>
                     }
@@ -2672,6 +2696,44 @@
 
             <div class="form-row">
                 <div class="form-group">
+                    <label for="addGuestNationality">Nationality</label>
+                    <select id="addGuestNationality" name="nationalityId" class="form-control">
+                        <option value="">Select Nationality</option>
+                        @foreach (var nat in nationalities)
+                        {
+                            if (nat.Name == "Indian")
+                            {
+                                <option value="@nat.Id" selected="selected">@nat.Name</option>
+                            }
+                            else
+                            {
+                                <option value="@nat.Id">@nat.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="addGuestPurposeOfVisit">Purpose of Visit</label>
+                    <input type="text" id="addGuestPurposeOfVisit" name="purposeOfVisit" class="form-control"
+                           placeholder="e.g. Business, Tourism, Medical" maxlength="200" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="addGuestComingFrom">Coming From</label>
+                    <input type="text" id="addGuestComingFrom" name="comingFrom" class="form-control"
+                           placeholder="City / Place of origin" maxlength="200" />
+                </div>
+                <div class="form-group">
+                    <label for="addGuestGoingTo">Going To</label>
+                    <input type="text" id="addGuestGoingTo" name="goingTo" class="form-control"
+                           placeholder="Next destination" maxlength="200" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
                     <label for="identityType">Identity Type</label>
                     <select id="identityType" name="identityType" class="form-control">
                         <option value="">Select ID Type</option>
@@ -2847,6 +2909,37 @@
 
             <div class="form-row">
                 <div class="form-group">
+                    <label for="editGuestNationality">Nationality</label>
+                    <select id="editGuestNationality" name="nationalityId" class="form-control">
+                        <option value="">Select Nationality</option>
+                        @foreach (var nat in nationalities)
+                        {
+                            <option value="@nat.Id">@nat.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editGuestPurposeOfVisit">Purpose of Visit</label>
+                    <input type="text" id="editGuestPurposeOfVisit" name="purposeOfVisit" class="form-control"
+                           placeholder="e.g. Business, Tourism, Medical" maxlength="200" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="editGuestComingFrom">Coming From</label>
+                    <input type="text" id="editGuestComingFrom" name="comingFrom" class="form-control"
+                           placeholder="City / Place of origin" maxlength="200" />
+                </div>
+                <div class="form-group">
+                    <label for="editGuestGoingTo">Going To</label>
+                    <input type="text" id="editGuestGoingTo" name="goingTo" class="form-control"
+                           placeholder="Next destination" maxlength="200" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
                     <label for="editIdentityType">Identity Type</label>
                     <select id="editIdentityType" name="identityType" class="form-control">
                         <option value="">Select ID Type</option>
@@ -2985,6 +3078,22 @@
                     <div class="detail-item-view">
                         <div class="detail-label-view"><i class="fas fa-venus-mars"></i> Gender</div>
                         <div class="detail-value-view" id="viewGender">-</div>
+                    </div>
+                    <div class="detail-item-view">
+                        <div class="detail-label-view"><i class="fas fa-globe-asia"></i> Nationality</div>
+                        <div class="detail-value-view" id="viewNationality">-</div>
+                    </div>
+                    <div class="detail-item-view">
+                        <div class="detail-label-view"><i class="fas fa-briefcase"></i> Purpose of Visit</div>
+                        <div class="detail-value-view" id="viewPurposeOfVisit">-</div>
+                    </div>
+                    <div class="detail-item-view">
+                        <div class="detail-label-view"><i class="fas fa-plane-arrival"></i> Coming From</div>
+                        <div class="detail-value-view" id="viewComingFrom">-</div>
+                    </div>
+                    <div class="detail-item-view">
+                        <div class="detail-label-view"><i class="fas fa-plane-departure"></i> Going To</div>
+                        <div class="detail-value-view" id="viewGoingTo">-</div>
                     </div>
                 </div>
             </div>
@@ -4508,7 +4617,7 @@
                         // Convert empty strings to null, and parse numeric values
                         if (value === '') {
                             data[key] = null;
-                        } else if (key === 'age' && value) {
+                        } else if ((key === 'age' || key === 'nationalityId') && value) {
                             data[key] = parseInt(value);
                         } else {
                             data[key] = value;
@@ -4671,7 +4780,7 @@
     };
 
     // View Guest Modal Functions
-    window.showViewGuestModal = function(bookingGuestId, masterGuestId, fullName, email, phone, guestType, relationship, age, dob, gender, identityType, identityNumber, country, state, city, address, pincode, documentPath) {
+    window.showViewGuestModal = function(bookingGuestId, masterGuestId, fullName, email, phone, guestType, relationship, age, dob, gender, identityType, identityNumber, country, state, city, address, pincode, documentPath, nationality, purposeOfVisit, comingFrom, goingTo) {
         const modal = document.getElementById('viewGuestModal');
         if (modal) {
             // Photo
@@ -4715,6 +4824,12 @@
             }
             
             document.getElementById('viewGender').textContent = gender || '-';
+            
+            // Travel & Nationality Information
+            document.getElementById('viewNationality').textContent = nationality || '-';
+            document.getElementById('viewPurposeOfVisit').textContent = purposeOfVisit || '-';
+            document.getElementById('viewComingFrom').textContent = comingFrom || '-';
+            document.getElementById('viewGoingTo').textContent = goingTo || '-';
             
             // Contact Information
             document.getElementById('viewEmail').textContent = email || '-';
@@ -4781,7 +4896,7 @@
     };
 
     // Edit Guest Modal Functions
-    window.showEditGuestModal = function(guestId, masterGuestId, isPrimary, fullName, email, phone, guestType, relationship, age, dob, gender, identityType, identityNumber, countryId, countryName, stateId, stateName, cityId, cityName, address, pincode) {
+    window.showEditGuestModal = function(guestId, masterGuestId, isPrimary, fullName, email, phone, guestType, relationship, age, dob, gender, identityType, identityNumber, countryId, countryName, stateId, stateName, cityId, cityName, address, pincode, nationalityId, purposeOfVisit, comingFrom, goingTo) {
         const modal = document.getElementById('editGuestModal');
         if (modal) {
             // Load countries for edit modal
@@ -4806,6 +4921,10 @@
             document.getElementById('editAge').value = age || '';
             document.getElementById('editDateOfBirth').value = dob || '';
             document.getElementById('editGuestGender').value = gender || '';
+            document.getElementById('editGuestNationality').value = nationalityId || '';
+            document.getElementById('editGuestPurposeOfVisit').value = purposeOfVisit || '';
+            document.getElementById('editGuestComingFrom').value = comingFrom || '';
+            document.getElementById('editGuestGoingTo').value = goingTo || '';
             document.getElementById('editIdentityType').value = identityType || '';
             document.getElementById('editIdentityNumber').value = identityNumber || '';
             
@@ -4973,7 +5092,7 @@
                 if (key !== 'document') {
                     if (value === '') {
                         data[key] = null;
-                    } else if (key === 'age' && value) {
+                    } else if ((key === 'age' || key === 'nationalityId') && value) {
                         data[key] = parseInt(value);
                     } else if (key === 'guestId') {
                         data[key] = parseInt(value);

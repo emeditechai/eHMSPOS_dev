@@ -46,6 +46,7 @@ namespace HotelApp.Web.Controllers
         private readonly IRazorViewToStringRenderer _razorViewToStringRenderer;
         private readonly IBookingReceiptTemplateRepository _bookingReceiptTemplateRepository;
         private readonly ICancellationPolicyRepository _cancellationPolicyRepository;
+        private readonly INationalityRepository _nationalityRepository;
 
         public BookingController(
             IBookingRepository bookingRepository,
@@ -63,7 +64,8 @@ namespace HotelApp.Web.Controllers
             IMailSender mailSender,
             IRazorViewToStringRenderer razorViewToStringRenderer,
             IBookingReceiptTemplateRepository bookingReceiptTemplateRepository,
-            ICancellationPolicyRepository cancellationPolicyRepository)
+            ICancellationPolicyRepository cancellationPolicyRepository,
+            INationalityRepository nationalityRepository)
         {
             _bookingRepository = bookingRepository;
             _roomRepository = roomRepository;
@@ -81,6 +83,7 @@ namespace HotelApp.Web.Controllers
             _razorViewToStringRenderer = razorViewToStringRenderer;
             _bookingReceiptTemplateRepository = bookingReceiptTemplateRepository;
             _cancellationPolicyRepository = cancellationPolicyRepository;
+            _nationalityRepository = nationalityRepository;
         }
 
         private static string GetFriendlyMailErrorMessage(Exception ex)
@@ -981,6 +984,9 @@ namespace HotelApp.Web.Controllers
                 }
             }
 
+            // Load nationalities for guest display
+            ViewBag.Nationalities = await _nationalityRepository.GetAllActiveAsync();
+
             return View(booking);
         }
 
@@ -1770,6 +1776,15 @@ namespace HotelApp.Web.Controllers
             var enableCancellationPolicy = hotelSettings?.EnableCancellationPolicy ?? true;
             ViewBag.EnableCancellationPolicy = enableCancellationPolicy;
             await PopulateLookupsAsync(model);
+
+            // Default nationality to Indian
+            var nationalities = ViewBag.Nationalities as IEnumerable<Nationality>;
+            var indian = nationalities?.FirstOrDefault(n => string.Equals(n.Name, "Indian", StringComparison.OrdinalIgnoreCase));
+            if (indian != null)
+            {
+                model.NationalityId = indian.Id;
+            }
+
             return View(model);
         }
 
@@ -2035,6 +2050,10 @@ namespace HotelApp.Web.Controllers
                     State = model.StateId.HasValue ? state?.Name : null,
                     City = model.CityId.HasValue ? city?.Name : null,
                     Pincode = model.Pincode,
+                    NationalityId = model.NationalityId,
+                    PurposeOfVisit = model.PurposeOfVisit?.Trim(),
+                    ComingFrom = model.ComingFrom?.Trim(),
+                    GoingTo = model.GoingTo?.Trim(),
                     Photo = primaryGuestPhotoBytes,
                     PhotoContentType = primaryGuestPhotoContentType
                 }
@@ -2285,6 +2304,10 @@ namespace HotelApp.Web.Controllers
                     State = stateName,
                     City = cityName,
                     Pincode = request.Pincode?.Trim(),
+                    NationalityId = request.NationalityId,
+                    PurposeOfVisit = request.PurposeOfVisit?.Trim(),
+                    ComingFrom = request.ComingFrom?.Trim(),
+                    GoingTo = request.GoingTo?.Trim(),
                     CreatedBy = GetCurrentUserId()
                 };
 
@@ -2375,6 +2398,10 @@ namespace HotelApp.Web.Controllers
                     State = stateName,
                     City = cityName,
                     Pincode = request.Pincode?.Trim(),
+                    NationalityId = request.NationalityId,
+                    PurposeOfVisit = request.PurposeOfVisit?.Trim(),
+                    ComingFrom = request.ComingFrom?.Trim(),
+                    GoingTo = request.GoingTo?.Trim(),
                     ModifiedBy = GetCurrentUserId()
                 };
 
@@ -2461,6 +2488,10 @@ namespace HotelApp.Web.Controllers
             public int? CityId { get; set; }
             public string? Pincode { get; set; }
             public string? Gender { get; set; }
+            public int? NationalityId { get; set; }
+            public string? PurposeOfVisit { get; set; }
+            public string? ComingFrom { get; set; }
+            public string? GoingTo { get; set; }
         }
 
         public class UpdateGuestRequest
@@ -2483,6 +2514,10 @@ namespace HotelApp.Web.Controllers
             public int? CityId { get; set; }
             public string? Pincode { get; set; }
             public string? Gender { get; set; }
+            public int? NationalityId { get; set; }
+            public string? PurposeOfVisit { get; set; }
+            public string? ComingFrom { get; set; }
+            public string? GoingTo { get; set; }
         }
 
         public class DeleteGuestRequest
@@ -2840,6 +2875,8 @@ namespace HotelApp.Web.Controllers
             {
                 ViewBag.Cities = Enumerable.Empty<City>();
             }
+
+            ViewBag.Nationalities = await _nationalityRepository.GetAllActiveAsync();
         }
 
         private static string GenerateBookingNumber()
@@ -3472,7 +3509,11 @@ namespace HotelApp.Web.Controllers
                     countryId = guest.CountryId,
                     stateId = guest.StateId,
                     cityId = guest.CityId,
-                    pincode = guest.Pincode
+                    pincode = guest.Pincode,
+                    nationalityId = guest.NationalityId,
+                    purposeOfVisit = guest.PurposeOfVisit,
+                    comingFrom = guest.ComingFrom,
+                    goingTo = guest.GoingTo
                 },
                 lastBooking = lastBooking != null ? new 
                 {

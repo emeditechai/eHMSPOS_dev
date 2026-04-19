@@ -1,7 +1,9 @@
 @model HotelApp.Web.Models.Guest
+@using HotelApp.Web.Models
 @{
     ViewData["Title"] = "Edit Guest";
     var childGuests = ViewBag.ChildGuests as IEnumerable<HotelApp.Web.Models.Guest>;
+    var nationalities = ViewBag.Nationalities as IEnumerable<Nationality> ?? Enumerable.Empty<Nationality>();
 }
 
 <div class="guest-edit-shell">
@@ -96,6 +98,38 @@
                             <label asp-for="LoyaltyId">Loyalty ID</label>
                             <input asp-for="LoyaltyId" type="text" />
                             <span asp-validation-for="LoyaltyId" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label asp-for="NationalityId">Nationality</label>
+                            <select asp-for="NationalityId" class="form-control">
+                                <option value="">Select Nationality</option>
+                                @foreach (var nat in nationalities)
+                                {
+                                    <option value="@nat.Id">@nat.Name</option>
+                                }
+                            </select>
+                            <span asp-validation-for="NationalityId" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label asp-for="PurposeOfVisit">Purpose of Visit</label>
+                            <input asp-for="PurposeOfVisit" type="text" placeholder="e.g. Business, Tourism, Medical" />
+                            <span asp-validation-for="PurposeOfVisit" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label asp-for="ComingFrom">Coming From</label>
+                            <input asp-for="ComingFrom" type="text" placeholder="City / Place of origin" />
+                            <span asp-validation-for="ComingFrom" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label asp-for="GoingTo">Going To</label>
+                            <input asp-for="GoingTo" type="text" placeholder="Next destination" />
+                            <span asp-validation-for="GoingTo" class="text-danger"></span>
                         </div>
                     </div>
                 </div>

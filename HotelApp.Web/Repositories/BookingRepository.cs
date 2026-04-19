@@ -576,10 +576,12 @@ namespace HotelApp.Web.Repositories
             const string insertGuestSql = @"
                 INSERT INTO BookingGuests (BookingId, GuestId, FullName, Email, Phone, Gender, GuestType, IsPrimary,
                                          Age, DateOfBirth,
-                                         Address, City, State, Country, Pincode, CountryId, StateId, CityId)
+                                         Address, City, State, Country, Pincode, CountryId, StateId, CityId,
+                                         NationalityId, PurposeOfVisit, ComingFrom, GoingTo)
                 VALUES (@BookingId, @GuestId, @FullName, @Email, @Phone, @Gender, @GuestType, @IsPrimary,
                         @Age, @DateOfBirth,
-                        @Address, @City, @State, @Country, @Pincode, @CountryId, @StateId, @CityId);";
+                        @Address, @City, @State, @Country, @Pincode, @CountryId, @StateId, @CityId,
+                        @NationalityId, @PurposeOfVisit, @ComingFrom, @GoingTo);";
 
             foreach (var bookingGuest in guests)
             {
@@ -617,6 +619,10 @@ namespace HotelApp.Web.Repositories
                             CountryId = @CountryId,
                             StateId = @StateId,
                             CityId = @CityId,
+                            NationalityId = @NationalityId,
+                            PurposeOfVisit = @PurposeOfVisit,
+                            ComingFrom = @ComingFrom,
+                            GoingTo = @GoingTo,
                             Photo = COALESCE(@Photo, Photo),
                             PhotoContentType = COALESCE(@PhotoContentType, PhotoContentType),
                             BranchID = @BranchID,
@@ -641,6 +647,10 @@ namespace HotelApp.Web.Repositories
                         CountryId = bookingGuest.CountryId,
                         StateId = bookingGuest.StateId,
                         CityId = bookingGuest.CityId,
+                        NationalityId = bookingGuest.NationalityId,
+                        PurposeOfVisit = bookingGuest.PurposeOfVisit,
+                        ComingFrom = bookingGuest.ComingFrom,
+                        GoingTo = bookingGuest.GoingTo,
                         Photo = bookingGuest.Photo,
                         PhotoContentType = bookingGuest.PhotoContentType,
                         BranchID = booking.BranchID
@@ -662,12 +672,14 @@ namespace HotelApp.Web.Repositories
                         INSERT INTO Guests (
                             FirstName, LastName, Email, Phone, Gender, DateOfBirth, Age, GuestType, ParentGuestId,
                             Address, City, State, Country, Pincode, CountryId, StateId, CityId,
+                            NationalityId, PurposeOfVisit, ComingFrom, GoingTo,
                             Photo, PhotoContentType,
                             BranchID, IsActive, CreatedDate, LastModifiedDate
                         )
                         VALUES (
                             @FirstName, @LastName, @Email, @Phone, @Gender, @DateOfBirth, @Age, @GuestType, @ParentGuestId,
                             @Address, @City, @State, @Country, @Pincode, @CountryId, @StateId, @CityId,
+                            @NationalityId, @PurposeOfVisit, @ComingFrom, @GoingTo,
                             @Photo, @PhotoContentType,
                             @BranchID, 1, GETDATE(), GETDATE()
                         );
@@ -692,6 +704,10 @@ namespace HotelApp.Web.Repositories
                         CountryId = bookingGuest.CountryId,
                         StateId = bookingGuest.StateId,
                         CityId = bookingGuest.CityId,
+                        NationalityId = bookingGuest.NationalityId,
+                        PurposeOfVisit = bookingGuest.PurposeOfVisit,
+                        ComingFrom = bookingGuest.ComingFrom,
+                        GoingTo = bookingGuest.GoingTo,
                         Photo = bookingGuest.Photo,
                         PhotoContentType = bookingGuest.PhotoContentType,
                         BranchID = booking.BranchID
@@ -3631,6 +3647,10 @@ WHERE BookingID = @BookingID
                             CountryId = @CountryId,
                             StateId = @StateId,
                             CityId = @CityId,
+                            NationalityId = @NationalityId,
+                            PurposeOfVisit = @PurposeOfVisit,
+                            ComingFrom = @ComingFrom,
+                            GoingTo = @GoingTo,
                             BranchID = @BranchID,
                             LastModifiedDate = GETDATE()
                         WHERE Id = @Id";
@@ -3654,6 +3674,10 @@ WHERE BookingID = @BookingID
                         CountryId = guest.CountryId,
                         StateId = guest.StateId,
                         CityId = guest.CityId,
+                        NationalityId = guest.NationalityId,
+                        PurposeOfVisit = guest.PurposeOfVisit,
+                        ComingFrom = guest.ComingFrom,
+                        GoingTo = guest.GoingTo,
                         BranchID = branchId
                     }, transaction);
 
@@ -3666,10 +3690,12 @@ WHERE BookingID = @BookingID
                         INSERT INTO Guests (FirstName, LastName, Email, Phone, GuestType, BranchID, 
                                           DateOfBirth, Gender, IdentityType, IdentityNumber, Address, City, State, Country,
                                           Pincode, CountryId, StateId, CityId,
+                                          NationalityId, PurposeOfVisit, ComingFrom, GoingTo,
                                           IsActive, CreatedDate, LastModifiedDate)
                         VALUES (@FirstName, @LastName, @Email, @Phone, @GuestType, @BranchID, 
                                 @DateOfBirth, @Gender, @IdentityType, @IdentityNumber, @Address, @City, @State, @Country,
                                 @Pincode, @CountryId, @StateId, @CityId,
+                                @NationalityId, @PurposeOfVisit, @ComingFrom, @GoingTo,
                                 1, GETDATE(), GETDATE());
                         SELECT CAST(SCOPE_IDENTITY() AS INT)";
 
@@ -3692,7 +3718,11 @@ WHERE BookingID = @BookingID
                         Pincode = guest.Pincode,
                         CountryId = guest.CountryId,
                         StateId = guest.StateId,
-                        CityId = guest.CityId
+                        CityId = guest.CityId,
+                        NationalityId = guest.NationalityId,
+                        PurposeOfVisit = guest.PurposeOfVisit,
+                        ComingFrom = guest.ComingFrom,
+                        GoingTo = guest.GoingTo
                     }, transaction);
 
                     guest.GuestId = newGuestId;
@@ -3713,11 +3743,15 @@ WHERE BookingID = @BookingID
                     INSERT INTO BookingGuests (BookingId, GuestId, FullName, Email, Phone, GuestType, IsPrimary, 
                                              RelationshipToPrimary, Age, DateOfBirth, Gender, IdentityType, 
                                              IdentityNumber, DocumentPath, Address, City, State, Country,
-                                             Pincode, CountryId, StateId, CityId, CreatedDate, CreatedBy)
+                                             Pincode, CountryId, StateId, CityId,
+                                             NationalityId, PurposeOfVisit, ComingFrom, GoingTo,
+                                             CreatedDate, CreatedBy)
                     VALUES (@BookingId, @GuestId, @FullName, @Email, @Phone, @GuestType, 0, 
                             @RelationshipToPrimary, @Age, @DateOfBirth, @Gender, @IdentityType, 
                             @IdentityNumber, @DocumentPath, @Address, @City, @State, @Country,
-                            @Pincode, @CountryId, @StateId, @CityId, GETDATE(), @CreatedBy);
+                            @Pincode, @CountryId, @StateId, @CityId,
+                            @NationalityId, @PurposeOfVisit, @ComingFrom, @GoingTo,
+                            GETDATE(), @CreatedBy);
                     SELECT CAST(SCOPE_IDENTITY() AS INT)";
 
                 var bookingGuestId = await _dbConnection.ExecuteScalarAsync<int>(bookingGuestSql, guest, transaction);
@@ -3772,6 +3806,10 @@ WHERE BookingID = @BookingID
                         CountryId = @CountryId,
                         StateId = @StateId,
                         CityId = @CityId,
+                        NationalityId = @NationalityId,
+                        PurposeOfVisit = @PurposeOfVisit,
+                        ComingFrom = @ComingFrom,
+                        GoingTo = @GoingTo,
                         ModifiedDate = GETDATE(),
                         ModifiedBy = @ModifiedBy
                     WHERE Id = @Id AND IsActive = 1";
@@ -3826,6 +3864,10 @@ WHERE BookingID = @BookingID
                                 Gender = @Gender,
                                 IdentityType = @IdentityType,
                                 IdentityNumber = @IdentityNumber,
+                                NationalityId = @NationalityId,
+                                PurposeOfVisit = @PurposeOfVisit,
+                                ComingFrom = @ComingFrom,
+                                GoingTo = @GoingTo,
                                 LastModifiedDate = GETDATE()
                             WHERE Id = @GuestId AND IsActive = 1";
 
@@ -3847,7 +3889,11 @@ WHERE BookingID = @BookingID
                             guest.DateOfBirth,
                             guest.Gender,
                             guest.IdentityType,
-                            guest.IdentityNumber
+                            guest.IdentityNumber,
+                            guest.NationalityId,
+                            guest.PurposeOfVisit,
+                            guest.ComingFrom,
+                            guest.GoingTo
                         }, transaction);
 
                         // Ensure BookingGuests row links back to master guest.
@@ -3869,10 +3915,14 @@ WHERE BookingID = @BookingID
                         // Insert new guest in Guests table if not exists
                         const string insertGuestSql = @"
                             INSERT INTO Guests (FirstName, LastName, Email, Phone, Address, City, State, Country, Pincode, 
-                                CountryId, StateId, CityId, DateOfBirth, Gender, IdentityType, IdentityNumber, BranchID, IsActive, CreatedDate, LastModifiedDate)
+                                CountryId, StateId, CityId, DateOfBirth, Gender, IdentityType, IdentityNumber,
+                                NationalityId, PurposeOfVisit, ComingFrom, GoingTo,
+                                BranchID, IsActive, CreatedDate, LastModifiedDate)
                             OUTPUT INSERTED.Id
                             VALUES (@FirstName, @LastName, @Email, @Phone, @Address, @City, @State, @Country, @Pincode,
-                                @CountryId, @StateId, @CityId, @DateOfBirth, @Gender, @IdentityType, @IdentityNumber, @BranchID, 1, GETDATE(), GETDATE());";
+                                @CountryId, @StateId, @CityId, @DateOfBirth, @Gender, @IdentityType, @IdentityNumber,
+                                @NationalityId, @PurposeOfVisit, @ComingFrom, @GoingTo,
+                                @BranchID, 1, GETDATE(), GETDATE());";
 
                         var newGuestId = await _dbConnection.QuerySingleAsync<int>(insertGuestSql, new
                         {
@@ -3892,6 +3942,10 @@ WHERE BookingID = @BookingID
                             guest.Gender,
                             guest.IdentityType,
                             guest.IdentityNumber,
+                            guest.NationalityId,
+                            guest.PurposeOfVisit,
+                            guest.ComingFrom,
+                            guest.GoingTo,
                             BranchID = branchId ?? 0
                         }, transaction);
 
@@ -3992,6 +4046,9 @@ WHERE BookingID = @BookingID
             string? identityType = string.IsNullOrWhiteSpace(guest.IdentityType) ? null : guest.IdentityType.Trim();
             string? identityNumber = string.IsNullOrWhiteSpace(guest.IdentityNumber) ? null : guest.IdentityNumber.Trim();
             string? loyaltyId = string.IsNullOrWhiteSpace(guest.LoyaltyId) ? null : guest.LoyaltyId.Trim();
+            string? purposeOfVisit = string.IsNullOrWhiteSpace(guest.PurposeOfVisit) ? null : guest.PurposeOfVisit.Trim();
+            string? comingFrom = string.IsNullOrWhiteSpace(guest.ComingFrom) ? null : guest.ComingFrom.Trim();
+            string? goingTo = string.IsNullOrWhiteSpace(guest.GoingTo) ? null : guest.GoingTo.Trim();
 
             using var transaction = _dbConnection.BeginTransaction();
             try
@@ -4015,6 +4072,10 @@ WHERE BookingID = @BookingID
                         bg.Age = @Age,
                         bg.IdentityType = @IdentityType,
                         bg.IdentityNumber = @IdentityNumber,
+                        bg.NationalityId = @NationalityId,
+                        bg.PurposeOfVisit = @PurposeOfVisit,
+                        bg.ComingFrom = @ComingFrom,
+                        bg.GoingTo = @GoingTo,
                         bg.ModifiedDate = GETDATE(),
                         bg.ModifiedBy = @PerformedBy
                     FROM BookingGuests bg
@@ -4040,6 +4101,10 @@ WHERE BookingID = @BookingID
                     guest.Age,
                     IdentityType = identityType,
                     IdentityNumber = identityNumber,
+                    guest.NationalityId,
+                    PurposeOfVisit = purposeOfVisit,
+                    ComingFrom = comingFrom,
+                    GoingTo = goingTo,
                     PerformedBy = performedBy
                 }, transaction);
 
@@ -4066,6 +4131,10 @@ WHERE BookingID = @BookingID
                             bg.Age = @Age,
                             bg.IdentityType = @IdentityType,
                             bg.IdentityNumber = @IdentityNumber,
+                            bg.NationalityId = @NationalityId,
+                            bg.PurposeOfVisit = @PurposeOfVisit,
+                            bg.ComingFrom = @ComingFrom,
+                            bg.GoingTo = @GoingTo,
                             bg.ModifiedDate = GETDATE(),
                             bg.ModifiedBy = @PerformedBy
                         FROM BookingGuests bg
@@ -4096,6 +4165,10 @@ WHERE BookingID = @BookingID
                         guest.Age,
                         IdentityType = identityType,
                         IdentityNumber = identityNumber,
+                        guest.NationalityId,
+                        PurposeOfVisit = purposeOfVisit,
+                        ComingFrom = comingFrom,
+                        GoingTo = goingTo,
                         PerformedBy = performedBy
                     }, transaction);
                 }
@@ -4123,6 +4196,10 @@ WHERE BookingID = @BookingID
                             bg.Age = @Age,
                             bg.IdentityType = @IdentityType,
                             bg.IdentityNumber = @IdentityNumber,
+                            bg.NationalityId = @NationalityId,
+                            bg.PurposeOfVisit = @PurposeOfVisit,
+                            bg.ComingFrom = @ComingFrom,
+                            bg.GoingTo = @GoingTo,
                             bg.ModifiedDate = GETDATE(),
                             bg.ModifiedBy = @PerformedBy
                         FROM BookingGuests bg
@@ -4154,6 +4231,10 @@ WHERE BookingID = @BookingID
                         guest.Age,
                         IdentityType = identityType,
                         IdentityNumber = identityNumber,
+                        guest.NationalityId,
+                        PurposeOfVisit = purposeOfVisit,
+                        ComingFrom = comingFrom,
+                        GoingTo = goingTo,
                         PerformedBy = performedBy
                     }, transaction);
                 }
@@ -4255,6 +4336,23 @@ WHERE BookingID = @BookingID
                 ORDER BY b.CreatedDate DESC";
 
             return await _dbConnection.QueryFirstOrDefaultAsync<Booking>(sql, new { Phone = phone });
+        }
+
+        public async Task<IEnumerable<Booking>> GetBookingsByGuestPhoneAsync(string phone)
+        {
+            const string sql = @"
+                SELECT DISTINCT b.*
+                FROM Bookings b
+                INNER JOIN BookingGuests bg ON b.Id = bg.BookingId
+                WHERE bg.Phone = @Phone
+                ORDER BY b.CreatedDate DESC";
+
+            var bookings = (await _dbConnection.QueryAsync<Booking>(sql, new { Phone = phone })).ToList();
+            if (bookings.Any())
+            {
+                await PopulateRelatedCollectionsAsync(bookings);
+            }
+            return bookings;
         }
 
         /// <summary>

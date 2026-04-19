@@ -1,0 +1,259 @@
+@model IEnumerable<HotelApp.Web.Models.Booking>
+@{
+    ViewData["Title"] = "Booking History";
+    var guest = ViewBag.Guest as HotelApp.Web.Models.Guest;
+    var bookings = Model.ToList();
+    var totalBookings = bookings.Count;
+    var confirmedCount = bookings.Count(b => b.Status == "Confirmed");
+    var checkedInCount = bookings.Count(b => b.Status == "CheckedIn");
+    var checkedOutCount = bookings.Count(b => b.Status == "CheckedOut");
+    var cancelledCount = bookings.Count(b => b.Status == "Cancelled");
+    var totalRevenue = bookings.Where(b => b.Status != "Cancelled").Sum(b => b.TotalAmount);
+    var totalPaid = bookings.Where(b => b.Status != "Cancelled").Sum(b => b.DepositAmount);
+}
+
+@section Styles {
+<style>
+    .bh-shell { max-width: 1400px; margin: 0 auto; padding: 12px; }
+
+    .bh-hero {
+        display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.7rem;
+        background: linear-gradient(135deg, #1a2a6c 0%, #2d3e9e 50%, #b21f1f 100%);
+        border-radius: 16px; padding: 1rem 1.4rem; margin-bottom: 1rem;
+        box-shadow: 0 6px 24px rgba(26,42,108,.22); position: relative; overflow: hidden;
+    }
+    .bh-hero::before { content: ''; position: absolute; right: -60px; top: -60px; width: 200px; height: 200px; background: rgba(255,255,255,.07); border-radius: 50%; }
+    .bh-hero-left { display: flex; align-items: center; gap: 1rem; z-index: 1; }
+    .bh-hero-icon {
+        width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center;
+        background: rgba(255,255,255,.18); border: 1.5px solid rgba(255,255,255,.3); color: #fff; font-size: 1.4rem; flex-shrink: 0;
+    }
+    .bh-hero-title { font-size: 1.3rem; font-weight: 800; color: #fff; letter-spacing: -.2px; }
+    .bh-hero-sub { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem; }
+    .bh-badge { display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .6rem; border-radius: 20px; font-size: .72rem; font-weight: 700; }
+    .bh-badge-name { background: rgba(255,255,255,.18); color: #fff; }
+    .bh-badge-phone { background: rgba(100,255,200,.18); color: #a7f3d0; }
+    .bh-badge-count { background: rgba(255,220,80,.22); color: #ffe082; }
+    .bh-hero-right { display: flex; gap: 0.55rem; z-index: 1; flex-wrap: wrap; }
+    .bh-hero-btn {
+        display: inline-flex; align-items: center; gap: .4rem; padding: .45rem 1rem; border-radius: 9px;
+        font-size: .81rem; font-weight: 700; text-decoration: none; transition: all .18s;
+    }
+    .bh-hero-btn-back { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.3); }
+    .bh-hero-btn-back:hover { background: rgba(255,255,255,.25); color: #fff; text-decoration: none; }
+
+    .bh-stats {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1rem;
+    }
+    .bh-stat {
+        background: #fff; border-radius: 12px; padding: 1rem 1.2rem; display: flex; align-items: center; gap: 0.8rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,.06); border: 1px solid rgba(0,0,0,.06);
+    }
+    .bh-stat-icon {
+        width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem; flex-shrink: 0;
+    }
+    .bh-stat-icon.total { background: #e8f0fe; color: #1a2a6c; }
+    .bh-stat-icon.confirmed { background: #dcfce7; color: #16a34a; }
+    .bh-stat-icon.checkedin { background: #dbeafe; color: #2563eb; }
+    .bh-stat-icon.checkedout { background: #f3e8ff; color: #7c3aed; }
+    .bh-stat-icon.cancelled { background: #fee2e2; color: #dc2626; }
+    .bh-stat-icon.revenue { background: #fef3c7; color: #d97706; }
+    .bh-stat h4 { font-size: 1.2rem; font-weight: 800; margin: 0; color: #1e293b; }
+    .bh-stat p { font-size: 0.75rem; color: #6b7280; margin: 0; }
+
+    .bh-card {
+        background: #fff; border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.06);
+        border: 1px solid rgba(0,0,0,.06); overflow: hidden;
+    }
+    .bh-card-header {
+        padding: 1rem 1.4rem; border-bottom: 1px solid #f1f5f9;
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .bh-card-header h3 { margin: 0; font-size: 1rem; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; }
+
+    .bh-table { width: 100%; border-collapse: collapse; }
+    .bh-table thead th {
+        background: #f8fafc; padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 700;
+        color: #475569; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #e2e8f0;
+    }
+    .bh-table tbody td { padding: 0.8rem 1rem; font-size: 0.875rem; color: #334155; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    .bh-table tbody tr:hover { background: #f8fafc; }
+    .bh-table tbody tr:last-child td { border-bottom: none; }
+
+    .bh-booking-num { color: #4c51bf; font-weight: 700; text-decoration: none; }
+    .bh-booking-num:hover { text-decoration: underline; }
+
+    .bh-status {
+        display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem;
+        border-radius: 20px; font-size: 0.72rem; font-weight: 700;
+    }
+    .bh-status-confirmed { background: #dcfce7; color: #16a34a; }
+    .bh-status-checkedin { background: #dbeafe; color: #2563eb; }
+    .bh-status-checkedout { background: #f3e8ff; color: #7c3aed; }
+    .bh-status-cancelled { background: #fee2e2; color: #dc2626; }
+    .bh-status-pending { background: #fef3c7; color: #d97706; }
+
+    .bh-pay-status { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.72rem; font-weight: 700; }
+    .bh-pay-full { background: #dcfce7; color: #16a34a; }
+    .bh-pay-partial { background: #fef3c7; color: #d97706; }
+    .bh-pay-pending { background: #fee2e2; color: #dc2626; }
+
+    .bh-empty {
+        text-align: center; padding: 3rem 1rem; color: #6b7280;
+    }
+    .bh-empty i { font-size: 3rem; margin-bottom: 1rem; color: #d1d5db; display: block; }
+    .bh-empty h3 { font-size: 1.1rem; font-weight: 700; color: #374151; margin-bottom: 0.5rem; }
+    .bh-empty p { font-size: 0.875rem; }
+
+    .bh-view-btn {
+        display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.3rem 0.7rem; border-radius: 6px;
+        font-size: 0.78rem; font-weight: 600; background: #e8f0fe; color: #1a2a6c;
+        text-decoration: none; transition: all 0.15s; border: none; cursor: pointer;
+    }
+    .bh-view-btn:hover { background: #d1ddf7; text-decoration: none; }
+
+    @@media (max-width: 768px) {
+        .bh-table-wrap { overflow-x: auto; }
+        .bh-stats { grid-template-columns: repeat(2, 1fr); }
+    }
+</style>
+}
+
+<div class="bh-shell">
+    <!-- Hero Header -->
+    <div class="bh-hero">
+        <div class="bh-hero-left">
+            <div class="bh-hero-icon"><i class="fas fa-history"></i></div>
+            <div>
+                <div class="bh-hero-title">Booking History</div>
+                <div class="bh-hero-sub">
+                    <span class="bh-badge bh-badge-name"><i class="fas fa-user"></i> @guest?.FirstName @guest?.LastName</span>
+                    <span class="bh-badge bh-badge-phone"><i class="fas fa-phone"></i> @guest?.Phone</span>
+                    <span class="bh-badge bh-badge-count"><i class="fas fa-calendar-check"></i> @totalBookings Booking(s)</span>
+                </div>
+            </div>
+        </div>
+        <div class="bh-hero-right">
+            <a asp-action="Details" asp-route-id="@guest?.Id" class="bh-hero-btn bh-hero-btn-back">
+                <i class="fas fa-arrow-left"></i> Back to Guest
+            </a>
+            <a asp-action="Index" class="bh-hero-btn bh-hero-btn-back">
+                <i class="fas fa-users"></i> Guest List
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="bh-stats">
+        <div class="bh-stat">
+            <div class="bh-stat-icon total"><i class="fas fa-calendar-alt"></i></div>
+            <div><h4>@totalBookings</h4><p>Total Bookings</p></div>
+        </div>
+        <div class="bh-stat">
+            <div class="bh-stat-icon confirmed"><i class="fas fa-check-circle"></i></div>
+            <div><h4>@confirmedCount</h4><p>Confirmed</p></div>
+        </div>
+        <div class="bh-stat">
+            <div class="bh-stat-icon checkedin"><i class="fas fa-sign-in-alt"></i></div>
+            <div><h4>@checkedInCount</h4><p>Checked In</p></div>
+        </div>
+        <div class="bh-stat">
+            <div class="bh-stat-icon checkedout"><i class="fas fa-sign-out-alt"></i></div>
+            <div><h4>@checkedOutCount</h4><p>Checked Out</p></div>
+        </div>
+        <div class="bh-stat">
+            <div class="bh-stat-icon cancelled"><i class="fas fa-times-circle"></i></div>
+            <div><h4>@cancelledCount</h4><p>Cancelled</p></div>
+        </div>
+        <div class="bh-stat">
+            <div class="bh-stat-icon revenue"><i class="fas fa-rupee-sign"></i></div>
+            <div><h4>₹@totalRevenue.ToString("N2")</h4><p>Total Revenue</p></div>
+        </div>
+    </div>
+
+    <!-- Booking Table -->
+    <div class="bh-card">
+        <div class="bh-card-header">
+            <h3><i class="fas fa-list"></i> All Bookings</h3>
+        </div>
+        @if (bookings.Any())
+        {
+            <div class="bh-table-wrap">
+                <table class="bh-table">
+                    <thead>
+                        <tr>
+                            <th>Booking #</th>
+                            <th>Status</th>
+                            <th>Payment</th>
+                            <th>Check-In</th>
+                            <th>Check-Out</th>
+                            <th>Nights</th>
+                            <th>Room Type</th>
+                            <th>Channel</th>
+                            <th>Total</th>
+                            <th>Paid</th>
+                            <th>Balance</th>
+                            <th>Booked On</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var b in bookings)
+                        {
+                            var statusCss = b.Status switch
+                            {
+                                "Confirmed" => "bh-status-confirmed",
+                                "CheckedIn" => "bh-status-checkedin",
+                                "CheckedOut" => "bh-status-checkedout",
+                                "Cancelled" => "bh-status-cancelled",
+                                _ => "bh-status-pending"
+                            };
+                            var payCss = b.PaymentStatus switch
+                            {
+                                "Fully Paid" => "bh-pay-full",
+                                "Partially Paid" => "bh-pay-partial",
+                                _ => "bh-pay-pending"
+                            };
+                            <tr>
+                                <td>
+                                    <a asp-controller="Booking" asp-action="Details" asp-route-bookingNumber="@b.BookingNumber" class="bh-booking-num">
+                                        @b.BookingNumber
+                                    </a>
+                                    @if (!string.IsNullOrWhiteSpace(b.InvoiceNumber))
+                                    {
+                                        <br /><small style="color:#6b7280;">@b.InvoiceNumber</small>
+                                    }
+                                </td>
+                                <td><span class="bh-status @statusCss">@b.Status</span></td>
+                                <td><span class="bh-pay-status @payCss">@b.PaymentStatus</span></td>
+                                <td>@b.CheckInDate.ToString("dd MMM yyyy")</td>
+                                <td>@b.CheckOutDate.ToString("dd MMM yyyy")</td>
+                                <td>@b.Nights</td>
+                                <td>@(b.RoomType?.TypeName ?? "-")</td>
+                                <td>@b.Channel</td>
+                                <td style="font-weight:700;">₹@b.TotalAmount.ToString("N2")</td>
+                                <td style="color:#16a34a;font-weight:600;">₹@b.DepositAmount.ToString("N2")</td>
+                                <td style="color:@(b.BalanceAmount > 0 ? "#dc2626" : "#16a34a");font-weight:600;">₹@b.BalanceAmount.ToString("N2")</td>
+                                <td>@b.CreatedDate.ToLocalTime().ToString("dd MMM yyyy")</td>
+                                <td>
+                                    <a asp-controller="Booking" asp-action="Details" asp-route-bookingNumber="@b.BookingNumber" class="bh-view-btn">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="bh-empty">
+                <i class="fas fa-calendar-times"></i>
+                <h3>No Bookings Found</h3>
+                <p>No booking history available for this guest.</p>
+            </div>
+        }
+    </div>
+</div>

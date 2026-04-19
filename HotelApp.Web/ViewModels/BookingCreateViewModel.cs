@@ -97,6 +97,21 @@ namespace HotelApp.Web.ViewModels
     [StringLength(100)]
     public string? LoyaltyId { get; set; }
 
+        [Display(Name = "Nationality")]
+        public int? NationalityId { get; set; }
+
+        [StringLength(200)]
+        [Display(Name = "Purpose of Visit")]
+        public string? PurposeOfVisit { get; set; }
+
+        [StringLength(200)]
+        [Display(Name = "Coming From")]
+        public string? ComingFrom { get; set; }
+
+        [StringLength(200)]
+        [Display(Name = "Going To")]
+        public string? GoingTo { get; set; }
+
         [StringLength(1000)]
         public string? SpecialRequests { get; set; }
 

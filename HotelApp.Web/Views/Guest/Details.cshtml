@@ -317,6 +317,41 @@
                         <div class="guest-details-value"><i class="fas fa-id-badge"></i> @Model.LoyaltyId</div>
                     </div>
                 }
+
+                @{
+                    var nationalityName = ViewBag.NationalityName as string;
+                }
+                @if (!string.IsNullOrWhiteSpace(nationalityName))
+                {
+                    <div class="guest-details-row">
+                        <div class="guest-details-label">Nationality</div>
+                        <div class="guest-details-value"><i class="fas fa-globe-asia"></i> @nationalityName</div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model.PurposeOfVisit))
+                {
+                    <div class="guest-details-row">
+                        <div class="guest-details-label">Purpose of Visit</div>
+                        <div class="guest-details-value"><i class="fas fa-briefcase"></i> @Model.PurposeOfVisit</div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model.ComingFrom))
+                {
+                    <div class="guest-details-row">
+                        <div class="guest-details-label">Coming From</div>
+                        <div class="guest-details-value"><i class="fas fa-plane-arrival"></i> @Model.ComingFrom</div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model.GoingTo))
+                {
+                    <div class="guest-details-row">
+                        <div class="guest-details-label">Going To</div>
+                        <div class="guest-details-value"><i class="fas fa-plane-departure"></i> @Model.GoingTo</div>
+                    </div>
+                }
                 </div>
             </div>
 

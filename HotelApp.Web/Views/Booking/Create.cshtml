@@ -8,6 +8,8 @@
     var sources = ViewBag.Sources as IEnumerable<string> ?? Enumerable.Empty<string>();
     var channels = ViewBag.Channels as IEnumerable<string> ?? Enumerable.Empty<string>();
     var rateTypes = ViewBag.RateTypes as IEnumerable<string> ?? Enumerable.Empty<string>();
+    var nationalities = ViewBag.Nationalities as IEnumerable<Nationality> ?? Enumerable.Empty<Nationality>();
+    var defaultNationalityId = nationalities.FirstOrDefault(n => n.Name == "Indian")?.Id;
 }
 
 <style>
@@ -593,6 +595,34 @@
                     <label asp-for="PrimaryGuestEmail">Email Address</label>
                     <input asp-for="PrimaryGuestEmail" type="email" id="guestEmail" placeholder="guest@example.com" />
                     <span asp-validation-for="PrimaryGuestEmail" class="text-danger"></span>
+                </div>
+
+                <div class="form-row-inline">
+                    <div class="form-field">
+                        <label asp-for="NationalityId">Nationality</label>
+                        <select asp-for="NationalityId" id="guestNationality" class="form-control">
+                            <option value="">Select Nationality</option>
+                            @foreach (var nat in nationalities)
+                            {
+                                <option value="@nat.Id">@nat.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label asp-for="PurposeOfVisit">Purpose of Visit</label>
+                        <input asp-for="PurposeOfVisit" id="guestPurposeOfVisit" placeholder="e.g. Business, Tourism, Medical" />
+                    </div>
+                </div>
+
+                <div class="form-row-inline">
+                    <div class="form-field">
+                        <label asp-for="ComingFrom">Coming From</label>
+                        <input asp-for="ComingFrom" id="guestComingFrom" placeholder="City / Place of origin" />
+                    </div>
+                    <div class="form-field">
+                        <label asp-for="GoingTo">Going To</label>
+                        <input asp-for="GoingTo" id="guestGoingTo" placeholder="Next destination" />
+                    </div>
                 </div>
 
                 <div class="form-field">
@@ -1635,6 +1665,12 @@
                             $('#AddressLine').val(response.guest.address || '');
                             $('#Pincode').val(response.guest.pincode || '');
                             
+                            // Auto-fill new guest fields
+                            $('#guestNationality').val(response.guest.nationalityId || '@(defaultNationalityId?.ToString() ?? "")');
+                            $('#guestPurposeOfVisit').val(response.guest.purposeOfVisit || '');
+                            $('#guestComingFrom').val(response.guest.comingFrom || '');
+                            $('#guestGoingTo').val(response.guest.goingTo || '');
+                            
                             // Show returning guest badge
                             $('#guestFoundBadge').fadeIn();
                             
@@ -1683,6 +1719,10 @@
                 $('#guestLoyalty').val('');
                 $('#guestDob').val('');
                 $('#guestAge').val('');
+                $('#guestNationality').val('@(defaultNationalityId?.ToString() ?? "")');
+                $('#guestPurposeOfVisit').val('');
+                $('#guestComingFrom').val('');
+                $('#guestGoingTo').val('');
                 $('#guestFoundBadge').hide();
                 $('#lastBookingInfo').hide();
             }
