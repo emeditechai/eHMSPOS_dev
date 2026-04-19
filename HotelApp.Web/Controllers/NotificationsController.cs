@@ -30,8 +30,24 @@ public sealed class NotificationsController : Controller
             branchId = parsed;
         }
 
-        var items = await _notificationRepository.GetBranchNotificationsAsync(branchId.Value, DateTime.Today);
-        _logger.LogInformation("Notifications poll: BranchID={BranchId}, Items={Count}", branchId.Value, items.Count);
+        var allItems = await _notificationRepository.GetBranchNotificationsAsync(branchId.Value, DateTime.Today);
+
+        // Filter role-restricted notifications
+        var roleName = HttpContext.Session.GetString("SelectedRoleName")
+            ?? User.FindFirst("SelectedRoleName")?.Value
+            ?? string.Empty;
+
+        var idMissingAllowedRoles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Administrator", "Manager", "Supervisor", "FrontDesk"
+        };
+
+        var items = allItems
+            .Where(n => n.Kind != "id_missing" || idMissingAllowedRoles.Contains(roleName))
+            .ToList();
+
+        _logger.LogInformation("Notifications poll: BranchID={BranchId}, Role={Role}, Items={Count}",
+            branchId.Value, roleName, items.Count);
         return Json(new { serverTimeUtc = DateTime.UtcNow, branchId = branchId.Value, items });
     }
 }

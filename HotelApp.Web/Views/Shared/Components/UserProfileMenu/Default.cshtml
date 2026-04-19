@@ -74,7 +74,8 @@
 
             <div class="profile-divider"></div>
 
-            <form asp-controller="Account" asp-action="Logout" method="post">
+            <form asp-controller="Account" asp-action="Logout" method="post"
+                  onsubmit="try{sessionStorage.removeItem('luxstay.notifications.seenKeys.v1');sessionStorage.removeItem('luxstay.notifications.lastSounded.v1')}catch(e){}">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="profile-action profile-action-danger">
                     <span class="profile-action-icon"><i class="fas fa-sign-out-alt"></i></span>

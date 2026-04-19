@@ -123,6 +123,44 @@ ORDER BY b.Id DESC;";
             });
         }
 
+        // 3) Checked-in bookings where primary guest has no ID Type / ID Number
+        const string idMissingSql = @"
+SELECT TOP (@MaxRows)
+    b.Id,
+    b.BookingNumber,
+    (b.PrimaryGuestFirstName + ' ' + b.PrimaryGuestLastName) AS GuestName
+FROM Bookings b
+INNER JOIN BookingGuests bg ON bg.BookingId = b.Id AND bg.IsPrimary = 1 AND bg.IsActive = 1
+WHERE b.BranchID = @BranchID
+  AND b.Status IN ('CheckedIn')
+  AND b.ActualCheckInDate IS NOT NULL
+  AND (
+        (COALESCE(NULLIF(LTRIM(RTRIM(bg.IdentityType)), ''), NULL) IS NULL)
+     OR (COALESCE(NULLIF(LTRIM(RTRIM(bg.IdentityNumber)), ''), NULL) IS NULL)
+  )
+ORDER BY b.ActualCheckInDate DESC, b.Id DESC;";
+
+        var idMissing = await _dbConnection.QueryAsync(idMissingSql, new
+        {
+            MaxRows = maxPerRule,
+            BranchID = branchId
+        });
+
+        foreach (var row in idMissing)
+        {
+            var bookingNumber = (string?)row.BookingNumber ?? string.Empty;
+            var guestName = (string?)row.GuestName ?? string.Empty;
+
+            notifications.Add(new BrowserNotificationItem
+            {
+                Key = $"id-missing:{row.Id}",
+                Kind = "id_missing",
+                Title = $"ID Missing: {bookingNumber} ({guestName})",
+                Message = $"Booking #{bookingNumber} ({guestName}) is checked-in but primary guest ID Type/Number is not uploaded.",
+                Url = $"/Booking/Details?bookingNumber={Uri.EscapeDataString(bookingNumber)}"
+            });
+        }
+
         return notifications;
     }
 }

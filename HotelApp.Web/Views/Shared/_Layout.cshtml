@@ -390,6 +390,8 @@
                     clearTimeout(idleTimer);
                     clearTimeout(warnTimer);
                     if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+                    // Clear notification seen-keys so re-login triggers sound
+                    try { sessionStorage.removeItem('luxstay.notifications.seenKeys.v1'); sessionStorage.removeItem('luxstay.notifications.lastSounded.v1'); } catch(e) {}
                     // Redirect to the server-side TimeoutLogout action
                     window.location.href = LOGOUT_URL;
                 }

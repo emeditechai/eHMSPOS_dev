@@ -3,6 +3,57 @@
     const SNOOZE_MS = 10 * 60 * 1000; // clear/snooze for 10 minutes
     const STORAGE_KEY = 'luxstay.notifications.snoozedUntil.v1';
 
+    // --- Notification Sound ---
+    const SOUND_PATH = '/PushNotificationsound/hotel_bell_notification.mp3';
+    const SEEN_KEYS_STORAGE = 'luxstay.notifications.seenKeys.v1';
+    const SOUND_TS_STORAGE = 'luxstay.notifications.lastSounded.v1';
+    const REPEAT_SOUND_MS = 30 * 60 * 1000; // 30 minutes for id_missing repeat
+    const REPEAT_KINDS = { 'id_missing': true };
+    let notificationSound = null;
+
+    function loadSeenKeys() {
+        try {
+            var raw = sessionStorage.getItem(SEEN_KEYS_STORAGE);
+            return raw ? new Set(JSON.parse(raw)) : new Set();
+        } catch { return new Set(); }
+    }
+
+    function saveSeenKeys(keys) {
+        try {
+            sessionStorage.setItem(SEEN_KEYS_STORAGE, JSON.stringify(Array.from(keys)));
+        } catch { /* ignore */ }
+    }
+
+    function loadLastSounded() {
+        try {
+            var raw = sessionStorage.getItem(SOUND_TS_STORAGE);
+            return raw ? JSON.parse(raw) : {};
+        } catch { return {}; }
+    }
+
+    function saveLastSounded(map) {
+        try {
+            sessionStorage.setItem(SOUND_TS_STORAGE, JSON.stringify(map));
+        } catch { /* ignore */ }
+    }
+
+    let seenKeys = loadSeenKeys();
+
+    function ensureAudio() {
+        if (!notificationSound) {
+            notificationSound = new Audio(SOUND_PATH);
+            notificationSound.preload = 'auto';
+        }
+        return notificationSound;
+    }
+
+    function playNotificationSound() {
+        var snd = ensureAudio();
+        snd.currentTime = 0;
+        snd.volume = 1;
+        snd.play().catch(function () { /* autoplay blocked */ });
+    }
+
     function loadSnoozedUntil() {
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
@@ -49,8 +100,10 @@
             const title = escapeHtml(item.title || 'Notification');
             const message = escapeHtml(item.message || '');
             const url = escapeHtml(item.url || '#');
+            const kind = escapeHtml(item.kind || '');
+            const urgentClass = kind === 'id_missing' ? ' notifications-item-urgent' : '';
             return (
-                '<a class="notifications-item" href="' + url + '">' +
+                '<a class="notifications-item' + urgentClass + '" href="' + url + '">' +
                 '<div class="notifications-item-title">' + title + '</div>' +
                 '<div class="notifications-item-message">' + message + '</div>' +
                 '</a>'
@@ -95,6 +148,44 @@
         const visibleItems = applySnooze(items);
         setBadge(visibleItems.length, badgeEl);
         render(visibleItems, listEl);
+
+        // Detect new notifications and play sound
+        var currentKeys = new Set(visibleItems.map(function (i) { return i.key; }));
+        var shouldSound = false;
+        var now = Date.now();
+        var lastSounded = loadLastSounded();
+
+        // Sound for brand-new keys
+        if (currentKeys.size > 0) {
+            currentKeys.forEach(function (key) {
+                if (!seenKeys.has(key)) {
+                    shouldSound = true;
+                    lastSounded[key] = now;
+                }
+            });
+        }
+
+        // Repeat sound every 30 min for id_missing kind
+        visibleItems.forEach(function (item) {
+            if (REPEAT_KINDS[item.kind]) {
+                var lastTs = lastSounded[item.key] || 0;
+                if (now - lastTs >= REPEAT_SOUND_MS) {
+                    shouldSound = true;
+                    lastSounded[item.key] = now;
+                }
+            }
+        });
+
+        // Cleanup stale entries
+        for (var k in lastSounded) {
+            if (!currentKeys.has(k)) delete lastSounded[k];
+        }
+        saveLastSounded(lastSounded);
+
+        if (shouldSound) playNotificationSound();
+        seenKeys = currentKeys;
+        saveSeenKeys(seenKeys);
+
         return items;
     }
 

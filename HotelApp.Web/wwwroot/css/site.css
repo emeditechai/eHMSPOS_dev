@@ -388,6 +388,15 @@ body {
     font-size: 0.9rem;
 }
 
+.notifications-item-urgent {
+    border-left: 3px solid #dc3545;
+    background: #fff5f5;
+}
+
+.notifications-item-urgent .notifications-item-title {
+    color: #dc3545;
+}
+
 /* Responsive Footer */
 @media (max-width: 768px) {
     .footer-content {
