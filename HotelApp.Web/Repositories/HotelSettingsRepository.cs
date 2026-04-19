@@ -54,6 +54,7 @@ namespace HotelApp.Web.Repositories
             parameters.Add("@NoShowGraceHours", settings.NoShowGraceHours, DbType.Int32);
             parameters.Add("@CancellationRefundApprovalThreshold", settings.CancellationRefundApprovalThreshold, DbType.Decimal);
             parameters.Add("@EnableCancellationPolicy", settings.EnableCancellationPolicy, DbType.Boolean);
+            parameters.Add("@PoliceStation", settings.PoliceStation, DbType.String);
             parameters.Add("@ModifiedBy", modifiedBy, DbType.Int32);
 
             var result = await connection.ExecuteAsync(

@@ -352,4 +352,52 @@ public sealed class ReportsController : BaseController
         ViewData["Title"] = "Cancellation & Refund Register";
         return View(vm);
     }
+
+    [HttpGet]
+    public async Task<IActionResult> PoliceGuestRegister(
+        DateOnly? fromDate, DateOnly? toDate,
+        string? fromTime, string? toTime,
+        string? roomNumber, string? nationality, string? guestName)
+    {
+        var branchId = CurrentBranchID;
+
+        var effectiveFromDate = fromDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var effectiveToDate   = toDate   ?? DateOnly.FromDateTime(DateTime.Today);
+
+        if (effectiveToDate < effectiveFromDate)
+            (effectiveFromDate, effectiveToDate) = (effectiveToDate, effectiveFromDate);
+
+        // Parse time, default 00:00 – 23:59
+        var effectiveFromTime = TimeOnly.TryParse(fromTime, out var ft) ? ft : TimeOnly.MinValue;
+        var effectiveToTime   = TimeOnly.TryParse(toTime, out var tt) ? tt : new TimeOnly(23, 59);
+
+        var fromDateTime = effectiveFromDate.ToDateTime(effectiveFromTime);
+        var toDateTime   = effectiveToDate.ToDateTime(effectiveToTime);
+
+        var data = await _reportsRepository.GetPoliceGuestRegisterAsync(
+            branchId, fromDateTime, toDateTime, roomNumber, nationality, guestName);
+
+        // Get hotel settings for report header
+        var settings = await _hotelSettingsRepository.GetByBranchAsync(branchId);
+
+        var vm = new PoliceGuestRegisterViewModel
+        {
+            FromDate     = effectiveFromDate,
+            ToDate       = effectiveToDate,
+            FromTime     = effectiveFromTime,
+            ToTime       = effectiveToTime,
+            RoomNumber   = roomNumber,
+            Nationality  = nationality,
+            GuestName    = guestName,
+            HotelName    = settings?.HotelName ?? string.Empty,
+            HotelAddress = settings?.Address ?? string.Empty,
+            PoliceStation = settings?.PoliceStation ?? string.Empty,
+            LogoPath     = settings?.LogoPath,
+            Summary      = data.Summary,
+            Rows         = data.Rows
+        };
+
+        ViewData["Title"] = "Police / Guest Register";
+        return View(vm);
+    }
 }

@@ -182,6 +182,13 @@
                                 else { <text>Not Set</text> }
                             </div>
                         </div>
+                        <div>
+                            <div class="hs-info-label">Police Station</div>
+                            <div class="hs-info-value @(string.IsNullOrWhiteSpace(Model.PoliceStation) ? "empty" : "")">
+                                <i class="fas fa-shield-alt"></i>
+                                @(string.IsNullOrWhiteSpace(Model.PoliceStation) ? "Not Set" : Model.PoliceStation)
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

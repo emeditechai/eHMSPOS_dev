@@ -69,6 +69,15 @@ public interface IReportsRepository
         DateOnly toDate,
         string reportType
     );
+
+    Task<PoliceGuestRegisterData> GetPoliceGuestRegisterAsync(
+        int branchId,
+        DateTime fromDateTime,
+        DateTime toDateTime,
+        string? roomNumber = null,
+        string? nationality = null,
+        string? guestName = null
+    );
 }
 
 public sealed class ReportsRepository : IReportsRepository
@@ -430,6 +439,40 @@ public sealed class ReportsRepository : IReportsRepository
             Rows    = rows
         };
     }
+
+    public async Task<PoliceGuestRegisterData> GetPoliceGuestRegisterAsync(
+        int branchId, DateTime fromDateTime, DateTime toDateTime,
+        string? roomNumber = null, string? nationality = null, string? guestName = null)
+    {
+        if (_dbConnection.State != ConnectionState.Open)
+            _dbConnection.Open();
+
+        var from = fromDateTime;
+        var to   = toDateTime;
+
+        using var grid = await _dbConnection.QueryMultipleAsync(
+            "sp_GetPoliceGuestRegister",
+            new
+            {
+                BranchID   = branchId,
+                FromDate   = from,
+                ToDate     = to,
+                RoomNumber = string.IsNullOrWhiteSpace(roomNumber) ? null : roomNumber,
+                Nationality = string.IsNullOrWhiteSpace(nationality) ? null : nationality,
+                GuestName  = string.IsNullOrWhiteSpace(guestName) ? null : guestName
+            },
+            commandType: CommandType.StoredProcedure);
+
+        var summary = (await grid.ReadAsync<PoliceGuestRegisterSummary>()).FirstOrDefault()
+            ?? new PoliceGuestRegisterSummary();
+        var rows = (await grid.ReadAsync<PoliceGuestRegisterRow>()).ToList();
+
+        return new PoliceGuestRegisterData
+        {
+            Summary = summary,
+            Rows    = rows
+        };
+    }
 }
 
 public sealed class CancellationRegisterReportData
@@ -772,4 +815,51 @@ public sealed class CancellationRefundRegisterRow
     public string?    ApprovalStatus       { get; set; }
     public string?    Reason               { get; set; }
     public string?    RequestedBy          { get; set; }
+}
+
+// ─── Police / Guest Register ─────────────────────────────────────────────────
+
+public sealed class PoliceGuestRegisterData
+{
+    public PoliceGuestRegisterSummary Summary { get; set; } = new();
+    public List<PoliceGuestRegisterRow> Rows { get; set; } = new();
+}
+
+public sealed class PoliceGuestRegisterSummary
+{
+    public int TotalGuests { get; set; }
+    public int TotalBookings { get; set; }
+    public int ForeignGuests { get; set; }
+    public int IndianGuests { get; set; }
+}
+
+public sealed class PoliceGuestRegisterRow
+{
+    public int SlNo { get; set; }
+    public string GuestName { get; set; } = string.Empty;
+    public string GuestType { get; set; } = string.Empty;
+    public string Gender { get; set; } = string.Empty;
+    public int? Age { get; set; }
+    public string Nationality { get; set; } = string.Empty;
+    public string Address { get; set; } = string.Empty;
+    public string City { get; set; } = string.Empty;
+    public string State { get; set; } = string.Empty;
+    public string Country { get; set; } = string.Empty;
+    public string Pincode { get; set; } = string.Empty;
+    public string IdType { get; set; } = string.Empty;
+    public string IdNumber { get; set; } = string.Empty;
+    public DateTime CheckInDate { get; set; }
+    public DateTime? ActualCheckInDate { get; set; }
+    public DateTime CheckOutDate { get; set; }
+    public DateTime? ActualCheckOutDate { get; set; }
+    public string RoomNumber { get; set; } = string.Empty;
+    public int NumberOfGuests { get; set; }
+    public string PurposeOfVisit { get; set; } = string.Empty;
+    public string ContactNumber { get; set; } = string.Empty;
+    public string ComingFrom { get; set; } = string.Empty;
+    public string GoingTo { get; set; } = string.Empty;
+    public string BookingNumber { get; set; } = string.Empty;
+    public string BookingStatus { get; set; } = string.Empty;
+    public bool IsForeignGuest { get; set; }
+    public string Email { get; set; } = string.Empty;
 }

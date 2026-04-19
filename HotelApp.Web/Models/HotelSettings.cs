@@ -28,6 +28,7 @@ namespace HotelApp.Web.Models
         public decimal? CancellationRefundApprovalThreshold { get; set; }
 
         public bool EnableCancellationPolicy { get; set; } = true;
+        public string? PoliceStation { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime CreatedDate { get; set; }
         public int? CreatedBy { get; set; }
