@@ -13,10 +13,11 @@ namespace HotelApp.Web.Repositories
             _connection = connection;
         }
 
-        public async Task<IEnumerable<GstSlab>> GetAllAsync()
+        public async Task<IEnumerable<GstSlab>> GetAllAsync(int branchId)
         {
             const string sql = @"
                 SELECT gs.Id,
+                       gs.BranchID,
                        gs.SlabCode,
                        gs.SlabName,
                        gs.EffectiveFrom,
@@ -32,7 +33,9 @@ namespace HotelApp.Web.Repositories
                        MAX(CASE WHEN band.IsActive = 1 THEN band.GstPercent END) AS MaximumGstPercent
                   FROM dbo.GstSlabs gs
              LEFT JOIN dbo.GstSlabBands band ON band.GstSlabId = gs.Id
+                 WHERE gs.BranchID = @BranchID
               GROUP BY gs.Id,
+                       gs.BranchID,
                        gs.SlabCode,
                        gs.SlabName,
                        gs.EffectiveFrom,
@@ -44,7 +47,7 @@ namespace HotelApp.Web.Repositories
                        gs.UpdatedBy
               ORDER BY gs.SlabName, gs.SlabCode;";
 
-            return await _connection.QueryAsync<GstSlab>(sql);
+            return await _connection.QueryAsync<GstSlab>(sql, new { BranchID = branchId });
         }
 
         public async Task<GstSlab?> GetByIdAsync(int id)
@@ -110,9 +113,9 @@ namespace HotelApp.Web.Repositories
         {
             const string sql = @"
                 INSERT INTO dbo.GstSlabs
-                    (SlabCode, SlabName, EffectiveFrom, EffectiveTo, IsActive, CreatedDate, CreatedBy)
+                    (SlabCode, SlabName, EffectiveFrom, EffectiveTo, IsActive, BranchID, CreatedDate, CreatedBy)
                 VALUES
-                    (@SlabCode, @SlabName, @EffectiveFrom, @EffectiveTo, @IsActive, SYSUTCDATETIME(), @CreatedBy);
+                    (@SlabCode, @SlabName, @EffectiveFrom, @EffectiveTo, @IsActive, @BranchID, SYSUTCDATETIME(), @CreatedBy);
                 SELECT CAST(SCOPE_IDENTITY() AS int);";
 
             var shouldCloseConnection = _connection.State != ConnectionState.Open;
@@ -154,7 +157,7 @@ namespace HotelApp.Web.Repositories
                        IsActive = @IsActive,
                        UpdatedDate = SYSUTCDATETIME(),
                        UpdatedBy = @UpdatedBy
-                 WHERE Id = @Id;";
+                 WHERE Id = @Id AND BranchID = @BranchID;";
 
             const string deleteBandsSql = @"DELETE FROM dbo.GstSlabBands WHERE GstSlabId = @GstSlabId;";
 
@@ -187,15 +190,16 @@ namespace HotelApp.Web.Repositories
             }
         }
 
-        public async Task<bool> CodeExistsAsync(string slabCode, int? excludeId = null)
+        public async Task<bool> CodeExistsAsync(string slabCode, int branchId, int? excludeId = null)
         {
             var sql = excludeId.HasValue
-                ? "SELECT COUNT(1) FROM dbo.GstSlabs WHERE SlabCode = @SlabCode AND Id <> @ExcludeId"
-                : "SELECT COUNT(1) FROM dbo.GstSlabs WHERE SlabCode = @SlabCode";
+                ? "SELECT COUNT(1) FROM dbo.GstSlabs WHERE SlabCode = @SlabCode AND BranchID = @BranchID AND Id <> @ExcludeId"
+                : "SELECT COUNT(1) FROM dbo.GstSlabs WHERE SlabCode = @SlabCode AND BranchID = @BranchID";
 
             var count = await _connection.ExecuteScalarAsync<int>(sql, new
             {
                 SlabCode = slabCode,
+                BranchID = branchId,
                 ExcludeId = excludeId
             });
 

@@ -5,6 +5,7 @@ namespace HotelApp.Web.Models
     public class GstSlab
     {
         public int Id { get; set; }
+        public int BranchID { get; set; }
 
         [Required]
         [StringLength(30)]

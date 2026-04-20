@@ -18,7 +18,7 @@ namespace HotelApp.Web.Controllers
         public async Task<IActionResult> Index()
         {
             ViewData["Title"] = "GST Slab Master";
-            var rows = await _gstSlabRepository.GetAllAsync();
+            var rows = await _gstSlabRepository.GetAllAsync(CurrentBranchID);
             return View(rows);
         }
 
@@ -48,12 +48,13 @@ namespace HotelApp.Web.Controllers
                 return View(model);
             }
 
-            if (await _gstSlabRepository.CodeExistsAsync(model.SlabCode))
+            if (await _gstSlabRepository.CodeExistsAsync(model.SlabCode, CurrentBranchID))
             {
                 ModelState.AddModelError(nameof(model.SlabCode), "Slab code already exists.");
                 return View(model);
             }
 
+            model.BranchID = CurrentBranchID;
             model.CreatedBy = GetCurrentUserId();
             await _gstSlabRepository.CreateAsync(model);
             TempData["SuccessMessage"] = "GST slab created successfully.";
@@ -63,7 +64,7 @@ namespace HotelApp.Web.Controllers
         public async Task<IActionResult> Edit(int id)
         {
             var row = await _gstSlabRepository.GetByIdAsync(id);
-            if (row == null)
+            if (row == null || row.BranchID != CurrentBranchID)
             {
                 return NotFound();
             }
@@ -94,12 +95,13 @@ namespace HotelApp.Web.Controllers
                 return View(model);
             }
 
-            if (await _gstSlabRepository.CodeExistsAsync(model.SlabCode, model.Id))
+            if (await _gstSlabRepository.CodeExistsAsync(model.SlabCode, CurrentBranchID, model.Id))
             {
                 ModelState.AddModelError(nameof(model.SlabCode), "Slab code already exists.");
                 return View(model);
             }
 
+            model.BranchID = CurrentBranchID;
             model.UpdatedBy = GetCurrentUserId();
             await _gstSlabRepository.UpdateAsync(model);
             TempData["SuccessMessage"] = "GST slab updated successfully.";
@@ -109,7 +111,7 @@ namespace HotelApp.Web.Controllers
         public async Task<IActionResult> Details(int id)
         {
             var row = await _gstSlabRepository.GetByIdAsync(id);
-            if (row == null)
+            if (row == null || row.BranchID != CurrentBranchID)
             {
                 return NotFound();
             }

@@ -22,6 +22,7 @@
         var controller = (string?)ViewContext.RouteData.Values["Controller"] ?? string.Empty;
         var action = (string?)ViewContext.RouteData.Values["Action"] ?? string.Empty;
         var isLoginPage = controller.Equals("Account", StringComparison.OrdinalIgnoreCase) && action.Equals("Login", StringComparison.OrdinalIgnoreCase);
+        var isRoleSelectPage = controller.Equals("Account", StringComparison.OrdinalIgnoreCase) && action.Equals("SelectRole", StringComparison.OrdinalIgnoreCase);
         var displayName = User.FindFirst("displayName")?.Value ?? User.Identity?.Name ?? "Guest";
     }
 
@@ -101,7 +102,7 @@
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js" asp-append-version="true"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    @if (!isLoginPage)
+    @if (!isLoginPage && !isRoleSelectPage)
     {
         <script src="~/js/notifications.js" asp-append-version="true"></script>
     }

@@ -221,7 +221,7 @@ namespace HotelApp.Web.Controllers
             ViewBag.ApprovalStatuses = ApprovalStatuses;
             ViewBag.TermsConditions = await _termsConditionRepository.GetActiveByBranchAsync(CurrentBranchID);
             ViewBag.CancellationPolicies = (await _cancellationPolicyRepository.GetByBranchAsync(CurrentBranchID)).Where(x => x.IsActive).ToList();
-            ViewBag.GstSlabs = (await _gstSlabRepository.GetAllAsync()).Where(x => x.IsActive).OrderBy(x => x.SlabName).ToList();
+            ViewBag.GstSlabs = (await _gstSlabRepository.GetAllAsync(CurrentBranchID)).Where(x => x.IsActive).OrderBy(x => x.SlabName).ToList();
             ViewBag.RoomTypes = (await _roomTypeRepository.GetByBranchAsync(CurrentBranchID)).Where(x => x.IsActive).OrderBy(x => x.TypeName).ToList();
             ViewBag.Approvers = await _userRepository.GetUsersByBranchAsync(CurrentBranchID);
         }
