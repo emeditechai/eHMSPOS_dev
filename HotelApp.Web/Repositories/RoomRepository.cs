@@ -70,7 +70,6 @@ namespace HotelApp.Web.Repositories
                     WHERE br.IsActive = 1
                         AND bk.Status IN ('Confirmed', 'CheckedIn', 'PartialCancelled')
                         AND CAST(bk.CheckInDate AS DATE) <= CAST(GETDATE() AS DATE)
-                        AND CAST(bk.CheckOutDate AS DATE) >= CAST(GETDATE() AS DATE)
                         AND bk.ActualCheckOutDate IS NULL
                 ) b ON r.Id = b.RoomId AND b.rn = 1
                 WHERE r.IsActive = 1 AND r.BranchID = @BranchId
@@ -225,7 +224,7 @@ namespace HotelApp.Web.Repositories
         public async Task<IEnumerable<RoomType>> GetRoomTypesByBranchAsync(int branchId)
         {
             var sql = @"
-                SELECT Id, TypeName, Description, BaseRate, MaxOccupancy, Amenities, BranchID
+                SELECT Id, TypeName, Description, BaseRate, MaxOccupancy, Max_RoomAvailability, Amenities, BranchID
                 FROM RoomTypes
                 WHERE IsActive = 1 AND BranchID = @BranchId
                 ORDER BY TypeName";

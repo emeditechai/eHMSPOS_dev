@@ -253,17 +253,12 @@
                 </div>
                 <div class="master-form-grid">
                     <div class="master-form-group">
-                        <label asp-for="RoomNumber">Room Number <span class="text-danger">*</span></label>
-                        <input asp-for="RoomNumber" type="text" required readonly="@(isReadOnly ? "readonly" : null)" />
-                        <span asp-validation-for="RoomNumber" class="text-danger"></span>
-                    </div>
-                    
-                    <div class="master-form-group">
                         <label asp-for="RoomTypeId">Room Rate <span class="text-danger">*</span></label>
-                        <select asp-for="RoomTypeId" required disabled="@(isReadOnly ? "disabled" : null)">
+                        <select asp-for="RoomTypeId" id="RoomTypeId" required disabled="@(isReadOnly ? "disabled" : null)">
                             <option value="">-- Select Room Rate --</option>
                             @{
                                 var activeRates = ViewBag.ActiveRates as Dictionary<int, HotelApp.Web.Models.RateMaster>;
+                                var roomCountByType = ViewBag.RoomCountByType as Dictionary<int, int>;
                             }
                             @if (roomTypes != null)
                             {
@@ -271,12 +266,25 @@
                                 {
                                     var rate = activeRates?.ContainsKey(roomType.Id) == true ? activeRates[roomType.Id] : null;
                                     var rateInfo = rate != null ? $"₹{rate.BaseRate:N0}" : "No Rate";
-                                    <option value="@roomType.Id">@roomType.TypeName (Max: @roomType.MaxOccupancy, Rate: @rateInfo)</option>
+                                    var created = roomCountByType?.ContainsKey(roomType.Id) == true ? roomCountByType[roomType.Id] : 0;
+                                    var maxAvail = roomType.Max_RoomAvailability ?? 0;
+                                    <option value="@roomType.Id"
+                                            data-max="@maxAvail"
+                                            data-created="@created">
+                                        @roomType.TypeName — @rateInfo | Max: @maxAvail | Created: @created
+                                    </option>
                                 }
                             }
                         </select>
                         <span asp-validation-for="RoomTypeId" class="text-danger"></span>
                         <small class="form-text text-muted">Rates are managed in Rate Master. Showing current active rates.</small>
+                        <div id="roomTypeInfo" style="display:none; margin-top:6px; padding:6px 12px; border-radius:6px; font-size:13px; font-weight:500;"></div>
+                    </div>
+
+                    <div class="master-form-group">
+                        <label asp-for="RoomNumber">Room Number <span class="text-danger">*</span></label>
+                        <input asp-for="RoomNumber" type="text" required readonly="@(isReadOnly ? "readonly" : null)" />
+                        <span asp-validation-for="RoomNumber" class="text-danger"></span>
                     </div>
                     
                     <div class="master-form-group">
@@ -340,3 +348,29 @@
         </form>
     </div>
 </div>
+
+<script>
+    (function () {
+        var sel = document.getElementById('RoomTypeId');
+        var info = document.getElementById('roomTypeInfo');
+        function showInfo() {
+            var opt = sel.options[sel.selectedIndex];
+            if (!sel.value) { info.style.display = 'none'; return; }
+            var max = parseInt(opt.getAttribute('data-max')) || 0;
+            var created = parseInt(opt.getAttribute('data-created')) || 0;
+            var remaining = max - created;
+            if (max > 0 && remaining <= 0) {
+                info.style.display = 'block'; info.style.background = '#fee2e2'; info.style.color = '#b91c1c';
+                info.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Limit reached! Max: ' + max + ' | Created: ' + created;
+            } else if (max > 0) {
+                info.style.display = 'block'; info.style.background = '#ecfdf5'; info.style.color = '#065f46';
+                info.innerHTML = '<i class="fas fa-check-circle"></i> Available: ' + remaining + ' of ' + max + ' | Created: ' + created;
+            } else {
+                info.style.display = 'block'; info.style.background = '#eff6ff'; info.style.color = '#1e40af';
+                info.innerHTML = '<i class="fas fa-info-circle"></i> No max limit set | Created: ' + created;
+            }
+        }
+        sel.addEventListener('change', showInfo);
+        if (sel.value) showInfo();
+    })();
+</script>

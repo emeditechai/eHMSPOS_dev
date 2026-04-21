@@ -18,6 +18,9 @@ public class BookingCancellationPreview
     public decimal GatewayFeeDeductionPercent { get; set; }
     public decimal DeductionAmount { get; set; }
     public decimal RefundAmount { get; set; }
+    public decimal EligibleRefundAmount { get; set; }
+    public decimal AdjustedAgainstDueAmount { get; set; }
+    public decimal DueAfterAdjustment { get; set; }
 
     public int? PolicyId { get; set; }
     public string? PolicyName { get; set; }

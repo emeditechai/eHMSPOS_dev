@@ -13,6 +13,58 @@ public class RefundRepository : IRefundRepository
         _db = db;
     }
 
+    private static List<int> ParseLineIds(string? csv)
+    {
+        if (string.IsNullOrWhiteSpace(csv))
+            return new List<int>();
+
+        return csv.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => int.TryParse(s.Trim(), out var id) ? id : 0)
+            .Where(id => id > 0)
+            .Distinct()
+            .ToList();
+    }
+
+    private async Task<(decimal TotalAmount, decimal TaxAmount, decimal CGSTAmount, decimal SGSTAmount)> ResolveCancellationTaxReferenceAsync(
+        int bookingId,
+        bool isPartial,
+        string? cancelledRoomLineIds,
+        decimal fallbackTotal,
+        decimal fallbackTax,
+        decimal fallbackCgst,
+        decimal fallbackSgst,
+        IDbTransaction? tx = null)
+    {
+        if (isPartial)
+        {
+            var ids = ParseLineIds(cancelledRoomLineIds);
+            if (ids.Count > 0)
+            {
+                var row = await _db.QueryFirstOrDefaultAsync<dynamic>(
+                    @"SELECT
+                        ISNULL(SUM(GrandTotal), 0) AS TotalAmount,
+                        ISNULL(SUM(TaxAmount), 0) AS TaxAmount
+                      FROM B2BBookingRoomLines
+                      WHERE BookingId = @BookingId
+                        AND Id IN @Ids",
+                    new { BookingId = bookingId, Ids = ids },
+                    tx);
+
+                var lineTotal = row?.TotalAmount is decimal d1 ? d1 : Convert.ToDecimal(row?.TotalAmount ?? 0m);
+                var lineTax = row?.TaxAmount is decimal d2 ? d2 : Convert.ToDecimal(row?.TaxAmount ?? 0m);
+
+                if (lineTotal > 0m)
+                {
+                    var lineCgst = Math.Round(lineTax / 2m, 2, MidpointRounding.AwayFromZero);
+                    var lineSgst = lineTax - lineCgst;
+                    return (lineTotal, lineTax, lineCgst, lineSgst);
+                }
+            }
+        }
+
+        return (fallbackTotal, fallbackTax, fallbackCgst, fallbackSgst);
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // List all pending refunds for the branch
     // ─────────────────────────────────────────────────────────────────────────
@@ -108,6 +160,8 @@ public class RefundRepository : IRefundRepository
             SELECT
                 bc.Id                                                           AS CancellationId,
                 bc.BookingId,
+                ISNULL(bc.IsPartial, 0)                                        AS IsPartial,
+                bc.CancelledRoomLineIds,
                 bc.BookingNumber,
                 CONCAT(b.PrimaryGuestFirstName, ' ', b.PrimaryGuestLastName)   AS GuestName,
                 b.PrimaryGuestPhone                                             AS GuestPhone,
@@ -140,18 +194,71 @@ public class RefundRepository : IRefundRepository
               AND bc.RefundAmount > 0
               AND ISNULL(bc.IsRefunded, 0) = 0";
 
-        var detail = await _db.QueryFirstOrDefaultAsync<RefundDetailViewModel>(
+        var row = await _db.QueryFirstOrDefaultAsync<dynamic>(
             sql, new { CancellationId = cancellationId, BranchId = branchId });
 
-        if (detail == null)
+        if (row == null)
             return null;
 
-        // Calculate proportional GST on refund amount (credit-note reference values)
-        if (detail.BookingTotalAmount > 0m)
+        var detail = new RefundDetailViewModel
         {
-            var fraction = detail.RefundAmount / detail.BookingTotalAmount;
-            detail.RefundCGSTAmount = Math.Round(detail.BookingCGSTAmount * fraction, 2, MidpointRounding.AwayFromZero);
-            detail.RefundSGSTAmount = detail.RefundCGSTAmount; // CGST = SGST symmetrically
+            CancellationId = row.CancellationId,
+            BookingId = row.BookingId,
+            BookingNumber = row.BookingNumber,
+            GuestName = row.GuestName,
+            GuestPhone = row.GuestPhone,
+            GuestEmail = row.GuestEmail,
+            RoomType = row.RoomType,
+            RoomNumber = row.RoomNumber,
+            CheckInDate = row.CheckInDate,
+            CheckOutDate = row.CheckOutDate,
+            Nights = row.Nights,
+            BookingTotalAmount = row.BookingTotalAmount,
+            BookingTaxAmount = row.BookingTaxAmount,
+            BookingCGSTAmount = row.BookingCGSTAmount,
+            BookingBaseAmount = row.BookingBaseAmount,
+            AmountPaid = row.AmountPaid,
+            RefundPercent = row.RefundPercent,
+            DeductionAmount = row.DeductionAmount,
+            RefundAmount = row.RefundAmount,
+            ApprovalStatus = row.ApprovalStatus,
+            Reason = row.Reason,
+            IsOverride = row.IsOverride,
+            OverrideReason = row.OverrideReason,
+            CancelledOn = row.CancelledOn,
+            HoursBeforeCheckIn = row.HoursBeforeCheckIn
+        };
+
+        bool isPartial = row.IsPartial is bool b && b;
+        string? cancelledLineIds = row.CancelledRoomLineIds as string;
+
+        var taxRef = await ResolveCancellationTaxReferenceAsync(
+            detail.BookingId,
+            isPartial,
+            cancelledLineIds,
+            detail.BookingTotalAmount,
+            detail.BookingTaxAmount,
+            detail.BookingCGSTAmount,
+            detail.BookingTaxAmount - detail.BookingCGSTAmount,
+            tx: null);
+
+        var referenceTotal = taxRef.TotalAmount;
+        var referenceTax = taxRef.TaxAmount;
+        var referenceCgst = taxRef.CGSTAmount;
+        var referenceSgst = taxRef.SGSTAmount;
+
+        // Surface the reference block used for this cancellation in the detail card.
+        detail.BookingTotalAmount = referenceTotal;
+        detail.BookingTaxAmount = referenceTax;
+        detail.BookingCGSTAmount = referenceCgst;
+        detail.BookingBaseAmount = Math.Round(referenceTotal - referenceTax, 2, MidpointRounding.AwayFromZero);
+
+        // Calculate proportional GST on refund amount (credit-note reference values)
+        if (referenceTotal > 0m)
+        {
+            var fraction = detail.RefundAmount / referenceTotal;
+            detail.RefundCGSTAmount = Math.Round(referenceCgst * fraction, 2, MidpointRounding.AwayFromZero);
+            detail.RefundSGSTAmount = Math.Round(referenceSgst * fraction, 2, MidpointRounding.AwayFromZero);
             detail.RefundBaseAmount = Math.Round(detail.RefundAmount - detail.RefundCGSTAmount - detail.RefundSGSTAmount, 2, MidpointRounding.AwayFromZero);
         }
         else
@@ -183,6 +290,8 @@ public class RefundRepository : IRefundRepository
             const string getCancSql = @"
                 SELECT
                     bc.Id, bc.BookingId, bc.BookingNumber, bc.BranchID,
+                    ISNULL(bc.IsPartial, 0) AS IsPartial,
+                    bc.CancelledRoomLineIds,
                     bc.RefundAmount, ISNULL(bc.IsRefunded, 0) AS IsRefunded,
                     bc.AmountPaid, bc.DeductionAmount,
                     b.TotalAmount, b.TaxAmount,
@@ -219,11 +328,29 @@ public class RefundRepository : IRefundRepository
             string bookingNumber = (string)canc.BookingNumber;
             int bookingId = (int)canc.BookingId;
 
+            bool isPartial = canc.IsPartial is bool bp && bp;
+            string? cancelledLineIds = canc.CancelledRoomLineIds as string;
+
+            var fallbackTotal = (decimal)canc.TotalAmount;
+            var fallbackTax = (decimal)canc.TaxAmount;
+            var fallbackCgst = (decimal)canc.CGSTAmount;
+            var fallbackSgst = (decimal)canc.SGSTAmount;
+
+            var taxRef = await ResolveCancellationTaxReferenceAsync(
+                bookingId,
+                isPartial,
+                cancelledLineIds,
+                fallbackTotal,
+                fallbackTax,
+                fallbackCgst,
+                fallbackSgst,
+                tx);
+
             // Calculate proportional GST (credit note reference values)
-            decimal totalAmt = (decimal)canc.TotalAmount;
-            decimal taxAmt = (decimal)canc.TaxAmount;
-            decimal cgstAmt = (decimal)canc.CGSTAmount;
-            decimal sgstAmt = (decimal)canc.SGSTAmount;
+            decimal totalAmt = taxRef.TotalAmount;
+            decimal taxAmt = taxRef.TaxAmount;
+            decimal cgstAmt = taxRef.CGSTAmount;
+            decimal sgstAmt = taxRef.SGSTAmount;
 
             decimal cgstOnRefund = 0m, sgstOnRefund = 0m, baseOnRefund = 0m;
             if (totalAmt > 0m)

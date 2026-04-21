@@ -760,9 +760,11 @@
     var watermarkPayments = (ViewBag.Payments as IEnumerable<HotelApp.Web.Models.BookingPayment>)
         ?? (Model.Payments ?? Enumerable.Empty<HotelApp.Web.Models.BookingPayment>());
 
-    var watermarkTotalRoundOffApplied = watermarkPayments.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m);
+    // Exclude refund payments: Grand Total already reflects cancellations; refunds are outflows not obligations.
+    var watermarkRegularPayments = watermarkPayments.Where(p => !p.IsRefund);
+    var watermarkTotalRoundOffApplied = watermarkRegularPayments.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m);
 
-    var watermarkAppliedToBalanceFromPayments = watermarkPayments.Sum(p =>
+    var watermarkAppliedToBalanceFromPayments = watermarkRegularPayments.Sum(p =>
         p.Amount
         + p.DiscountAmount
     );
@@ -1314,14 +1316,19 @@
             var paymentsForBalance = (ViewBag.Payments as IEnumerable<HotelApp.Web.Models.BookingPayment>)
                 ?? (Model.Payments ?? Enumerable.Empty<HotelApp.Web.Models.BookingPayment>());
 
-            var totalRoundOffApplied = paymentsForBalance.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m);
+            // Exclude refund payments from balance: Grand Total is already reduced by cancellations.
+            // Refund payments (IsRefund=true, negative Amount) are outflows to the guest, not payment credits.
+            // The head allocation loop already ignores negatives (applied <= 0 guard); balance must match.
+            var regularPayments = paymentsForBalance.Where(p => !p.IsRefund).ToList();
 
-            var appliedToBalanceFromPayments = paymentsForBalance.Sum(p =>
+            var totalRoundOffApplied = regularPayments.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m);
+
+            var appliedToBalanceFromPayments = regularPayments.Sum(p =>
                 p.Amount
                 + p.DiscountAmount
             );
 
-            var paymentDiscountTotal = paymentsForBalance.Sum(p => p.DiscountAmount);
+            var paymentDiscountTotal = regularPayments.Sum(p => p.DiscountAmount);
             var adjustedFinalPayable = adjustedGrandTotal + totalRoundOffApplied;
             var adjustedBalanceAmountRaw = adjustedFinalPayable - appliedToBalanceFromPayments;
             var adjustedBalanceAmount = Math.Max(0m, Math.Round(adjustedBalanceAmountRaw, 2, MidpointRounding.AwayFromZero));
@@ -1334,7 +1341,7 @@
                 _ => 0m
             );
 
-            foreach (var payment in paymentsForBalance)
+            foreach (var payment in regularPayments)
             {
                 var applied = payment.Amount
                              + payment.DiscountAmount
@@ -3799,9 +3806,21 @@
         const { allocations, total } = collectBillingHeadAllocations();
         const amountEl = document.getElementById('amount');
         setGrossAmount(total);
+
+        // Set amount field to NET payable (after discount/round-off) when discount is active,
+        // otherwise show gross total.
         if (amountEl) {
             isProgrammaticAmountUpdate = true;
-            amountEl.value = total.toFixed(2);
+            var discType = document.getElementById('discountType');
+            var applyRound = document.getElementById('applyRoundOff');
+            var hasDiscount = discType && discType.value !== 'None';
+            var hasRoundOff = applyRound && applyRound.checked;
+            if (hasDiscount || hasRoundOff) {
+                var totals = computePaymentTotals();
+                amountEl.value = totals.netPayable.toFixed(2);
+            } else {
+                amountEl.value = total.toFixed(2);
+            }
             isProgrammaticAmountUpdate = false;
         }
 
@@ -4282,6 +4301,13 @@
         const roundOffEl = document.getElementById('applyRoundOff');
         if (discountTypeEl) discountTypeEl.addEventListener('change', updateDiscountUI);
         if (discountValueEl) discountValueEl.addEventListener('input', () => {
+            // Enforce max 100 for percentage discount
+            var discType = document.getElementById('discountType');
+            if (discType && discType.value === 'Percent') {
+                var pctVal = parseFloat(discountValueEl.value || '0') || 0;
+                if (pctVal > 100) { discountValueEl.value = '100'; }
+                if (pctVal < 0) { discountValueEl.value = '0'; }
+            }
             debouncedRecalc(() => {
                 updatePaymentHint();
                 applyNetToAmountField();
@@ -5609,11 +5635,23 @@
                         const pData = await resp.json();
                         if (pData.success) {
                             const paid = '₹' + Number(pData.amountPaid).toLocaleString('en-IN',{minimumFractionDigits:2});
+                            const eligible = pData.eligibleRefundAmount != null
+                                ? '₹' + Number(pData.eligibleRefundAmount).toLocaleString('en-IN',{minimumFractionDigits:2})
+                                : null;
+                            const adjusted = pData.adjustedAgainstDueAmount != null
+                                ? '₹' + Number(pData.adjustedAgainstDueAmount).toLocaleString('en-IN',{minimumFractionDigits:2})
+                                : null;
                             const ref = '₹' + Number(pData.refundAmount).toLocaleString('en-IN',{minimumFractionDigits:2});
+                            const netDue = pData.dueAfterAdjustment != null
+                                ? '₹' + Number(pData.dueAfterAdjustment).toLocaleString('en-IN',{minimumFractionDigits:2})
+                                : null;
                             const refColor = pData.refundAmount > 0 ? '#059669' : '#dc2626';
                             previewArea.innerHTML = `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:0.85rem;">
                                 <div style="display:flex;justify-content:space-between;padding:3px 0;"><span style="color:#6b7280;">Proportional Paid</span><strong>${paid}</strong></div>
+                                ${eligible !== null ? `<div style="display:flex;justify-content:space-between;padding:3px 0;"><span style="color:#6b7280;">Eligible Refund</span><strong>${eligible}</strong></div>` : ''}
+                                ${adjusted !== null ? `<div style="display:flex;justify-content:space-between;padding:3px 0;"><span style="color:#6b7280;">Adjusted Against Due</span><strong style="color:#0f766e;">${adjusted}</strong></div>` : ''}
                                 <div style="display:flex;justify-content:space-between;padding:3px 0;"><span style="color:#6b7280;">Eligible Refund</span><strong style="color:${refColor};">${ref}</strong></div>
+                                ${netDue !== null ? `<div style="display:flex;justify-content:space-between;padding:3px 0;border-top:1px dashed #bbf7d0;margin-top:4px;"><span style="color:#374151;font-weight:600;">Net Due After Adjustment</span><strong style="color:${Number(pData.dueAfterAdjustment) > 0 ? '#dc2626' : '#059669'};">${netDue}</strong></div>` : ''}
                                 ${pData.refundBreakdownNote ? '<div style="font-size:0.78rem;color:#6b7280;margin-top:4px;"><i class="fas fa-info-circle"></i> ' + pData.refundBreakdownNote + '</div>' : ''}
                             </div>`;
                         } else {

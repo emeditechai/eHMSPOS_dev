@@ -286,6 +286,7 @@
 }
 .b2b-validation ul { margin: 6px 0 0 16px; padding: 0; }
 .b2b-validation:empty { display: none !important; }
+.b2b-validation .validation-summary-valid { display: none !important; }
 
 /* ── Responsive: Tablet ─────────────────────────────────── */
 @@media (max-width: 1200px) {
@@ -420,7 +421,7 @@
                             </div>
                             <div class="b2b-field f1">
                                 <label asp-for="PrimaryGuestPhone"></label>
-                                <input asp-for="PrimaryGuestPhone" placeholder="+91 XXXXX XXXXX" />
+                                <input asp-for="PrimaryGuestPhone" placeholder="10 digit mobile number" maxlength="10" pattern="\d{10}" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
                                 <span asp-validation-for="PrimaryGuestPhone" class="text-danger"></span>
                             </div>
                             <div class="b2b-field f1">
@@ -679,6 +680,44 @@
                 const el = $el(id);
                 if (el) el.textContent = value;
             }
+
+            // ── Check-In / Check-Out date sync ──────────────────────────────
+            checkInInput.addEventListener('change', function () {
+                const ciVal = checkInInput.value;
+                if (!ciVal) return;
+                var ci = new Date(ciVal);
+                var co = checkOutInput.value ? new Date(checkOutInput.value) : null;
+                // Always push check-out to at least check-in + 1 day
+                if (!co || co <= ci) {
+                    var nextDay = new Date(ci);
+                    nextDay.setDate(nextDay.getDate() + 1);
+                    checkOutInput.value = nextDay.toISOString().split('T')[0];
+                }
+                // Set min on checkout
+                var minCo = new Date(ci);
+                minCo.setDate(minCo.getDate() + 1);
+                checkOutInput.min = minCo.toISOString().split('T')[0];
+            });
+
+            checkOutInput.addEventListener('change', function () {
+                var ci = checkInInput.value ? new Date(checkInInput.value) : null;
+                var co = checkOutInput.value ? new Date(checkOutInput.value) : null;
+                if (ci && co && co <= ci) {
+                    var nextDay = new Date(ci);
+                    nextDay.setDate(nextDay.getDate() + 1);
+                    checkOutInput.value = nextDay.toISOString().split('T')[0];
+                }
+            });
+
+            // Set initial min on checkout
+            (function () {
+                if (checkInInput.value) {
+                    var ci = new Date(checkInInput.value);
+                    var minCo = new Date(ci);
+                    minCo.setDate(minCo.getDate() + 1);
+                    checkOutInput.min = minCo.toISOString().split('T')[0];
+                }
+            })();
 
             // ── Auto-refresh quote (debounced) ──────────────────────────────
             let _quoteTimer = null;

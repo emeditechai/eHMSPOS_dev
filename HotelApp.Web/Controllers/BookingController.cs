@@ -150,12 +150,18 @@ namespace HotelApp.Web.Controllers
 
             var grandTotal = booking.TotalAmount + ocGrandTotal + rsActualBillTotal;
 
-            var totalRoundOffApplied = payments?.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m) ?? 0m;
+            // Receipt due should exclude refund rows because grand total is already reduced
+            // after partial/full cancellation. Including refund negatives here double counts.
+            var regularPayments = (payments ?? Enumerable.Empty<BookingPayment>())
+                .Where(p => !p.IsRefund)
+                .ToList();
 
-            var appliedToBalanceFromPayments = payments?.Sum(p =>
+            var totalRoundOffApplied = regularPayments.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m);
+
+            var appliedToBalanceFromPayments = regularPayments.Sum(p =>
                 p.Amount
                 + p.DiscountAmount
-            ) ?? 0m;
+            );
 
             var finalPayable = grandTotal + totalRoundOffApplied;
             var balanceDueRaw = finalPayable - appliedToBalanceFromPayments;
@@ -257,8 +263,9 @@ namespace HotelApp.Web.Controllers
                     }
 
                     var payments = (await _bookingRepository.GetPaymentsAsync(booking.Id)).ToList();
-                    var totalRoundOffApplied = payments.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m);
-                    var appliedFromPayments = payments.Sum(p => p.Amount + p.DiscountAmount);
+                    var regularPmts = payments.Where(p => !p.IsRefund).ToList();
+                    var totalRoundOffApplied = regularPmts.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m);
+                    var appliedFromPayments = regularPmts.Sum(p => p.Amount + p.DiscountAmount);
 
                     var adjustedGrandTotal = booking.TotalAmount + otherChargesGrandTotal + roomServiceGrandTotal;
                     var adjustedFinalPayable = adjustedGrandTotal + totalRoundOffApplied;
@@ -434,6 +441,21 @@ namespace HotelApp.Web.Controllers
 
         private static decimal Round2(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
 
+        private static decimal ComputeAdjustedBalanceDue(Booking booking)
+        {
+            var payments = booking.Payments ?? Enumerable.Empty<BookingPayment>();
+            var regularPayments = payments.Where(p => !p.IsRefund).ToList();
+
+            var totalRoundOffApplied = regularPayments.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m);
+            var settledNet = regularPayments.Any()
+                ? regularPayments.Sum(p => p.Amount + p.DiscountAmount)
+                : booking.DepositAmount;
+
+            var finalPayable = booking.TotalAmount + totalRoundOffApplied;
+            var balanceAmount = finalPayable - settledNet;
+            return Math.Max(0m, Math.Round(balanceAmount, 2, MidpointRounding.AwayFromZero));
+        }
+
         public class SaveBookingOtherChargesRequest
         {
             public string BookingNumber { get; set; } = string.Empty;
@@ -475,6 +497,16 @@ namespace HotelApp.Web.Controllers
                 bookings = bookings.Where(b =>
                     string.Equals(b.CustomerType, customerType, StringComparison.OrdinalIgnoreCase));
             }
+
+            // Normalize in-memory balance for list badges/filters using payment-adjusted logic.
+            // This keeps list consistent with Details/Receipt when refund rows exist.
+            bookings = bookings
+                .Select(b =>
+                {
+                    b.BalanceAmount = ComputeAdjustedBalanceDue(b);
+                    return b;
+                })
+                .ToList();
 
             // Apply status filter
             if (!string.IsNullOrEmpty(statusFilter))
@@ -723,6 +755,14 @@ namespace HotelApp.Web.Controllers
                 ? await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, null, null)
                 : await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, fromDate, toDate);
 
+            bookings = bookings
+                .Select(b =>
+                {
+                    b.BalanceAmount = ComputeAdjustedBalanceDue(b);
+                    return b;
+                })
+                .ToList();
+
             // Apply status filter
             if (!string.IsNullOrEmpty(statusFilter))
             {
@@ -754,7 +794,7 @@ namespace HotelApp.Web.Controllers
                 {
                     roomNumber += $" (+{booking.RequiredRooms - 1} more)";
                 }
-                var balance = booking.TotalAmount - booking.DepositAmount;
+                var balance = booking.BalanceAmount;
 
                 csv.AppendLine($"\"{booking.BookingNumber}\",\"{guestName}\",\"{booking.PrimaryGuestPhone}\"," +
                     $"\"{booking.CheckInDate:dd-MMM-yyyy}\",\"{booking.CheckOutDate:dd-MMM-yyyy}\"," +
@@ -783,6 +823,14 @@ namespace HotelApp.Web.Controllers
             var bookings = isUpcomingFilter
                 ? await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, null, null)
                 : await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, fromDate, toDate);
+
+            bookings = bookings
+                .Select(b =>
+                {
+                    b.BalanceAmount = ComputeAdjustedBalanceDue(b);
+                    return b;
+                })
+                .ToList();
 
             // Apply status filter
             if (!string.IsNullOrEmpty(statusFilter))
@@ -3377,7 +3425,10 @@ namespace HotelApp.Web.Controllers
                 bookingNumber = preview.BookingNumber,
                 isPartial = preview.IsPartial,
                 amountPaid = preview.AmountPaid,
+                eligibleRefundAmount = preview.EligibleRefundAmount,
+                adjustedAgainstDueAmount = preview.AdjustedAgainstDueAmount,
                 refundAmount = preview.RefundAmount,
+                dueAfterAdjustment = preview.DueAfterAdjustment,
                 refundPercent = preview.RefundPercent,
                 hoursBeforeCheckIn = preview.HoursBeforeCheckIn,
                 approvalStatus = preview.ApprovalStatus,

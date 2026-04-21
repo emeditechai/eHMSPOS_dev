@@ -459,7 +459,8 @@ public class RoomsController : BaseController
     [HttpGet]
     public async Task<IActionResult> GetRoomDetails(int roomId)
     {
-        var room = await _roomRepository.GetByIdAsync(roomId);
+        var rooms = await _roomRepository.GetAllByBranchAsync(CurrentBranchID);
+        var room = rooms.FirstOrDefault(r => r.Id == roomId);
         if (room == null)
         {
             return Json(new { success = false, message = "Room not found" });
@@ -477,7 +478,15 @@ public class RoomsController : BaseController
                 floor = room.FloorName ?? $"Floor {room.Floor}",
                 baseRate = room.RoomType?.BaseRate ?? 0,
                 maxOccupancy = room.RoomType?.MaxOccupancy ?? 0,
-                amenities = room.RoomType?.Amenities ?? ""
+                amenities = room.RoomType?.Amenities ?? "",
+                bookingNumber = room.BookingNumber ?? "",
+                primaryGuestName = room.PrimaryGuestName ?? "",
+                guestCount = room.GuestCount ?? 0,
+                checkInDate = room.CheckInDate?.ToString("dd MMM yyyy") ?? "",
+                checkOutDate = room.CheckOutDate?.ToString("dd MMM yyyy") ?? "",
+                balanceAmount = room.BalanceAmount ?? 0,
+                bookingSource = room.BookingSource ?? "",
+                b2bClientName = room.B2BClientName ?? ""
             }
         });
     }
@@ -657,15 +666,41 @@ public class RoomsController : BaseController
     {
         try
         {
-            if (request == null || request.RoomId <= 0)
+            if (request == null || (request.RoomId <= 0 && string.IsNullOrWhiteSpace(request.BookingNumber)))
             {
-                return Json(new { success = false, message = "Invalid room ID" });
+                return Json(new { success = false, message = "Invalid checkout request" });
             }
 
-            Console.WriteLine($"ForceCheckoutRoom called for roomId: {request.RoomId}");
-            
-            // Check if room has ANY booking (including expired ones)
-            var (hasBooking, bookingNumber, balanceAmount, checkOutDate) = await _roomRepository.GetAnyBookingForRoomAsync(request.RoomId);
+            Console.WriteLine($"ForceCheckoutRoom called for roomId: {request.RoomId}, bookingNumber: {request.BookingNumber}");
+
+            string? bookingNumber = null;
+            decimal balanceAmount = 0m;
+            DateTime? checkOutDate = null;
+            bool hasBooking = false;
+
+            // Standard resolution rule: prefer booking number (stable for multi-room / partial-cancel),
+            // then fallback to room lookup for legacy callers.
+            if (!string.IsNullOrWhiteSpace(request.BookingNumber))
+            {
+                var bookingFromNumber = await _bookingRepository.GetByBookingNumberAsync(request.BookingNumber.Trim());
+                if (bookingFromNumber != null && bookingFromNumber.BranchID == CurrentBranchID)
+                {
+                    hasBooking = true;
+                    bookingNumber = bookingFromNumber.BookingNumber;
+                    balanceAmount = bookingFromNumber.BalanceAmount;
+                    checkOutDate = bookingFromNumber.ActualCheckOutDate ?? bookingFromNumber.CheckOutDate;
+                }
+            }
+
+            if (!hasBooking && request.RoomId > 0)
+            {
+                // Check if room has ANY booking (including expired ones)
+                var roomLookup = await _roomRepository.GetAnyBookingForRoomAsync(request.RoomId);
+                hasBooking = roomLookup.hasBooking;
+                bookingNumber = roomLookup.bookingNumber;
+                balanceAmount = roomLookup.balanceAmount;
+                checkOutDate = roomLookup.checkOutDate;
+            }
 
             Console.WriteLine($"Booking check: hasBooking={hasBooking}, bookingNumber={bookingNumber}, balanceAmount={balanceAmount}, checkOutDate={checkOutDate}");
 
@@ -990,6 +1025,7 @@ public class RoomsController : BaseController
 public class CheckoutRequest
 {
     public int RoomId { get; set; }
+    public string? BookingNumber { get; set; }
 }
 
 public class UpdateRoomStatusRequest

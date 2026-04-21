@@ -24,6 +24,16 @@ namespace HotelApp.Web.Controllers
         public async Task<IActionResult> List()
         {
             var rooms = await _roomRepository.GetAllByBranchAsync(CurrentBranchID);
+            
+            // Room count per type and max availability for display
+            var roomCountByType = rooms
+                .GroupBy(r => r.RoomTypeId)
+                .ToDictionary(g => g.Key, g => g.Count());
+            var roomTypes = await _roomRepository.GetRoomTypesByBranchAsync(CurrentBranchID);
+            var maxByType = roomTypes.ToDictionary(rt => rt.Id, rt => rt.Max_RoomAvailability ?? 0);
+            ViewBag.RoomCountByType = roomCountByType;
+            ViewBag.MaxByType = maxByType;
+            
             return View(rooms);
         }
 
@@ -44,6 +54,18 @@ namespace HotelApp.Web.Controllers
             if (await _roomRepository.RoomNumberExistsAsync(room.RoomNumber, CurrentBranchID))
             {
                 ModelState.AddModelError("RoomNumber", "Room number already exists in this branch");
+            }
+
+            // Server-side max room availability check
+            var roomType = await _roomRepository.GetRoomTypeByIdAsync(room.RoomTypeId);
+            if (roomType?.Max_RoomAvailability > 0)
+            {
+                var allRooms = await _roomRepository.GetAllByBranchAsync(CurrentBranchID);
+                var createdCount = allRooms.Count(r => r.RoomTypeId == room.RoomTypeId);
+                if (createdCount >= roomType.Max_RoomAvailability)
+                {
+                    ModelState.AddModelError("RoomTypeId", $"Room type limit reached. Max: {roomType.Max_RoomAvailability}, Created: {createdCount}");
+                }
             }
 
             if (ModelState.IsValid)
@@ -129,8 +151,15 @@ namespace HotelApp.Web.Controllers
                 .GroupBy(r => r.RoomTypeId)
                 .ToDictionary(g => g.Key, g => g.FirstOrDefault());
             
+            // Get room count per room type for this branch
+            var allRooms = await _roomRepository.GetAllByBranchAsync(CurrentBranchID);
+            var roomCountByType = allRooms
+                .GroupBy(r => r.RoomTypeId)
+                .ToDictionary(g => g.Key, g => g.Count());
+
             ViewBag.RoomTypes = roomTypes;
             ViewBag.ActiveRates = activeRates; // Dictionary of RoomTypeId -> RateMaster
+            ViewBag.RoomCountByType = roomCountByType; // Dictionary of RoomTypeId -> count
             ViewBag.Statuses = new List<string> { "Available", "Occupied", "Cleaning", "Maintenance", "Out of Order" };
             var floors = await _floorRepository.GetByBranchAsync(CurrentBranchID);
             ViewBag.Floors = floors.Where(f => f.IsActive).OrderBy(f => f.FloorName).ToList();

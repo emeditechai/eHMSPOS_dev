@@ -309,11 +309,12 @@
                                 // DepositAmount stores cash received (net). But a booking can be fully settled by
                                 // net + payment-time discount, with round-off adjusting the final payable amount.
                                 var paymentsForBalance = booking.Payments ?? Enumerable.Empty<HotelApp.Web.Models.BookingPayment>();
-                                var totalRoundOffApplied = paymentsForBalance.Any()
-                                    ? paymentsForBalance.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m)
+                                var regularPaymentsForBalance = paymentsForBalance.Where(p => !p.IsRefund).ToList();
+                                var totalRoundOffApplied = regularPaymentsForBalance.Any()
+                                    ? regularPaymentsForBalance.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m)
                                     : 0m;
-                                var settledNet = paymentsForBalance.Any()
-                                    ? paymentsForBalance.Sum(p => p.Amount + p.DiscountAmount)
+                                var settledNet = regularPaymentsForBalance.Any()
+                                    ? regularPaymentsForBalance.Sum(p => p.Amount + p.DiscountAmount)
                                     : booking.DepositAmount;
 
                                 var finalPayable = booking.TotalAmount + totalRoundOffApplied;
@@ -1463,11 +1464,23 @@ else
                         const pData = await resp.json();
                         if (pData.success) {
                             const paid = '₹' + Number(pData.amountPaid).toLocaleString('en-IN',{minimumFractionDigits:2});
+                            const eligible = pData.eligibleRefundAmount != null
+                                ? '₹' + Number(pData.eligibleRefundAmount).toLocaleString('en-IN',{minimumFractionDigits:2})
+                                : null;
+                            const adjusted = pData.adjustedAgainstDueAmount != null
+                                ? '₹' + Number(pData.adjustedAgainstDueAmount).toLocaleString('en-IN',{minimumFractionDigits:2})
+                                : null;
                             const ref = '₹' + Number(pData.refundAmount).toLocaleString('en-IN',{minimumFractionDigits:2});
+                            const netDue = pData.dueAfterAdjustment != null
+                                ? '₹' + Number(pData.dueAfterAdjustment).toLocaleString('en-IN',{minimumFractionDigits:2})
+                                : null;
                             const refColor = pData.refundAmount > 0 ? '#059669' : '#dc2626';
                             previewArea.innerHTML = `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:0.85rem;">
                                 <div style="display:flex;justify-content:space-between;padding:3px 0;"><span style="color:#6b7280;">Proportional Paid</span><strong>${paid}</strong></div>
+                                ${eligible !== null ? `<div style="display:flex;justify-content:space-between;padding:3px 0;"><span style="color:#6b7280;">Eligible Refund</span><strong>${eligible}</strong></div>` : ''}
+                                ${adjusted !== null ? `<div style="display:flex;justify-content:space-between;padding:3px 0;"><span style="color:#6b7280;">Adjusted Against Due</span><strong style="color:#0f766e;">${adjusted}</strong></div>` : ''}
                                 <div style="display:flex;justify-content:space-between;padding:3px 0;"><span style="color:#6b7280;">Eligible Refund</span><strong style="color:${refColor};">${ref}</strong></div>
+                                ${netDue !== null ? `<div style="display:flex;justify-content:space-between;padding:3px 0;border-top:1px dashed #bbf7d0;margin-top:4px;"><span style="color:#374151;font-weight:600;">Net Due After Adjustment</span><strong style="color:${Number(pData.dueAfterAdjustment) > 0 ? '#dc2626' : '#059669'};">${netDue}</strong></div>` : ''}
                                 ${pData.refundBreakdownNote ? '<div style="font-size:0.78rem;color:#6b7280;margin-top:4px;"><i class="fas fa-info-circle"></i> ' + pData.refundBreakdownNote + '</div>' : ''}
                             </div>`;
                         } else {
@@ -1599,7 +1612,7 @@ else
                                 confirmButtonText: 'Force Checkout'
                             }).then((result) => {
                                 if (result.isConfirmed) {
-                                    forceCheckoutRoom(roomId);
+                                    forceCheckoutRoom(roomId, bookingNumber);
                                 }
                             });
                         } else {
@@ -1623,7 +1636,7 @@ else
         });
     }
 
-    function forceCheckoutRoom(roomId) {
+    function forceCheckoutRoom(roomId, bookingNumber) {
         Swal.fire({
             title: 'Processing Force Checkout...',
             text: 'Please wait',
@@ -1638,7 +1651,7 @@ else
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ roomId: parseInt(roomId) })
+            body: JSON.stringify({ roomId: parseInt(roomId), bookingNumber: bookingNumber })
         })
         .then(response => response.json())
         .then(data => {

@@ -171,17 +171,13 @@
             </div>
             <div class="master-form-grid">
                 <div class="master-form-group">
-                    <label asp-for="RoomNumber">Room Number <span class="text-danger">*</span></label>
-                    <input asp-for="RoomNumber" type="text" placeholder="e.g., 201" required />
-                    <span asp-validation-for="RoomNumber" class="text-danger"></span>
-                </div>
-                <div class="master-form-group">
                     <label asp-for="RoomTypeId">Room Rate <span class="text-danger">*</span></label>
-                    <select asp-for="RoomTypeId" required>
+                    <select asp-for="RoomTypeId" id="RoomTypeId" required>
                         <option value="">-- Select Room Rate --</option>
                         @{
                             var roomTypes = ViewBag.RoomTypes as IEnumerable<HotelApp.Web.Models.RoomType>;
                             var activeRates = ViewBag.ActiveRates as Dictionary<int, HotelApp.Web.Models.RateMaster>;
+                            var roomCountByType = ViewBag.RoomCountByType as Dictionary<int, int>;
                         }
                         @if (roomTypes != null)
                         {
@@ -189,12 +185,24 @@
                             {
                                 var rate = activeRates?.ContainsKey(roomType.Id) == true ? activeRates[roomType.Id] : null;
                                 var rateInfo = rate != null ? $"₹{rate.BaseRate:N0}" : "No Rate";
-                                <option value="@roomType.Id">@roomType.TypeName (Max: @roomType.MaxOccupancy, Rate: @rateInfo)</option>
+                                var created = roomCountByType?.ContainsKey(roomType.Id) == true ? roomCountByType[roomType.Id] : 0;
+                                var maxAvail = roomType.Max_RoomAvailability ?? 0;
+                                <option value="@roomType.Id"
+                                        data-max="@maxAvail"
+                                        data-created="@created">
+                                    @roomType.TypeName — @rateInfo | Max: @maxAvail | Created: @created
+                                </option>
                             }
                         }
                     </select>
                     <span asp-validation-for="RoomTypeId" class="text-danger"></span>
                     <small class="form-text text-muted">Rates are managed in Rate Master. Showing current active rates.</small>
+                    <div id="roomTypeInfo" style="display:none; margin-top:6px; padding:6px 12px; border-radius:6px; font-size:13px; font-weight:500;"></div>
+                </div>
+                <div class="master-form-group">
+                    <label asp-for="RoomNumber">Room Number <span class="text-danger">*</span></label>
+                    <input asp-for="RoomNumber" type="text" placeholder="e.g., 201" required />
+                    <span asp-validation-for="RoomNumber" class="text-danger"></span>
                 </div>
                 <div class="master-form-group">
                     <label asp-for="Floor">Floor <span class="text-danger">*</span></label>
@@ -236,3 +244,47 @@
         </div>
     </form>
 </div>
+
+<script>
+    document.getElementById('RoomTypeId').addEventListener('change', function () {
+        var info = document.getElementById('roomTypeInfo');
+        var opt = this.options[this.selectedIndex];
+        var saveBtn = document.querySelector('.btn-save');
+        var fields = document.querySelectorAll('#RoomNumber, #Floor, #Status, #Notes');
+
+        if (!this.value) {
+            info.style.display = 'none';
+            fields.forEach(function (f) { f.disabled = false; f.style.opacity = '1'; });
+            saveBtn.disabled = false; saveBtn.style.opacity = '1'; saveBtn.style.pointerEvents = 'auto';
+            return;
+        }
+
+        var max = parseInt(opt.getAttribute('data-max')) || 0;
+        var created = parseInt(opt.getAttribute('data-created')) || 0;
+        var remaining = max - created;
+        var limitReached = max > 0 && remaining <= 0;
+
+        // Disable/enable fields and save button
+        fields.forEach(function (f) { f.disabled = limitReached; f.style.opacity = limitReached ? '0.5' : '1'; });
+        saveBtn.disabled = limitReached;
+        saveBtn.style.opacity = limitReached ? '0.5' : '1';
+        saveBtn.style.pointerEvents = limitReached ? 'none' : 'auto';
+
+        if (limitReached) {
+            info.style.display = 'block';
+            info.style.background = '#fee2e2';
+            info.style.color = '#b91c1c';
+            info.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Limit reached! Max: ' + max + ' | Created: ' + created + '. Cannot create more rooms of this type.';
+        } else if (max > 0) {
+            info.style.display = 'block';
+            info.style.background = '#ecfdf5';
+            info.style.color = '#065f46';
+            info.innerHTML = '<i class="fas fa-check-circle"></i> Available: ' + remaining + ' of ' + max + ' | Created: ' + created;
+        } else {
+            info.style.display = 'block';
+            info.style.background = '#eff6ff';
+            info.style.color = '#1e40af';
+            info.innerHTML = '<i class="fas fa-info-circle"></i> No max limit set | Created: ' + created;
+        }
+    });
+</script>

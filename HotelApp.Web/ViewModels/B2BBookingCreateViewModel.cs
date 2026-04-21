@@ -73,6 +73,7 @@ namespace HotelApp.Web.ViewModels
 
         [Required]
         [Phone]
+        [RegularExpression(@"^\d{10}$", ErrorMessage = "Mobile number must be exactly 10 digits.")]
         [Display(Name = "Primary Guest Mobile")]
         public string PrimaryGuestPhone { get; set; } = string.Empty;
 

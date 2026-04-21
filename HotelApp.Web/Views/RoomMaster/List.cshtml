@@ -1,6 +1,8 @@
 @model IEnumerable<HotelApp.Web.Models.Room>
 @{
     ViewData["Title"] = "Room Master";
+    var roomCountByType = ViewBag.RoomCountByType as Dictionary<int, int> ?? new Dictionary<int, int>();
+    var maxByType = ViewBag.MaxByType as Dictionary<int, int> ?? new Dictionary<int, int>();
 }
 
 <div class="page-header">
@@ -26,6 +28,7 @@
                     <tr>
                         <th>Room Number</th>
                         <th>Room Type</th>
+                        <th>Rooms (Created / Max)</th>
                         <th>Floor</th>
                         <th>Max Occupancy</th>
                         <th>Status</th>
@@ -47,6 +50,24 @@
                         <tr>
                             <td><strong>@room.RoomNumber</strong></td>
                             <td>@room.RoomType?.TypeName</td>
+                            <td>
+                                @{
+                                    var created = roomCountByType.ContainsKey(room.RoomTypeId) ? roomCountByType[room.RoomTypeId] : 0;
+                                    var maxAvail = maxByType.ContainsKey(room.RoomTypeId) ? maxByType[room.RoomTypeId] : 0;
+                                }
+                                @if (maxAvail > 0)
+                                {
+                                    var remaining = maxAvail - created;
+                                    var badgeColor = remaining > 0 ? "background:#ecfdf5;color:#065f46;" : "background:#fee2e2;color:#b91c1c;";
+                                    <span style="@badgeColor padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600;">
+                                        @created / @maxAvail
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span style="color:#64748b;font-size:12px;">@created / ∞</span>
+                                }
+                            </td>
                             <td>@(string.IsNullOrWhiteSpace(room.FloorName) ? $"Floor #{room.Floor}" : room.FloorName)</td>
                             <td>@room.RoomType?.MaxOccupancy</td>
                             <td><span class="badge @badgeClass">@room.Status</span></td>

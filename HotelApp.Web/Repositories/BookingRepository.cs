@@ -1484,6 +1484,18 @@ namespace HotelApp.Web.Repositories
             }
             if (refundForLines > proportionalPaid) refundForLines = proportionalPaid;
 
+            // Due-first rule for partial cancellation:
+            // If booking still has due after reducing totals, adjust eligible refund against due first.
+            var regularPayments = (booking.Payments ?? new List<BookingPayment>())
+                .Where(p => !p.IsRefund)
+                .ToList();
+            var totalRoundOffApplied = regularPayments.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m);
+            var settledNet = regularPayments.Sum(p => p.Amount + p.DiscountAmount);
+            var dueAfterPartialRaw = (booking.TotalAmount + totalRoundOffApplied - settledNet) - cancelledLinesTotal;
+            var dueAfterPartial = Math.Max(0m, Math.Round(dueAfterPartialRaw, 2, MidpointRounding.AwayFromZero));
+            var adjustedAgainstDue = Math.Min(refundForLines, dueAfterPartial);
+            var cashRefundForLines = Math.Max(0m, Math.Round(refundForLines - adjustedAgainstDue, 2, MidpointRounding.AwayFromZero));
+
             var lineBreakdown = linesToCancel.Select(l => new PartialCancellationLinePreview
             {
                 RoomLineId = l.Id,
@@ -1511,14 +1523,17 @@ namespace HotelApp.Web.Repositories
                 RefundPercent = fullPreview.RefundPercent,
                 FlatDeduction = fullPreview.FlatDeduction,
                 GatewayFeeDeductionPercent = fullPreview.GatewayFeeDeductionPercent,
-                DeductionAmount = Math.Round(proportionalPaid - refundForLines, 2),
-                RefundAmount = refundForLines,
+                DeductionAmount = Math.Round(proportionalPaid - cashRefundForLines, 2),
+                RefundAmount = cashRefundForLines,
+                EligibleRefundAmount = refundForLines,
+                AdjustedAgainstDueAmount = adjustedAgainstDue,
+                DueAfterAdjustment = Math.Max(0m, Math.Round(dueAfterPartial - adjustedAgainstDue, 2, MidpointRounding.AwayFromZero)),
                 PolicyId = fullPreview.PolicyId,
                 PolicyName = fullPreview.PolicyName,
                 PolicySnapshotJson = fullPreview.PolicySnapshotJson,
                 ApprovalThreshold = fullPreview.ApprovalThreshold,
                 ApprovalStatus = fullPreview.ApprovalStatus,
-                RefundBreakdownNote = $"Partial cancellation: {linesToCancel.Count} room type(s) of {activeLines.Count}. " + (fullPreview.RefundBreakdownNote ?? string.Empty),
+                RefundBreakdownNote = $"Partial cancellation: {linesToCancel.Count} room type(s) of {activeLines.Count}. Eligible refund ₹{refundForLines:N2}; adjusted against due ₹{adjustedAgainstDue:N2}; cash refund ₹{cashRefundForLines:N2}. " + (fullPreview.RefundBreakdownNote ?? string.Empty),
                 Lines = lineBreakdown
             };
         }
@@ -1615,6 +1630,18 @@ namespace HotelApp.Web.Repositories
                 }
                 if (refundForLines > proportionalPaid) refundForLines = proportionalPaid;
 
+                // Due-first rule for partial cancellation:
+                // eligible refund is first adjusted against outstanding due on the remaining booking.
+                var regularPayments = (booking.Payments ?? new List<BookingPayment>())
+                    .Where(p => !p.IsRefund)
+                    .ToList();
+                var totalRoundOffApplied = regularPayments.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m);
+                var settledNet = regularPayments.Sum(p => p.Amount + p.DiscountAmount);
+                var dueAfterPartialRaw = (booking.TotalAmount + totalRoundOffApplied - settledNet) - cancelledLinesTotal;
+                var dueAfterPartial = Math.Max(0m, Math.Round(dueAfterPartialRaw, 2, MidpointRounding.AwayFromZero));
+                var adjustedAgainstDue = Math.Min(refundForLines, dueAfterPartial);
+                var cashRefundForLines = Math.Max(0m, Math.Round(refundForLines - adjustedAgainstDue, 2, MidpointRounding.AwayFromZero));
+
                 var approvalStatus = fullPreview.ApprovalStatus;
                 if (command.IsOverride) approvalStatus = "Pending";
 
@@ -1666,14 +1693,44 @@ namespace HotelApp.Web.Repositories
                     RefundPercent = fullPreview.RefundPercent,
                     FlatDeduction = fullPreview.FlatDeduction,
                     GatewayFeeDeductionPercent = fullPreview.GatewayFeeDeductionPercent,
-                    DeductionAmount = Math.Round(proportionalPaid - refundForLines, 2),
-                    RefundAmount = refundForLines,
+                    DeductionAmount = Math.Round(proportionalPaid - cashRefundForLines, 2),
+                    RefundAmount = cashRefundForLines,
                     ApprovalStatus = approvalStatus,
                     PolicyId = fullPreview.PolicyId,
                     PolicySnapshot = fullPreview.PolicySnapshotJson,
                     IsPartial = true,
                     CancelledRoomLineIds = cancelledLineIdsStr
                 }, transaction);
+
+                // Persist due-adjustment as a payment-time discount so booking due is reduced immediately.
+                if (adjustedAgainstDue > 0m)
+                {
+                    const string insertAdjustmentSql = @"
+                        INSERT INTO BookingPayments (
+                            BookingId, ReceiptNumber, ReceiptGroupNumber, BillingHead,
+                            Amount, DiscountAmount, DiscountPercent, RoundOffAmount, IsRoundOffApplied,
+                            PaymentMethod, PaymentReference, Status, PaidOn, Notes,
+                            CardType, CardLastFourDigits, BankId, ChequeDate,
+                            CreatedBy, IsAdvancePayment, IsRefund
+                        )
+                        VALUES (
+                            @BookingId, NULL, NULL, @BillingHead,
+                            0, @DiscountAmount, NULL, 0, 0,
+                            @PaymentMethod, NULL, 'Captured', GETDATE(), @Notes,
+                            NULL, NULL, NULL, NULL,
+                            @CreatedBy, 0, 0
+                        );";
+
+                    await _dbConnection.ExecuteAsync(insertAdjustmentSql, new
+                    {
+                        BookingId = booking.Id,
+                        BillingHead = "S",
+                        DiscountAmount = adjustedAgainstDue,
+                        PaymentMethod = "Adjustment",
+                        Notes = $"Partial cancellation adjustment against due for lines [{cancelledLineIdsStr}]",
+                        CreatedBy = performedByNullable
+                    }, transaction);
+                }
 
                 // Mark room lines as cancelled
                 await _dbConnection.ExecuteAsync(
@@ -1735,7 +1792,7 @@ namespace HotelApp.Web.Repositories
                     booking.Id,
                     booking.BookingNumber,
                     "PartialCancelled",
-                    $"Partial cancellation: {cancelledNames}. Refund: ₹{refundForLines:N2}{approvalNote}. New total: ₹{newTotalAmount:N2}",
+                    $"Partial cancellation: {cancelledNames}. Eligible refund: ₹{refundForLines:N2}, adjusted against due: ₹{adjustedAgainstDue:N2}, cash refund: ₹{cashRefundForLines:N2}{approvalNote}. New total: ₹{newTotalAmount:N2}",
                     booking.Status,
                     "PartialCancelled",
                     performedByNullable,
@@ -1747,15 +1804,15 @@ namespace HotelApp.Web.Repositories
                 {
                     Success = true,
                     Message = approvalStatus == "Pending"
-                        ? $"Partial cancellation done. Refund ₹{refundForLines:N2} is pending approval."
-                        : $"Partial cancellation done. Refund ₹{refundForLines:N2}.",
+                        ? $"Partial cancellation done. Eligible refund ₹{refundForLines:N2}; adjusted against due ₹{adjustedAgainstDue:N2}; cash refund ₹{cashRefundForLines:N2} is pending approval."
+                        : $"Partial cancellation done. Eligible refund ₹{refundForLines:N2}; adjusted against due ₹{adjustedAgainstDue:N2}; cash refund ₹{cashRefundForLines:N2}.",
                     Preview = new BookingCancellationPreview
                     {
                         BookingNumber = booking.BookingNumber,
                         BookingId = booking.Id,
                         IsPartial = true,
                         AmountPaid = proportionalPaid,
-                        RefundAmount = refundForLines,
+                        RefundAmount = cashRefundForLines,
                         RefundPercent = fullPreview.RefundPercent,
                         ApprovalStatus = approvalStatus
                     }
@@ -3523,11 +3580,12 @@ WHERE BookingID = @BookingID
                         SELECT
                             ISNULL(SUM(Amount), 0) AS DepositAmount,
                             ISNULL(SUM(
-                                Amount
-                                + ISNULL(DiscountAmount, 0)
+                                CASE WHEN ISNULL(IsRefund,0) = 0 THEN
+                                    Amount + ISNULL(DiscountAmount, 0)
+                                ELSE 0 END
                             ), 0) AS AppliedToBalanceNet,
                             ISNULL(SUM(
-                                CASE WHEN ISNULL(IsRoundOffApplied, 0) = 1 THEN ISNULL(RoundOffAmount, 0) ELSE 0 END
+                                CASE WHEN ISNULL(IsRefund,0) = 0 AND ISNULL(IsRoundOffApplied, 0) = 1 THEN ISNULL(RoundOffAmount, 0) ELSE 0 END
                             ), 0) AS RoundOffTotal
                         FROM BookingPayments
                         WHERE BookingId = @BookingId";

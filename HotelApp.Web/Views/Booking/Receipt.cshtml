@@ -39,13 +39,17 @@
         ? serverGrandTotal
         : (Model.TotalAmount + ocGrandTotal + rsActualBillTotal);
 
-    // Compute due from payments so payment-time discounts/round-off reduce balance correctly.
-    var totalRoundOffApplied = payments?.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m) ?? 0m;
+    // Exclude refund payments: Grand Total is already reduced by cancellations.
+    // Refund payments (IsRefund=true, negative Amount) are outflows, not payment credits.
+    var regularPaymentsForReceipt = payments?.Where(p => !p.IsRefund)
+        ?? Enumerable.Empty<HotelApp.Web.Models.BookingPayment>();
 
-    var appliedToBalanceFromPayments = payments?.Sum(p =>
+    var totalRoundOffApplied = regularPaymentsForReceipt.Sum(p => p.IsRoundOffApplied ? p.RoundOffAmount : 0m);
+
+    var appliedToBalanceFromPayments = regularPaymentsForReceipt.Sum(p =>
         p.Amount
         + p.DiscountAmount
-    ) ?? 0m;
+    ) ;
 
     var receiptAdjustedFinalPayable = receiptAdjustedGrandTotal + totalRoundOffApplied;
     var receiptAdjustedBalanceDueRaw = receiptAdjustedFinalPayable - appliedToBalanceFromPayments;
@@ -1376,13 +1380,18 @@
                 {
                     // Multi-room-type: totals from room lines (authoritative)
                     var lines = Model.B2BRoomLines!;
-                    afterDiscountTotal = lines.Sum(l => l.BaseAmount);
-                    taxTotal = lines.Sum(l => l.TaxAmount);
+                    var activeLines = lines
+                        .Where(l => !(l.IsCancelled || cancelledRoomLineIdSet.Contains(l.Id)))
+                        .ToList();
+                    var linesForTotals = activeLines.Any() ? activeLines : lines;
+
+                    afterDiscountTotal = linesForTotals.Sum(l => l.BaseAmount);
+                    taxTotal = linesForTotals.Sum(l => l.TaxAmount);
                     // Split tax evenly into CGST/SGST
                     cgstTotal = Math.Round(taxTotal / 2m, 2, MidpointRounding.AwayFromZero);
                     sgstTotal = taxTotal - cgstTotal;
                     // Use stored discount from room lines (accurate, includes extra pax in base)
-                    discountAmount = lines.Sum(l => l.DiscountAmount);
+                    discountAmount = linesForTotals.Sum(l => l.DiscountAmount);
                     preDiscountTotal = afterDiscountTotal + discountAmount;
                     hasNightBreakdownForTotals = false;
                     roomsForTotals = Model.RequiredRooms > 0 ? Model.RequiredRooms : 1;
@@ -1391,9 +1400,16 @@
                 }
                 else
                 {
-                    var roomNightsForTotals = (hasAssignedRoomsForReceipt || isB2BReceipt)
+                    var roomNightsForTotalsAll = (hasAssignedRoomsForReceipt || isB2BReceipt)
                         ? (Model.RoomNights ?? new List<HotelApp.Web.Models.BookingRoomNight>()).Cast<dynamic>().ToList()
                         : (Model.ReservationRoomNights ?? new List<HotelApp.Web.Models.ReservationRoomNight>()).Cast<dynamic>().ToList();
+                    var roomNightsForTotals = roomNightsForTotalsAll
+                        .Where(n => !string.Equals((string?)n.Status, "Cancelled", StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+                    if (!roomNightsForTotals.Any())
+                    {
+                        roomNightsForTotals = roomNightsForTotalsAll;
+                    }
                     hasNightBreakdownForTotals = roomNightsForTotals.Any();
 
                     roomsForTotals = Model.RequiredRooms > 0 ? Model.RequiredRooms : 1;
@@ -1444,7 +1460,7 @@
                 var adjustedCgstTotal = cgstTotal + ocCgstTotal + rsCgstTotal;
                 var adjustedSgstTotal = sgstTotal + ocSgstTotal + rsSgstTotal;
                 var adjustedTaxTotal = taxTotal + ocGstTotal + rsGstTotal;
-                var adjustedTotalAmount = Math.Round(afterDiscountTotal + taxTotal + ocGrandTotal + rsActualBillTotal, 2, MidpointRounding.AwayFromZero);
+                var adjustedTotalAmount = receiptAdjustedGrandTotal;
                 var adjustedBalancePayable = receiptAdjustedBalanceDue;
             }
 
@@ -1472,10 +1488,12 @@
                             var roomNights = (hasAssignedRoomsForReceipt || isB2BReceipt)
                                 ? (Model.RoomNights ?? new List<HotelApp.Web.Models.BookingRoomNight>())
                                     .Cast<dynamic>()
+                                    .Where(n => !string.Equals((string?)n.Status, "Cancelled", StringComparison.OrdinalIgnoreCase))
                                     .OrderBy(n => n.StayDate)
                                     .ToList()
                                 : (Model.ReservationRoomNights ?? new List<HotelApp.Web.Models.ReservationRoomNight>())
                                     .Cast<dynamic>()
+                                    .Where(n => !string.Equals((string?)n.Status, "Cancelled", StringComparison.OrdinalIgnoreCase))
                                     .OrderBy(n => n.StayDate)
                                     .ToList();
                             var hasNightBreakdown = !hasMultiRoomLines && roomNights.Any();
