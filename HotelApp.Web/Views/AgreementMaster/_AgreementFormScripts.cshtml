@@ -112,5 +112,76 @@
         syncAmendmentFields();
         syncRenewalFields();
         syncApprovalFields();
+
+        // ── Client-side mandatory field validation ──
+        const AGR_REQUIRED = [
+            { id: 'AgreementCode',  label: 'Agreement Code' },
+            { id: 'AgreementName',  label: 'Agreement Name' },
+            { id: 'AgreementType',  label: 'Agreement Type' },
+            { id: 'EffectiveFrom',  label: 'Effective From' },
+            { id: 'EffectiveTo',    label: 'Effective To' },
+            { id: 'BillingType',    label: 'Billing Type' },
+            { id: 'BillingCycle',   label: 'Billing Cycle' },
+            { id: 'GstSlabId',      label: 'Default GST Slab' },
+        ];
+
+        function agrMarkField(el, valid) {
+            const parent = el.closest('.agreement-field');
+            if (parent) parent.classList.toggle('agr-field-invalid', !valid);
+        }
+
+        function agrShowToast(errors) {
+            let toast = document.getElementById('agr-req-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'agr-req-toast';
+                Object.assign(toast.style, {
+                    position: 'fixed', top: '80px', right: '20px', zIndex: '9999',
+                    background: '#fff', border: '2px solid #dc2626', borderRadius: '12px',
+                    padding: '14px 18px', boxShadow: '0 8px 24px rgba(0,0,0,.18)',
+                    maxWidth: '320px', fontSize: '.83rem'
+                });
+                document.body.appendChild(toast);
+            }
+            toast.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <i class="fas fa-circle-exclamation" style="color:#dc2626;"></i>
+                <strong style="color:#b91c1c;">Please fill in all required fields</strong>
+                </div><ul style="margin:0;padding-left:18px;color:#374151;">
+                ${errors.map(e => `<li>${e}</li>`).join('')}</ul>`;
+            toast.style.display = 'block';
+            clearTimeout(toast._t);
+            toast._t = setTimeout(() => { toast.style.display = 'none'; }, 6000);
+        }
+
+        const _agrForm = document.querySelector('form.agreement-shell');
+        if (_agrForm) {
+            _agrForm.addEventListener('submit', function (e) {
+                const errors = [];
+                let firstEl = null;
+                AGR_REQUIRED.forEach(({ id, label }) => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    const valid = el.value.trim() !== '';
+                    agrMarkField(el, valid);
+                    if (!valid) { errors.push(label); if (!firstEl) firstEl = el; }
+                });
+                if (errors.length > 0) {
+                    e.preventDefault();
+                    agrShowToast(errors);
+                    if (firstEl) {
+                        firstEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        setTimeout(() => firstEl.focus(), 300);
+                    }
+                }
+            });
+
+            AGR_REQUIRED.forEach(({ id }) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const clear = () => agrMarkField(el, el.value.trim() !== '');
+                el.addEventListener('change', clear);
+                el.addEventListener('input', clear);
+            });
+        }
     })();
 </script>

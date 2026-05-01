@@ -103,6 +103,10 @@
 		.agr-info-strip { grid-template-columns:repeat(2, minmax(0, 1fr)); }
 		.agreement-rate-toolbar, .agreement-actions, .agreement-card-header { flex-direction:column; align-items:stretch; }
 	}
+	/* ── Mandatory field markers ── */
+	.agr-required::after { content: ' *'; color: #dc2626; font-size: .88rem; font-weight: 700; margin-left: 1px; }
+	.agr-field-invalid > input, .agr-field-invalid > select, .agr-field-invalid > textarea { border-color: #dc2626 !important; box-shadow: 0 0 0 3px rgba(220,38,38,.15) !important; animation: agr-shake .35s ease; }
+	@@keyframes agr-shake { 0%,100% { transform:translateX(0); } 25% { transform:translateX(-4px); } 75% { transform:translateX(4px); } }
 </style>
 
 <div class="agreement-workspace">
@@ -191,12 +195,12 @@
 		</div>
 		<div class="agreement-grid">
 		<div class="agreement-field">
-			<label asp-for="AgreementCode"></label>
+			<label asp-for="AgreementCode" class="@(!isReadOnly ? "agr-required" : "")"></label>
 			<input asp-for="AgreementCode" readonly="@readonlyAttr" />
 			<span asp-validation-for="AgreementCode" class="text-danger"></span>
 		</div>
 		<div class="agreement-field span-2">
-			<label asp-for="AgreementName"></label>
+			<label asp-for="AgreementName" class="@(!isReadOnly ? "agr-required" : "")"></label>
 			<input asp-for="AgreementName" readonly="@readonlyAttr" />
 			<span asp-validation-for="AgreementName" class="text-danger"></span>
 		</div>
@@ -206,7 +210,7 @@
 			<span asp-validation-for="ContractReference" class="text-danger"></span>
 		</div>
 		<div class="agreement-field">
-			<label asp-for="AgreementType"></label>
+			<label asp-for="AgreementType" class="@(!isReadOnly ? "agr-required" : "")"></label>
 			<select asp-for="AgreementType" disabled="@disabledAttr">
 				<option value="">Select Type</option>
 				@foreach (var item in agreementTypes)
@@ -217,12 +221,12 @@
 			<span asp-validation-for="AgreementType" class="text-danger"></span>
 		</div>
 		<div class="agreement-field">
-			<label asp-for="EffectiveFrom"></label>
+			<label asp-for="EffectiveFrom" class="@(!isReadOnly ? "agr-required" : "")"></label>
 			<input asp-for="EffectiveFrom" type="date" readonly="@readonlyAttr" />
 			<span asp-validation-for="EffectiveFrom" class="text-danger"></span>
 		</div>
 		<div class="agreement-field">
-			<label asp-for="EffectiveTo"></label>
+			<label asp-for="EffectiveTo" class="@(!isReadOnly ? "agr-required" : "")"></label>
 			<input asp-for="EffectiveTo" type="date" readonly="@readonlyAttr" />
 			<span asp-validation-for="EffectiveTo" class="text-danger"></span>
 		</div>
@@ -295,7 +299,7 @@
 	</div>
 	<div class="agreement-grid">
 		<div class="agreement-field">
-			<label asp-for="BillingType"></label>
+			<label asp-for="BillingType" class="@(!isReadOnly ? "agr-required" : "")"></label>
 			<select asp-for="BillingType" id="BillingType" disabled="@disabledAttr">
 				@foreach (var item in billingTypes)
 				{
@@ -305,7 +309,7 @@
 			<span asp-validation-for="BillingType" class="text-danger"></span>
 		</div>
 		<div class="agreement-field">
-			<label asp-for="BillingCycle"></label>
+			<label asp-for="BillingCycle" class="@(!isReadOnly ? "agr-required" : "")"></label>
 			<select asp-for="BillingCycle" disabled="@disabledAttr">
 				<option value="">Select Cycle</option>
 				@foreach (var item in billingCycles)
@@ -395,7 +399,7 @@
 			<span asp-validation-for="CancellationPolicyId" class="text-danger"></span>
 		</div>
 		<div class="agreement-field">
-			<label asp-for="GstSlabId"></label>
+			<label asp-for="GstSlabId" class="@(!isReadOnly ? "agr-required" : "")"></label>
 			<select asp-for="GstSlabId" disabled="@disabledAttr">
 				<option value="">Select GST Slab</option>
 				@foreach (var row in gstSlabs)

@@ -79,6 +79,10 @@
         .co-info-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .company-actions { flex-direction: column; align-items: stretch; }
     }
+    /* ── Mandatory field markers ── */
+    .required-label::after { content: ' *'; color: #dc2626; font-size: .88rem; font-weight: 700; margin-left: 1px; }
+    .field-invalid > input, .field-invalid > select, .field-invalid > textarea { border-color: #dc2626 !important; box-shadow: 0 0 0 3px rgba(220,38,38,.15) !important; animation: b2b-shake .35s ease; }
+    @@keyframes b2b-shake { 0%,100% { transform:translateX(0); } 25% { transform:translateX(-4px); } 75% { transform:translateX(4px); } }
 </style>
 
 <div class="company-workspace">
@@ -158,22 +162,22 @@
         <div class="company-master-section-title"><i class="fas fa-address-card"></i><span>Basic Information</span></div>
         <div class="company-master-grid">
             <div class="company-master-field">
-                <label asp-for="ClientCode"></label>
+                <label asp-for="ClientCode" class="@(!isReadOnly ? "required-label" : "")"></label>
                 <input asp-for="ClientCode" placeholder="ABC001" readonly="@isReadOnly" />
                 <span asp-validation-for="ClientCode" class="text-danger"></span>
             </div>
             <div class="company-master-field span-2">
-                <label asp-for="ClientName"></label>
+                <label asp-for="ClientName" class="@(!isReadOnly ? "required-label" : "")"></label>
                 <input asp-for="ClientName" placeholder="Legal company name" readonly="@isReadOnly" />
                 <span asp-validation-for="ClientName" class="text-danger"></span>
             </div>
             <div class="company-master-field">
-                <label asp-for="DisplayName"></label>
+                <label asp-for="DisplayName" class="@(!isReadOnly ? "required-label" : "")"></label>
                 <input asp-for="DisplayName" placeholder="Short display name" readonly="@isReadOnly" />
                 <span asp-validation-for="DisplayName" class="text-danger"></span>
             </div>
             <div class="company-master-field">
-                <label asp-for="CompanyType"></label>
+                <label asp-for="CompanyType" class="@(!isReadOnly ? "required-label" : "")"></label>
                 <select asp-for="CompanyType" disabled="@isReadOnly">
                     <option value="">Select type</option>
                     @foreach (var item in companyTypes)
@@ -184,7 +188,7 @@
                 <span asp-validation-for="CompanyType" class="text-danger"></span>
             </div>
             <div class="company-master-field span-2">
-                <label asp-for="AgreementId"></label>
+                <label asp-for="AgreementId" class="@(!isReadOnly ? "required-label" : "")"></label>
                 <select asp-for="AgreementId" disabled="@isReadOnly">
                     <option value="">Select agreement master</option>
                     @foreach (var agreement in agreements)
@@ -217,7 +221,7 @@
         <div class="company-master-section-title"><i class="fas fa-location-dot"></i><span>Address Details</span></div>
         <div class="company-master-grid">
             <div class="company-master-field span-2">
-                <label asp-for="Address"></label>
+                <label asp-for="Address" class="@(!isReadOnly ? "required-label" : "")"></label>
                 <textarea asp-for="Address" rows="2" placeholder="Address line 1" readonly="@isReadOnly"></textarea>
                 <span asp-validation-for="Address" class="text-danger"></span>
             </div>
@@ -227,7 +231,7 @@
                 <span asp-validation-for="AddressLine2" class="text-danger"></span>
             </div>
             <div class="company-master-field">
-                <label asp-for="CountryId"></label>
+                <label asp-for="CountryId" class="@(!isReadOnly ? "required-label" : "")"></label>
                 <select asp-for="CountryId" id="CountryId" disabled="@isReadOnly">
                     <option value="">Select country</option>
                     @foreach (var country in countries)
@@ -238,7 +242,7 @@
                 <span asp-validation-for="CountryId" class="text-danger"></span>
             </div>
             <div class="company-master-field">
-                <label asp-for="StateId"></label>
+                <label asp-for="StateId" class="@(!isReadOnly ? "required-label" : "")"></label>
                 <select asp-for="StateId" id="StateId" disabled="@isReadOnly">
                     <option value="">Select state</option>
                     @foreach (var state in states)
@@ -249,7 +253,7 @@
                 <span asp-validation-for="StateId" class="text-danger"></span>
             </div>
             <div class="company-master-field">
-                <label asp-for="City"></label>
+                <label asp-for="City" class="@(!isReadOnly ? "required-label" : "")"></label>
                 <select asp-for="City" id="City" disabled="@isReadOnly">
                     <option value="">Select city</option>
                     @foreach (var city in cities)
@@ -264,7 +268,7 @@
                 <input asp-for="StateCode" id="StateCode" readonly />
             </div>
             <div class="company-master-field">
-                <label asp-for="Pincode"></label>
+                <label asp-for="Pincode" class="@(!isReadOnly ? "required-label" : "")"></label>
                 <input asp-for="Pincode" placeholder="Postal code" readonly="@isReadOnly" />
                 <span asp-validation-for="Pincode" class="text-danger"></span>
             </div>
@@ -301,7 +305,7 @@
         <div class="company-master-section-title"><i class="fas fa-wallet"></i><span>Credit and Financial Details</span></div>
         <div class="company-master-grid">
             <div class="company-master-field">
-                <label asp-for="BillingType"></label>
+                <label asp-for="BillingType" class="@(!isReadOnly ? "required-label" : "")"></label>
                 <select asp-for="BillingType" id="BillingType" disabled="@isReadOnly">
                     <option value="">Select billing type</option>
                     @foreach (var item in billingTypes)
@@ -312,7 +316,7 @@
                 <span asp-validation-for="BillingType" class="text-danger"></span>
             </div>
             <div class="company-master-field">
-                <label asp-for="BillingCycle"></label>
+                <label asp-for="BillingCycle" class="@(!isReadOnly ? "required-label" : "")"></label>
                 <select asp-for="BillingCycle" disabled="@isReadOnly">
                     <option value="">Select billing cycle</option>
                     @foreach (var item in billingCycles)

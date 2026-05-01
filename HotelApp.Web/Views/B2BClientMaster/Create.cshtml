@@ -130,6 +130,81 @@
             if (stateSelect?.value) {
                 loadCities(stateSelect.value);
             }
+
+            // ── Client-side mandatory field validation ──
+            const REQUIRED_FIELDS = [
+                { id: 'ClientCode',   label: 'Company Code' },
+                { id: 'ClientName',   label: 'Company Name' },
+                { id: 'DisplayName',  label: 'Display Name' },
+                { id: 'CompanyType',  label: 'Company Type' },
+                { id: 'AgreementId',  label: 'Agreement Master' },
+                { id: 'Address',      label: 'Address Line 1' },
+                { id: 'CountryId',    label: 'Country' },
+                { id: 'StateId',      label: 'State' },
+                { id: 'City',         label: 'City' },
+                { id: 'Pincode',      label: 'Pincode' },
+                { id: 'BillingType',  label: 'Billing Type' },
+                { id: 'BillingCycle', label: 'Billing Cycle' },
+            ];
+
+            function markField(el, valid) {
+                const parent = el.closest('.company-master-field');
+                if (parent) parent.classList.toggle('field-invalid', !valid);
+            }
+
+            function showReqToast(errors) {
+                let toast = document.getElementById('b2b-req-toast');
+                if (!toast) {
+                    toast = document.createElement('div');
+                    toast.id = 'b2b-req-toast';
+                    Object.assign(toast.style, {
+                        position:'fixed', top:'80px', right:'20px', zIndex:'9999',
+                        background:'#fff', border:'2px solid #dc2626', borderRadius:'12px',
+                        padding:'14px 18px', boxShadow:'0 8px 24px rgba(0,0,0,.18)',
+                        maxWidth:'320px', fontSize:'.83rem'
+                    });
+                    document.body.appendChild(toast);
+                }
+                toast.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <i class="fas fa-circle-exclamation" style="color:#dc2626;"></i>
+                    <strong style="color:#b91c1c;">Please fill in all required fields</strong>
+                    </div><ul style="margin:0;padding-left:18px;color:#374151;">
+                    ${errors.map(e => `<li>${e}</li>`).join('')}</ul>`;
+                toast.style.display = 'block';
+                clearTimeout(toast._t);
+                toast._t = setTimeout(() => { toast.style.display = 'none'; }, 6000);
+            }
+
+            const _form = document.querySelector('form.company-shell');
+            if (_form) {
+                _form.addEventListener('submit', function (e) {
+                    const errors = [];
+                    let firstEl = null;
+                    REQUIRED_FIELDS.forEach(({ id, label }) => {
+                        const el = document.getElementById(id);
+                        if (!el) return;
+                        const valid = el.value.trim() !== '';
+                        markField(el, valid);
+                        if (!valid) { errors.push(label); if (!firstEl) firstEl = el; }
+                    });
+                    if (errors.length > 0) {
+                        e.preventDefault();
+                        showReqToast(errors);
+                        if (firstEl) {
+                            firstEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            setTimeout(() => firstEl.focus(), 300);
+                        }
+                    }
+                });
+
+                REQUIRED_FIELDS.forEach(({ id }) => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    const clear = () => markField(el, el.value.trim() !== '');
+                    el.addEventListener('change', clear);
+                    el.addEventListener('input', clear);
+                });
+            }
         })();
     </script>
 }
