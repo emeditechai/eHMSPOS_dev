@@ -7,7 +7,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>eLUX Stay | Member Login</title>
+    <title>eLUX Stay | Property Management</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="~/css/login.css" asp-append-version="true" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
@@ -15,20 +15,20 @@
 <body>
     <!-- Background slideshow (max 3 images, shuffles every 3 s) -->
     <div class="bg-slideshow" id="bgSlideshow">
-        <div class="bg-slide active" style="background-image: url('/images/login-bg1.jpeg');"></div>
-        <div class="bg-slide" style="background-image: url('/images/login-bg2.jpeg');"></div>
-        <div class="bg-slide" style="background-image: url('/images/login-bg3.jpeg');"></div>
+        <div class="bg-slide active" style="background-image: url('/images/login-bg1.png');"></div>
+        <div class="bg-slide" style="background-image: url('/images/login-bg2.png');"></div>
+        <div class="bg-slide" style="background-image: url('/images/login-bg3.png');"></div>
     </div>
 
     <div class="container">
         <div class="welcome-section">
-            <h1>Welcome to eLUX Stay</h1>
-            <p>Experience luxury and comfort at our world-class hotels. Sign in to access exclusive member benefits, manage your bookings, and enjoy personalized services.</p>
+            <h1>eLUX Stay</h1>
+            <p>Property Management System for hotel staff and operations teams. Sign in to manage your property.</p>
             <ul class="features">
-                <li><i class="fas fa-check-circle"></i> Easy booking management</li>
-                <li><i class="fas fa-check-circle"></i> Exclusive member discounts</li>
-                <li><i class="fas fa-check-circle"></i> Personalized recommendations</li>
-                <li><i class="fas fa-check-circle"></i> Priority customer support</li>
+                <li><i class="fas fa-check-circle"></i> Room &amp; Booking Control</li>
+                <li><i class="fas fa-check-circle"></i> B2B &amp; Corporate Billing</li>
+                <li><i class="fas fa-check-circle"></i> GST &amp; Financial Reports</li>
+                <li><i class="fas fa-check-circle"></i> Asset &amp; Inventory Management</li>
             </ul>
         </div>
         
@@ -38,7 +38,7 @@
             </div>
             
             <div class="login-form">
-                <h3>Member Login</h3>
+                <h3>Staff Login</h3>
                 
                 <form asp-action="Login" method="post">
                     @Html.AntiForgeryToken()
@@ -63,7 +63,7 @@
                         <label asp-for="Username">User Name</label>
                         <div class="input-with-icon">
                             <i class="fas fa-user"></i>
-                            <input asp-for="Username" type="text" placeholder="Enter your user name" required>
+                            <input asp-for="Username" type="text" placeholder="Enter your user name" required autocomplete="username">
                         </div>
                     </div>
                     
@@ -71,7 +71,7 @@
                         <label asp-for="Password">Password</label>
                         <div class="input-with-icon has-right-icon">
                             <i class="fas fa-lock"></i>
-                            <input asp-for="Password" id="password" type="password" placeholder="Enter your password" required>
+                            <input asp-for="Password" id="password" type="password" placeholder="Enter your password" required autocomplete="current-password">
                             <button type="button" class="toggle-password" aria-label="Show password" aria-pressed="false">
                                 <i class="fas fa-eye"></i>
                             </button>
@@ -83,18 +83,25 @@
                             <input type="checkbox" id="remember">
                             <label for="remember">Remember me</label>
                         </div>
-                        <a href="#" class="forgot-password">Forgot Password?</a>
+                        <a href="#" class="forgot-password" id="forgotPasswordLink">Forgot Password?</a>
+                    </div>
+                    <div style="font-size:0.72rem; color:rgba(255,255,255,0.9); margin-top:-6px; margin-bottom:4px; text-shadow:0 1px 4px rgba(0,0,0,0.6);">
+                        <i class="fas fa-triangle-exclamation" style="color:#fdbb2d; font-size:0.65rem;"></i>
+                        Not recommended on shared terminals.
                     </div>
                     
                     <button type="submit" class="login-btn">Sign In</button>
                 </form>
 
-                <div style="text-align:center; margin-top:12px;">
+                <div style="text-align:center; margin-top:16px; border-top:1px solid rgba(255,255,255,0.25); padding-top:12px;">
                     <a href="#" id="licRevalidateLink"
-                       style="font-size:.72rem; color:#aaa; text-decoration:none; opacity:.7;"
+                       style="font-size:.75rem; color:rgba(255,255,255,0.85); text-decoration:none; text-shadow:0 1px 4px rgba(0,0,0,0.6); font-weight:500;"
                        title="Force re-validation against the central license server">
-                        <i class="fas fa-rotate-right" style="font-size:.65rem;"></i>&nbsp;Re-validate License
+                        <i class="fas fa-rotate-right" style="font-size:.68rem;"></i>&nbsp;Re-validate License
                     </a>
+                    <div style="font-size:0.68rem; color:rgba(255,255,255,0.75); margin-top:8px; text-shadow:0 1px 4px rgba(0,0,0,0.6);">
+                        eLUX Stay HMS &nbsp;&middot;&nbsp; v2.0 &nbsp;&middot;&nbsp; &copy; Emeditech Plus LLP
+                    </div>
                 </div>
                 
             </div>
@@ -187,6 +194,23 @@
                 })
                 .catch(function () {
                     window.location.href = '/License/Invalid?errors=' + encodeURIComponent('Could not reach the validation server. Please check your connection and try again.');
+                });
+            });
+        })();
+    </script>
+    <script>
+        // Forgot Password — no self-service reset; prompt admin contact
+        (function () {
+            const link = document.getElementById('forgotPasswordLink');
+            if (!link) return;
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Password Reset',
+                    text: 'Please contact your system administrator to reset your password.',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#1a2a6c'
                 });
             });
         })();

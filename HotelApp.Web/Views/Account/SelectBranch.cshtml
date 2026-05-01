@@ -14,9 +14,9 @@
 <body>
     <!-- Background slideshow (same as login) -->
     <div class="bg-slideshow" id="bgSlideshow">
-        <div class="bg-slide active" style="background-image: url('/images/login-bg1.jpeg');"></div>
-        <div class="bg-slide" style="background-image: url('/images/login-bg2.jpeg');"></div>
-        <div class="bg-slide" style="background-image: url('/images/login-bg3.jpeg');"></div>
+        <div class="bg-slide active" style="background-image: url('/images/login-bg1.png');"></div>
+        <div class="bg-slide" style="background-image: url('/images/login-bg2.png');"></div>
+        <div class="bg-slide" style="background-image: url('/images/login-bg3.png');"></div>
     </div>
 
     <div class="container">
@@ -38,7 +38,7 @@
             
             <div class="login-form">
                 <h3>Select Branch</h3>
-                <p style="color: #666; margin-bottom: 20px;">Choose the branch you want to work with</p>
+                <p style="color: rgba(255,255,255,0.85); margin-bottom: 20px; text-shadow: 0 1px 4px rgba(0,0,0,0.6);">Choose the branch you want to work with</p>
                 
                 <form asp-action="SelectBranch" method="post">
                     @Html.AntiForgeryToken()
@@ -82,7 +82,7 @@
                 </form>
             </div>
             
-            <div class="footer-text">
+            <div class="footer-text" style="color: rgba(255,255,255,0.7); text-align:center; font-size:0.78rem; margin-top:10px; text-shadow: 0 1px 4px rgba(0,0,0,0.5);">
                 <p>© 2024 eLUX Stay. All rights reserved.</p>
             </div>
         </div>
