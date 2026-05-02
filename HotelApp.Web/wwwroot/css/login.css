@@ -120,17 +120,15 @@ body {
     margin-bottom: 14px;
 }
 
-.logo h2 {
-    color: #fdbb2d;
-    font-size: 1.65rem;
-    font-weight: 700;
-    text-shadow: 0 1px 6px rgba(0,0,0,0.55);
+.logo-img {
+    height: 80px;
+    width: auto;
+    max-width: 260px;
+    object-fit: contain;
+    filter: drop-shadow(0 1px 6px rgba(0,0,0,0.55));
 }
 
-.logo span {
-    color: #fdbb2d;
-    text-shadow: 0 1px 6px rgba(0,0,0,0.55);
-}
+
 
 .login-form h3 {
     text-align: center;
@@ -427,8 +425,8 @@ body {
         padding: 25px 20px;
     }
 
-    .logo h2 {
-        font-size: 1.6rem;
+    .logo-img {
+        height: 68px;
     }
 
     .login-form h3 {
