@@ -1,241 +1,344 @@
 @model HotelApp.Web.ViewModels.SelectRoleViewModel
 @{
-    ViewData["Title"] = "Select Role";
+    Layout = null;
 }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>eLUX Stay | Select Role</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-<style>
-    .role-modal-backdrop {
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.55);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-        padding: 24px;
-    }
+        html, body {
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #111;
+            overflow: hidden;
+        }
 
-    .role-modal {
-        width: 100%;
-        max-width: 720px;
-        background: #ffffff;
-        border-radius: 14px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.35);
-        overflow: hidden;
-    }
+        /* ── Background slideshow (same as Login) ── */
+        .bg-slideshow { position: fixed; inset: 0; z-index: 0; }
 
-    .role-modal-header {
-        padding: 18px 22px;
-        background: linear-gradient(135deg, #8e24aa, #4a148c);
-        color: #fff;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-    }
+        .bg-slide {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            transform: translateX(100%);
+            transition: transform 1s ease-in-out;
+        }
+        .bg-slide::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+        }
+        .bg-slide.active  { transform: translateX(0); }
+        .bg-slide.exit    { transform: translateX(-100%); }
 
-    .role-modal-header h2 {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 700;
-    }
+        /* ── Centering wrapper ── */
+        .page-center {
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
 
-    .role-modal-body {
-        padding: 18px 22px 22px 22px;
-    }
+        /* ── Glass modal ── */
+        .role-modal {
+            width: 100%;
+            max-width: 740px;
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.18);
+            backdrop-filter: blur(18px) saturate(1.4);
+            -webkit-backdrop-filter: blur(18px) saturate(1.4);
+            background: rgba(20, 6, 40, 0.52);
+        }
 
-    .role-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 14px;
-        margin-top: 14px;
-    }
+        .role-modal-header {
+            padding: 20px 26px;
+            background: linear-gradient(135deg, rgba(142,36,170,0.85), rgba(74,20,140,0.85));
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+        }
 
-    .role-card {
-        border: 1px solid #e6e6e6;
-        border-radius: 12px;
-        padding: 14px;
-        background: #fafafa;
-        transition: transform .08s ease, box-shadow .08s ease;
-    }
+        .role-modal-header h2 {
+            margin: 0;
+            font-size: 19px;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+        }
 
-    .role-card:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 10px 24px rgba(0,0,0,0.12);
-    }
+        .role-hint {
+            font-size: 12px;
+            color: rgba(255,255,255,0.85);
+            margin-top: 2px;
+        }
 
-    .role-name {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-weight: 700;
-        margin-bottom: 6px;
-        color: #222;
-    }
+        .role-user-tag {
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 20px;
+            padding: 4px 14px;
+            white-space: nowrap;
+        }
 
-    .role-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(74, 20, 140, 0.08);
-        color: #4a148c;
-        flex: 0 0 auto;
-    }
+        .role-modal-body { padding: 20px 24px 24px; }
 
-    .role-desc {
-        color: #666;
-        font-size: 12px;
-        margin-bottom: 12px;
-        min-height: 16px;
-    }
+        .role-meta {
+            font-size: 13px;
+            color: rgba(255,255,255,0.75);
+            margin-bottom: 4px;
+        }
 
-    .role-btn {
-        width: 100%;
-        border: none;
-        padding: 10px 12px;
-        border-radius: 10px;
-        background: #4a148c;
-        color: #fff;
-        font-weight: 700;
-        cursor: pointer;
-    }
+        .role-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 14px;
+            margin-top: 14px;
+        }
 
-    .role-btn:hover { background: #3b0f73; }
+        .role-card {
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 14px;
+            padding: 16px;
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            transition: transform .1s ease, box-shadow .1s ease, background .1s ease;
+            cursor: pointer;
+        }
 
-    .role-hint {
-        color: #eee;
-        font-size: 12px;
-        opacity: 0.95;
-    }
+        .role-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(0,0,0,0.3);
+            background: rgba(255,255,255,0.13);
+        }
 
-    .role-meta {
-        font-size: 13px;
-        color: #333;
-    }
+        .role-card.kbd-focus {
+            border-color: rgba(196,100,255,0.7);
+            box-shadow: 0 0 0 3px rgba(142,36,170,0.45), 0 12px 28px rgba(0,0,0,0.3);
+            transform: translateY(-2px);
+            background: rgba(142,36,170,0.22);
+            outline: none;
+        }
 
-    .role-card.kbd-focus {
-        border-color: #8e24aa;
-        box-shadow: 0 0 0 3px rgba(142, 36, 170, 0.25), 0 10px 24px rgba(0,0,0,0.12);
-        transform: translateY(-1px);
-        background: #fdf6ff;
-        outline: none;
-    }
+        .role-card.kbd-focus .role-btn { background: #8e24aa; }
 
-    .role-card.kbd-focus .role-btn {
-        background: #8e24aa;
-    }
+        .role-name {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: #fff;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        }
 
-    .kbd-hint {
-        text-align: center;
-        margin-top: 14px;
-        font-size: 11px;
-        color: #999;
-    }
+        .role-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(196,100,255,0.25);
+            color: #e0aaff;
+            flex: 0 0 auto;
+        }
 
-    .kbd-hint kbd {
-        display: inline-block;
-        padding: 1px 6px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        background: #f5f5f5;
-        color: #555;
-        font-size: 11px;
-        font-family: inherit;
-    }
-</style>
+        .role-desc {
+            font-size: 12px;
+            color: rgba(255,255,255,0.65);
+            margin-bottom: 14px;
+            min-height: 16px;
+        }
 
-<div class="role-modal-backdrop" role="dialog" aria-modal="true" aria-label="Select Role">
-    <div class="role-modal">
-        <div class="role-modal-header">
-            <div>
-                <h2>Select Role</h2>
-                <div class="role-hint">Choose a role to continue</div>
+        .role-btn {
+            width: 100%;
+            border: none;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #8e24aa, #4a148c);
+            color: #fff;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background .15s, transform .1s;
+            box-shadow: 0 4px 12px rgba(74,20,140,0.4);
+        }
+
+        .role-btn:hover {
+            background: linear-gradient(135deg, #9c27b0, #6a1b9a);
+            transform: translateY(-1px);
+        }
+
+        .kbd-hint {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 11px;
+            color: rgba(255,255,255,0.45);
+        }
+
+        .kbd-hint kbd {
+            display: inline-block;
+            padding: 1px 6px;
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 4px;
+            background: rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.7);
+            font-size: 11px;
+            font-family: inherit;
+        }
+
+        /* brand watermark bottom */
+        .brand-footer {
+            position: fixed;
+            bottom: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 11;
+            font-size: 11px;
+            color: rgba(255,255,255,0.35);
+            white-space: nowrap;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Background slideshow -->
+    <div class="bg-slideshow" id="bgSlideshow">
+        <div class="bg-slide active" style="background-image: url('/images/login-bg1.png');"></div>
+        <div class="bg-slide"        style="background-image: url('/images/login-bg2.png');"></div>
+        <div class="bg-slide"        style="background-image: url('/images/login-bg3.png');"></div>
+    </div>
+
+    <div class="page-center">
+        <div class="role-modal" role="dialog" aria-modal="true" aria-label="Select Role">
+            <div class="role-modal-header">
+                <div>
+                    <h2>Select Role</h2>
+                    <div class="role-hint">Choose a role to continue</div>
+                </div>
+                <span class="role-user-tag"><i class="fas fa-user-circle me-1"></i>@Model.DisplayName</span>
             </div>
-            <div class="role-hint">@Model.DisplayName</div>
-        </div>
-        <div class="role-modal-body">
-            <div class="role-meta">
-                Multiple roles are assigned to your user. Select one to proceed to the dashboard.
-            </div>
+            <div class="role-modal-body">
+                <div class="role-meta">
+                    Multiple roles are assigned to your user. Select one to proceed to the dashboard.
+                </div>
 
-            <div class="role-grid" id="roleGrid">
-                @foreach (var role in Model.AvailableRoles)
-                {
-                    <div class="role-card" tabindex="-1">
-                        <div class="role-name">
-                            @if (!string.IsNullOrWhiteSpace(role.IconClass))
-                            {
-                                <span class="role-icon"><i class="@role.IconClass"></i></span>
-                            }
-                            <span>@role.Name</span>
+                <div class="role-grid" id="roleGrid">
+                    @foreach (var role in Model.AvailableRoles)
+                    {
+                        <div class="role-card" tabindex="-1">
+                            <div class="role-name">
+                                @if (!string.IsNullOrWhiteSpace(role.IconClass))
+                                {
+                                    <span class="role-icon"><i class="@role.IconClass"></i></span>
+                                }
+                                <span>@role.Name</span>
+                            </div>
+                            <div class="role-desc">@(string.IsNullOrWhiteSpace(role.Description) ? "" : role.Description)</div>
+                            <form asp-controller="Account" asp-action="SelectRole" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="SelectedRoleId" value="@role.Id" />
+                                <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+                                <button type="submit" class="role-btn">Continue as @role.Name</button>
+                            </form>
                         </div>
-                        <div class="role-desc">@(string.IsNullOrWhiteSpace(role.Description) ? "" : role.Description)</div>
-                        <form asp-controller="Account" asp-action="SelectRole" method="post">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="SelectedRoleId" value="@role.Id" />
-                            <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
-                            <button type="submit" class="role-btn">Continue as @role.Name</button>
-                        </form>
-                    </div>
-                }
-            </div>
-            <div class="kbd-hint">
-                <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> navigate &nbsp;·&nbsp; <kbd>Enter</kbd> select
+                    }
+                </div>
+
+                <div class="kbd-hint">
+                    <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> navigate &nbsp;·&nbsp; <kbd>Enter</kbd> select
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-@section Scripts {
-<script>
-(function () {
-    var grid  = document.getElementById('roleGrid');
-    var cards = Array.from(grid.querySelectorAll('.role-card'));
-    var idx   = 0;
+    <div class="brand-footer">© 2026 eLUX Stay &nbsp;·&nbsp; Sponsored &amp; Marketed by Emeditech Plus</div>
 
-    function colsPerRow() {
-        if (cards.length < 2) return 1;
-        var top = cards[0].getBoundingClientRect().top;
-        var c = 0;
-        for (var i = 0; i < cards.length; i++) {
-            if (cards[i].getBoundingClientRect().top === top) c++; else break;
+    <!-- Slideshow script -->
+    <script>
+    (function () {
+        var slides = document.querySelectorAll('#bgSlideshow .bg-slide');
+        if (!slides.length) return;
+        var current = 0;
+        setInterval(function () {
+            var prev = current;
+            current = (current + 1) % slides.length;
+            slides[prev].classList.add('exit');
+            slides[prev].classList.remove('active');
+            slides[current].classList.add('active');
+            setTimeout(function () { slides[prev].classList.remove('exit'); }, 1000);
+        }, 10000);
+    })();
+    </script>
+
+    <!-- Keyboard navigation -->
+    <script>
+    (function () {
+        var grid  = document.getElementById('roleGrid');
+        var cards = Array.from(grid.querySelectorAll('.role-card'));
+        var idx   = 0;
+
+        function colsPerRow() {
+            if (cards.length < 2) return 1;
+            var top = cards[0].getBoundingClientRect().top;
+            var c = 0;
+            for (var i = 0; i < cards.length; i++) {
+                if (cards[i].getBoundingClientRect().top === top) c++; else break;
+            }
+            return c || 1;
         }
-        return c || 1;
-    }
 
-    function highlight(i) {
-        cards.forEach(function(c){ c.classList.remove('kbd-focus'); });
-        idx = (i + cards.length) % cards.length;
-        cards[idx].classList.add('kbd-focus');
-        cards[idx].scrollIntoView({ block: 'nearest' });
-    }
-
-    function submit() {
-        var btn = cards[idx].querySelector('button[type="submit"]');
-        if (btn) btn.click();
-    }
-
-    // focus first card automatically
-    highlight(0);
-
-    document.addEventListener('keydown', function (e) {
-        var cols = colsPerRow();
-        switch (e.key) {
-            case 'ArrowRight': e.preventDefault(); highlight(idx + 1);    break;
-            case 'ArrowLeft':  e.preventDefault(); highlight(idx - 1);    break;
-            case 'ArrowDown':  e.preventDefault(); highlight(idx + cols); break;
-            case 'ArrowUp':    e.preventDefault(); highlight(idx - cols); break;
-            case 'Enter':      e.preventDefault(); submit();              break;
+        function highlight(i) {
+            cards.forEach(function (c) { c.classList.remove('kbd-focus'); });
+            idx = (i + cards.length) % cards.length;
+            cards[idx].classList.add('kbd-focus');
+            cards[idx].scrollIntoView({ block: 'nearest' });
         }
-    });
 
-    // clicking a card also sets focus index
-    cards.forEach(function(card, i) {
-        card.addEventListener('mouseenter', function() { highlight(i); });
-    });
-})();
-</script>
-}
+        function submit() {
+            var btn = cards[idx].querySelector('button[type="submit"]');
+            if (btn) btn.click();
+        }
+
+        highlight(0);
+
+        document.addEventListener('keydown', function (e) {
+            var cols = colsPerRow();
+            switch (e.key) {
+                case 'ArrowRight': e.preventDefault(); highlight(idx + 1);    break;
+                case 'ArrowLeft':  e.preventDefault(); highlight(idx - 1);    break;
+                case 'ArrowDown':  e.preventDefault(); highlight(idx + cols); break;
+                case 'ArrowUp':    e.preventDefault(); highlight(idx - cols); break;
+                case 'Enter':      e.preventDefault(); submit();              break;
+            }
+        });
+
+        cards.forEach(function (card, i) {
+            card.addEventListener('mouseenter', function () { highlight(i); });
+        });
+    })();
+    </script>
+
+</body>
+</html>
+
