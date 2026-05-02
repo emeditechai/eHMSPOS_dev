@@ -231,7 +231,13 @@ public class AccountController : Controller
         }
 
         var userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+        if (userId <= 0 && int.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var claimUserId))
+            userId = claimUserId;
+
         var branchId = HttpContext.Session.GetInt32("BranchID") ?? 0;
+        if (branchId <= 0 && int.TryParse(User.FindFirst("BranchID")?.Value, out var claimBranchId))
+            branchId = claimBranchId;
+
         if (userId <= 0)
         {
             return RedirectToAction(nameof(Login));
@@ -242,6 +248,8 @@ public class AccountController : Controller
         if (currentUsername.Equals("admin", StringComparison.OrdinalIgnoreCase))
         {
             var adminRoleId = HttpContext.Session.GetInt32("SelectedRoleId") ?? 0;
+            if (adminRoleId <= 0 && int.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value, out var claimRoleId))
+                adminRoleId = claimRoleId;
             return await RedirectToRoleDashboardAsync(adminRoleId);
         }
 
@@ -277,7 +285,13 @@ public class AccountController : Controller
         }
 
         var userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+        if (userId <= 0 && int.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var claimUserId))
+            userId = claimUserId;
+
         var branchId = HttpContext.Session.GetInt32("BranchID") ?? 0;
+        if (branchId <= 0 && int.TryParse(User.FindFirst("BranchID")?.Value, out var claimBranchId))
+            branchId = claimBranchId;
+
         if (userId <= 0 || branchId <= 0)
         {
             return RedirectToAction(nameof(Login));
