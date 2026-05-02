@@ -5,93 +5,376 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
+    <style>
+        /* ── Page Header ── */
+        .ob-page-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .ob-page-header .ob-header-icon {
+            width: 48px; height: 48px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 1.4rem;
+            box-shadow: 0 4px 14px rgba(99,102,241,.35);
+            flex-shrink: 0;
+        }
+        .ob-page-header h2 {
+            margin: 0;
+            font-size: 1.55rem;
+            font-weight: 700;
+            color: #1e1b4b;
+            letter-spacing: -.3px;
+        }
+        .ob-page-header p {
+            margin: 2px 0 0;
+            font-size: .85rem;
+            color: #6b7280;
+        }
+
+        /* ── Filter Card ── */
+        .ob-filter-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px 24px;
+            box-shadow: 0 1px 8px rgba(0,0,0,.07);
+            margin-bottom: 22px;
+            border: 1px solid #e9eaf0;
+        }
+        .ob-filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: flex-end;
+            justify-content: space-between;
+        }
+        .ob-filter-fields {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: flex-end;
+        }
+        .ob-field label {
+            display: block;
+            font-size: .78rem;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+        .ob-field input[type="date"] {
+            border: 1.5px solid #d1d5db;
+            border-radius: 10px;
+            padding: 9px 14px;
+            font-size: .9rem;
+            color: #1f2937;
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+            background: #f9fafb;
+        }
+        .ob-field input[type="date"]:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99,102,241,.15);
+            background: #fff;
+        }
+        .ob-filter-actions {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        .ob-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 9px 20px;
+            border-radius: 10px;
+            font-size: .875rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all .2s;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .ob-btn-primary {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: #fff;
+            box-shadow: 0 3px 10px rgba(99,102,241,.35);
+        }
+        .ob-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(99,102,241,.4); color:#fff; }
+        .ob-btn-ghost {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1.5px solid #e5e7eb;
+        }
+        .ob-btn-ghost:hover { background: #e5e7eb; transform: translateY(-1px); color:#1f2937; }
+
+        /* ── Summary Cards ── */
+        .ob-summary-row {
+            display: flex;
+            gap: 18px;
+            flex-wrap: wrap;
+            margin-bottom: 22px;
+        }
+        .ob-summary-card {
+            flex: 1;
+            min-width: 180px;
+            border-radius: 16px;
+            padding: 20px 24px;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 18px rgba(0,0,0,.12);
+        }
+        .ob-summary-card::before {
+            content: '';
+            position: absolute;
+            top: -20px; right: -20px;
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.12);
+        }
+        .ob-summary-card .ob-sc-label {
+            font-size: .72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            opacity: .85;
+            margin-bottom: 8px;
+        }
+        .ob-summary-card .ob-sc-value {
+            font-size: 2rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .ob-summary-card .ob-sc-icon {
+            position: absolute;
+            bottom: 14px; right: 20px;
+            font-size: 2rem;
+            opacity: .2;
+        }
+        .ob-sc-bookings { background: linear-gradient(135deg, #10b981, #059669); }
+        .ob-sc-balance  { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+        /* ── Table Card ── */
+        .ob-table-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 1px 8px rgba(0,0,0,.07);
+            border: 1px solid #e9eaf0;
+            overflow: hidden;
+        }
+        .ob-table-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 18px 22px 14px;
+            border-bottom: 1px solid #f0f0f5;
+        }
+        .ob-table-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        .ob-table-subtitle {
+            font-size: .8rem;
+            color: #9ca3af;
+            margin-top: 2px;
+        }
+        .ob-export-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .ob-btn-csv   { background: linear-gradient(135deg,#10b981,#059669); color:#fff; box-shadow:0 3px 10px rgba(16,185,129,.3); }
+        .ob-btn-excel { background: linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; box-shadow:0 3px 10px rgba(59,130,246,.3); }
+        .ob-btn-pdf   { background: linear-gradient(135deg,#ef4444,#dc2626); color:#fff; box-shadow:0 3px 10px rgba(239,68,68,.3); }
+        .ob-btn-csv:hover   { transform:translateY(-1px); box-shadow:0 6px 16px rgba(16,185,129,.4); color:#fff; }
+        .ob-btn-excel:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(59,130,246,.4); color:#fff; }
+        .ob-btn-pdf:hover   { transform:translateY(-1px); box-shadow:0 6px 16px rgba(239,68,68,.4); color:#fff; }
+
+        /* ── Table ── */
+        .ob-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .875rem;
+        }
+        .ob-table thead tr {
+            background: #f8f9ff;
+        }
+        .ob-table thead th {
+            padding: 12px 16px;
+            font-size: .72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            color: #6b7280;
+            border-bottom: 2px solid #e9eaf0;
+            white-space: nowrap;
+        }
+        .ob-table tbody tr {
+            transition: background .15s;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .ob-table tbody tr:hover { background: #f8f9ff; }
+        .ob-table tbody td {
+            padding: 13px 16px;
+            color: #374151;
+            vertical-align: middle;
+        }
+        .ob-table .text-end { text-align: right; }
+        .ob-booking-no {
+            font-family: monospace;
+            font-size: .8rem;
+            font-weight: 600;
+            color: #6366f1;
+            background: #ede9fe;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+        .ob-balance-amt {
+            font-weight: 700;
+            color: #dc2626;
+        }
+        .ob-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: .72rem;
+            font-weight: 700;
+            text-transform: capitalize;
+        }
+        .ob-badge-confirmed { background:#d1fae5; color:#065f46; }
+        .ob-badge-pending   { background:#fef3c7; color:#92400e; }
+        .ob-badge-cancelled { background:#fee2e2; color:#991b1b; }
+        .ob-badge-checkedin { background:#dbeafe; color:#1e40af; }
+        .ob-badge-default   { background:#f3f4f6; color:#374151; }
+        .ob-empty-row td {
+            text-align: center;
+            padding: 40px;
+            color: #9ca3af;
+            font-size: .9rem;
+        }
+    </style>
 }
 
-<div class="page-header">
-    <h2><i class="fas fa-hand-holding-dollar"></i> Outstanding Balances</h2>
+<!-- Page Header -->
+<div class="ob-page-header">
+    <div class="ob-header-icon"><i class="fas fa-hand-holding-dollar"></i></div>
+    <div>
+        <h2>Outstanding Balances</h2>
+        <p>Track all pending payments and overdue balances</p>
+    </div>
 </div>
 
-<div class="filters-container" style="margin-bottom: 18px;">
-    <form method="get" action="@Url.Action("OutstandingBalances", "Reports")" style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; justify-content: space-between;">
-        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;">
-            <div>
-                <label for="fromDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">From Date</label>
-                <input id="fromDate" name="fromDate" type="date" class="form-control" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+<!-- Filters -->
+<div class="ob-filter-card">
+    <form method="get" action="@Url.Action("OutstandingBalances", "Reports")">
+        <div class="ob-filter-row">
+            <div class="ob-filter-fields">
+                <div class="ob-field">
+                    <label for="fromDate">From Date</label>
+                    <input id="fromDate" name="fromDate" type="date" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="ob-field">
+                    <label for="toDate">To Date</label>
+                    <input id="toDate" name="toDate" type="date" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+                </div>
             </div>
-
-            <div>
-                <label for="toDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">To Date</label>
-                <input id="toDate" name="toDate" type="date" class="form-control" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+            <div class="ob-filter-actions">
+                <button class="ob-btn ob-btn-primary" type="submit"><i class="fas fa-filter"></i> Apply</button>
+                <a class="ob-btn ob-btn-ghost" href="@Url.Action("OutstandingBalances", "Reports")"><i class="fas fa-rotate-left"></i> Reset</a>
             </div>
-        </div>
-
-        <div style="display:flex; gap:10px; align-items:flex-end;">
-            <button class="btn-filter-apply" type="submit"><i class="fas fa-filter"></i> Apply</button>
-            <a class="btn-filter-clear" href="@Url.Action("OutstandingBalances", "Reports")"><i class="fas fa-undo"></i> Reset</a>
         </div>
     </form>
 </div>
 
-<div class="status-cards booking-status-cards" style="margin-bottom: 26px;">
-    <div class="status-card available">
-        <h3>Total Bookings</h3>
-        <div class="value">@Model.Summary.TotalBookings</div>
+<!-- Summary Cards -->
+<div class="ob-summary-row">
+    <div class="ob-summary-card ob-sc-bookings">
+        <div class="ob-sc-label">Total Bookings</div>
+        <div class="ob-sc-value">@Model.Summary.TotalBookings</div>
+        <i class="fas fa-calendar-check ob-sc-icon"></i>
     </div>
-
-    <div class="status-card occupied">
-        <h3>Total Balance</h3>
-        <div class="value">₹@Model.Summary.TotalBalance.ToString("N0")</div>
+    <div class="ob-summary-card ob-sc-balance">
+        <div class="ob-sc-label">Total Balance Due</div>
+        <div class="ob-sc-value">₹@Model.Summary.TotalBalance.ToString("N0")</div>
+        <i class="fas fa-rupee-sign ob-sc-icon"></i>
     </div>
 </div>
 
-<div class="filters-container" style="margin-bottom: 18px;">
-    <div style="display:flex; gap:12px; flex-wrap: wrap; align-items:center; justify-content: space-between;">
+<!-- Table Card -->
+<div class="ob-table-card">
+    <div class="ob-table-header">
         <div>
-            <div style="font-weight:700; color:#1f2937;">Outstanding Register</div>
-            <div class="subtext" style="margin-top:4px;">@Model.Rows.Count records</div>
+            <div class="ob-table-title">Outstanding Register</div>
+            <div class="ob-table-subtitle">@Model.Rows.Count record@(Model.Rows.Count == 1 ? "" : "s") found</div>
         </div>
-        <div style="display:flex; gap:10px;">
-            <button class="btn-filter-apply" type="button" onclick="exportToCsv()"><i class="fas fa-file-export"></i> CSV</button>
-            <button class="btn-filter-apply" type="button" onclick="exportToExcel()"><i class="fas fa-file-export"></i> Excel</button>
-            <button class="btn-filter-apply" type="button" onclick="exportToPdf()"><i class="fas fa-file-export"></i> PDF</button>
+        <div class="ob-export-group">
+            <button class="ob-btn ob-btn-csv" type="button" onclick="exportToCsv()"><i class="fas fa-file-csv"></i> CSV</button>
+            <button class="ob-btn ob-btn-excel" type="button" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+            <button class="ob-btn ob-btn-pdf" type="button" onclick="exportToPdf()"><i class="fas fa-file-pdf"></i> PDF</button>
         </div>
     </div>
-</div>
 
-<div class="table-container" style="overflow: visible;">
-    <table class="data-table" id="outstandingBalanceTable">
-        <thead>
-            <tr>
-                <th>Booking No</th>
-                <th>Guest</th>
-                <th>Phone</th>
-                <th>Check-In</th>
-                <th>Check-Out</th>
-                <th class="text-end">Total</th>
-                <th class="text-end">Deposit</th>
-                <th class="text-end">Balance</th>
-                <th>Status</th>
-                <th>Payment Status</th>
-            </tr>
-        </thead>
-        <tbody>
-        @foreach (var row in Model.Rows)
-        {
-            <tr>
-                <td>@(string.IsNullOrWhiteSpace(row.BookingNumber) ? "-" : row.BookingNumber)</td>
-                <td>@(string.IsNullOrWhiteSpace(row.GuestName) ? "-" : row.GuestName)</td>
-                <td>@(string.IsNullOrWhiteSpace(row.GuestPhone) ? "-" : row.GuestPhone)</td>
-                <td>@row.CheckInDate.ToString("dd MMM yyyy")</td>
-                <td>@row.CheckOutDate.ToString("dd MMM yyyy")</td>
-                <td class="text-end">₹@row.TotalAmount.ToString("N2")</td>
-                <td class="text-end">₹@row.DepositAmount.ToString("N2")</td>
-                <td class="text-end"><strong>₹@row.BalanceAmount.ToString("N2")</strong></td>
-                <td>@(string.IsNullOrWhiteSpace(row.Status) ? "-" : row.Status)</td>
-                <td>@(string.IsNullOrWhiteSpace(row.PaymentStatus) ? "-" : row.PaymentStatus)</td>
-            </tr>
-        }
-        </tbody>
-    </table>
+    <div style="overflow-x:auto;">
+        <table class="ob-table" id="outstandingBalanceTable">
+            <thead>
+                <tr>
+                    <th>Booking No</th>
+                    <th>Guest</th>
+                    <th>Phone</th>
+                    <th>Check-In</th>
+                    <th>Check-Out</th>
+                    <th class="text-end">Total</th>
+                    <th class="text-end">Deposit</th>
+                    <th class="text-end">Balance</th>
+                    <th>Status</th>
+                    <th>Payment Status</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (!Model.Rows.Any())
+            {
+                <tr class="ob-empty-row">
+                    <td colspan="10"><i class="fas fa-inbox" style="font-size:1.6rem;display:block;margin-bottom:8px;opacity:.4;"></i>No outstanding balances found for the selected period.</td>
+                </tr>
+            }
+            @foreach (var row in Model.Rows)
+            {
+                var statusCss = (row.Status ?? "").ToLower() switch {
+                    "confirmed"  => "ob-badge-confirmed",
+                    "checked in" => "ob-badge-checkedin",
+                    "cancelled"  => "ob-badge-cancelled",
+                    _            => "ob-badge-default"
+                };
+                var paymentCss = (row.PaymentStatus ?? "").ToLower() switch {
+                    "pending" => "ob-badge-pending",
+                    "paid"    => "ob-badge-confirmed",
+                    _         => "ob-badge-default"
+                };
+                <tr>
+                    <td><span class="ob-booking-no">@(string.IsNullOrWhiteSpace(row.BookingNumber) ? "-" : row.BookingNumber)</span></td>
+                    <td><strong>@(string.IsNullOrWhiteSpace(row.GuestName) ? "-" : row.GuestName)</strong></td>
+                    <td>@(string.IsNullOrWhiteSpace(row.GuestPhone) ? "-" : row.GuestPhone)</td>
+                    <td>@row.CheckInDate.ToString("dd MMM yyyy")</td>
+                    <td>@row.CheckOutDate.ToString("dd MMM yyyy")</td>
+                    <td class="text-end">₹@row.TotalAmount.ToString("N2")</td>
+                    <td class="text-end">₹@row.DepositAmount.ToString("N2")</td>
+                    <td class="text-end"><span class="ob-balance-amt">₹@row.BalanceAmount.ToString("N2")</span></td>
+                    <td><span class="ob-badge @statusCss">@(string.IsNullOrWhiteSpace(row.Status) ? "-" : row.Status)</span></td>
+                    <td><span class="ob-badge @paymentCss">@(string.IsNullOrWhiteSpace(row.PaymentStatus) ? "-" : row.PaymentStatus)</span></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
 </div>
 
 @section Scripts {

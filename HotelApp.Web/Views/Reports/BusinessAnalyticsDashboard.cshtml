@@ -5,153 +5,418 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
+    <style>
+        /* ── Page Header ── */
+        .bad-page-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .bad-header-icon {
+            width: 52px; height: 52px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #0d9488, #0f766e);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 1.5rem;
+            box-shadow: 0 4px 16px rgba(13,148,136,.4);
+            flex-shrink: 0;
+        }
+        .bad-page-header h2 {
+            margin: 0;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #134e4a;
+            letter-spacing: -.3px;
+        }
+        .bad-page-header p {
+            margin: 2px 0 0;
+            font-size: .85rem;
+            color: #6b7280;
+        }
+
+        /* ── Filter Card ── */
+        .bad-filter-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px 24px;
+            box-shadow: 0 1px 8px rgba(0,0,0,.07);
+            margin-bottom: 22px;
+            border: 1px solid #e9eaf0;
+        }
+        .bad-filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: flex-end;
+            justify-content: space-between;
+        }
+        .bad-filter-fields { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
+        .bad-field label {
+            display: block;
+            font-size: .78rem;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+        .bad-field input[type="date"] {
+            border: 1.5px solid #d1d5db;
+            border-radius: 10px;
+            padding: 9px 14px;
+            font-size: .9rem;
+            color: #1f2937;
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+            background: #f9fafb;
+        }
+        .bad-field input[type="date"]:focus {
+            border-color: #0d9488;
+            box-shadow: 0 0 0 3px rgba(13,148,136,.15);
+            background: #fff;
+        }
+        .bad-filter-actions { display: flex; gap: 10px; align-items: flex-end; }
+        .bad-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 9px 20px;
+            border-radius: 10px;
+            font-size: .875rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all .2s;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .bad-btn-primary { background: linear-gradient(135deg,#0d9488,#0f766e); color: #fff; box-shadow: 0 3px 10px rgba(13,148,136,.35); }
+        .bad-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(13,148,136,.4); color: #fff; }
+        .bad-btn-ghost { background: #f3f4f6; color: #374151; border: 1.5px solid #e5e7eb; }
+        .bad-btn-ghost:hover { background: #e5e7eb; transform: translateY(-1px); color: #1f2937; }
+
+        /* ── KPI Cards ── */
+        .bad-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        @@media (max-width: 900px) { .bad-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+        @@media (max-width: 520px)  { .bad-kpi-grid { grid-template-columns: 1fr; } }
+
+        .bad-kpi-card {
+            border-radius: 18px;
+            padding: 20px 22px;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,.13);
+            transition: transform .2s, box-shadow .2s;
+        }
+        .bad-kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(0,0,0,.18); }
+        .bad-kpi-card::before {
+            content: '';
+            position: absolute;
+            top: -22px; right: -22px;
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.12);
+        }
+        .bad-kpi-card::after {
+            content: '';
+            position: absolute;
+            bottom: -30px; right: 30px;
+            width: 60px; height: 60px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.07);
+        }
+        .bad-kpi-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .9px; opacity: .85; margin-bottom: 10px; }
+        .bad-kpi-value { font-size: 1.85rem; font-weight: 800; line-height: 1; }
+        .bad-kpi-icon  { position: absolute; bottom: 14px; right: 18px; font-size: 2rem; opacity: .18; }
+        .bad-kpi-sub   { font-size: .75rem; opacity: .75; margin-top: 6px; }
+
+        .bad-kpi-bookings    { background: linear-gradient(135deg, #10b981, #059669); }
+        .bad-kpi-revenue     { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+        .bad-kpi-adr         { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+        .bad-kpi-revpar      { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        .bad-kpi-collected   { background: linear-gradient(135deg, #0d9488, #0f766e); }
+        .bad-kpi-occupancy   { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .bad-kpi-outstanding { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .bad-kpi-gst         { background: linear-gradient(135deg, #ec4899, #db2777); }
+
+        /* ── Table Card ── */
+        .bad-table-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 1px 8px rgba(0,0,0,.07);
+            border: 1px solid #e9eaf0;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .bad-table-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 18px 22px 14px;
+            border-bottom: 1px solid #f0f0f5;
+        }
+        .bad-table-title    { font-size: 1rem; font-weight: 700; color: #1f2937; }
+        .bad-table-subtitle { font-size: .8rem; color: #6b7280; margin-top: 4px; line-height: 1.4; }
+        .bad-export-group   { display: flex; gap: 8px; flex-wrap: wrap; }
+        .bad-btn-csv   { background: linear-gradient(135deg,#10b981,#059669); color:#fff; box-shadow:0 3px 10px rgba(16,185,129,.3); }
+        .bad-btn-excel { background: linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; box-shadow:0 3px 10px rgba(59,130,246,.3); }
+        .bad-btn-pdf   { background: linear-gradient(135deg,#ef4444,#dc2626); color:#fff; box-shadow:0 3px 10px rgba(239,68,68,.3); }
+        .bad-btn-csv:hover   { transform:translateY(-1px); box-shadow:0 6px 16px rgba(16,185,129,.4); color:#fff; }
+        .bad-btn-excel:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(59,130,246,.4); color:#fff; }
+        .bad-btn-pdf:hover   { transform:translateY(-1px); box-shadow:0 6px 16px rgba(239,68,68,.4); color:#fff; }
+
+        /* ── Table ── */
+        .bad-table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+        .bad-table thead tr { background: #f0fdfa; }
+        .bad-table thead th {
+            padding: 12px 16px;
+            font-size: .72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            color: #0f766e;
+            border-bottom: 2px solid #ccfbf1;
+            white-space: nowrap;
+        }
+        .bad-table tbody tr { transition: background .15s; border-bottom: 1px solid #f3f4f6; }
+        .bad-table tbody tr:hover { background: #f0fdfa; }
+        .bad-table tbody td { padding: 13px 16px; color: #374151; vertical-align: middle; }
+        .bad-table .text-end { text-align: right; }
+        .bad-date-cell { font-weight: 700; color: #134e4a; }
+        .bad-method-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+            border-radius: 20px;
+            padding: 3px 12px;
+            font-size: .8rem;
+            font-weight: 600;
+        }
+        .bad-occ-bar-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        .bad-occ-bar {
+            width: 60px;
+            height: 6px;
+            border-radius: 99px;
+            background: #e5e7eb;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .bad-occ-fill {
+            height: 100%;
+            border-radius: 99px;
+            background: linear-gradient(90deg, #0d9488, #10b981);
+        }
+        .bad-empty-row td {
+            text-align: center;
+            padding: 48px 20px;
+            color: #9ca3af;
+        }
+        .bad-empty-row i { font-size: 1.8rem; display: block; margin-bottom: 10px; opacity: .4; }
+    </style>
 }
 
-<div class="page-header">
-    <h2><i class="fas fa-chart-line"></i> Business Analytics Dashboard</h2>
+<!-- Page Header -->
+<div class="bad-page-header">
+    <div class="bad-header-icon"><i class="fas fa-chart-line"></i></div>
+    <div>
+        <h2>Business Analytics Dashboard</h2>
+        <p>Revenue, occupancy and collection metrics at a glance</p>
+    </div>
 </div>
 
-<div class="filters-container" style="margin-bottom: 18px;">
-    <form method="get" action="@Url.Action("BusinessAnalyticsDashboard", "Reports")" style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; justify-content: space-between;">
-        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;">
-            <div>
-                <label for="fromDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">From Date</label>
-                <input id="fromDate" name="fromDate" type="date" class="form-control" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+<!-- Filters -->
+<div class="bad-filter-card">
+    <form method="get" action="@Url.Action("BusinessAnalyticsDashboard", "Reports")">
+        <div class="bad-filter-row">
+            <div class="bad-filter-fields">
+                <div class="bad-field">
+                    <label for="fromDate">From Date</label>
+                    <input id="fromDate" name="fromDate" type="date" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="bad-field">
+                    <label for="toDate">To Date</label>
+                    <input id="toDate" name="toDate" type="date" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+                </div>
             </div>
-
-            <div>
-                <label for="toDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">To Date</label>
-                <input id="toDate" name="toDate" type="date" class="form-control" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+            <div class="bad-filter-actions">
+                <button class="bad-btn bad-btn-primary" type="submit"><i class="fas fa-filter"></i> Apply</button>
+                <a class="bad-btn bad-btn-ghost" href="@Url.Action("BusinessAnalyticsDashboard", "Reports")"><i class="fas fa-rotate-left"></i> Reset</a>
             </div>
-        </div>
-
-        <div style="display:flex; gap:10px; align-items:flex-end;">
-            <button class="btn-filter-apply" type="submit">
-                <i class="fas fa-filter"></i> Apply
-            </button>
-            <a class="btn-filter-clear" href="@Url.Action("BusinessAnalyticsDashboard", "Reports")">
-                <i class="fas fa-undo"></i> Reset
-            </a>
         </div>
     </form>
 </div>
 
-<div class="status-cards booking-status-cards" style="margin-bottom: 26px;">
-    <div class="status-card available">
-        <h3>Total Bookings</h3>
-        <div class="value">@Model.Summary.TotalBookings</div>
+<!-- KPI Cards -->
+<div class="bad-kpi-grid">
+    <div class="bad-kpi-card bad-kpi-bookings">
+        <div class="bad-kpi-label">Total Bookings</div>
+        <div class="bad-kpi-value">@Model.Summary.TotalBookings</div>
+        <div class="bad-kpi-sub">@Model.Summary.TotalDays day period</div>
+        <i class="fas fa-calendar-check bad-kpi-icon"></i>
     </div>
-
-    <div class="status-card occupied">
-        <h3>Room Revenue</h3>
-        <div class="value">₹@Model.Summary.TotalRoomRevenue.ToString("N0")</div>
+    <div class="bad-kpi-card bad-kpi-revenue">
+        <div class="bad-kpi-label">Room Revenue</div>
+        <div class="bad-kpi-value">₹@Model.Summary.TotalRoomRevenue.ToString("N0")</div>
+        <div class="bad-kpi-sub">Gross room charges</div>
+        <i class="fas fa-rupee-sign bad-kpi-icon"></i>
     </div>
-
-    <div class="status-card maintenance">
-        <h3>ADR</h3>
-        <div class="value">₹@Model.Summary.Adr.ToString("N2")</div>
+    <div class="bad-kpi-card bad-kpi-adr">
+        <div class="bad-kpi-label">ADR</div>
+        <div class="bad-kpi-value">₹@Model.Summary.Adr.ToString("N2")</div>
+        <div class="bad-kpi-sub">Avg daily rate</div>
+        <i class="fas fa-bed bad-kpi-icon"></i>
     </div>
-
-    <div class="status-card cleaning">
-        <h3>RevPAR</h3>
-        <div class="value">₹@Model.Summary.RevPar.ToString("N2")</div>
+    <div class="bad-kpi-card bad-kpi-revpar">
+        <div class="bad-kpi-label">RevPAR</div>
+        <div class="bad-kpi-value">₹@Model.Summary.RevPar.ToString("N2")</div>
+        <div class="bad-kpi-sub">Revenue per available room</div>
+        <i class="fas fa-chart-bar bad-kpi-icon"></i>
     </div>
-
-    <div class="status-card occupied">
-        <h3>Total Collected</h3>
-        <div class="value">₹@Model.Summary.TotalCollected.ToString("N0")</div>
+    <div class="bad-kpi-card bad-kpi-collected">
+        <div class="bad-kpi-label">Total Collected</div>
+        <div class="bad-kpi-value">₹@Model.Summary.TotalCollected.ToString("N0")</div>
+        <div class="bad-kpi-sub">Cash received</div>
+        <i class="fas fa-hand-holding-dollar bad-kpi-icon"></i>
     </div>
-
-    <div class="status-card maintenance">
-        <h3>Occupancy</h3>
-        <div class="value">@Model.Summary.OccupancyPercent.ToString("N2")%</div>
+    <div class="bad-kpi-card bad-kpi-occupancy">
+        <div class="bad-kpi-label">Occupancy</div>
+        <div class="bad-kpi-value">@Model.Summary.OccupancyPercent.ToString("N2")%</div>
+        <div class="bad-kpi-sub">@Model.Summary.SoldRoomNights / @Model.Summary.AvailableRoomNights room nights</div>
+        <i class="fas fa-percent bad-kpi-icon"></i>
     </div>
-
-    <div class="status-card cleaning">
-        <h3>Outstanding Balance</h3>
-        <div class="value">₹@Model.Summary.TotalBalance.ToString("N0")</div>
+    <div class="bad-kpi-card bad-kpi-outstanding">
+        <div class="bad-kpi-label">Outstanding Balance</div>
+        <div class="bad-kpi-value">₹@Model.Summary.TotalBalance.ToString("N0")</div>
+        <div class="bad-kpi-sub">Pending dues</div>
+        <i class="fas fa-hourglass-half bad-kpi-icon"></i>
+    </div>
+    <div class="bad-kpi-card bad-kpi-gst">
+        <div class="bad-kpi-label">GST Collected</div>
+        <div class="bad-kpi-value">₹@Model.Summary.TotalGST.ToString("N0")</div>
+        <div class="bad-kpi-sub">Tax component</div>
+        <i class="fas fa-receipt bad-kpi-icon"></i>
     </div>
 </div>
 
-<div class="filters-container" style="margin-bottom: 18px;">
-    <div style="display:flex; gap:12px; flex-wrap: wrap; align-items:center; justify-content: space-between;">
+<!-- Daily Trend Table -->
+<div class="bad-table-card">
+    <div class="bad-table-header">
         <div>
-            <div style="font-weight:700; color:#1f2937;">Daily Trend</div>
-            <div class="subtext" style="margin-top:4px;">
-                @Model.Summary.TotalDays days • Rooms: @Model.Summary.TotalRooms • Sold nights: @Model.Summary.SoldRoomNights / @Model.Summary.AvailableRoomNights • Room Rev: ₹@Model.Summary.TotalRoomRevenue.ToString("N0") • ADR: ₹@Model.Summary.Adr.ToString("N2") • RevPAR: ₹@Model.Summary.RevPar.ToString("N2") • GST: ₹@Model.Summary.TotalGST.ToString("N0")
+            <div class="bad-table-title">Daily Trend</div>
+            <div class="bad-table-subtitle">
+                @Model.Summary.TotalDays days &bull; @Model.Summary.TotalRooms rooms &bull;
+                Sold: @Model.Summary.SoldRoomNights / @Model.Summary.AvailableRoomNights nights &bull;
+                Rev: ₹@Model.Summary.TotalRoomRevenue.ToString("N0") &bull;
+                ADR: ₹@Model.Summary.Adr.ToString("N2") &bull;
+                RevPAR: ₹@Model.Summary.RevPar.ToString("N2")
             </div>
         </div>
-        <div style="display:flex; gap:10px;">
-            <button class="btn-filter-apply" type="button" title="Export CSV" onclick="exportDashboardToCsv()"><i class="fas fa-file-export"></i> CSV</button>
-            <button class="btn-filter-apply" type="button" title="Export Excel" onclick="exportDashboardToExcel()"><i class="fas fa-file-export"></i> Excel</button>
-            <button class="btn-filter-apply" type="button" title="Export PDF" onclick="exportDashboardToPdf()"><i class="fas fa-file-export"></i> PDF</button>
+        <div class="bad-export-group">
+            <button class="bad-btn bad-btn-csv"   type="button" onclick="exportDashboardToCsv()"><i class="fas fa-file-csv"></i> CSV</button>
+            <button class="bad-btn bad-btn-excel" type="button" onclick="exportDashboardToExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+            <button class="bad-btn bad-btn-pdf"   type="button" onclick="exportDashboardToPdf()"><i class="fas fa-file-pdf"></i> PDF</button>
         </div>
+    </div>
+    <div style="overflow-x:auto;">
+        <table class="bad-table" id="businessDashboardDailyTable">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th class="text-end">Bookings</th>
+                    <th class="text-end">Sold Nights</th>
+                    <th class="text-end">Occupancy %</th>
+                    <th class="text-end">Room Revenue</th>
+                    <th class="text-end">ADR</th>
+                    <th class="text-end">RevPAR</th>
+                    <th class="text-end">Receipts</th>
+                    <th class="text-end">Collected</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (!Model.Daily.Any())
+            {
+                <tr class="bad-empty-row">
+                    <td colspan="9"><i class="fas fa-chart-line"></i>No daily data for the selected period.</td>
+                </tr>
+            }
+            @foreach (var row in Model.Daily)
+            {
+                var occPct = (double)row.OccupancyPercent;
+                var barWidth = Math.Min(100, Math.Max(0, occPct));
+                <tr>
+                    <td><span class="bad-date-cell">@row.ReportDate.ToString("dd MMM yyyy")</span></td>
+                    <td class="text-end">@row.TotalBookings</td>
+                    <td class="text-end">@row.SoldRoomNights</td>
+                    <td class="text-end">
+                        <div class="bad-occ-bar-wrap">
+                            <span>@row.OccupancyPercent.ToString("N2")%</span>
+                            <div class="bad-occ-bar"><div class="bad-occ-fill" style="width:@barWidth.ToString("F1")%"></div></div>
+                        </div>
+                    </td>
+                    <td class="text-end">₹@row.RoomRevenue.ToString("N2")</td>
+                    <td class="text-end">₹@row.Adr.ToString("N2")</td>
+                    <td class="text-end">₹@row.RevPar.ToString("N2")</td>
+                    <td class="text-end">@row.ReceiptCount</td>
+                    <td class="text-end">₹@row.CollectedAmount.ToString("N2")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
     </div>
 </div>
 
-<div class="table-container" style="overflow: visible; margin-bottom: 22px;">
-    <table class="data-table" id="businessDashboardDailyTable">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th class="text-end">Bookings</th>
-                <th class="text-end">Sold Nights</th>
-                <th class="text-end">Occupancy %</th>
-                <th class="text-end">Room Revenue</th>
-                <th class="text-end">ADR</th>
-                <th class="text-end">RevPAR</th>
-                <th class="text-end">Receipts</th>
-                <th class="text-end">Collected</th>
-            </tr>
-        </thead>
-        <tbody>
-        @foreach (var row in Model.Daily)
-        {
-            <tr>
-                <td>@row.ReportDate.ToString("dd MMM yyyy")</td>
-                <td class="text-end">@row.TotalBookings</td>
-                <td class="text-end">@row.SoldRoomNights</td>
-                <td class="text-end">@row.OccupancyPercent.ToString("N2")%</td>
-                <td class="text-end">₹@row.RoomRevenue.ToString("N2")</td>
-                <td class="text-end">₹@row.Adr.ToString("N2")</td>
-                <td class="text-end">₹@row.RevPar.ToString("N2")</td>
-                <td class="text-end">@row.ReceiptCount</td>
-                <td class="text-end">₹@row.CollectedAmount.ToString("N2")</td>
-            </tr>
-        }
-        </tbody>
-    </table>
-</div>
-
-<div class="filters-container" style="margin-bottom: 12px;">
-    <div style="display:flex; gap:12px; flex-wrap: wrap; align-items:center; justify-content: space-between;">
+<!-- Payment Method Summary Table -->
+<div class="bad-table-card">
+    <div class="bad-table-header">
         <div>
-            <div style="font-weight:700; color:#1f2937;">Payment Method Summary</div>
-            <div class="subtext" style="margin-top:4px;">@Model.PaymentMethods.Count rows</div>
+            <div class="bad-table-title">Payment Method Summary</div>
+            <div class="bad-table-subtitle">@Model.PaymentMethods.Count row@(Model.PaymentMethods.Count == 1 ? "" : "s") found</div>
         </div>
     </div>
-</div>
-
-<div class="table-container" style="overflow: visible;">
-    <table class="data-table" id="businessDashboardMethodTable">
-        <thead>
-            <tr>
-                <th>Payment Method</th>
-                <th class="text-end">Receipts</th>
-                <th class="text-end">Collected</th>
-            </tr>
-        </thead>
-        <tbody>
-        @foreach (var row in Model.PaymentMethods)
-        {
-            <tr>
-                <td>@(string.IsNullOrWhiteSpace(row.PaymentMethod) ? "Unknown" : row.PaymentMethod)</td>
-                <td class="text-end">@row.ReceiptCount</td>
-                <td class="text-end">₹@row.CollectedAmount.ToString("N2")</td>
-            </tr>
-        }
-        </tbody>
-    </table>
+    <div style="overflow-x:auto;">
+        <table class="bad-table" id="businessDashboardMethodTable">
+            <thead>
+                <tr>
+                    <th>Payment Method</th>
+                    <th class="text-end">Receipts</th>
+                    <th class="text-end">Collected</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (!Model.PaymentMethods.Any())
+            {
+                <tr class="bad-empty-row">
+                    <td colspan="3"><i class="fas fa-wallet"></i>No payment data for the selected period.</td>
+                </tr>
+            }
+            @foreach (var row in Model.PaymentMethods)
+            {
+                <tr>
+                    <td><span class="bad-method-pill"><i class="fas fa-circle-dot" style="font-size:.55rem;"></i>@(string.IsNullOrWhiteSpace(row.PaymentMethod) ? "Unknown" : row.PaymentMethod)</span></td>
+                    <td class="text-end">@row.ReceiptCount</td>
+                    <td class="text-end">₹@row.CollectedAmount.ToString("N2")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
 </div>
 
 @section Scripts {

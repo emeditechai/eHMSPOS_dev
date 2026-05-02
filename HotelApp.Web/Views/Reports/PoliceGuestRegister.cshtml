@@ -6,106 +6,249 @@
 @section Styles {
     <link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
     <style>
-        /* ── Police/Guest Register ── */
-        .pgr-header {
-            background: linear-gradient(135deg, #1e3a5f, #2c5f8a);
-            color: #fff; border-radius: 10px;
-            padding: 16px 24px; margin-bottom: 16px;
-            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+        /* ── Page Header ── */
+        .pgr-page-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 18px;
         }
-        .pgr-header h2 { margin: 0; font-size: 1.15rem; white-space: nowrap; }
-        .pgr-header .pgr-meta { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.85rem; opacity: 0.92; }
-        .pgr-header .pgr-meta span i { margin-right: 5px; }
+        .pgr-header-icon {
+            width: 48px; height: 48px;
+            border-radius: 14px;
+            background: linear-gradient(135deg,#1e3a8a,#3b82f6);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 1.4rem;
+            box-shadow: 0 4px 14px rgba(30,58,138,.35);
+            flex-shrink: 0;
+        }
+        .pgr-page-header h2 {
+            margin: 0;
+            font-size: 1.55rem;
+            font-weight: 700;
+            color: #0c1a2e;
+            letter-spacing: -.3px;
+        }
+        .pgr-page-header p {
+            margin: 2px 0 0;
+            font-size: .85rem;
+            color: #6b7280;
+        }
 
-        .pgr-filters {
-            background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
-            padding: 14px 20px; margin-bottom: 14px;
+        /* ── Hotel Info Card ── */
+        .pgr-hotel-card {
+            background: linear-gradient(135deg,#1e3a5f 0%,#2c5f8a 100%);
+            border-radius: 16px;
+            padding: 18px 24px;
+            color: #fff;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            box-shadow: 0 4px 18px rgba(30,58,95,.25);
         }
-        .pgr-filters form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
-        .pgr-filters .f-group { display: flex; flex-direction: column; }
-        .pgr-filters .f-group label { font-size: 0.75rem; font-weight: 700; color: #374151; margin-bottom: 4px; }
-        .pgr-filters .f-group input { height: 34px; font-size: 0.85rem; border: 1px solid #d1d5db; border-radius: 6px; padding: 0 8px; }
-        .pgr-filters .f-actions { display: flex; gap: 8px; margin-left: auto; }
+        .pgr-hotel-card .pgr-hotel-icon { font-size: 2rem; opacity: .4; flex-shrink: 0; }
+        .pgr-hotel-card .pgr-hotel-name { font-size: 1.05rem; font-weight: 700; }
+        .pgr-hotel-card .pgr-hotel-meta { font-size: .8rem; opacity: .8; margin-top: 3px; display: flex; flex-wrap: wrap; gap: 14px; }
+        .pgr-hotel-card .pgr-hotel-meta span i { margin-right: 5px; }
+        .pgr-period-pill {
+            margin-left: auto;
+            background: rgba(255,255,255,.12);
+            border: 1px solid rgba(255,255,255,.2);
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: .78rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
 
-        .pgr-summary {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px;
+        /* ── Filter Card ── */
+        .pgr-filter-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px 24px;
+            box-shadow: 0 1px 8px rgba(0,0,0,.07);
+            margin-bottom: 22px;
+            border: 1px solid #e9eaf0;
         }
-        .pgr-summary .s-card {
-            border-radius: 10px; padding: 14px 18px; color: #fff;
+        .pgr-filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: flex-end;
+            justify-content: space-between;
         }
-        .pgr-summary .s-card h4 { margin: 0 0 2px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9; }
-        .pgr-summary .s-card .s-val { font-size: 1.6rem; font-weight: 800; }
-        .s-guests   { background: linear-gradient(135deg, #3b82f6, #2563eb); }
-        .s-bookings { background: linear-gradient(135deg, #f59e0b, #d97706); }
-        .s-indian   { background: linear-gradient(135deg, #10b981, #059669); }
-        .s-foreign  { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .pgr-filter-fields { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+        .pgr-field label {
+            display: block;
+            font-size: .72rem;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+        .pgr-field input {
+            border: 1.5px solid #d1d5db;
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-size: .875rem;
+            color: #1f2937;
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+            background: #f9fafb;
+        }
+        .pgr-field input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+            background: #fff;
+        }
+        .pgr-filter-actions { display: flex; gap: 10px; align-items: flex-end; }
+        .pgr-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 9px 20px;
+            border-radius: 10px;
+            font-size: .875rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all .2s;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .pgr-btn-primary { background:linear-gradient(135deg,#1e3a8a,#3b82f6); color:#fff; box-shadow:0 3px 10px rgba(59,130,246,.35); }
+        .pgr-btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(59,130,246,.4); color:#fff; }
+        .pgr-btn-ghost { background:#f3f4f6; color:#374151; border:1.5px solid #e5e7eb; }
+        .pgr-btn-ghost:hover { background:#e5e7eb; transform:translateY(-1px); color:#1f2937; }
 
-        .pgr-toolbar {
-            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
-            margin-bottom: 10px;
+        /* ── Summary Cards ── */
+        .pgr-summary-row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 22px;
         }
-        .pgr-toolbar .t-info { font-weight: 700; font-size: 0.9rem; color: #1f2937; }
-        .pgr-toolbar .t-info small { font-weight: 400; color: #6b7280; margin-left: 6px; }
-        .pgr-toolbar .t-btns { display: flex; gap: 6px; }
-        .pgr-toolbar .t-btns button {
-            background: #1e3a5f; color: #fff; border: none; border-radius: 6px;
-            padding: 6px 12px; font-size: 0.78rem; font-weight: 600; cursor: pointer;
-            display: inline-flex; align-items: center; gap: 5px;
+        .pgr-summary-card {
+            flex: 1;
+            min-width: 150px;
+            border-radius: 16px;
+            padding: 18px 22px;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 18px rgba(0,0,0,.12);
         }
-        .pgr-toolbar .t-btns button:hover { background: #2c5f8a; }
+        .pgr-summary-card::before {
+            content: '';
+            position: absolute;
+            top: -18px; right: -18px;
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.12);
+        }
+        .pgr-sc-label { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.8px; opacity:.85; margin-bottom:8px; }
+        .pgr-sc-value { font-size:1.75rem; font-weight:800; line-height:1; }
+        .pgr-sc-icon  { position:absolute; bottom:12px; right:16px; font-size:1.8rem; opacity:.2; }
+        .pgr-sc-guests   { background:linear-gradient(135deg,#3b82f6,#2563eb); }
+        .pgr-sc-bookings { background:linear-gradient(135deg,#f59e0b,#d97706); }
+        .pgr-sc-indian   { background:linear-gradient(135deg,#10b981,#059669); }
+        .pgr-sc-foreign  { background:linear-gradient(135deg,#ef4444,#dc2626); }
 
-        /* Compact table */
-        #registerTable { font-size: 0.8rem; }
-        #registerTable thead th {
-            padding: 8px 6px !important; font-size: 0.72rem; white-space: nowrap;
-            letter-spacing: 0.3px;
+        /* ── Table Card ── */
+        .pgr-table-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 1px 8px rgba(0,0,0,.07);
+            border: 1px solid #e9eaf0;
+            overflow: hidden;
         }
-        #registerTable tbody td {
-            padding: 7px 6px !important; font-size: 0.8rem; vertical-align: top;
+        .pgr-table-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 18px 22px 14px;
+            border-bottom: 1px solid #f0f0f5;
         }
-        #registerTable tbody td:last-child,
-        #registerTable thead th:last-child {
-            min-width: auto; width: auto;
+        .pgr-table-title    { font-size:1rem; font-weight:700; color:#1f2937; }
+        .pgr-table-subtitle { font-size:.8rem; color:#9ca3af; margin-top:2px; }
+        .pgr-export-group   { display:flex; gap:8px; flex-wrap:wrap; }
+        .pgr-btn-csv   { background:linear-gradient(135deg,#10b981,#059669); color:#fff; box-shadow:0 3px 10px rgba(16,185,129,.3); }
+        .pgr-btn-excel { background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; box-shadow:0 3px 10px rgba(59,130,246,.3); }
+        .pgr-btn-pdf   { background:linear-gradient(135deg,#ef4444,#dc2626); color:#fff; box-shadow:0 3px 10px rgba(239,68,68,.3); }
+        .pgr-btn-print { background:linear-gradient(135deg,#6366f1,#4f46e5); color:#fff; box-shadow:0 3px 10px rgba(99,102,241,.3); }
+        .pgr-btn-csv:hover   { transform:translateY(-1px); box-shadow:0 6px 16px rgba(16,185,129,.4);  color:#fff; }
+        .pgr-btn-excel:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(59,130,246,.4);  color:#fff; }
+        .pgr-btn-pdf:hover   { transform:translateY(-1px); box-shadow:0 6px 16px rgba(239,68,68,.4);   color:#fff; }
+        .pgr-btn-print:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(99,102,241,.4);  color:#fff; }
+
+        /* ── Table ── */
+        .pgr-table { width:100%; border-collapse:collapse; font-size:.8rem; }
+        .pgr-table thead tr { background:#eff6ff; }
+        .pgr-table thead th {
+            padding: 11px 10px;
+            font-size: .68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            color: #6b7280;
+            border-bottom: 2px solid #e9eaf0;
+            white-space: nowrap;
         }
-        .addr-cell { max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .addr-cell:hover { white-space: normal; overflow: visible; }
-        .pgr-badge-foreign { background: #ef4444; color: #fff; font-size: 0.6rem; padding: 1px 6px; border-radius: 8px; vertical-align: middle; margin-left: 4px; font-weight: 700; }
+        .pgr-table tbody tr { transition:background .15s; border-bottom:1px solid #f3f4f6; }
+        .pgr-table tbody tr:hover { background:#eff6ff; }
+        .pgr-table tbody td { padding:10px 10px; color:#374151; vertical-align:top; }
+        .pgr-table .text-center { text-align:center; }
+        .addr-cell { max-width:150px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .addr-cell:hover { white-space:normal; overflow:visible; }
+        .pgr-badge-foreign {
+            background: #ef4444; color: #fff;
+            font-size: .6rem; padding: 2px 7px;
+            border-radius: 8px; vertical-align: middle;
+            margin-left: 5px; font-weight: 700;
+        }
+        .pgr-name-cell { white-space: nowrap; }
         .foreign-section {
-            background: #fff8f0; border-left: 3px solid #e67e22;
-            padding: 6px 10px; font-size: 0.78rem; border-radius: 4px;
+            background: #fff8f0;
+            border-left: 3px solid #f59e0b;
+            padding: 6px 12px;
+            font-size: .78rem;
+            border-radius: 6px;
+            color: #374151;
         }
-        .foreign-section strong { color: #c2410c; }
+        .foreign-section strong { color: #b45309; }
+        .pgr-empty-row td {
+            text-align: center;
+            padding: 48px 20px;
+            color: #9ca3af;
+        }
+        .pgr-empty-row i { font-size: 2rem; display: block; margin-bottom: 10px; opacity: .4; }
 
-        .pgr-print-header { display: none; }
-        .pgr-empty { text-align: center; padding: 40px 20px; color: #6b7280; }
-        .pgr-empty i { font-size: 2rem; margin-bottom: 8px; display: block; }
-
-        @@media (max-width: 1200px) {
-            .pgr-summary { grid-template-columns: repeat(2, 1fr); }
-        }
-        @@media (max-width: 768px) {
-            .pgr-summary { grid-template-columns: 1fr 1fr; }
-            .pgr-filters form { flex-direction: column; }
-            .pgr-filters .f-actions { margin-left: 0; }
-        }
+        /* ── Print ── */
+        .pgr-print-header { display:none; }
+        @@media (max-width:1200px) { .pgr-summary-row { flex-wrap:wrap; } .pgr-summary-card { min-width:calc(50% - 8px); } }
         @@media print {
-            .top-navbar, .navbar-container, .sidebar, .pgr-filters,
-            .pgr-summary, .page-header, .no-print, .pgr-toolbar, footer { display: none !important; }
-            .pgr-print-header { display: block !important; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 12px; text-align: center; }
-            .pgr-print-header h2 { font-size: 1.2rem; margin: 0 0 4px; }
-            .pgr-print-header .meta-line { font-size: 0.85rem; margin: 2px 0; }
-            .pgr-header { display: none !important; }
-            body { font-size: 9pt !important; }
-            #registerTable thead th { padding: 4px 5px !important; font-size: 8pt !important; }
-            #registerTable tbody td { padding: 3px 5px !important; font-size: 8pt !important; }
-            .table-container { overflow: visible !important; box-shadow: none !important; border: 1px solid #000; }
-            .foreign-section { border-left: 2px solid #000; background: #f5f5f5; }
-            .addr-cell { max-width: none; white-space: normal; }
+            .top-navbar,.navbar-container,.pgr-filter-card,
+            .pgr-summary-row,.pgr-page-header,.no-print,
+            .pgr-table-header,.pgr-hotel-card,footer { display:none !important; }
+            .pgr-print-header { display:block !important; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:12px; text-align:center; }
+            .pgr-print-header h2 { font-size:1.2rem; margin:0 0 4px; }
+            .pgr-print-header .meta-line { font-size:.85rem; margin:2px 0; }
+            .pgr-table-card { border:1px solid #000; border-radius:0; box-shadow:none; }
+            body { font-size:9pt !important; }
+            .pgr-table thead th { padding:4px 5px !important; font-size:8pt !important; }
+            .pgr-table tbody td { padding:3px 5px !important; font-size:8pt !important; }
+            .addr-cell { max-width:none; white-space:normal; }
+            .foreign-section { border-left:2px solid #000; background:#f5f5f5; }
         }
     </style>
 }
 
-@* ── Print-only header ── *@
+@* Print-only header *@
 <div class="pgr-print-header">
     <h2>POLICE / GUEST REGISTER</h2>
     <div class="meta-line"><strong>@Model.HotelName</strong></div>
@@ -117,192 +260,211 @@
     <div class="meta-line">Period: @Model.FromDate.ToString("dd/MM/yyyy") @Model.FromTime.ToString("hh:mm tt") &ndash; @Model.ToDate.ToString("dd/MM/yyyy") @Model.ToTime.ToString("hh:mm tt") &nbsp;|&nbsp; Generated: @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</div>
 </div>
 
-@* ── Screen header ── *@
-<div class="page-header no-print">
-    <h2><i class="fas fa-shield-alt"></i> Police / Guest Register</h2>
-</div>
-
-<div class="pgr-header no-print">
-    <h2><i class="fas fa-hotel me-2"></i>@(string.IsNullOrWhiteSpace(Model.HotelName) ? "Hotel" : Model.HotelName)</h2>
-    <div class="pgr-meta">
-        @if (!string.IsNullOrWhiteSpace(Model.HotelAddress))
-        {
-            <span><i class="fas fa-map-marker-alt"></i>@Model.HotelAddress</span>
-        }
-        @if (!string.IsNullOrWhiteSpace(Model.PoliceStation))
-        {
-            <span><i class="fas fa-shield-alt"></i>Police Station: @Model.PoliceStation</span>
-        }
-        <span><i class="fas fa-calendar-alt"></i>@Model.FromDate.ToString("dd/MM/yyyy") @Model.FromTime.ToString("hh:mm tt") &ndash; @Model.ToDate.ToString("dd/MM/yyyy") @Model.ToTime.ToString("hh:mm tt")</span>
+<!-- Page Header -->
+<div class="pgr-page-header no-print">
+    <div class="pgr-header-icon"><i class="fas fa-shield-alt"></i></div>
+    <div>
+        <h2>Police / Guest Register</h2>
+        <p>Guest check-in records for the police register</p>
     </div>
 </div>
 
-@* ── Filters ── *@
-<div class="pgr-filters no-print">
+<!-- Hotel Info Card -->
+<div class="pgr-hotel-card no-print">
+    <i class="fas fa-hotel pgr-hotel-icon"></i>
+    <div>
+        <div class="pgr-hotel-name">@(string.IsNullOrWhiteSpace(Model.HotelName) ? "Hotel" : Model.HotelName)</div>
+        <div class="pgr-hotel-meta">
+            @if (!string.IsNullOrWhiteSpace(Model.HotelAddress))
+            {
+                <span><i class="fas fa-map-marker-alt"></i>@Model.HotelAddress</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.PoliceStation))
+            {
+                <span><i class="fas fa-shield-alt"></i>Police Station: @Model.PoliceStation</span>
+            }
+        </div>
+    </div>
+    <div class="pgr-period-pill">
+        <i class="fas fa-calendar-alt" style="margin-right:6px;"></i>
+        @Model.FromDate.ToString("dd/MM/yyyy") @Model.FromTime.ToString("hh:mm tt") &ndash; @Model.ToDate.ToString("dd/MM/yyyy") @Model.ToTime.ToString("hh:mm tt")
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="pgr-filter-card no-print">
     <form method="get" action="@Url.Action("PoliceGuestRegister", "Reports")">
-        <div class="f-group">
-            <label for="fromDate">From Date</label>
-            <input id="fromDate" name="fromDate" type="date" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
-        </div>
-        <div class="f-group">
-            <label for="fromTime">From Time</label>
-            <input id="fromTime" name="fromTime" type="time" value="@Model.FromTime.ToString("HH:mm")" style="width:100px;" />
-        </div>
-        <div class="f-group">
-            <label for="toDate">To Date</label>
-            <input id="toDate" name="toDate" type="date" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
-        </div>
-        <div class="f-group">
-            <label for="toTime">To Time</label>
-            <input id="toTime" name="toTime" type="time" value="@Model.ToTime.ToString("HH:mm")" style="width:100px;" />
-        </div>
-        <div class="f-group">
-            <label for="roomNumber">Room No</label>
-            <input id="roomNumber" name="roomNumber" type="text" placeholder="e.g. 101" value="@Model.RoomNumber" style="width:80px;" />
-        </div>
-        <div class="f-group">
-            <label for="nationality">Nationality</label>
-            <input id="nationality" name="nationality" type="text" placeholder="e.g. Indian" value="@Model.Nationality" style="width:110px;" />
-        </div>
-        <div class="f-group">
-            <label for="guestName">Guest Name</label>
-            <input id="guestName" name="guestName" type="text" placeholder="Search name" value="@Model.GuestName" style="width:130px;" />
-        </div>
-        <div class="f-actions">
-            <button class="btn-filter-apply" type="submit"><i class="fas fa-filter"></i> Apply</button>
-            <a class="btn-filter-clear" href="@Url.Action("PoliceGuestRegister", "Reports")"><i class="fas fa-undo"></i> Reset</a>
+        <div class="pgr-filter-row">
+            <div class="pgr-filter-fields">
+                <div class="pgr-field">
+                    <label for="fromDate">From Date</label>
+                    <input id="fromDate" name="fromDate" type="date" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="pgr-field">
+                    <label for="fromTime">From Time</label>
+                    <input id="fromTime" name="fromTime" type="time" value="@Model.FromTime.ToString("HH:mm")" style="width:110px;" />
+                </div>
+                <div class="pgr-field">
+                    <label for="toDate">To Date</label>
+                    <input id="toDate" name="toDate" type="date" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="pgr-field">
+                    <label for="toTime">To Time</label>
+                    <input id="toTime" name="toTime" type="time" value="@Model.ToTime.ToString("HH:mm")" style="width:110px;" />
+                </div>
+                <div class="pgr-field">
+                    <label for="roomNumber">Room No</label>
+                    <input id="roomNumber" name="roomNumber" type="text" placeholder="e.g. 101" value="@Model.RoomNumber" style="width:90px;" />
+                </div>
+                <div class="pgr-field">
+                    <label for="nationality">Nationality</label>
+                    <input id="nationality" name="nationality" type="text" placeholder="e.g. Indian" value="@Model.Nationality" style="width:120px;" />
+                </div>
+                <div class="pgr-field">
+                    <label for="guestName">Guest Name</label>
+                    <input id="guestName" name="guestName" type="text" placeholder="Search name" value="@Model.GuestName" style="width:140px;" />
+                </div>
+            </div>
+            <div class="pgr-filter-actions">
+                <button class="pgr-btn pgr-btn-primary" type="submit"><i class="fas fa-filter"></i> Apply</button>
+                <a class="pgr-btn pgr-btn-ghost" href="@Url.Action("PoliceGuestRegister", "Reports")"><i class="fas fa-rotate-left"></i> Reset</a>
+            </div>
         </div>
     </form>
 </div>
 
-@* ── Summary cards ── *@
-<div class="pgr-summary no-print">
-    <div class="s-card s-guests">
-        <h4>Total Guests</h4>
-        <div class="s-val">@Model.Summary.TotalGuests</div>
+<!-- Summary Cards -->
+<div class="pgr-summary-row no-print">
+    <div class="pgr-summary-card pgr-sc-guests">
+        <div class="pgr-sc-label">Total Guests</div>
+        <div class="pgr-sc-value">@Model.Summary.TotalGuests</div>
+        <i class="fas fa-users pgr-sc-icon"></i>
     </div>
-    <div class="s-card s-bookings">
-        <h4>Total Bookings</h4>
-        <div class="s-val">@Model.Summary.TotalBookings</div>
+    <div class="pgr-summary-card pgr-sc-bookings">
+        <div class="pgr-sc-label">Total Bookings</div>
+        <div class="pgr-sc-value">@Model.Summary.TotalBookings</div>
+        <i class="fas fa-calendar-check pgr-sc-icon"></i>
     </div>
-    <div class="s-card s-indian">
-        <h4>Indian Guests</h4>
-        <div class="s-val">@Model.Summary.IndianGuests</div>
+    <div class="pgr-summary-card pgr-sc-indian">
+        <div class="pgr-sc-label">Indian Guests</div>
+        <div class="pgr-sc-value">@Model.Summary.IndianGuests</div>
+        <i class="fas fa-flag pgr-sc-icon"></i>
     </div>
-    <div class="s-card s-foreign">
-        <h4>Foreign Guests</h4>
-        <div class="s-val">@Model.Summary.ForeignGuests</div>
-    </div>
-</div>
-
-@* ── Toolbar ── *@
-<div class="pgr-toolbar no-print">
-    <div class="t-info">Guest Register<small>@Model.Rows.Count rows</small></div>
-    <div class="t-btns">
-        <button type="button" onclick="exportToCsv()"><i class="fas fa-file-csv"></i> CSV</button>
-        <button type="button" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> Excel</button>
-        <button type="button" onclick="exportToPdf()"><i class="fas fa-file-pdf"></i> PDF</button>
-        <button type="button" onclick="window.print()"><i class="fas fa-print"></i> Print</button>
+    <div class="pgr-summary-card pgr-sc-foreign">
+        <div class="pgr-sc-label">Foreign Guests</div>
+        <div class="pgr-sc-value">@Model.Summary.ForeignGuests</div>
+        <i class="fas fa-passport pgr-sc-icon"></i>
     </div>
 </div>
 
-@* ── Register table ── *@
-<div class="table-container">
-    <table class="data-table" id="registerTable">
-        <thead>
-            <tr>
-                <th>Sl.</th>
-                <th>Guest Name</th>
-                <th>Gender</th>
-                <th>Age</th>
-                <th>Nationality</th>
-                <th>Address</th>
-                <th>ID Type</th>
-                <th>ID Number</th>
-                <th>Check-in</th>
-                <th>Check-out</th>
-                <th>Room</th>
-                <th>Guests</th>
-                <th>Purpose</th>
-                <th>Contact</th>
-                <th>Coming From</th>
-                <th>Going To</th>
-            </tr>
-        </thead>
-        <tbody>
-        @foreach (var row in Model.Rows)
-        {
-            <tr>
-                <td>@row.SlNo</td>
-                <td style="white-space:nowrap;">
-                    @(string.IsNullOrWhiteSpace(row.GuestName) ? "-" : row.GuestName)
-                    @if (row.IsForeignGuest)
-                    {
-                        <span class="pgr-badge-foreign">FOREIGN</span>
-                    }
-                </td>
-                <td>@(string.IsNullOrWhiteSpace(row.Gender) ? "-" : row.Gender)</td>
-                <td>@(row.Age.HasValue ? row.Age.Value.ToString() : "-")</td>
-                <td>@(string.IsNullOrWhiteSpace(row.Nationality) ? "-" : row.Nationality)</td>
-                <td class="addr-cell" title="@string.Join(", ", new[] { row.Address, row.City, row.State, row.Country, row.Pincode }.Where(p => !string.IsNullOrWhiteSpace(p)))">
-                    @{
-                        var parts = new[] { row.Address, row.City, row.State, row.Country, row.Pincode }
-                            .Where(p => !string.IsNullOrWhiteSpace(p));
-                        var fullAddr = string.Join(", ", parts);
-                    }
-                    @(string.IsNullOrWhiteSpace(fullAddr) ? "-" : fullAddr)
-                </td>
-                <td>@(string.IsNullOrWhiteSpace(row.IdType) ? "-" : row.IdType)</td>
-                <td style="white-space:nowrap;">@(string.IsNullOrWhiteSpace(row.IdNumber) ? "-" : row.IdNumber)</td>
-                <td style="white-space:nowrap;">
-                    @{
-                        var ciDate = row.ActualCheckInDate ?? row.CheckInDate;
-                    }
-                    @ciDate.ToString("dd/MM/yyyy hh:mm tt")
-                </td>
-                <td style="white-space:nowrap;">
-                    @if (row.ActualCheckOutDate.HasValue)
-                    {
-                        @row.ActualCheckOutDate.Value.ToString("dd/MM/yyyy hh:mm tt")
-                    }
-                    else
-                    {
-                        @row.CheckOutDate.ToString("dd/MM/yyyy")
-                    }
-                </td>
-                <td>@(string.IsNullOrWhiteSpace(row.RoomNumber) ? "-" : row.RoomNumber)</td>
-                <td class="text-center">@row.NumberOfGuests</td>
-                <td>@(string.IsNullOrWhiteSpace(row.PurposeOfVisit) ? "-" : row.PurposeOfVisit)</td>
-                <td style="white-space:nowrap;">@(string.IsNullOrWhiteSpace(row.ContactNumber) ? "-" : row.ContactNumber)</td>
-                <td>@(string.IsNullOrWhiteSpace(row.ComingFrom) ? "-" : row.ComingFrom)</td>
-                <td>@(string.IsNullOrWhiteSpace(row.GoingTo) ? "-" : row.GoingTo)</td>
-            </tr>
-            @if (row.IsForeignGuest)
-            {
+<!-- Table Card -->
+<div class="pgr-table-card">
+    <div class="pgr-table-header no-print">
+        <div>
+            <div class="pgr-table-title">Guest Register</div>
+            <div class="pgr-table-subtitle">@Model.Rows.Count row@(Model.Rows.Count == 1 ? "" : "s") found</div>
+        </div>
+        <div class="pgr-export-group">
+            <button class="pgr-btn pgr-btn-csv"   type="button" onclick="exportToCsv()"><i class="fas fa-file-csv"></i> CSV</button>
+            <button class="pgr-btn pgr-btn-excel" type="button" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+            <button class="pgr-btn pgr-btn-pdf"   type="button" onclick="exportToPdf()"><i class="fas fa-file-pdf"></i> PDF</button>
+            <button class="pgr-btn pgr-btn-print" type="button" onclick="window.print()"><i class="fas fa-print"></i> Print</button>
+        </div>
+    </div>
+
+    <div style="overflow-x:auto;">
+        <table class="pgr-table" id="registerTable">
+            <thead>
                 <tr>
-                    <td colspan="16" style="padding:0 6px 6px !important; border-bottom:1px solid #e5e7eb;">
-                        <div class="foreign-section">
-                            <strong><i class="fas fa-passport me-1"></i>FRRO Details</strong> &mdash;
-                            ID: <strong>@(string.IsNullOrWhiteSpace(row.IdType) ? "N/A" : row.IdType)</strong> |
-                            No: <strong>@(string.IsNullOrWhiteSpace(row.IdNumber) ? "N/A" : row.IdNumber)</strong> |
-                            Nationality: <strong>@row.Nationality</strong> |
-                            Country: <strong>@(string.IsNullOrWhiteSpace(row.Country) ? "N/A" : row.Country)</strong>
-                        </div>
-                    </td>
+                    <th>Sl.</th>
+                    <th>Guest Name</th>
+                    <th>Gender</th>
+                    <th>Age</th>
+                    <th>Nationality</th>
+                    <th>Address</th>
+                    <th>ID Type</th>
+                    <th>ID Number</th>
+                    <th>Check-In</th>
+                    <th>Check-Out</th>
+                    <th>Room</th>
+                    <th>Guests</th>
+                    <th>Purpose</th>
+                    <th>Contact</th>
+                    <th>Coming From</th>
+                    <th>Going To</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (!Model.Rows.Any())
+            {
+                <tr class="pgr-empty-row">
+                    <td colspan="16"><i class="fas fa-search"></i>No guest records found for the selected period.</td>
                 </tr>
             }
-        }
-        </tbody>
-    </table>
-</div>
-
-@if (!Model.Rows.Any())
-{
-    <div class="pgr-empty">
-        <i class="fas fa-search"></i>
-        <p>No guest records found for the selected period.</p>
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <td>@row.SlNo</td>
+                    <td class="pgr-name-cell">
+                        @(string.IsNullOrWhiteSpace(row.GuestName) ? "-" : row.GuestName)
+                        @if (row.IsForeignGuest)
+                        {
+                            <span class="pgr-badge-foreign">FOREIGN</span>
+                        }
+                    </td>
+                    <td>@(string.IsNullOrWhiteSpace(row.Gender) ? "-" : row.Gender)</td>
+                    <td>@(row.Age.HasValue ? row.Age.Value.ToString() : "-")</td>
+                    <td>@(string.IsNullOrWhiteSpace(row.Nationality) ? "-" : row.Nationality)</td>
+                    <td class="addr-cell" title="@string.Join(", ", new[] { row.Address, row.City, row.State, row.Country, row.Pincode }.Where(p => !string.IsNullOrWhiteSpace(p)))">
+                        @{
+                            var parts = new[] { row.Address, row.City, row.State, row.Country, row.Pincode }
+                                .Where(p => !string.IsNullOrWhiteSpace(p));
+                            var fullAddr = string.Join(", ", parts);
+                        }
+                        @(string.IsNullOrWhiteSpace(fullAddr) ? "-" : fullAddr)
+                    </td>
+                    <td>@(string.IsNullOrWhiteSpace(row.IdType) ? "-" : row.IdType)</td>
+                    <td style="white-space:nowrap;">@(string.IsNullOrWhiteSpace(row.IdNumber) ? "-" : row.IdNumber)</td>
+                    <td style="white-space:nowrap;">
+                        @{ var ciDate = row.ActualCheckInDate ?? row.CheckInDate; }
+                        @ciDate.ToString("dd/MM/yyyy hh:mm tt")
+                    </td>
+                    <td style="white-space:nowrap;">
+                        @if (row.ActualCheckOutDate.HasValue)
+                        {
+                            @row.ActualCheckOutDate.Value.ToString("dd/MM/yyyy hh:mm tt")
+                        }
+                        else
+                        {
+                            @row.CheckOutDate.ToString("dd/MM/yyyy")
+                        }
+                    </td>
+                    <td>@(string.IsNullOrWhiteSpace(row.RoomNumber) ? "-" : row.RoomNumber)</td>
+                    <td class="text-center">@row.NumberOfGuests</td>
+                    <td>@(string.IsNullOrWhiteSpace(row.PurposeOfVisit) ? "-" : row.PurposeOfVisit)</td>
+                    <td style="white-space:nowrap;">@(string.IsNullOrWhiteSpace(row.ContactNumber) ? "-" : row.ContactNumber)</td>
+                    <td>@(string.IsNullOrWhiteSpace(row.ComingFrom) ? "-" : row.ComingFrom)</td>
+                    <td>@(string.IsNullOrWhiteSpace(row.GoingTo) ? "-" : row.GoingTo)</td>
+                </tr>
+                @if (row.IsForeignGuest)
+                {
+                    <tr>
+                        <td colspan="16" style="padding:0 10px 8px !important; border-bottom:1px solid #e5e7eb;">
+                            <div class="foreign-section">
+                                <strong><i class="fas fa-passport me-1"></i>FRRO Details</strong> &mdash;
+                                ID: <strong>@(string.IsNullOrWhiteSpace(row.IdType) ? "N/A" : row.IdType)</strong> |
+                                No: <strong>@(string.IsNullOrWhiteSpace(row.IdNumber) ? "N/A" : row.IdNumber)</strong> |
+                                Nationality: <strong>@row.Nationality</strong> |
+                                Country: <strong>@(string.IsNullOrWhiteSpace(row.Country) ? "N/A" : row.Country)</strong>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
     </div>
-}
+</div>
 
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>

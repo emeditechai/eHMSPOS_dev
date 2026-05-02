@@ -7,154 +7,452 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
+    <style>
+        /* ── Page Header ── */
+        .dcr-page-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+        .dcr-header-icon {
+            width: 48px; height: 48px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 1.4rem;
+            box-shadow: 0 4px 14px rgba(14,165,233,.35);
+            flex-shrink: 0;
+        }
+        .dcr-page-header h2 {
+            margin: 0;
+            font-size: 1.55rem;
+            font-weight: 700;
+            color: #0c1a2e;
+            letter-spacing: -.3px;
+        }
+        .dcr-page-header p {
+            margin: 2px 0 0;
+            font-size: .85rem;
+            color: #6b7280;
+        }
+
+        /* ── Visibility Badge ── */
+        .dcr-visibility-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: .78rem;
+            font-weight: 700;
+            padding: 5px 14px;
+            border-radius: 20px;
+            color: #fff;
+            margin-bottom: 18px;
+            letter-spacing: .3px;
+        }
+        .dcr-badge-admin { background: linear-gradient(135deg,#1e3a8a,#3b82f6); box-shadow: 0 3px 10px rgba(59,130,246,.3); }
+        .dcr-badge-user  { background: linear-gradient(135deg,#059669,#10b981); box-shadow: 0 3px 10px rgba(16,185,129,.3); }
+
+        /* ── Filter Card ── */
+        .dcr-filter-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px 24px;
+            box-shadow: 0 1px 8px rgba(0,0,0,.07);
+            margin-bottom: 22px;
+            border: 1px solid #e9eaf0;
+        }
+        .dcr-filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: flex-end;
+            justify-content: space-between;
+        }
+        .dcr-filter-fields {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: flex-end;
+        }
+        .dcr-field label {
+            display: block;
+            font-size: .78rem;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+        .dcr-field input[type="date"],
+        .dcr-field input[type="text"] {
+            border: 1.5px solid #d1d5db;
+            border-radius: 10px;
+            padding: 9px 14px;
+            font-size: .9rem;
+            color: #1f2937;
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+            background: #f9fafb;
+        }
+        .dcr-field input[type="date"]:focus,
+        .dcr-field input[type="text"]:focus {
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 3px rgba(14,165,233,.15);
+            background: #fff;
+        }
+        .dcr-filter-actions {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        .dcr-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 9px 20px;
+            border-radius: 10px;
+            font-size: .875rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all .2s;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .dcr-btn-primary {
+            background: linear-gradient(135deg,#0ea5e9,#0284c7);
+            color: #fff;
+            box-shadow: 0 3px 10px rgba(14,165,233,.35);
+        }
+        .dcr-btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(14,165,233,.4); color:#fff; }
+        .dcr-btn-ghost {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1.5px solid #e5e7eb;
+        }
+        .dcr-btn-ghost:hover { background:#e5e7eb; transform:translateY(-1px); color:#1f2937; }
+
+        /* ── Billing Head dropdown polish ── */
+        #billingHeadFilterPanel {
+            border-radius: 12px !important;
+            border: 1.5px solid #e5e7eb !important;
+            box-shadow: 0 8px 24px rgba(0,0,0,.12);
+        }
+
+        /* ── Summary Cards ── */
+        .dcr-summary-row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 22px;
+        }
+        .dcr-summary-card {
+            flex: 1;
+            min-width: 160px;
+            border-radius: 16px;
+            padding: 18px 22px;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 18px rgba(0,0,0,.12);
+        }
+        .dcr-summary-card::before {
+            content: '';
+            position: absolute;
+            top: -18px; right: -18px;
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.12);
+        }
+        .dcr-sc-label {
+            font-size: .7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            opacity: .85;
+            margin-bottom: 8px;
+        }
+        .dcr-sc-value {
+            font-size: 1.75rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .dcr-sc-icon {
+            position: absolute;
+            bottom: 12px; right: 16px;
+            font-size: 1.8rem;
+            opacity: .2;
+        }
+        .dcr-sc-receipts  { background: linear-gradient(135deg,#10b981,#059669); }
+        .dcr-sc-collected { background: linear-gradient(135deg,#ef4444,#dc2626); }
+        .dcr-sc-gst       { background: linear-gradient(135deg,#8b5cf6,#7c3aed); }
+        .dcr-sc-discount  { background: linear-gradient(135deg,#0ea5e9,#0284c7); }
+
+        /* ── Table Card ── */
+        .dcr-table-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 1px 8px rgba(0,0,0,.07);
+            border: 1px solid #e9eaf0;
+            overflow: hidden;
+        }
+        .dcr-table-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 18px 22px 14px;
+            border-bottom: 1px solid #f0f0f5;
+        }
+        .dcr-table-title    { font-size: 1rem; font-weight: 700; color: #1f2937; }
+        .dcr-table-subtitle { font-size: .8rem; color: #9ca3af; margin-top: 2px; }
+        .dcr-export-group   { display: flex; gap: 8px; flex-wrap: wrap; }
+        .dcr-btn-csv   { background:linear-gradient(135deg,#10b981,#059669); color:#fff; box-shadow:0 3px 10px rgba(16,185,129,.3); }
+        .dcr-btn-excel { background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; box-shadow:0 3px 10px rgba(59,130,246,.3); }
+        .dcr-btn-pdf   { background:linear-gradient(135deg,#ef4444,#dc2626); color:#fff; box-shadow:0 3px 10px rgba(239,68,68,.3); }
+        .dcr-btn-csv:hover   { transform:translateY(-1px); box-shadow:0 6px 16px rgba(16,185,129,.4); color:#fff; }
+        .dcr-btn-excel:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(59,130,246,.4); color:#fff; }
+        .dcr-btn-pdf:hover   { transform:translateY(-1px); box-shadow:0 6px 16px rgba(239,68,68,.4); color:#fff; }
+
+        /* ── Table ── */
+        .dcr-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .855rem;
+        }
+        .dcr-table thead tr { background: #f0f9ff; }
+        .dcr-table thead th {
+            padding: 12px 14px;
+            font-size: .7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            color: #6b7280;
+            border-bottom: 2px solid #e9eaf0;
+            white-space: nowrap;
+        }
+        .dcr-table tbody tr {
+            transition: background .15s;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .dcr-table tbody tr:hover { background: #f0f9ff; }
+        .dcr-table tbody td { padding: 12px 14px; color: #374151; vertical-align: middle; }
+        .dcr-table .text-end { text-align: right; }
+
+        .dcr-receipt-no {
+            font-family: monospace;
+            font-size: .78rem;
+            font-weight: 700;
+            color: #0284c7;
+            background: #e0f2fe;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+        .dcr-booking-no {
+            font-family: monospace;
+            font-size: .78rem;
+            color: #6b7280;
+        }
+        .dcr-billing-pill {
+            display: inline-block;
+            padding: 2px 9px;
+            border-radius: 6px;
+            font-size: .75rem;
+            font-weight: 600;
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        .dcr-method-pill {
+            display: inline-block;
+            padding: 2px 9px;
+            border-radius: 6px;
+            font-size: .75rem;
+            font-weight: 600;
+            background: #ede9fe;
+            color: #5b21b6;
+            border: 1px solid #ddd6fe;
+        }
+        .dcr-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: .7rem;
+            font-weight: 700;
+            text-transform: capitalize;
+        }
+        .dcr-badge-captured  { background:#dbeafe; color:#1e40af; }
+        .dcr-badge-pending   { background:#fef3c7; color:#92400e; }
+        .dcr-badge-cancelled { background:#fee2e2; color:#991b1b; }
+        .dcr-badge-default   { background:#f3f4f6; color:#374151; }
+        .dcr-empty-row td {
+            text-align: center;
+            padding: 40px;
+            color: #9ca3af;
+            font-size: .9rem;
+        }
+    </style>
 }
 
-<div class="page-header">
-    <h2><i class="fas fa-cash-register"></i> Daily Collection Register</h2>
+<!-- Page Header -->
+<div class="dcr-page-header">
+    <div class="dcr-header-icon"><i class="fas fa-cash-register"></i></div>
+    <div>
+        <h2>Daily Collection Register</h2>
+        <p>All receipts and payment collections for the selected period</p>
+    </div>
 </div>
 
-@* Visibility badge *@
-<div style="margin-bottom:14px;">
-    @if (dcrIsAdmin)
-    {
-        <div style="display:inline-flex;align-items:center;gap:6px;font-size:0.78rem;font-weight:600;padding:4px 12px;border-radius:20px;background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:#fff;">
-            <i class="fas fa-shield-alt"></i> @dcrRoleName – showing all branch data
-        </div>
-    }
-    else
-    {
-        <div style="display:inline-flex;align-items:center;gap:6px;font-size:0.78rem;font-weight:600;padding:4px 12px;border-radius:20px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;">
-            <i class="fas fa-user"></i> @dcrRoleName – showing your data only
-        </div>
-    }
-</div>
+<!-- Visibility Badge -->
+@if (dcrIsAdmin)
+{
+    <div class="dcr-visibility-badge dcr-badge-admin">
+        <i class="fas fa-shield-alt"></i> @dcrRoleName – showing all branch data
+    </div>
+}
+else
+{
+    <div class="dcr-visibility-badge dcr-badge-user">
+        <i class="fas fa-user"></i> @dcrRoleName – showing your data only
+    </div>
+}
 
-<div class="filters-container" style="margin-bottom: 18px;">
-    <form method="get" action="@Url.Action("DailyCollectionRegister", "Reports")" style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; justify-content: space-between;">
-        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;">
-            <div>
-                <label for="fromDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">From Date</label>
-                <input id="fromDate" name="fromDate" type="date" class="form-control" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
-            </div>
-
-            <div>
-                <label for="toDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">To Date</label>
-                <input id="toDate" name="toDate" type="date" class="form-control" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
-            </div>
-
-            <div>
-                <label for="billingHeadFilter" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">Billing Head</label>
-                <div id="billingHeadFilter" style="position: relative; min-width: 260px;">
-                    <input id="billingHeadFilterInput" type="text" class="form-control" placeholder="All" readonly style="cursor: pointer;" />
-                    <div id="billingHeadFilterPanel" style="display:none; position:absolute; z-index: 50; top: calc(100% + 6px); left: 0; width: 100%; background: #fff; border: 1px solid #d1d5db; border-radius: 6px; padding: 10px;">
-                        <input id="billingHeadFilterSearch" type="text" class="form-control" placeholder="search" style="margin-bottom: 10px;" />
-                        <div style="display:flex; align-items:center; gap:10px; padding: 6px 2px;">
-                            <input id="billingHeadFilterAll" type="checkbox" checked />
-                            <label for="billingHeadFilterAll" style="margin:0; cursor:pointer;">All</label>
+<!-- Filters -->
+<div class="dcr-filter-card">
+    <form method="get" action="@Url.Action("DailyCollectionRegister", "Reports")">
+        <div class="dcr-filter-row">
+            <div class="dcr-filter-fields">
+                <div class="dcr-field">
+                    <label for="fromDate">From Date</label>
+                    <input id="fromDate" name="fromDate" type="date" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="dcr-field">
+                    <label for="toDate">To Date</label>
+                    <input id="toDate" name="toDate" type="date" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="dcr-field">
+                    <label for="billingHeadFilter">Billing Head</label>
+                    <div id="billingHeadFilter" style="position:relative; min-width:220px;">
+                        <input id="billingHeadFilterInput" type="text" placeholder="All" readonly style="cursor:pointer; width:100%;" />
+                        <div id="billingHeadFilterPanel" style="display:none; position:absolute; z-index:50; top:calc(100% + 6px); left:0; width:100%; background:#fff; border:1px solid #d1d5db; border-radius:6px; padding:10px;">
+                            <input id="billingHeadFilterSearch" type="text" class="form-control" placeholder="Search..." style="margin-bottom:10px;" />
+                            <div style="display:flex; align-items:center; gap:10px; padding:6px 2px;">
+                                <input id="billingHeadFilterAll" type="checkbox" checked />
+                                <label for="billingHeadFilterAll" style="margin:0; cursor:pointer; font-size:.85rem;">All</label>
+                            </div>
+                            <div id="billingHeadFilterOptions" style="max-height:220px; overflow:auto; padding-right:4px;"></div>
                         </div>
-                        <div id="billingHeadFilterOptions" style="max-height: 220px; overflow:auto; padding-right: 4px;"></div>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <div style="display:flex; gap:10px; align-items:flex-end;">
-            <button class="btn-filter-apply" type="submit">
-                <i class="fas fa-filter"></i> Apply
-            </button>
-            <a class="btn-filter-clear" href="@Url.Action("DailyCollectionRegister", "Reports")">
-                <i class="fas fa-undo"></i> Reset
-            </a>
+            <div class="dcr-filter-actions">
+                <button class="dcr-btn dcr-btn-primary" type="submit"><i class="fas fa-filter"></i> Apply</button>
+                <a class="dcr-btn dcr-btn-ghost" href="@Url.Action("DailyCollectionRegister", "Reports")"><i class="fas fa-rotate-left"></i> Reset</a>
+            </div>
         </div>
     </form>
 </div>
 
-<div class="status-cards booking-status-cards" style="margin-bottom: 26px;">
-    <div class="status-card available">
-        <h3>Total Receipts</h3>
-        <div class="value">@Model.Summary.TotalReceipts</div>
+<!-- Summary Cards -->
+<div class="dcr-summary-row">
+    <div class="dcr-summary-card dcr-sc-receipts">
+        <div class="dcr-sc-label">Total Receipts</div>
+        <div class="dcr-sc-value">@Model.Summary.TotalReceipts</div>
+        <i class="fas fa-receipt dcr-sc-icon"></i>
     </div>
-
-    <div class="status-card occupied">
-        <h3>Total Collected</h3>
-        <div class="value">₹@Model.Summary.TotalCollected.ToString("N0")</div>
+    <div class="dcr-summary-card dcr-sc-collected">
+        <div class="dcr-sc-label">Total Collected</div>
+        <div class="dcr-sc-value">₹@Model.Summary.TotalCollected.ToString("N0")</div>
+        <i class="fas fa-rupee-sign dcr-sc-icon"></i>
     </div>
-
-    <div class="status-card maintenance">
-        <h3>Total GST</h3>
-        <div class="value">₹@Model.Summary.TotalGST.ToString("N0")</div>
+    <div class="dcr-summary-card dcr-sc-gst">
+        <div class="dcr-sc-label">Total GST</div>
+        <div class="dcr-sc-value">₹@Model.Summary.TotalGST.ToString("N0")</div>
+        <i class="fas fa-percent dcr-sc-icon"></i>
     </div>
-
-    <div class="status-card cleaning">
-        <h3>Total Discount</h3>
-        <div class="value">₹@Model.Summary.TotalDiscount.ToString("N0")</div>
+    <div class="dcr-summary-card dcr-sc-discount">
+        <div class="dcr-sc-label">Total Discount</div>
+        <div class="dcr-sc-value">₹@Model.Summary.TotalDiscount.ToString("N0")</div>
+        <i class="fas fa-tag dcr-sc-icon"></i>
     </div>
 </div>
 
-<div class="filters-container" style="margin-bottom: 18px;">
-    <div style="display:flex; gap:12px; flex-wrap: wrap; align-items:center; justify-content: space-between;">
+<!-- Table Card -->
+<div class="dcr-table-card">
+    <div class="dcr-table-header">
         <div>
-            <div style="font-weight:700; color:#1f2937;">Register</div>
-            <div class="subtext" style="margin-top:4px;">@Model.Rows.Count records • Round-off: ₹@Model.Summary.TotalRoundOff.ToString("N0")</div>
+            <div class="dcr-table-title">Collection Register</div>
+            <div class="dcr-table-subtitle">
+                @Model.Rows.Count record@(Model.Rows.Count == 1 ? "" : "s")
+                &nbsp;•&nbsp; Round-off: ₹@Model.Summary.TotalRoundOff.ToString("N0")
+            </div>
         </div>
-        <div style="display:flex; gap:10px;">
-            <button class="btn-filter-apply" type="button" title="Export CSV" onclick="exportDailyCollectionToCsv()">
-                <i class="fas fa-file-export"></i> CSV
-            </button>
-            <button class="btn-filter-apply" type="button" title="Export Excel" onclick="exportDailyCollectionToExcel()">
-                <i class="fas fa-file-export"></i> Excel
-            </button>
-            <button class="btn-filter-apply" type="button" title="Export PDF" onclick="exportDailyCollectionToPdf()">
-                <i class="fas fa-file-export"></i> PDF
-            </button>
+        <div class="dcr-export-group">
+            <button class="dcr-btn dcr-btn-csv"   type="button" onclick="exportDailyCollectionToCsv()"><i class="fas fa-file-csv"></i> CSV</button>
+            <button class="dcr-btn dcr-btn-excel" type="button" onclick="exportDailyCollectionToExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+            <button class="dcr-btn dcr-btn-pdf"   type="button" onclick="exportDailyCollectionToPdf()"><i class="fas fa-file-pdf"></i> PDF</button>
         </div>
     </div>
-</div>
 
-<div class="table-container" style="overflow: visible;">
-    <table class="data-table" id="dailyCollectionTable">
-        <thead>
-            <tr>
-                <th>Paid On</th>
-                <th>Receipt No</th>
-                <th>Booking No</th>
-                <th>Guest</th>
-                <th>Phone</th>
-                <th>Room Type</th>
-                <th>Billing Head</th>
-                <th>Method</th>
-                <th>Bank</th>
-                <th>Reference</th>
-                <th class="text-end">Amount</th>
-                <th class="text-end">Discount</th>
-                <th class="text-end">Round Off</th>
-                <th>Status</th>
-                <th>Created By</th>
-            </tr>
-        </thead>
-        <tbody>
-        @foreach (var row in Model.Rows)
-        {
-            <tr>
-                <td>@row.PaidOn.ToString("dd MMM yyyy HH:mm")</td>
-                <td><strong>@(string.IsNullOrWhiteSpace(row.ReceiptNumber) ? "-" : row.ReceiptNumber)</strong></td>
-                <td>@(string.IsNullOrWhiteSpace(row.BookingNumber) ? "-" : row.BookingNumber)</td>
-                <td>@(string.IsNullOrWhiteSpace(row.GuestName) ? "-" : row.GuestName)</td>
-                <td>@(string.IsNullOrWhiteSpace(row.GuestPhone) ? "-" : row.GuestPhone)</td>
-                <td>@(string.IsNullOrWhiteSpace(row.RoomType) ? "-" : row.RoomType)</td>
-                <td>@(string.IsNullOrWhiteSpace(row.BillingHead) ? "-" : row.BillingHead)</td>
-                <td>@(string.IsNullOrWhiteSpace(row.PaymentMethod) ? "-" : row.PaymentMethod)</td>
-                <td>@(string.IsNullOrWhiteSpace(row.BankName) ? "-" : row.BankName)</td>
-                <td>@(string.IsNullOrWhiteSpace(row.PaymentReference) ? "-" : row.PaymentReference)</td>
-                <td class="text-end">₹@row.ReceiptAmount.ToString("N2")</td>
-                <td class="text-end">₹@row.DiscountAmount.ToString("N2")</td>
-                <td class="text-end">@((row.IsRoundOffApplied ? "₹" + row.RoundOffAmount.ToString("N2") : "-") )</td>
-                <td>@(string.IsNullOrWhiteSpace(row.Status) ? "-" : row.Status)</td>
-                <td>@(string.IsNullOrWhiteSpace(row.CreatedBy) ? "-" : row.CreatedBy)</td>
-            </tr>
-        }
-        </tbody>
-    </table>
+    <div style="overflow-x:auto;">
+        <table class="dcr-table" id="dailyCollectionTable">
+            <thead>
+                <tr>
+                    <th>Paid On</th>
+                    <th>Receipt No</th>
+                    <th>Booking No</th>
+                    <th>Guest</th>
+                    <th>Phone</th>
+                    <th>Room Type</th>
+                    <th>Billing Head</th>
+                    <th>Method</th>
+                    <th>Bank</th>
+                    <th>Reference</th>
+                    <th class="text-end">Amount</th>
+                    <th class="text-end">Discount</th>
+                    <th class="text-end">Round Off</th>
+                    <th>Status</th>
+                    <th>Created By</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (!Model.Rows.Any())
+            {
+                <tr class="dcr-empty-row">
+                    <td colspan="15"><i class="fas fa-inbox" style="font-size:1.6rem;display:block;margin-bottom:8px;opacity:.4;"></i>No collection records found for the selected period.</td>
+                </tr>
+            }
+            @foreach (var row in Model.Rows)
+            {
+                var statusCss = (row.Status ?? "").ToLower() switch {
+                    "captured"  => "dcr-badge-captured",
+                    "pending"   => "dcr-badge-pending",
+                    "cancelled" => "dcr-badge-cancelled",
+                    _           => "dcr-badge-default"
+                };
+                <tr>
+                    <td>@row.PaidOn.ToString("dd MMM yyyy HH:mm")</td>
+                    <td><span class="dcr-receipt-no">@(string.IsNullOrWhiteSpace(row.ReceiptNumber) ? "-" : row.ReceiptNumber)</span></td>
+                    <td><span class="dcr-booking-no">@(string.IsNullOrWhiteSpace(row.BookingNumber) ? "-" : row.BookingNumber)</span></td>
+                    <td><strong>@(string.IsNullOrWhiteSpace(row.GuestName) ? "-" : row.GuestName)</strong></td>
+                    <td>@(string.IsNullOrWhiteSpace(row.GuestPhone) ? "-" : row.GuestPhone)</td>
+                    <td>@(string.IsNullOrWhiteSpace(row.RoomType) ? "-" : row.RoomType)</td>
+                    <td><span class="dcr-billing-pill">@(string.IsNullOrWhiteSpace(row.BillingHead) ? "-" : row.BillingHead)</span></td>
+                    <td><span class="dcr-method-pill">@(string.IsNullOrWhiteSpace(row.PaymentMethod) ? "-" : row.PaymentMethod)</span></td>
+                    <td>@(string.IsNullOrWhiteSpace(row.BankName) ? "-" : row.BankName)</td>
+                    <td>@(string.IsNullOrWhiteSpace(row.PaymentReference) ? "-" : row.PaymentReference)</td>
+                    <td class="text-end">₹@row.ReceiptAmount.ToString("N2")</td>
+                    <td class="text-end">₹@row.DiscountAmount.ToString("N2")</td>
+                    <td class="text-end">@(row.IsRoundOffApplied ? "₹" + row.RoundOffAmount.ToString("N2") : "-")</td>
+                    <td><span class="dcr-badge @statusCss">@(string.IsNullOrWhiteSpace(row.Status) ? "-" : row.Status)</span></td>
+                    <td>@(string.IsNullOrWhiteSpace(row.CreatedBy) ? "-" : row.CreatedBy)</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
 </div>
 
 @section Scripts {

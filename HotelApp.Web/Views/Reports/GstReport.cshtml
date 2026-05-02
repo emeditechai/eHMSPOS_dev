@@ -5,144 +5,461 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
+    <style>
+        /* ── Page Header ── */
+        .gst-page-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .gst-header-icon {
+            width: 48px; height: 48px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 1.4rem;
+            box-shadow: 0 4px 14px rgba(245,158,11,.35);
+            flex-shrink: 0;
+        }
+        .gst-page-header h2 {
+            margin: 0;
+            font-size: 1.55rem;
+            font-weight: 700;
+            color: #1e1b4b;
+            letter-spacing: -.3px;
+        }
+        .gst-page-header p {
+            margin: 2px 0 0;
+            font-size: .85rem;
+            color: #6b7280;
+        }
+
+        /* ── Hotel Info Card ── */
+        .gst-hotel-card {
+            background: linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);
+            border-radius: 16px;
+            padding: 18px 24px;
+            color: #fff;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 4px 18px rgba(49,46,129,.25);
+        }
+        .gst-hotel-card .gst-hotel-icon {
+            font-size: 2rem;
+            opacity: .5;
+        }
+        .gst-hotel-card .gst-hotel-name {
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: .2px;
+        }
+        .gst-hotel-card .gst-hotel-meta {
+            font-size: .8rem;
+            opacity: .75;
+            margin-top: 3px;
+        }
+        .gst-gstin-pill {
+            margin-left: auto;
+            background: rgba(255,255,255,.12);
+            border: 1px solid rgba(255,255,255,.2);
+            border-radius: 20px;
+            padding: 6px 16px;
+            font-size: .78rem;
+            font-weight: 700;
+            letter-spacing: .5px;
+            white-space: nowrap;
+        }
+
+        /* ── Filter Card ── */
+        .gst-filter-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px 24px;
+            box-shadow: 0 1px 8px rgba(0,0,0,.07);
+            margin-bottom: 22px;
+            border: 1px solid #e9eaf0;
+        }
+        .gst-filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: flex-end;
+            justify-content: space-between;
+        }
+        .gst-filter-fields {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: flex-end;
+        }
+        .gst-field label {
+            display: block;
+            font-size: .78rem;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+        .gst-field input[type="date"],
+        .gst-field input[type="text"] {
+            border: 1.5px solid #d1d5db;
+            border-radius: 10px;
+            padding: 9px 14px;
+            font-size: .9rem;
+            color: #1f2937;
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+            background: #f9fafb;
+        }
+        .gst-field input[type="date"]:focus,
+        .gst-field input[type="text"]:focus {
+            border-color: #f59e0b;
+            box-shadow: 0 0 0 3px rgba(245,158,11,.15);
+            background: #fff;
+        }
+        .gst-filter-actions {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        .gst-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 9px 20px;
+            border-radius: 10px;
+            font-size: .875rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all .2s;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .gst-btn-primary {
+            background: linear-gradient(135deg,#f59e0b,#d97706);
+            color: #fff;
+            box-shadow: 0 3px 10px rgba(245,158,11,.35);
+        }
+        .gst-btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(245,158,11,.4); color:#fff; }
+        .gst-btn-ghost {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1.5px solid #e5e7eb;
+        }
+        .gst-btn-ghost:hover { background:#e5e7eb; transform:translateY(-1px); color:#1f2937; }
+
+        /* ── Billing Head Dropdown ── */
+        #gstBillingHeadFilterPanel {
+            border-radius: 12px !important;
+            border: 1.5px solid #e5e7eb !important;
+            box-shadow: 0 8px 24px rgba(0,0,0,.12);
+        }
+
+        /* ── Summary Cards ── */
+        .gst-summary-row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 22px;
+        }
+        .gst-summary-card {
+            flex: 1;
+            min-width: 160px;
+            border-radius: 16px;
+            padding: 18px 22px;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 18px rgba(0,0,0,.12);
+        }
+        .gst-summary-card::before {
+            content: '';
+            position: absolute;
+            top: -18px; right: -18px;
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.12);
+        }
+        .gst-sc-label {
+            font-size: .7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            opacity: .85;
+            margin-bottom: 8px;
+        }
+        .gst-sc-value {
+            font-size: 1.75rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .gst-sc-icon {
+            position: absolute;
+            bottom: 12px; right: 16px;
+            font-size: 1.8rem;
+            opacity: .2;
+        }
+        .gst-sc-bookings  { background: linear-gradient(135deg,#10b981,#059669); }
+        .gst-sc-taxable   { background: linear-gradient(135deg,#ef4444,#dc2626); }
+        .gst-sc-gst       { background: linear-gradient(135deg,#8b5cf6,#7c3aed); }
+        .gst-sc-paid      { background: linear-gradient(135deg,#3b82f6,#2563eb); }
+
+        /* ── Table Card ── */
+        .gst-table-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 1px 8px rgba(0,0,0,.07);
+            border: 1px solid #e9eaf0;
+            overflow: hidden;
+        }
+        .gst-table-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 18px 22px 14px;
+            border-bottom: 1px solid #f0f0f5;
+        }
+        .gst-table-title  { font-size: 1rem; font-weight: 700; color: #1f2937; }
+        .gst-table-subtitle { font-size: .8rem; color: #9ca3af; margin-top: 2px; }
+        .gst-export-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        .gst-btn-csv   { background:linear-gradient(135deg,#10b981,#059669); color:#fff; box-shadow:0 3px 10px rgba(16,185,129,.3); }
+        .gst-btn-excel { background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; box-shadow:0 3px 10px rgba(59,130,246,.3); }
+        .gst-btn-pdf   { background:linear-gradient(135deg,#ef4444,#dc2626); color:#fff; box-shadow:0 3px 10px rgba(239,68,68,.3); }
+        .gst-btn-csv:hover   { transform:translateY(-1px); box-shadow:0 6px 16px rgba(16,185,129,.4);  color:#fff; }
+        .gst-btn-excel:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(59,130,246,.4);  color:#fff; }
+        .gst-btn-pdf:hover   { transform:translateY(-1px); box-shadow:0 6px 16px rgba(239,68,68,.4);   color:#fff; }
+
+        /* ── Table ── */
+        .gst-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .855rem;
+        }
+        .gst-table thead tr { background: #f8f9ff; }
+        .gst-table thead th {
+            padding: 12px 14px;
+            font-size: .7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            color: #6b7280;
+            border-bottom: 2px solid #e9eaf0;
+            white-space: nowrap;
+        }
+        .gst-table tbody tr {
+            transition: background .15s;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .gst-table tbody tr:hover { background: #fefce8; }
+        .gst-table tbody td { padding: 12px 14px; color: #374151; vertical-align: middle; }
+        .gst-table .text-end { text-align: right; }
+        .gst-booking-no {
+            font-family: monospace;
+            font-size: .78rem;
+            font-weight: 600;
+            color: #d97706;
+            background: #fef3c7;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+        .gst-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: .7rem;
+            font-weight: 700;
+            text-transform: capitalize;
+        }
+        .gst-badge-confirmed        { background:#d1fae5; color:#065f46; }
+        .gst-badge-captured         { background:#dbeafe; color:#1e40af; }
+        .gst-badge-pending          { background:#fef3c7; color:#92400e; }
+        .gst-badge-cancelled        { background:#fee2e2; color:#991b1b; }
+        .gst-badge-partialcancelled { background:#ede9fe; color:#5b21b6; }
+        .gst-badge-default          { background:#f3f4f6; color:#374151; }
+        .gst-billing-pill {
+            display: inline-block;
+            padding: 2px 9px;
+            border-radius: 6px;
+            font-size: .75rem;
+            font-weight: 600;
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        .gst-empty-row td {
+            text-align: center;
+            padding: 40px;
+            color: #9ca3af;
+            font-size: .9rem;
+        }
+    </style>
 }
 
-<div class="page-header">
-    <h2><i class="fas fa-file-invoice"></i> GST Report</h2>
+<!-- Page Header -->
+<div class="gst-page-header">
+    <div class="gst-header-icon"><i class="fas fa-file-invoice"></i></div>
+    <div>
+        <h2>GST Report</h2>
+        <p>Goods & Services Tax register for all transactions</p>
+    </div>
 </div>
 
-<div class="filters-container" style="margin-bottom: 18px;">
-    <div style="display:flex; gap:12px; flex-wrap: wrap; align-items:flex-end; justify-content: space-between;">
-        <div>
-            <div style="font-weight:900; color:#0f172a;">@(string.IsNullOrWhiteSpace(Model.HotelName) ? "Hotel" : Model.HotelName)</div>
-            @if (!string.IsNullOrWhiteSpace(Model.HotelAddress))
-            {
-                <div class="subtext" style="margin-top:4px;">@Model.HotelAddress</div>
-            }
-            <div class="subtext" style="margin-top:4px;">GSTIN: @(string.IsNullOrWhiteSpace(Model.GSTCode) ? "-" : Model.GSTCode)</div>
-        </div>
+<!-- Hotel Info -->
+<div class="gst-hotel-card">
+    <i class="fas fa-hotel gst-hotel-icon"></i>
+    <div>
+        <div class="gst-hotel-name">@(string.IsNullOrWhiteSpace(Model.HotelName) ? "Hotel" : Model.HotelName)</div>
+        @if (!string.IsNullOrWhiteSpace(Model.HotelAddress))
+        {
+            <div class="gst-hotel-meta">@Model.HotelAddress</div>
+        }
+    </div>
+    <div class="gst-gstin-pill"><i class="fas fa-id-card" style="margin-right:6px;"></i>GSTIN: @(string.IsNullOrWhiteSpace(Model.GSTCode) ? "-" : Model.GSTCode)</div>
+</div>
 
-        <form method="get" action="@Url.Action("GstReport", "Reports")" style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;">
-            <div>
-                <label for="fromDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">From Date</label>
-                <input id="fromDate" name="fromDate" type="date" class="form-control" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
-            </div>
-
-            <div>
-                <label for="toDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">To Date</label>
-                <input id="toDate" name="toDate" type="date" class="form-control" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
-            </div>
-
-            <div>
-                <label for="gstBillingHeadFilter" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">Billing Head</label>
-                <div id="gstBillingHeadFilter" style="position: relative; min-width: 260px;">
-                    <input id="gstBillingHeadFilterInput" type="text" class="form-control" placeholder="All" readonly style="cursor: pointer;" />
-                    <div id="gstBillingHeadFilterPanel" style="display:none; position:absolute; z-index: 50; top: calc(100% + 6px); left: 0; width: 100%; background: #fff; border: 1px solid #d1d5db; border-radius: 6px; padding: 10px;">
-                        <input id="gstBillingHeadFilterSearch" type="text" class="form-control" placeholder="search" style="margin-bottom: 10px;" />
-                        <div style="display:flex; align-items:center; gap:10px; padding: 6px 2px;">
-                            <input id="gstBillingHeadFilterAll" type="checkbox" checked />
-                            <label for="gstBillingHeadFilterAll" style="margin:0; cursor:pointer;">All</label>
+<!-- Filters -->
+<div class="gst-filter-card">
+    <form method="get" action="@Url.Action("GstReport", "Reports")">
+        <div class="gst-filter-row">
+            <div class="gst-filter-fields">
+                <div class="gst-field">
+                    <label for="fromDate">From Date</label>
+                    <input id="fromDate" name="fromDate" type="date" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="gst-field">
+                    <label for="toDate">To Date</label>
+                    <input id="toDate" name="toDate" type="date" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="gst-field">
+                    <label for="gstBillingHeadFilter">Billing Head</label>
+                    <div id="gstBillingHeadFilter" style="position:relative; min-width:220px;">
+                        <input id="gstBillingHeadFilterInput" type="text" placeholder="All" readonly style="cursor:pointer; width:100%;" />
+                        <div id="gstBillingHeadFilterPanel" style="display:none; position:absolute; z-index:50; top:calc(100% + 6px); left:0; width:100%; background:#fff; border:1px solid #d1d5db; border-radius:6px; padding:10px;">
+                            <input id="gstBillingHeadFilterSearch" type="text" class="form-control" placeholder="Search..." style="margin-bottom:10px;" />
+                            <div style="display:flex; align-items:center; gap:10px; padding:6px 2px;">
+                                <input id="gstBillingHeadFilterAll" type="checkbox" checked />
+                                <label for="gstBillingHeadFilterAll" style="margin:0; cursor:pointer; font-size:.85rem;">All</label>
+                            </div>
+                            <div id="gstBillingHeadFilterOptions" style="max-height:220px; overflow:auto; padding-right:4px;"></div>
                         </div>
-                        <div id="gstBillingHeadFilterOptions" style="max-height: 220px; overflow:auto; padding-right: 4px;"></div>
                     </div>
                 </div>
             </div>
-
-            <div style="display:flex; gap:10px; align-items:flex-end;">
-                <button class="btn-filter-apply" type="submit">
-                    <i class="fas fa-filter"></i> Apply
-                </button>
-                <a class="btn-filter-clear" href="@Url.Action("GstReport", "Reports")">
-                    <i class="fas fa-undo"></i> Reset
-                </a>
+            <div class="gst-filter-actions">
+                <button class="gst-btn gst-btn-primary" type="submit"><i class="fas fa-filter"></i> Apply</button>
+                <a class="gst-btn gst-btn-ghost" href="@Url.Action("GstReport", "Reports")"><i class="fas fa-rotate-left"></i> Reset</a>
             </div>
-        </form>
+        </div>
+    </form>
+</div>
+
+<!-- Summary Cards -->
+<div class="gst-summary-row">
+    <div class="gst-summary-card gst-sc-bookings">
+        <div class="gst-sc-label">Total Bookings</div>
+        <div class="gst-sc-value">@Model.Summary.TotalBookings</div>
+        <i class="fas fa-calendar-check gst-sc-icon"></i>
+    </div>
+    <div class="gst-summary-card gst-sc-taxable">
+        <div class="gst-sc-label">Taxable Value</div>
+        <div class="gst-sc-value">₹@Model.Summary.TotalTaxableValue.ToString("N0")</div>
+        <i class="fas fa-calculator gst-sc-icon"></i>
+    </div>
+    <div class="gst-summary-card gst-sc-gst">
+        <div class="gst-sc-label">Total GST</div>
+        <div class="gst-sc-value">₹@Model.Summary.TotalGST.ToString("N0")</div>
+        <i class="fas fa-percent gst-sc-icon"></i>
+    </div>
+    <div class="gst-summary-card gst-sc-paid">
+        <div class="gst-sc-label">Paid Amount</div>
+        <div class="gst-sc-value">₹@Model.Summary.TotalPaidAmount.ToString("N0")</div>
+        <i class="fas fa-rupee-sign gst-sc-icon"></i>
     </div>
 </div>
 
-<div class="status-cards booking-status-cards" style="margin-bottom: 26px;">
-    <div class="status-card available">
-        <h3>Total Bookings</h3>
-        <div class="value">@Model.Summary.TotalBookings</div>
-    </div>
-
-    <div class="status-card occupied">
-        <h3>Taxable Value</h3>
-        <div class="value">₹@Model.Summary.TotalTaxableValue.ToString("N0")</div>
-    </div>
-
-    <div class="status-card maintenance">
-        <h3>Total GST</h3>
-        <div class="value">₹@Model.Summary.TotalGST.ToString("N0")</div>
-    </div>
-
-    <div class="status-card cleaning">
-        <h3>Paid Amount</h3>
-        <div class="value">₹@Model.Summary.TotalPaidAmount.ToString("N0")</div>
-    </div>
-</div>
-
-<div class="filters-container" style="margin-bottom: 18px;">
-    <div style="display:flex; gap:12px; flex-wrap: wrap; align-items:center; justify-content: space-between;">
+<!-- Table Card -->
+<div class="gst-table-card">
+    <div class="gst-table-header">
         <div>
-            <div style="font-weight:700; color:#1f2937;">GST Register</div>
-            <div class="subtext" style="margin-top:4px;">@Model.Rows.Count records • CGST: ₹@Model.Summary.TotalCGST.ToString("N0") • SGST: ₹@Model.Summary.TotalSGST.ToString("N0")</div>
+            <div class="gst-table-title">GST Register</div>
+            <div class="gst-table-subtitle">
+                @Model.Rows.Count record@(Model.Rows.Count == 1 ? "" : "s")
+                &nbsp;•&nbsp; CGST: ₹@Model.Summary.TotalCGST.ToString("N0")
+                &nbsp;•&nbsp; SGST: ₹@Model.Summary.TotalSGST.ToString("N0")
+            </div>
         </div>
-
-        <div style="display:flex; gap:10px;">
-            <button class="btn-filter-apply" type="button" title="Export CSV" onclick="exportGstToCsv()">
-                <i class="fas fa-file-export"></i> CSV
-            </button>
-            <button class="btn-filter-apply" type="button" title="Export Excel" onclick="exportGstToExcel()">
-                <i class="fas fa-file-export"></i> Excel
-            </button>
-            <button class="btn-filter-apply" type="button" title="Export PDF" onclick="exportGstToPdf()">
-                <i class="fas fa-file-export"></i> PDF
-            </button>
+        <div class="gst-export-group">
+            <button class="gst-btn gst-btn-csv" type="button" onclick="exportGstToCsv()"><i class="fas fa-file-csv"></i> CSV</button>
+            <button class="gst-btn gst-btn-excel" type="button" onclick="exportGstToExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+            <button class="gst-btn gst-btn-pdf" type="button" onclick="exportGstToPdf()"><i class="fas fa-file-pdf"></i> PDF</button>
         </div>
     </div>
-</div>
 
-<div class="table-container" style="overflow: visible;">
-    <table class="data-table" id="gstReportTable">
-        <thead>
-            <tr>
-                <th>Payment Date</th>
-                <th>Booking No</th>
-                <th>Guest</th>
-                <th>Room Type</th>
-                <th>Billing Head</th>
-                <th class="text-end">Taxable Value</th>
-                <th class="text-end">CGST</th>
-                <th class="text-end">SGST</th>
-                <th class="text-end">GST</th>
-                <th class="text-end">Paid Amount</th>
-                <th>Booking Status</th>
-                <th>Payment Status</th>
-                <th>Created By</th>
-            </tr>
-        </thead>
-        <tbody>
-        @foreach (var row in Model.Rows)
-        {
-            <tr>
-                <td>@row.PaidOn.ToString("dd MMM yyyy")</td>
-                <td>@(string.IsNullOrWhiteSpace(row.BookingNumber) ? "-" : row.BookingNumber)</td>
-                <td>@(string.IsNullOrWhiteSpace(row.GuestName) ? "-" : row.GuestName)</td>
-                <td>@(string.IsNullOrWhiteSpace(row.RoomType) ? "-" : row.RoomType)</td>
-                <td>@(string.IsNullOrWhiteSpace(row.BillingHead) ? "-" : row.BillingHead)</td>
-                <td class="text-end">₹@row.TaxableValue.ToString("N2")</td>
-                <td class="text-end">₹@row.CGSTAmount.ToString("N2")</td>
-                <td class="text-end">₹@row.SGSTAmount.ToString("N2")</td>
-                <td class="text-end">₹@row.GSTAmount.ToString("N2")</td>
-                <td class="text-end">₹@row.PaidAmount.ToString("N2")</td>
-                <td>@(string.IsNullOrWhiteSpace(row.Status) ? "-" : row.Status)</td>
-                <td>@(string.IsNullOrWhiteSpace(row.PaymentStatus) ? "-" : row.PaymentStatus)</td>
-                <td>@(string.IsNullOrWhiteSpace(row.CreatedBy) ? "-" : row.CreatedBy)</td>
-            </tr>
-        }
-        </tbody>
-    </table>
+    <div style="overflow-x:auto;">
+        <table class="gst-table" id="gstReportTable">
+            <thead>
+                <tr>
+                    <th>Payment Date</th>
+                    <th>Booking No</th>
+                    <th>Guest</th>
+                    <th>Room Type</th>
+                    <th>Billing Head</th>
+                    <th class="text-end">Taxable Value</th>
+                    <th class="text-end">CGST</th>
+                    <th class="text-end">SGST</th>
+                    <th class="text-end">GST</th>
+                    <th class="text-end">Paid Amount</th>
+                    <th>Booking Status</th>
+                    <th>Payment Status</th>
+                    <th>Created By</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (!Model.Rows.Any())
+            {
+                <tr class="gst-empty-row">
+                    <td colspan="13"><i class="fas fa-inbox" style="font-size:1.6rem;display:block;margin-bottom:8px;opacity:.4;"></i>No GST records found for the selected period.</td>
+                </tr>
+            }
+            @foreach (var row in Model.Rows)
+            {
+                var bookingCss = (row.Status ?? "").ToLower() switch {
+                    "confirmed"        => "gst-badge-confirmed",
+                    "cancelled"        => "gst-badge-cancelled",
+                    "partialcancelled" => "gst-badge-partialcancelled",
+                    _                  => "gst-badge-default"
+                };
+                var paymentCss = (row.PaymentStatus ?? "").ToLower() switch {
+                    "captured" => "gst-badge-captured",
+                    "pending"  => "gst-badge-pending",
+                    _          => "gst-badge-default"
+                };
+                <tr>
+                    <td>@row.PaidOn.ToString("dd MMM yyyy")</td>
+                    <td><span class="gst-booking-no">@(string.IsNullOrWhiteSpace(row.BookingNumber) ? "-" : row.BookingNumber)</span></td>
+                    <td><strong>@(string.IsNullOrWhiteSpace(row.GuestName) ? "-" : row.GuestName)</strong></td>
+                    <td>@(string.IsNullOrWhiteSpace(row.RoomType) ? "-" : row.RoomType)</td>
+                    <td><span class="gst-billing-pill">@(string.IsNullOrWhiteSpace(row.BillingHead) ? "-" : row.BillingHead)</span></td>
+                    <td class="text-end">₹@row.TaxableValue.ToString("N2")</td>
+                    <td class="text-end">₹@row.CGSTAmount.ToString("N2")</td>
+                    <td class="text-end">₹@row.SGSTAmount.ToString("N2")</td>
+                    <td class="text-end"><strong>₹@row.GSTAmount.ToString("N2")</strong></td>
+                    <td class="text-end">₹@row.PaidAmount.ToString("N2")</td>
+                    <td><span class="gst-badge @bookingCss">@(string.IsNullOrWhiteSpace(row.Status) ? "-" : row.Status)</span></td>
+                    <td><span class="gst-badge @paymentCss">@(string.IsNullOrWhiteSpace(row.PaymentStatus) ? "-" : row.PaymentStatus)</span></td>
+                    <td>@(string.IsNullOrWhiteSpace(row.CreatedBy) ? "-" : row.CreatedBy)</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
 </div>
 
 @section Scripts {
