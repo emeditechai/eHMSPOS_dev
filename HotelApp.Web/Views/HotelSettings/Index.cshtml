@@ -312,29 +312,6 @@
                 </div>
             </div>
 
-            @if (Model.EInvoiceMode == "MANUAL")
-            {
-            <div class="hs-card">
-                <div class="hs-card-header">
-                    <div class="hs-card-header-icon" style="background:#0ea5e9;"><i class="fas fa-folder-open"></i></div>
-                    <h3>E-Invoicing JSON Configuration</h3>
-                    <span class="ms-auto badge" style="background:#e0f2fe;color:#0369a1;font-size:.75rem;padding:.3rem .7rem;border-radius:20px;">
-                        <i class="fas fa-file-code me-1"></i>MANUAL Mode Active
-                    </span>
-                </div>
-                <div class="hs-card-body">
-                    <div class="hs-info-grid">
-                        <div class="hs-info-full">
-                            <div class="hs-info-label">JSON Storage Path</div>
-                            <div class="hs-info-value @(string.IsNullOrWhiteSpace(Model.EInvoiceJsonStoragePath) ? "empty" : "")">
-                                <i class="fas fa-folder"></i>
-                                @(string.IsNullOrWhiteSpace(Model.EInvoiceJsonStoragePath) ? "Not Set (using application default)" : Model.EInvoiceJsonStoragePath)
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            }
             @if (Model.EInvoiceMode == "AUTO")
             {
             <div class="hs-card">

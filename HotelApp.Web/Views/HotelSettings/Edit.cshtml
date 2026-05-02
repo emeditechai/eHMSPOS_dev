@@ -472,32 +472,7 @@
                         <option value="MANUAL" selected="@(Model.EInvoiceMode == "MANUAL")">MANUAL (JSON Generation)</option>
                         <option value="AUTO" selected="@(Model.EInvoiceMode == "AUTO")">AUTO (API-Based)</option>
                     </select>
-                    <small class="text-muted">MANUAL mode generates a JSON file; AUTO mode uses API credentials configured below.</small>
-                </div>
-            </div>
-        </div>
-
-        <!-- E-Invoicing MANUAL Configuration Section -->
-        <div class="settings-section" id="eInvoiceManualSection" style="display: @(Model.EInvoiceMode == "MANUAL" ? "block" : "none");">
-            <div class="section-header">
-                <div class="section-header-icon" style="background: #0ea5e9;">
-                    <i class="fas fa-folder-open"></i>
-                </div>
-                <h3>E-Invoicing JSON Configuration</h3>
-            </div>
-            <div class="form-grid">
-                <div class="form-group form-group-full">
-                    <label asp-for="EInvoiceJsonStoragePath" class="form-label">JSON Storage Path</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-folder"></i></span>
-                        <input asp-for="EInvoiceJsonStoragePath" class="form-control" placeholder="e.g. C:\EInvoice\JSON or /var/einvoice/json" id="eInvoiceJsonStoragePath" />
-                        <button type="button" class="btn btn-outline-secondary" id="btnBrowseJsonPath" title="Browse for folder">
-                            <i class="fas fa-folder-open me-1"></i>Browse
-                        </button>
-                    </div>
-                    <input type="file" id="jsonPathFolderPicker" webkitdirectory style="display:none;" tabindex="-1" />
-                    <small class="text-muted">Directory path where generated E-Invoice JSON files will be saved. Leave blank to use the application default.</small>
-                    <span asp-validation-for="EInvoiceJsonStoragePath" class="text-danger"></span>
+                    <small class="text-muted">AUTO mode requires API credentials configured below.</small>
                 </div>
             </div>
         </div>
@@ -631,33 +606,13 @@
                 var mode = $('#eInvoiceModeSelect').val();
                 if (mode === 'AUTO') {
                     $('#eInvoiceApiSection').slideDown(200);
-                    $('#eInvoiceManualSection').slideUp(200);
                 } else {
                     $('#eInvoiceApiSection').slideUp(200);
-                    $('#eInvoiceManualSection').slideDown(200);
                 }
             }
 
             toggleEInvoiceSection();
             $('#eInvoiceModeSelect').on('change', toggleEInvoiceSection);
-
-            // JSON path Browse button
-            $('#btnBrowseJsonPath').on('click', function () {
-                $('#jsonPathFolderPicker').val('').trigger('click');
-            });
-            $('#jsonPathFolderPicker').on('change', function () {
-                var files = this.files;
-                if (!files || files.length === 0) return;
-                // webkitRelativePath is "FolderName/file.ext" — grab top-level folder name
-                var rel = files[0].webkitRelativePath || '';
-                var folderName = rel.split('/')[0] || files[0].name;
-                var current = $('#eInvoiceJsonStoragePath').val().trim();
-                // Append folder name to any existing typed path, or just set it
-                if (current && !current.endsWith('/') && !current.endsWith('\\')) {
-                    current += '/';
-                }
-                $('#eInvoiceJsonStoragePath').val(current + folderName);
-            });
 
             // Convert time input to TimeSpan format before form submission
             $('form').on('submit', function() {

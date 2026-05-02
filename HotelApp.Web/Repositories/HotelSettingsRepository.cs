@@ -57,7 +57,6 @@ namespace HotelApp.Web.Repositories
             parameters.Add("@EnableCancellationPolicy", settings.EnableCancellationPolicy, DbType.Boolean);
             parameters.Add("@PoliceStation", settings.PoliceStation, DbType.String);
             parameters.Add("@EInvoiceMode", settings.EInvoiceMode, DbType.String);
-            parameters.Add("@EInvoiceJsonStoragePath", settings.EInvoiceJsonStoragePath, DbType.String);
             parameters.Add("@EInvoiceApiBaseUrl", settings.EInvoiceApiBaseUrl, DbType.String);
             parameters.Add("@EInvoiceAuthUrl", settings.EInvoiceAuthUrl, DbType.String);
             parameters.Add("@EInvoiceIrnEndpoint", settings.EInvoiceIrnEndpoint, DbType.String);

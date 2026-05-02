@@ -189,7 +189,6 @@ namespace HotelApp.Web.Controllers
                     model.EInvoiceClientSecret = null;
                     model.EInvoiceUsername = null;
                     model.EInvoicePassword = null;
-                    // EInvoiceJsonStoragePath is kept as-is (set by user)
                 }
 
                 await _hotelSettingsRepository.UpsertAsync(model, CurrentUserId ?? 0);

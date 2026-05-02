@@ -33,7 +33,6 @@ namespace HotelApp.Web.Models
 
         // E-Invoicing Configuration
         public string EInvoiceMode { get; set; } = "MANUAL"; // "MANUAL" or "AUTO"
-        public string? EInvoiceJsonStoragePath { get; set; }
         public string? EInvoiceApiBaseUrl { get; set; }
         public string? EInvoiceAuthUrl { get; set; }
         public string? EInvoiceIrnEndpoint { get; set; }
