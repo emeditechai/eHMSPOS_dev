@@ -7,6 +7,7 @@ namespace HotelApp.Web.Models
         public int Id { get; set; }
         public int BranchID { get; set; }
         public string HotelName { get; set; } = string.Empty;
+        public string? LglNm { get; set; }
         public string Address { get; set; } = string.Empty;
         public string ContactNumber1 { get; set; } = string.Empty;
         public string? ContactNumber2 { get; set; }
@@ -29,6 +30,18 @@ namespace HotelApp.Web.Models
 
         public bool EnableCancellationPolicy { get; set; } = true;
         public string? PoliceStation { get; set; }
+
+        // E-Invoicing Configuration
+        public string EInvoiceMode { get; set; } = "MANUAL"; // "MANUAL" or "AUTO"
+        public string? EInvoiceJsonStoragePath { get; set; }
+        public string? EInvoiceApiBaseUrl { get; set; }
+        public string? EInvoiceAuthUrl { get; set; }
+        public string? EInvoiceIrnEndpoint { get; set; }
+        public string? EInvoiceClientId { get; set; }
+        public string? EInvoiceClientSecret { get; set; }   // stored encrypted
+        public string? EInvoiceUsername { get; set; }
+        public string? EInvoicePassword { get; set; }       // stored encrypted
+
         public bool IsActive { get; set; } = true;
         public DateTime CreatedDate { get; set; }
         public int? CreatedBy { get; set; }

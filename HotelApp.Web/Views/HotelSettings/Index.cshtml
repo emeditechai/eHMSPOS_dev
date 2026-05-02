@@ -137,6 +137,13 @@
                             </div>
                         </div>
                         <div>
+                            <div class="hs-info-label">LglNm</div>
+                            <div class="hs-info-value @(string.IsNullOrWhiteSpace(Model.LglNm) ? "empty" : "")">
+                                <i class="fas fa-signature"></i>
+                                @(string.IsNullOrWhiteSpace(Model.LglNm) ? "Not Set" : Model.LglNm)
+                            </div>
+                        </div>
+                        <div>
                             <div class="hs-info-label">GST Code</div>
                             <div class="hs-info-value @(string.IsNullOrWhiteSpace(Model.GSTCode) ? "empty" : "")">
                                 <i class="fas fa-certificate"></i>
@@ -289,9 +296,128 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="hs-param-card">
+                            <div class="hs-param-icon" style="background:#6366f1;width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;color:#fff;flex-shrink:0;"><i class="fas fa-file-invoice"></i></div>
+                            <div>
+                                <div class="hs-param-label">E-Invoice Mode</div>
+                                <div class="hs-param-value">
+                                    <span class="hs-badge" style="@(Model.EInvoiceMode == "AUTO" ? "background:#dbeafe;color:#1e40af;" : "background:#f1f5f9;color:#475569;")">
+                                        <i class="fas @(Model.EInvoiceMode == "AUTO" ? "fa-plug" : "fa-file-code")"></i>
+                                        @Model.EInvoiceMode
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            @if (Model.EInvoiceMode == "MANUAL")
+            {
+            <div class="hs-card">
+                <div class="hs-card-header">
+                    <div class="hs-card-header-icon" style="background:#0ea5e9;"><i class="fas fa-folder-open"></i></div>
+                    <h3>E-Invoicing JSON Configuration</h3>
+                    <span class="ms-auto badge" style="background:#e0f2fe;color:#0369a1;font-size:.75rem;padding:.3rem .7rem;border-radius:20px;">
+                        <i class="fas fa-file-code me-1"></i>MANUAL Mode Active
+                    </span>
+                </div>
+                <div class="hs-card-body">
+                    <div class="hs-info-grid">
+                        <div class="hs-info-full">
+                            <div class="hs-info-label">JSON Storage Path</div>
+                            <div class="hs-info-value @(string.IsNullOrWhiteSpace(Model.EInvoiceJsonStoragePath) ? "empty" : "")">
+                                <i class="fas fa-folder"></i>
+                                @(string.IsNullOrWhiteSpace(Model.EInvoiceJsonStoragePath) ? "Not Set (using application default)" : Model.EInvoiceJsonStoragePath)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            }
+            @if (Model.EInvoiceMode == "AUTO")
+            {
+            <div class="hs-card">
+                <div class="hs-card-header">
+                    <div class="hs-card-header-icon" style="background:#6366f1;"><i class="fas fa-plug"></i></div>
+                    <h3>E-Invoicing API Configuration</h3>
+                    <span class="ms-auto badge" style="background:#dbeafe;color:#1e40af;font-size:.75rem;padding:.3rem .7rem;border-radius:20px;">
+                        <i class="fas fa-plug me-1"></i>AUTO Mode Active
+                    </span>
+                </div>
+                <div class="hs-card-body">
+                    <div class="hs-info-grid">
+                        <div class="hs-info-full">
+                            <div class="hs-info-label">API Base URL</div>
+                            <div class="hs-info-value @(string.IsNullOrWhiteSpace(Model.EInvoiceApiBaseUrl) ? "empty" : "")">
+                                <i class="fas fa-globe"></i>
+                                @(string.IsNullOrWhiteSpace(Model.EInvoiceApiBaseUrl) ? "Not Set" : Model.EInvoiceApiBaseUrl)
+                            </div>
+                        </div>
+                        <div>
+                            <div class="hs-info-label">Authorization URL</div>
+                            <div class="hs-info-value @(string.IsNullOrWhiteSpace(Model.EInvoiceAuthUrl) ? "empty" : "")">
+                                <i class="fas fa-key"></i>
+                                @(string.IsNullOrWhiteSpace(Model.EInvoiceAuthUrl) ? "Not Set" : Model.EInvoiceAuthUrl)
+                            </div>
+                        </div>
+                        <div>
+                            <div class="hs-info-label">Generate IRN Endpoint</div>
+                            <div class="hs-info-value @(string.IsNullOrWhiteSpace(Model.EInvoiceIrnEndpoint) ? "empty" : "")">
+                                <i class="fas fa-link"></i>
+                                @(string.IsNullOrWhiteSpace(Model.EInvoiceIrnEndpoint) ? "Not Set" : Model.EInvoiceIrnEndpoint)
+                            </div>
+                        </div>
+                        <div>
+                            <div class="hs-info-label">Client ID</div>
+                            <div class="hs-info-value @(string.IsNullOrWhiteSpace(Model.EInvoiceClientId) ? "empty" : "")">
+                                <i class="fas fa-id-badge"></i>
+                                @(string.IsNullOrWhiteSpace(Model.EInvoiceClientId) ? "Not Set" : Model.EInvoiceClientId)
+                            </div>
+                        </div>
+                        <div>
+                            <div class="hs-info-label">Client Secret</div>
+                            <div class="hs-info-value">
+                                <i class="fas fa-lock"></i>
+                                @if (!string.IsNullOrWhiteSpace(Model.EInvoiceClientSecret))
+                                {
+                                    <span class="badge" style="background:#dcfce7;color:#166534;font-size:.8rem;padding:.3rem .6rem;border-radius:6px;">
+                                        <i class="fas fa-check-circle me-1"></i>Configured
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="empty">Not Set</span>
+                                }
+                            </div>
+                        </div>
+                        <div>
+                            <div class="hs-info-label">Username</div>
+                            <div class="hs-info-value @(string.IsNullOrWhiteSpace(Model.EInvoiceUsername) ? "empty" : "")">
+                                <i class="fas fa-user"></i>
+                                @(string.IsNullOrWhiteSpace(Model.EInvoiceUsername) ? "Not Set" : Model.EInvoiceUsername)
+                            </div>
+                        </div>
+                        <div>
+                            <div class="hs-info-label">Password</div>
+                            <div class="hs-info-value">
+                                <i class="fas fa-lock"></i>
+                                @if (!string.IsNullOrWhiteSpace(Model.EInvoicePassword))
+                                {
+                                    <span class="badge" style="background:#dcfce7;color:#166534;font-size:.8rem;padding:.3rem .6rem;border-radius:6px;">
+                                        <i class="fas fa-check-circle me-1"></i>Configured
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="empty">Not Set</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            }
 
         </div>
 
@@ -350,6 +476,10 @@
                         <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3">
                             <span class="text-muted"><i class="fas fa-rupee-sign me-2 text-danger"></i>Advance Payment</span>
                             <span class="hs-badge @(Model.MinimumBookingAmountRequired ? "hs-badge-yes" : "hs-badge-no")">@(Model.MinimumBookingAmountRequired ? "ON" : "OFF")</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3">
+                            <span class="text-muted"><i class="fas fa-file-invoice me-2" style="color:#6366f1;"></i>E-Invoice Mode</span>
+                            <span class="hs-badge" style="@(Model.EInvoiceMode == "AUTO" ? "background:#dbeafe;color:#1e40af;" : "background:#f1f5f9;color:#475569;")">@Model.EInvoiceMode</span>
                         </li>
                     </ul>
                 </div>

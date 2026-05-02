@@ -38,6 +38,7 @@ namespace HotelApp.Web.Repositories
             var parameters = new DynamicParameters();
             parameters.Add("@BranchID", settings.BranchID, DbType.Int32);
             parameters.Add("@HotelName", settings.HotelName, DbType.String);
+            parameters.Add("@LglNm", settings.LglNm, DbType.String);
             parameters.Add("@Address", settings.Address, DbType.String);
             parameters.Add("@ContactNumber1", settings.ContactNumber1, DbType.String);
             parameters.Add("@ContactNumber2", settings.ContactNumber2, DbType.String);
@@ -55,6 +56,15 @@ namespace HotelApp.Web.Repositories
             parameters.Add("@CancellationRefundApprovalThreshold", settings.CancellationRefundApprovalThreshold, DbType.Decimal);
             parameters.Add("@EnableCancellationPolicy", settings.EnableCancellationPolicy, DbType.Boolean);
             parameters.Add("@PoliceStation", settings.PoliceStation, DbType.String);
+            parameters.Add("@EInvoiceMode", settings.EInvoiceMode, DbType.String);
+            parameters.Add("@EInvoiceJsonStoragePath", settings.EInvoiceJsonStoragePath, DbType.String);
+            parameters.Add("@EInvoiceApiBaseUrl", settings.EInvoiceApiBaseUrl, DbType.String);
+            parameters.Add("@EInvoiceAuthUrl", settings.EInvoiceAuthUrl, DbType.String);
+            parameters.Add("@EInvoiceIrnEndpoint", settings.EInvoiceIrnEndpoint, DbType.String);
+            parameters.Add("@EInvoiceClientId", settings.EInvoiceClientId, DbType.String);
+            parameters.Add("@EInvoiceClientSecret", settings.EInvoiceClientSecret, DbType.String);
+            parameters.Add("@EInvoiceUsername", settings.EInvoiceUsername, DbType.String);
+            parameters.Add("@EInvoicePassword", settings.EInvoicePassword, DbType.String);
             parameters.Add("@ModifiedBy", modifiedBy, DbType.Int32);
 
             var result = await connection.ExecuteAsync(

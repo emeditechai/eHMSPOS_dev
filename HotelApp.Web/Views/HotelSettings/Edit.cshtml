@@ -109,6 +109,10 @@
         grid-template-columns: repeat(2, 1fr);
         gap: 0.875rem;
     }
+
+    .form-grid-3col {
+        grid-template-columns: repeat(3, 1fr);
+    }
     
     .form-group {
         display: flex;
@@ -281,11 +285,17 @@
                 </div>
                 <h3>Hotel Information</h3>
             </div>
-            <div class="form-grid">
+            <div class="form-grid form-grid-3col">
                 <div class="form-group">
                     <label asp-for="HotelName" class="form-label">Hotel Name <span class="text-danger">*</span></label>
                     <input asp-for="HotelName" class="form-control" placeholder="Enter hotel name" required />
                     <span asp-validation-for="HotelName" class="text-danger"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="LglNm" class="form-label">LglNm</label>
+                    <input asp-for="LglNm" class="form-control" placeholder="Enter legal name" />
+                    <span asp-validation-for="LglNm" class="text-danger"></span>
                 </div>
                 
                 <div class="form-group">
@@ -455,6 +465,116 @@
                     </div>
                     <small class="text-muted">When NO, the cancellation policy section on the booking form will be shown but acceptance will be auto-checked.</small>
                 </div>
+
+                <div class="form-group">
+                    <label asp-for="EInvoiceMode" class="form-label">E-Invoice Mode <span class="text-danger">*</span></label>
+                    <select asp-for="EInvoiceMode" class="form-select" id="eInvoiceModeSelect">
+                        <option value="MANUAL" selected="@(Model.EInvoiceMode == "MANUAL")">MANUAL (JSON Generation)</option>
+                        <option value="AUTO" selected="@(Model.EInvoiceMode == "AUTO")">AUTO (API-Based)</option>
+                    </select>
+                    <small class="text-muted">MANUAL mode generates a JSON file; AUTO mode uses API credentials configured below.</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- E-Invoicing MANUAL Configuration Section -->
+        <div class="settings-section" id="eInvoiceManualSection" style="display: @(Model.EInvoiceMode == "MANUAL" ? "block" : "none");">
+            <div class="section-header">
+                <div class="section-header-icon" style="background: #0ea5e9;">
+                    <i class="fas fa-folder-open"></i>
+                </div>
+                <h3>E-Invoicing JSON Configuration</h3>
+            </div>
+            <div class="form-grid">
+                <div class="form-group form-group-full">
+                    <label asp-for="EInvoiceJsonStoragePath" class="form-label">JSON Storage Path</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-folder"></i></span>
+                        <input asp-for="EInvoiceJsonStoragePath" class="form-control" placeholder="e.g. C:\EInvoice\JSON or /var/einvoice/json" id="eInvoiceJsonStoragePath" />
+                        <button type="button" class="btn btn-outline-secondary" id="btnBrowseJsonPath" title="Browse for folder">
+                            <i class="fas fa-folder-open me-1"></i>Browse
+                        </button>
+                    </div>
+                    <input type="file" id="jsonPathFolderPicker" webkitdirectory style="display:none;" tabindex="-1" />
+                    <small class="text-muted">Directory path where generated E-Invoice JSON files will be saved. Leave blank to use the application default.</small>
+                    <span asp-validation-for="EInvoiceJsonStoragePath" class="text-danger"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- E-Invoicing API Configuration Section -->
+        <div class="settings-section" id="eInvoiceApiSection" style="display: @(Model.EInvoiceMode == "AUTO" ? "block" : "none");">
+            <div class="section-header">
+                <div class="section-header-icon" style="background: #6366f1;">
+                    <i class="fas fa-plug"></i>
+                </div>
+                <h3>E-Invoicing API Configuration</h3>
+                <span class="ms-auto badge" style="background:#dcfce7; color:#166534; font-size:.75rem; padding:.35rem .75rem; border-radius:20px;">
+                    <i class="fas fa-lock me-1"></i>Sensitive fields are encrypted
+                </span>
+            </div>
+            <div class="form-grid">
+                <div class="form-group form-group-full">
+                    <label asp-for="EInvoiceApiBaseUrl" class="form-label">API Base URL <span class="text-danger" id="eInvoiceRequired">*</span></label>
+                    <input asp-for="EInvoiceApiBaseUrl" type="url" class="form-control" placeholder="https://api.einvoice.example.com" id="eInvoiceApiBaseUrl" />
+                    <span asp-validation-for="EInvoiceApiBaseUrl" class="text-danger"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="EInvoiceAuthUrl" class="form-label">Authorization URL <span class="text-danger">*</span></label>
+                    <input asp-for="EInvoiceAuthUrl" type="url" class="form-control" placeholder="https://api.einvoice.example.com/auth/token" id="eInvoiceAuthUrl" />
+                    <span asp-validation-for="EInvoiceAuthUrl" class="text-danger"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="EInvoiceIrnEndpoint" class="form-label">Generate IRN Endpoint <span class="text-danger">*</span></label>
+                    <input asp-for="EInvoiceIrnEndpoint" type="url" class="form-control" placeholder="https://api.einvoice.example.com/irn/generate" id="eInvoiceIrnEndpoint" />
+                    <span asp-validation-for="EInvoiceIrnEndpoint" class="text-danger"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="EInvoiceClientId" class="form-label">Client ID <span class="text-danger">*</span></label>
+                    <input asp-for="EInvoiceClientId" class="form-control" placeholder="Enter Client ID" id="eInvoiceClientId" />
+                    <span asp-validation-for="EInvoiceClientId" class="text-danger"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="EInvoiceClientSecret" class="form-label">
+                        Client Secret <span class="text-danger">*</span>
+                        <i class="fas fa-lock text-muted ms-1" style="font-size:.8rem;" title="Stored encrypted"></i>
+                    </label>
+                    <input asp-for="EInvoiceClientSecret" type="password" class="form-control" 
+                           autocomplete="new-password"
+                           placeholder="@(string.IsNullOrWhiteSpace(Model.EInvoiceClientSecret) ? "Enter Client Secret" : "Leave blank to keep existing")"
+                           id="eInvoiceClientSecret" />
+                    @if (!string.IsNullOrWhiteSpace(Model.EInvoiceClientSecret))
+                    {
+                        <small class="text-success"><i class="fas fa-check-circle me-1"></i>Secret is configured. Leave blank to keep existing.</small>
+                    }
+                    <span asp-validation-for="EInvoiceClientSecret" class="text-danger"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="EInvoiceUsername" class="form-label">Username <span class="text-danger">*</span></label>
+                    <input asp-for="EInvoiceUsername" class="form-control" placeholder="Enter API Username" id="eInvoiceUsername" />
+                    <span asp-validation-for="EInvoiceUsername" class="text-danger"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="EInvoicePassword" class="form-label">
+                        Password <span class="text-danger">*</span>
+                        <i class="fas fa-lock text-muted ms-1" style="font-size:.8rem;" title="Stored encrypted"></i>
+                    </label>
+                    <input asp-for="EInvoicePassword" type="password" class="form-control"
+                           autocomplete="new-password"
+                           placeholder="@(string.IsNullOrWhiteSpace(Model.EInvoicePassword) ? "Enter Password" : "Leave blank to keep existing")"
+                           id="eInvoicePassword" />
+                    @if (!string.IsNullOrWhiteSpace(Model.EInvoicePassword))
+                    {
+                        <small class="text-success"><i class="fas fa-check-circle me-1"></i>Password is configured. Leave blank to keep existing.</small>
+                    }
+                    <span asp-validation-for="EInvoicePassword" class="text-danger"></span>
+                </div>
             </div>
         </div>
 
@@ -505,6 +625,39 @@
 
             updateEnableCancellationPolicyText();
             $('#enableCancellationPolicyToggle').on('change', updateEnableCancellationPolicyText);
+
+            // E-Invoice mode toggle
+            function toggleEInvoiceSection() {
+                var mode = $('#eInvoiceModeSelect').val();
+                if (mode === 'AUTO') {
+                    $('#eInvoiceApiSection').slideDown(200);
+                    $('#eInvoiceManualSection').slideUp(200);
+                } else {
+                    $('#eInvoiceApiSection').slideUp(200);
+                    $('#eInvoiceManualSection').slideDown(200);
+                }
+            }
+
+            toggleEInvoiceSection();
+            $('#eInvoiceModeSelect').on('change', toggleEInvoiceSection);
+
+            // JSON path Browse button
+            $('#btnBrowseJsonPath').on('click', function () {
+                $('#jsonPathFolderPicker').val('').trigger('click');
+            });
+            $('#jsonPathFolderPicker').on('change', function () {
+                var files = this.files;
+                if (!files || files.length === 0) return;
+                // webkitRelativePath is "FolderName/file.ext" — grab top-level folder name
+                var rel = files[0].webkitRelativePath || '';
+                var folderName = rel.split('/')[0] || files[0].name;
+                var current = $('#eInvoiceJsonStoragePath').val().trim();
+                // Append folder name to any existing typed path, or just set it
+                if (current && !current.endsWith('/') && !current.endsWith('\\')) {
+                    current += '/';
+                }
+                $('#eInvoiceJsonStoragePath').val(current + folderName);
+            });
 
             // Convert time input to TimeSpan format before form submission
             $('form').on('submit', function() {

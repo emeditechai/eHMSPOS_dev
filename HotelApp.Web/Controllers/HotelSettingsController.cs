@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using HotelApp.Web.Models;
 using HotelApp.Web.Repositories;
+using HotelApp.Web.Services;
 using System.Security.Claims;
 
 namespace HotelApp.Web.Controllers
@@ -10,10 +11,14 @@ namespace HotelApp.Web.Controllers
     public class HotelSettingsController : BaseController
     {
         private readonly IHotelSettingsRepository _hotelSettingsRepository;
+        private readonly IEInvoiceProtector _eInvoiceProtector;
 
-        public HotelSettingsController(IHotelSettingsRepository hotelSettingsRepository)
+        public HotelSettingsController(
+            IHotelSettingsRepository hotelSettingsRepository,
+            IEInvoiceProtector eInvoiceProtector)
         {
             _hotelSettingsRepository = hotelSettingsRepository;
+            _eInvoiceProtector = eInvoiceProtector;
         }
 
         public async Task<IActionResult> Index()
@@ -126,7 +131,32 @@ namespace HotelApp.Web.Controllers
             {
                 ModelState.AddModelError(nameof(model.CancellationRefundApprovalThreshold), "Cancellation refund approval threshold cannot be negative.");
             }
-            
+
+            // E-Invoice AUTO mode validation
+            if (model.EInvoiceMode == "AUTO")
+            {
+                if (string.IsNullOrWhiteSpace(model.EInvoiceApiBaseUrl))
+                    ModelState.AddModelError(nameof(model.EInvoiceApiBaseUrl), "API Base URL is required in AUTO mode.");
+                if (string.IsNullOrWhiteSpace(model.EInvoiceAuthUrl))
+                    ModelState.AddModelError(nameof(model.EInvoiceAuthUrl), "Authorization URL is required in AUTO mode.");
+                if (string.IsNullOrWhiteSpace(model.EInvoiceIrnEndpoint))
+                    ModelState.AddModelError(nameof(model.EInvoiceIrnEndpoint), "Generate IRN Endpoint is required in AUTO mode.");
+                if (string.IsNullOrWhiteSpace(model.EInvoiceClientId))
+                    ModelState.AddModelError(nameof(model.EInvoiceClientId), "Client ID is required in AUTO mode.");
+                if (string.IsNullOrWhiteSpace(model.EInvoiceUsername))
+                    ModelState.AddModelError(nameof(model.EInvoiceUsername), "Username is required in AUTO mode.");
+
+                // Secrets: validate only when no existing value is stored
+                var existingSettings = await _hotelSettingsRepository.GetByBranchAsync(CurrentBranchID);
+                bool hasExistingSecret = !string.IsNullOrWhiteSpace(existingSettings?.EInvoiceClientSecret);
+                bool hasExistingPassword = !string.IsNullOrWhiteSpace(existingSettings?.EInvoicePassword);
+
+                if (string.IsNullOrWhiteSpace(model.EInvoiceClientSecret) && !hasExistingSecret)
+                    ModelState.AddModelError(nameof(model.EInvoiceClientSecret), "Client Secret is required in AUTO mode.");
+                if (string.IsNullOrWhiteSpace(model.EInvoicePassword) && !hasExistingPassword)
+                    ModelState.AddModelError(nameof(model.EInvoicePassword), "Password is required in AUTO mode.");
+            }
+
             if (!ModelState.IsValid)
             {
                 return View(model);
@@ -137,6 +167,30 @@ namespace HotelApp.Web.Controllers
                 // Ensure BranchID matches current user's branch
                 model.BranchID = CurrentBranchID;
                 model.IsActive = true;
+
+                // Encrypt sensitive E-Invoice fields when in AUTO mode
+                if (model.EInvoiceMode == "AUTO")
+                {
+                    model.EInvoiceClientSecret = !string.IsNullOrWhiteSpace(model.EInvoiceClientSecret)
+                        ? _eInvoiceProtector.Protect(model.EInvoiceClientSecret)
+                        : null; // null -> COALESCE keeps existing encrypted value in DB
+
+                    model.EInvoicePassword = !string.IsNullOrWhiteSpace(model.EInvoicePassword)
+                        ? _eInvoiceProtector.Protect(model.EInvoicePassword)
+                        : null; // null -> COALESCE keeps existing encrypted value in DB
+                }
+                else
+                {
+                    // MANUAL mode: clear all API config fields
+                    model.EInvoiceApiBaseUrl = null;
+                    model.EInvoiceAuthUrl = null;
+                    model.EInvoiceIrnEndpoint = null;
+                    model.EInvoiceClientId = null;
+                    model.EInvoiceClientSecret = null;
+                    model.EInvoiceUsername = null;
+                    model.EInvoicePassword = null;
+                    // EInvoiceJsonStoragePath is kept as-is (set by user)
+                }
 
                 await _hotelSettingsRepository.UpsertAsync(model, CurrentUserId ?? 0);
 
