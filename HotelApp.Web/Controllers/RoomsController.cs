@@ -21,6 +21,7 @@ public class RoomsController : BaseController
     private readonly IHotelSettingsRepository _hotelSettingsRepository;
     private readonly IGuestFeedbackLinkService _guestFeedbackLinkService;
     private readonly ILicenseRepository _licenseRepository;
+    private readonly IEInvoiceJsonService _eInvoiceJsonService;
 
     public RoomsController(
         IRoomRepository roomRepository, 
@@ -32,7 +33,8 @@ public class RoomsController : BaseController
                 IMailSender mailSender,
                 IHotelSettingsRepository hotelSettingsRepository,
                 IGuestFeedbackLinkService guestFeedbackLinkService,
-                ILicenseRepository licenseRepository)
+                ILicenseRepository licenseRepository,
+                IEInvoiceJsonService eInvoiceJsonService)
     {
         _roomRepository = roomRepository;
         _floorRepository = floorRepository;
@@ -44,6 +46,7 @@ public class RoomsController : BaseController
                 _hotelSettingsRepository = hotelSettingsRepository;
                 _guestFeedbackLinkService = guestFeedbackLinkService;
                 _licenseRepository = licenseRepository;
+                _eInvoiceJsonService = eInvoiceJsonService;
     }
 
         private async Task TrySendGuestFeedbackEmailAsync(Booking booking)
@@ -617,6 +620,20 @@ public class RoomsController : BaseController
             {
                 await _roomServiceRepository.SettleRoomServicesAsync(booking.Id, booking.BranchID);
                 await TrySendGuestFeedbackEmailAsync(booking);
+
+                // Generate e-invoice JSON for B2B bookings when EInvoiceMode = MANUAL
+                try
+                {
+                    var hotelSettings = await _hotelSettingsRepository.GetByBranchAsync(booking.BranchID);
+                    if (hotelSettings != null)
+                    {
+                        await _eInvoiceJsonService.GenerateAndSaveAsync(booking, hotelSettings, currentUserId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"E-invoice JSON generation failed (non-fatal): {ex.Message}");
+                }
             }
             
             // Get all rooms assigned to this booking and update their status
@@ -797,6 +814,20 @@ public class RoomsController : BaseController
             {
                 await _roomServiceRepository.SettleRoomServicesAsync(booking.Id, booking.BranchID);
                 await TrySendGuestFeedbackEmailAsync(booking);
+
+                // Generate e-invoice JSON for B2B bookings when EInvoiceMode = MANUAL
+                try
+                {
+                    var hotelSettings = await _hotelSettingsRepository.GetByBranchAsync(booking.BranchID);
+                    if (hotelSettings != null)
+                    {
+                        await _eInvoiceJsonService.GenerateAndSaveAsync(booking, hotelSettings, currentUserId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"E-invoice JSON generation failed (non-fatal): {ex.Message}");
+                }
             }
             
             // Get all rooms assigned to this booking and update their status

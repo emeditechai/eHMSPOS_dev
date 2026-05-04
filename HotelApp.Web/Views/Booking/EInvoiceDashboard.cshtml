@@ -1,0 +1,562 @@
+@model HotelApp.Web.ViewModels.B2BEInvoiceDashboardViewModel
+@{
+    ViewData["Title"] = "E-Invoice Logs";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
+    <style>
+        /* ── Page Header ── */
+        .ei-page-header {
+            display: flex; align-items: center; gap: 14px; margin-bottom: 24px;
+        }
+        .ei-header-icon {
+            width: 48px; height: 48px; border-radius: 14px;
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 1.4rem;
+            box-shadow: 0 4px 14px rgba(14,165,233,.35); flex-shrink: 0;
+        }
+        .ei-page-header h2 { margin: 0; font-size: 1.55rem; font-weight: 700; color: #1e1b4b; letter-spacing: -.3px; }
+        .ei-page-header p  { margin: 2px 0 0; font-size: .85rem; color: #6b7280; }
+
+        /* ── Filter Card ── */
+        .ei-filter-card {
+            background: #fff; border-radius: 16px; padding: 20px 24px;
+            box-shadow: 0 1px 8px rgba(0,0,0,.07); margin-bottom: 22px;
+            border: 1px solid #e9eaf0;
+        }
+        .ei-filter-row    { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; }
+        .ei-filter-fields { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
+        .ei-field label { display: block; font-size: .78rem; font-weight: 700; color: #374151; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+        .ei-field input[type="date"],
+        .ei-field input[type="text"],
+        .ei-field select {
+            border: 1.5px solid #d1d5db; border-radius: 10px; padding: 9px 14px;
+            font-size: .9rem; color: #1f2937; outline: none;
+            transition: border-color .2s, box-shadow .2s; background: #f9fafb; min-width: 155px;
+        }
+        .ei-field input:focus, .ei-field select:focus {
+            border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14,165,233,.15); background: #fff;
+        }
+        .ei-filter-actions { display: flex; gap: 10px; align-items: flex-end; }
+        .ei-btn {
+            display: inline-flex; align-items: center; gap: 7px; padding: 9px 20px;
+            border-radius: 10px; font-size: .875rem; font-weight: 600; cursor: pointer;
+            border: none; transition: all .2s; text-decoration: none; white-space: nowrap;
+        }
+        .ei-btn-primary { background: linear-gradient(135deg,#0ea5e9,#0284c7); color: #fff; box-shadow: 0 3px 10px rgba(14,165,233,.35); }
+        .ei-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(14,165,233,.45); color: #fff; }
+        .ei-btn-ghost { background: #f3f4f6; color: #374151; border: 1.5px solid #e5e7eb; }
+        .ei-btn-ghost:hover { background: #e5e7eb; transform: translateY(-1px); color: #1f2937; }
+
+        /* ── Summary Cards ── */
+        .ei-summary-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 22px; }
+        .ei-summary-card {
+            flex: 1; min-width: 120px; border-radius: 16px; padding: 16px 18px;
+            color: #fff; position: relative; overflow: hidden;
+            box-shadow: 0 4px 18px rgba(0,0,0,.12);
+            transition: transform .15s, box-shadow .15s;
+        }
+        .ei-summary-card.clickable { cursor: pointer; }
+        .ei-summary-card.clickable:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+        .ei-summary-card::before {
+            content: ''; position: absolute; top: -18px; right: -18px;
+            width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,.12);
+        }
+        .ei-sc-label { font-size: .67rem; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; opacity: .85; margin-bottom: 6px; }
+        .ei-sc-value { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+        .ei-sc-icon  { position: absolute; bottom: 10px; right: 14px; font-size: 1.6rem; opacity: .2; }
+        .ei-sc-total     { background: linear-gradient(135deg,#0ea5e9,#0284c7); }
+        .ei-sc-notpushed { background: linear-gradient(135deg,#f97316,#ea580c); }
+        .ei-sc-pushed    { background: linear-gradient(135deg,#16a34a,#15803d); }
+        .ei-sc-failed    { background: linear-gradient(135deg,#ef4444,#dc2626); }
+        .ei-sc-manual    { background: linear-gradient(135deg,#8b5cf6,#6d28d9); }
+        .ei-sc-auto      { background: linear-gradient(135deg,#10b981,#059669); }
+        .ei-sc-revenue   { background: linear-gradient(135deg,#0284c7,#0369a1); }
+        .ei-sc-tax       { background: linear-gradient(135deg,#7c3aed,#6d28d9); }
+
+        /* ── Info Banner ── */
+        .ei-info-banner {
+            background: linear-gradient(135deg,#eff6ff,#dbeafe);
+            border: 1.5px solid #bfdbfe; border-radius: 14px;
+            padding: 14px 20px; margin-bottom: 22px;
+            display: flex; align-items: flex-start; gap: 14px;
+        }
+        .ei-info-banner i { font-size: 1.3rem; color: #2563eb; flex-shrink: 0; margin-top: 2px; }
+        .ei-info-banner p { margin: 0; font-size: .875rem; color: #1e40af; line-height: 1.5; }
+        .ei-info-banner strong { color: #1d4ed8; }
+        .ei-coming-soon-pill {
+            display: inline-block; background: #fef3c7; color: #92400e;
+            border: 1px solid #fde68a; border-radius: 20px; padding: 2px 10px;
+            font-size: .72rem; font-weight: 700; letter-spacing: .3px; margin-left: 6px; vertical-align: middle;
+        }
+
+        /* ── Table Card ── */
+        .ei-table-card { background: #fff; border-radius: 16px; box-shadow: 0 1px 8px rgba(0,0,0,.07); border: 1px solid #e9eaf0; overflow: hidden; }
+        .ei-table-header {
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 12px; padding: 18px 22px 14px; border-bottom: 1px solid #f0f0f5;
+        }
+        .ei-table-title    { font-size: 1rem; font-weight: 700; color: #1f2937; }
+        .ei-table-subtitle { font-size: .8rem; color: #9ca3af; margin-top: 2px; }
+        .ei-table { width: 100%; border-collapse: collapse; font-size: .865rem; }
+        .ei-table thead tr { background: #e0f2fe; }
+        .ei-table thead th {
+            padding: 12px 13px; font-size: .7rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .6px; color: #0369a1;
+            border-bottom: 2px solid #bae6fd; white-space: nowrap;
+        }
+        .ei-table tbody tr { transition: background .15s; border-bottom: 1px solid #f3f4f6; }
+        .ei-table tbody tr:hover { background: #f0f9ff; }
+        .ei-table tbody td { padding: 11px 13px; color: #374151; vertical-align: middle; }
+        .ei-table .text-end { text-align: right; }
+        .ei-booking-no { font-weight: 700; color: #0284c7; font-family: monospace; font-size: .9rem; }
+        .ei-invoice-no { font-size: .79rem; color: #6b7280; font-family: monospace; }
+        .ei-version    { display: inline-block; background: #dbeafe; color: #1d4ed8; border-radius: 6px; padding: 2px 7px; font-size: .72rem; font-weight: 700; }
+        .ei-badge-manual { display: inline-block; background: #ede9fe; color: #6d28d9; border-radius: 20px; padding: 3px 9px; font-size: .71rem; font-weight: 700; }
+        .ei-badge-auto   { display: inline-block; background: #d1fae5; color: #065f46; border-radius: 20px; padding: 3px 9px; font-size: .71rem; font-weight: 700; }
+
+        /* Push status badges */
+        .ei-push-badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 20px; padding: 4px 11px; font-size: .71rem; font-weight: 700; }
+        .ei-push-notpushed { background: #fef3c7; color: #92400e; }
+        .ei-push-pushed    { background: #d1fae5; color: #065f46; }
+        .ei-push-failed    { background: #fee2e2; color: #991b1b; }
+        .ei-push-pending   { background: #dbeafe; color: #1e40af; }
+
+        /* Buttons */
+        .ei-action-group { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+        .ei-view-btn {
+            display: inline-flex; align-items: center; gap: 5px;
+            background: linear-gradient(135deg,#0ea5e9,#0284c7); color: #fff;
+            border: none; border-radius: 8px; padding: 5px 11px; font-size: .74rem;
+            font-weight: 600; cursor: pointer; transition: all .2s; white-space: nowrap;
+        }
+        .ei-view-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(14,165,233,.4); }
+        .ei-push-btn {
+            display: inline-flex; align-items: center; gap: 5px;
+            background: linear-gradient(135deg,#10b981,#059669); color: #fff;
+            border: none; border-radius: 8px; padding: 5px 11px; font-size: .74rem;
+            font-weight: 600; cursor: pointer; transition: all .2s; white-space: nowrap; opacity: .75;
+        }
+        .ei-push-btn:hover { opacity: 1; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(16,185,129,.4); }
+        .ei-push-btn-done {
+            background: #d1fae5; color: #065f46; border: 1.5px solid #6ee7b7;
+            cursor: default; opacity: 1;
+        }
+        .ei-push-btn-failed { background: linear-gradient(135deg,#ef4444,#dc2626); opacity: .85; }
+
+        .ei-empty-row td { text-align: center; padding: 56px 20px; color: #9ca3af; }
+        .ei-empty-row i  { font-size: 2rem; display: block; margin-bottom: 12px; opacity: .35; }
+
+        /* ── Modals ── */
+        .ei-modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55);
+            z-index: 9999; align-items: center; justify-content: center;
+        }
+        .ei-modal-overlay.open { display: flex; }
+        .ei-modal {
+            background: #fff; border-radius: 18px; width: min(92vw, 860px);
+            max-height: 88vh; display: flex; flex-direction: column;
+            box-shadow: 0 24px 64px rgba(0,0,0,.3); overflow: hidden;
+        }
+        .ei-modal-sm { width: min(92vw, 500px); }
+        .ei-modal-head {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 18px 24px; border-bottom: 1px solid #e9eaf0;
+            background: linear-gradient(135deg,#0ea5e9,#0284c7); color: #fff;
+        }
+        .ei-modal-head-green { background: linear-gradient(135deg,#10b981,#059669) !important; }
+        .ei-modal-head h5 { margin: 0; font-size: 1rem; font-weight: 700; }
+        .ei-modal-meta   { font-size: .78rem; opacity: .85; margin-top: 2px; }
+        .ei-modal-close  {
+            background: rgba(255,255,255,.2); border: none; color: #fff;
+            border-radius: 50%; width: 32px; height: 32px; font-size: 1rem;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: background .2s; flex-shrink: 0;
+        }
+        .ei-modal-close:hover { background: rgba(255,255,255,.35); }
+        .ei-modal-body { overflow-y: auto; padding: 20px 24px; flex: 1; }
+        .ei-json-pre {
+            background: #1e1e2e; color: #cdd6f4; border-radius: 12px;
+            padding: 18px 20px; font-family: 'Courier New', monospace; font-size: .82rem;
+            line-height: 1.65; overflow-x: auto; white-space: pre; margin: 0;
+        }
+        .ei-modal-foot {
+            padding: 14px 24px; border-top: 1px solid #e9eaf0;
+            display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;
+        }
+        /* Push modal */
+        .ei-push-detail { background:#f0fdf4; border:1.5px solid #bbf7d0; border-radius:12px; padding:14px 18px; margin-bottom:14px; }
+        .ei-push-detail dt { font-weight:700; color:#166534; font-size:.82rem; }
+        .ei-push-detail dd { color:#14532d; font-size:.9rem; font-family:monospace; margin-bottom:6px; }
+        .ei-coming-soon-notice {
+            background:#fffbeb; border:1.5px dashed #fcd34d; border-radius:10px;
+            padding:14px 16px; font-size:.84rem; color:#78350f;
+            display:flex; gap:12px; align-items:flex-start; line-height:1.55;
+        }
+        .ei-coming-soon-notice i { color:#d97706; margin-top:3px; flex-shrink:0; font-size:1.1rem; }
+
+        @@media (max-width: 768px) {
+            .ei-filter-fields { flex-direction: column; }
+            .ei-summary-row   { flex-direction: column; }
+        }
+    </style>
+}
+
+<!-- Page Header -->
+<div class="ei-page-header">
+    <div class="ei-header-icon"><i class="fas fa-file-code"></i></div>
+    <div>
+        <h2>E-Invoice Logs</h2>
+        <p>B2B booking e-invoice JSON generated at checkout &mdash; visualize &amp; push to Govt portal</p>
+    </div>
+</div>
+
+<!-- Info Banner -->
+<div class="ei-info-banner">
+    <i class="fas fa-circle-info"></i>
+    <p>
+        <strong>Dashboard Purpose:</strong>
+        Review and <strong>visualize</strong> the e-invoice JSON generated for every B2B checkout.
+        A <strong>Push to Govt Portal</strong> feature is planned — the database infrastructure is already in place to track push status, timestamp, and portal response.
+        <span class="ei-coming-soon-pill"><i class="fas fa-hourglass-half"></i> Portal Push — Coming Soon</span>
+    </p>
+</div>
+
+<!-- Filters -->
+<div class="ei-filter-card">
+    <form method="get" action="@Url.Action("EInvoiceDashboard", "Booking")">
+        <div class="ei-filter-row">
+            <div class="ei-filter-fields">
+                <div class="ei-field">
+                    <label for="fromDate">Check-Out From</label>
+                    <input id="fromDate" name="fromDate" type="date" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="ei-field">
+                    <label for="toDate">Check-Out To</label>
+                    <input id="toDate" name="toDate" type="date" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="ei-field">
+                    <label for="generationType">Generation Type</label>
+                    <select id="generationType" name="generationType">
+                        <option value="">All Types</option>
+                        <option value="MANUAL" selected="@(Model.GenerationType == "MANUAL" ? "selected" : null)">Manual</option>
+                        <option value="AUTO"   selected="@(Model.GenerationType == "AUTO"   ? "selected" : null)">Auto</option>
+                    </select>
+                </div>
+                <div class="ei-field">
+                    <label for="pushStatusFilter">Portal Status</label>
+                    <select id="pushStatusFilter" name="pushStatusFilter">
+                        <option value="">All</option>
+                        <option value="NOT_PUSHED" selected="@(Model.PushStatusFilter == "NOT_PUSHED" ? "selected" : null)">Not Pushed</option>
+                        <option value="PUSHED"     selected="@(Model.PushStatusFilter == "PUSHED"     ? "selected" : null)">Pushed</option>
+                        <option value="FAILED"     selected="@(Model.PushStatusFilter == "FAILED"     ? "selected" : null)">Failed</option>
+                    </select>
+                </div>
+                <div class="ei-field">
+                    <label for="bookingNoSearch">Booking No</label>
+                    <input id="bookingNoSearch" name="bookingNoSearch" type="text"
+                           placeholder="Search..." value="@Model.BookingNoSearch" style="min-width:130px;" />
+                </div>
+            </div>
+            <div class="ei-filter-actions">
+                <button class="ei-btn ei-btn-primary" type="submit"><i class="fas fa-filter"></i> Apply</button>
+                <a class="ei-btn ei-btn-ghost" href="@Url.Action("EInvoiceDashboard", "Booking")"><i class="fas fa-rotate-left"></i> Reset</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Summary Cards -->
+<div class="ei-summary-row">
+    <div class="ei-summary-card ei-sc-total">
+        <div class="ei-sc-label">Total Invoices</div>
+        <div class="ei-sc-value">@Model.TotalInvoices</div>
+        <i class="fas fa-file-invoice ei-sc-icon"></i>
+    </div>
+    <div class="ei-summary-card ei-sc-notpushed clickable" onclick="filterByPushStatus('NOT_PUSHED')" title="Click to filter by Not Pushed">
+        <div class="ei-sc-label">Not Pushed</div>
+        <div class="ei-sc-value">@Model.NotPushedCount</div>
+        <i class="fas fa-clock ei-sc-icon"></i>
+    </div>
+    <div class="ei-summary-card ei-sc-pushed clickable" onclick="filterByPushStatus('PUSHED')" title="Click to filter by Pushed">
+        <div class="ei-sc-label">Pushed</div>
+        <div class="ei-sc-value">@Model.PushedCount</div>
+        <i class="fas fa-circle-check ei-sc-icon"></i>
+    </div>
+    <div class="ei-summary-card ei-sc-failed clickable" onclick="filterByPushStatus('FAILED')" title="Click to filter by Failed">
+        <div class="ei-sc-label">Failed</div>
+        <div class="ei-sc-value">@Model.FailedCount</div>
+        <i class="fas fa-circle-xmark ei-sc-icon"></i>
+    </div>
+    <div class="ei-summary-card ei-sc-manual">
+        <div class="ei-sc-label">Manual</div>
+        <div class="ei-sc-value">@Model.ManualCount</div>
+        <i class="fas fa-hand-pointer ei-sc-icon"></i>
+    </div>
+    <div class="ei-summary-card ei-sc-auto">
+        <div class="ei-sc-label">Auto</div>
+        <div class="ei-sc-value">@Model.AutoCount</div>
+        <i class="fas fa-robot ei-sc-icon"></i>
+    </div>
+    <div class="ei-summary-card ei-sc-revenue">
+        <div class="ei-sc-label">Total Revenue</div>
+        <div class="ei-sc-value">₹@Model.TotalGrandTotal.ToString("N0")</div>
+        <i class="fas fa-rupee-sign ei-sc-icon"></i>
+    </div>
+    <div class="ei-summary-card ei-sc-tax">
+        <div class="ei-sc-label">Total GST</div>
+        <div class="ei-sc-value">₹@Model.TotalTaxAmount.ToString("N0")</div>
+        <i class="fas fa-percent ei-sc-icon"></i>
+    </div>
+</div>
+
+<!-- Data Table -->
+<div class="ei-table-card">
+    <div class="ei-table-header">
+        <div>
+            <div class="ei-table-title"><i class="fas fa-list" style="color:#0ea5e9;margin-right:8px;"></i>E-Invoice Records</div>
+            <div class="ei-table-subtitle">
+                @Model.TotalInvoices record(s) &mdash; @Model.FromDate.ToString("dd MMM yyyy") to @Model.ToDate.ToString("dd MMM yyyy")
+            </div>
+        </div>
+    </div>
+    <div style="overflow-x:auto;">
+        <table class="ei-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Booking No</th>
+                    <th>Invoice No</th>
+                    <th>Ver.</th>
+                    <th>Gen. Type</th>
+                    <th>Guest / Company</th>
+                    <th>Company GST</th>
+                    <th>Check-Out</th>
+                    <th class="text-end">Base Amt</th>
+                    <th class="text-end">GST</th>
+                    <th class="text-end">Grand Total</th>
+                    <th>Portal Status</th>
+                    <th>Generated On</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Rows.Any())
+                {
+                    <tr class="ei-empty-row">
+                        <td colspan="14">
+                            <i class="fas fa-file-code"></i>
+                            No e-invoice records found for the selected filters.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    int serial = 1;
+                    foreach (var row in Model.Rows)
+                    {
+                        <tr>
+                            <td style="color:#9ca3af;font-size:.78rem;">@serial</td>
+                            <td><span class="ei-booking-no">@row.BookingNo</span></td>
+                            <td><span class="ei-invoice-no">@row.InvoiceNumber</span></td>
+                            <td><span class="ei-version">@row.Version</span></td>
+                            <td>
+                                @if (string.Equals(row.GenerationType, "AUTO", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <span class="ei-badge-auto"><i class="fas fa-robot"></i> Auto</span>
+                                }
+                                else
+                                {
+                                    <span class="ei-badge-manual"><i class="fas fa-hand-pointer"></i> Manual</span>
+                                }
+                            </td>
+                            <td>
+                                <div style="font-weight:600;color:#1f2937;font-size:.875rem;">@(row.GuestName ?? "—")</div>
+                                <div style="font-size:.76rem;color:#6b7280;">@(row.B2BClientName ?? "")</div>
+                            </td>
+                            <td style="font-family:monospace;font-size:.79rem;color:#374151;">@(row.CompanyGstNo ?? "—")</td>
+                            <td style="white-space:nowrap;font-size:.875rem;">@row.EffectiveCheckOutDate.ToString("dd MMM yyyy")</td>
+                            <td class="text-end">₹@row.BaseAmount.ToString("N2")</td>
+                            <td class="text-end">₹@row.TaxAmount.ToString("N2")</td>
+                            <td class="text-end" style="font-weight:700;color:#0284c7;">₹@row.GrandTotal.ToString("N2")</td>
+                            <td>
+                                @if (row.IsPushed)
+                                {
+                                    <span class="ei-push-badge ei-push-pushed" title="Pushed at @row.PushedAt?.ToString("dd MMM yyyy HH:mm")">
+                                        <i class="fas fa-circle-check"></i> Pushed
+                                    </span>
+                                }
+                                else if (row.IsFailed)
+                                {
+                                    <span class="ei-push-badge ei-push-failed" title="@System.Web.HttpUtility.HtmlAttributeEncode(row.PushResponse ?? "")">
+                                        <i class="fas fa-circle-xmark"></i> Failed
+                                    </span>
+                                }
+                                else if (row.IsPending)
+                                {
+                                    <span class="ei-push-badge ei-push-pending">
+                                        <i class="fas fa-spinner fa-spin"></i> Pending
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="ei-push-badge ei-push-notpushed">
+                                        <i class="fas fa-clock"></i> Not Pushed
+                                    </span>
+                                }
+                            </td>
+                            <td style="white-space:nowrap;font-size:.8rem;color:#6b7280;">
+                                @row.CreatedDate.ToString("dd MMM yyyy")<br />
+                                <span style="font-size:.73rem;color:#9ca3af;">@row.CreatedDate.ToString("HH:mm")</span>
+                            </td>
+                            <td>
+                                <div class="ei-action-group">
+                                    <!-- View JSON -->
+                                    <button class="ei-view-btn"
+                                            onclick="openJsonModal('@row.BookingNo', '@row.InvoiceNumber', '@row.Version', this)"
+                                            data-json="@(row.JsonPayload ?? "{}")">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                    <!-- Push to Portal placeholder -->
+                                    @if (row.IsPushed)
+                                    {
+                                        <button class="ei-push-btn ei-push-btn-done" disabled>
+                                            <i class="fas fa-circle-check"></i> Pushed
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="ei-push-btn @(row.IsFailed ? "ei-push-btn-failed" : "")"
+                                                onclick="openPushModal('@row.Id', '@row.BookingNo', '@row.InvoiceNumber')"
+                                                title="Portal Push — Coming Soon">
+                                            <i class="fas fa-paper-plane"></i>
+                                            @(row.IsFailed ? "Retry" : "Push")
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                        serial++;
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ── JSON Viewer Modal ── -->
+<div class="ei-modal-overlay" id="jsonModal">
+    <div class="ei-modal">
+        <div class="ei-modal-head">
+            <div>
+                <h5><i class="fas fa-file-code" style="margin-right:8px;"></i>E-Invoice JSON</h5>
+                <div class="ei-modal-meta" id="modalMeta"></div>
+            </div>
+            <button class="ei-modal-close" onclick="closeJsonModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="ei-modal-body">
+            <pre class="ei-json-pre" id="jsonContent"></pre>
+        </div>
+        <div class="ei-modal-foot">
+            <button class="ei-btn ei-btn-ghost" onclick="copyJson()"><i class="fas fa-copy"></i> Copy JSON</button>
+            <button class="ei-btn ei-btn-primary" onclick="closeJsonModal()"><i class="fas fa-times"></i> Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Push to Portal Modal (placeholder) ── -->
+<div class="ei-modal-overlay" id="pushModal">
+    <div class="ei-modal ei-modal-sm">
+        <div class="ei-modal-head ei-modal-head-green">
+            <div>
+                <h5><i class="fas fa-paper-plane" style="margin-right:8px;"></i>Push to Govt Portal</h5>
+                <div class="ei-modal-meta">Transmit this e-invoice JSON to the Government GST portal</div>
+            </div>
+            <button class="ei-modal-close" onclick="closePushModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="ei-modal-body">
+            <div class="ei-push-detail">
+                <dt>Booking No</dt>
+                <dd id="pushBookingNo">—</dd>
+                <dt>Invoice No</dt>
+                <dd id="pushInvoiceNo">—</dd>
+            </div>
+            <div class="ei-coming-soon-notice">
+                <i class="fas fa-hourglass-half"></i>
+                <div>
+                    <strong>Portal Push — Coming Soon</strong><br />
+                    The e-invoice JSON is ready and stored. The integration with the Government GST / IRP portal
+                    will be enabled in a future release. When ready, this button will transmit the JSON to the portal API
+                    and automatically update the <em>Portal Status</em>, pushed timestamp, and API response for each record.
+                </div>
+            </div>
+        </div>
+        <div class="ei-modal-foot">
+            <button class="ei-btn ei-btn-ghost" onclick="closePushModal()">Cancel</button>
+            <button class="ei-btn" style="background:linear-gradient(135deg,#9ca3af,#6b7280);color:#fff;cursor:not-allowed;opacity:.75;" disabled>
+                <i class="fas fa-paper-plane"></i> Push to Portal
+                <span class="ei-coming-soon-pill">Soon</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        /* ── JSON Modal ── */
+        function openJsonModal(bookingNo, invoiceNo, version, btn) {
+            const rawJson = btn.getAttribute('data-json');
+            let pretty = rawJson;
+            try { pretty = JSON.stringify(JSON.parse(rawJson), null, 2); } catch {}
+            document.getElementById('jsonContent').textContent = pretty;
+            document.getElementById('modalMeta').textContent =
+                'Booking: ' + bookingNo + '  |  Invoice: ' + invoiceNo + '  |  v' + version;
+            document.getElementById('jsonModal').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeJsonModal() {
+            document.getElementById('jsonModal').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+        function copyJson() {
+            const text = document.getElementById('jsonContent').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.querySelector('#jsonModal .ei-btn-ghost');
+                const orig = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                setTimeout(() => { btn.innerHTML = orig; }, 2000);
+            });
+        }
+        document.getElementById('jsonModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeJsonModal(); });
+
+        /* ── Push Modal ── */
+        function openPushModal(id, bookingNo, invoiceNo) {
+            document.getElementById('pushBookingNo').textContent = bookingNo;
+            document.getElementById('pushInvoiceNo').textContent = invoiceNo;
+            document.getElementById('pushModal').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closePushModal() {
+            document.getElementById('pushModal').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+        document.getElementById('pushModal').addEventListener('click', e => { if (e.target === e.currentTarget) closePushModal(); });
+
+        /* ── Summary card click: filter by push status ── */
+        function filterByPushStatus(status) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('pushStatusFilter', status);
+            url.searchParams.set('fromDate', '@Model.FromDate.ToString("yyyy-MM-dd")');
+            url.searchParams.set('toDate',   '@Model.ToDate.ToString("yyyy-MM-dd")');
+            if ('@Model.GenerationType') url.searchParams.set('generationType', '@Model.GenerationType');
+            window.location.href = url.toString();
+        }
+
+        /* ── Escape key closes any open modal ── */
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') { closeJsonModal(); closePushModal(); }
+        });
+    </script>
+}

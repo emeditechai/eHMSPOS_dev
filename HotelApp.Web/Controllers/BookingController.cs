@@ -47,6 +47,7 @@ namespace HotelApp.Web.Controllers
         private readonly IBookingReceiptTemplateRepository _bookingReceiptTemplateRepository;
         private readonly ICancellationPolicyRepository _cancellationPolicyRepository;
         private readonly INationalityRepository _nationalityRepository;
+        private readonly IB2BEInvoiceLogRepository _eInvoiceLogRepository;
 
         public BookingController(
             IBookingRepository bookingRepository,
@@ -65,7 +66,8 @@ namespace HotelApp.Web.Controllers
             IRazorViewToStringRenderer razorViewToStringRenderer,
             IBookingReceiptTemplateRepository bookingReceiptTemplateRepository,
             ICancellationPolicyRepository cancellationPolicyRepository,
-            INationalityRepository nationalityRepository)
+            INationalityRepository nationalityRepository,
+            IB2BEInvoiceLogRepository eInvoiceLogRepository)
         {
             _bookingRepository = bookingRepository;
             _roomRepository = roomRepository;
@@ -84,6 +86,7 @@ namespace HotelApp.Web.Controllers
             _bookingReceiptTemplateRepository = bookingReceiptTemplateRepository;
             _cancellationPolicyRepository = cancellationPolicyRepository;
             _nationalityRepository = nationalityRepository;
+            _eInvoiceLogRepository = eInvoiceLogRepository;
         }
 
         private static string GetFriendlyMailErrorMessage(Exception ex)
@@ -3585,6 +3588,39 @@ namespace HotelApp.Web.Controllers
                 age--;
             }
             return age < 0 ? 0 : age;
+        }
+
+        // ── E-Invoice Dashboard ──────────────────────────────────────────────────
+
+        [HttpGet]
+        public async Task<IActionResult> EInvoiceDashboard(
+            DateOnly? fromDate,
+            DateOnly? toDate,
+            string? generationType,
+            string? bookingNoSearch,
+            string? pushStatusFilter)
+        {
+            var branchId = HttpContext.Session.GetInt32("BranchID") ?? 1;
+
+            var vm = new B2BEInvoiceDashboardViewModel
+            {
+                FromDate         = fromDate ?? DateOnly.FromDateTime(DateTime.Today.AddDays(-30)),
+                ToDate           = toDate   ?? DateOnly.FromDateTime(DateTime.Today),
+                GenerationType   = generationType,
+                BookingNoSearch  = bookingNoSearch,
+                PushStatusFilter = pushStatusFilter
+            };
+
+            vm.Rows = (await _eInvoiceLogRepository.GetDashboardAsync(
+                branchId,
+                vm.FromDate,
+                vm.ToDate,
+                vm.GenerationType,
+                vm.BookingNoSearch,
+                vm.PushStatusFilter)).ToList();
+
+            ViewData["Title"] = "E-Invoice Logs";
+            return View(vm);
         }
     }
 

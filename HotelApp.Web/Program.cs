@@ -164,6 +164,7 @@ builder.Services.AddScoped<IBookingReceiptTemplateRepository, BookingReceiptTemp
 builder.Services.AddScoped<IGuestFeedbackRepository, GuestFeedbackRepository>();
 builder.Services.AddScoped<IAssetManagementRepository, AssetManagementRepository>();
 builder.Services.AddScoped<IRefundRepository, RefundRepository>();
+builder.Services.AddScoped<IB2BEInvoiceLogRepository, B2BEInvoiceLogRepository>();
 
 // Licensing
 builder.Services.AddMemoryCache();   // used by LicenseMiddleware for midnight-reset daily validation cache
@@ -179,6 +180,7 @@ builder.Services.AddScoped<IEInvoiceProtector, EInvoiceProtector>();
 builder.Services.AddScoped<IMailSender, MailSender>();
 builder.Services.AddScoped<IRazorViewToStringRenderer, RazorViewToStringRenderer>();
 builder.Services.AddScoped<IGuestFeedbackLinkService, GuestFeedbackLinkService>();
+builder.Services.AddScoped<IEInvoiceJsonService, EInvoiceJsonService>();
 
 // Session configuration for BranchID storage
 builder.Services.AddDistributedMemoryCache();
