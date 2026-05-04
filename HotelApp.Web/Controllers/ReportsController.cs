@@ -422,8 +422,13 @@ public sealed class ReportsController : BaseController
         var data  = await _reportsRepository.GetBookingDetailsReportAsync(
             branchId, effectiveFrom, effectiveTo, bType, bStatus);
 
-        // Group detail lines by BookingId for view lookup
+        // Group billing-head lines by BookingId
         var linesDict = data.Lines
+            .GroupBy(l => l.BookingId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        // Group drill-down (item-level) lines by BookingId
+        var drillDict = data.DrillDownLines
             .GroupBy(l => l.BookingId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
@@ -438,7 +443,8 @@ public sealed class ReportsController : BaseController
             GSTCode             = hotel?.GSTCode,
             Summary             = data.Summary,
             Bookings            = data.Bookings,
-            Lines               = linesDict
+            Lines               = linesDict,
+            DrillDownLines      = drillDict
         };
 
         ViewData["Title"] = "Booking Details Report";

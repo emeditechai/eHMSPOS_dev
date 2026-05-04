@@ -174,6 +174,10 @@
         .bdr-amt-due   { font-size: .78rem; font-weight: 700; }
         .bdr-amt-due.has-due { color: #ef4444; }
         .bdr-amt-due.no-due  { color: #10b981; }
+        .bdr-amt-cancelled  { font-size: .78rem; font-weight: 700; color: #6b7280; }
+        .bdr-amt-deduction  { font-size: .78rem; font-weight: 700; color: #f59e0b; }
+        .bdr-amt-refund-pending  { font-size: .78rem; font-weight: 700; color: #3b82f6; }
+        .bdr-amt-refund-done     { font-size: .78rem; font-weight: 700; color: #10b981; }
 
         /* toggle chevron */
         .bdr-toggle { font-size: 1rem; color: #a0aec0; transition: transform .25s; }
@@ -236,6 +240,45 @@
             font-size: .72rem; color: #fff; margin-right: 7px; flex-shrink: 0;
         }
         .line-desc-cell { display: flex; align-items: center; }
+
+        /* ── View Mode Radio ── */
+        .bdr-view-mode-bar {
+            display: flex; align-items: center; gap: 6px;
+            background: #f1f2f8; border-radius: 10px; padding: 4px 6px;
+        }
+        .bdr-view-mode-bar label {
+            display: flex; align-items: center; gap: 6px;
+            padding: 6px 14px; border-radius: 8px; cursor: pointer;
+            font-size: .82rem; font-weight: 600; color: #6b7280;
+            transition: background .18s, color .18s; white-space: nowrap;
+            user-select: none;
+        }
+        .bdr-view-mode-bar input[type="radio"] { display: none; }
+        .bdr-view-mode-bar input[type="radio"]:checked + label {
+            background: #fff; color: #4338ca;
+            box-shadow: 0 1px 6px rgba(99,102,241,.18);
+        }
+        .bdr-view-mode-bar input[type="radio"]:checked + label i { color: #6366f1; }
+
+        /* ── Expand/Collapse All btn ── */
+        .bdr-btn-expall {
+            border: 1.5px solid #d1d5db; background: #fff; color: #374151;
+            border-radius: 9px; padding: 7px 14px; font-size: .82rem;
+            font-weight: 600; cursor: pointer; display: flex;
+            align-items: center; gap: 7px; transition: border-color .18s, color .18s;
+            white-space: nowrap;
+        }
+        .bdr-btn-expall:hover { border-color: #6366f1; color: #4338ca; }
+
+        /* ── Detail panel hidden in summary mode ── */
+        /* ── Summary / Details / Drill-down mode rules ── */
+        body.mode-summary .bdr-toggle { display: none !important; }
+        body.mode-summary .bdr-booking-header { cursor: default !important; }
+        body.mode-summary .bdr-booking-card.expanded .bdr-detail-panel { display: none !important; }
+        /* Details mode: show billing-head panel, hide drill-down panel */
+        body.mode-details .bdr-panel-drilldown { display: none !important; }
+        /* Drill-down mode: show item panel, hide billing-head panel */
+        body.mode-drilldown .bdr-panel-details { display: none !important; }
 
         /* ── No data ── */
         .bdr-empty {
@@ -376,11 +419,29 @@
     <!-- ── Export Bar ── -->
     @if (Model.Bookings.Count > 0)
     {
-        <div class="bdr-export-bar">
-            <span class="bdr-result-label">
-                <strong>@Model.Bookings.Count</strong> booking@(Model.Bookings.Count != 1 ? "s" : "")
-                &mdash; @Model.FromDate.ToString("dd MMM yyyy") to @Model.ToDate.ToString("dd MMM yyyy")
-            </span>
+        <div class="bdr-export-bar" style="flex-wrap:wrap;gap:10px">
+            <!-- Left: result label + view-mode radio -->
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+                <span class="bdr-result-label">
+                    <strong>@Model.Bookings.Count</strong> booking@(Model.Bookings.Count != 1 ? "s" : "")
+                    &mdash; @Model.FromDate.ToString("dd MMM yyyy") to @Model.ToDate.ToString("dd MMM yyyy")
+                </span>
+                <!-- View-mode toggle -->
+                <div class="bdr-view-mode-bar">
+                    <input type="radio" name="bdrViewMode" id="bdrModeSummary" value="summary" checked />
+                    <label for="bdrModeSummary"><i class="fas fa-list"></i> Summary</label>
+                    <input type="radio" name="bdrViewMode" id="bdrModeDetails" value="details" />
+                    <label for="bdrModeDetails"><i class="fas fa-layer-group"></i> Details</label>
+                    <input type="radio" name="bdrViewMode" id="bdrModeDrillDown" value="drilldown" />
+                    <label for="bdrModeDrillDown"><i class="fas fa-sitemap"></i> Drill Down</label>
+                </div>
+                <!-- Expand / Collapse All (visible in Details mode only) -->
+                <button class="bdr-btn-expall" id="bdrExpandAllBtn" style="display:none" onclick="toggleExpandAll()">
+                    <i class="fas fa-expand-alt" id="bdrExpandAllIcon"></i>
+                    <span id="bdrExpandAllText">Expand All</span>
+                </button>
+            </div>
+            <!-- Right: export buttons -->
             <div style="display:flex;gap:8px">
                 <button class="bdr-export-btn bdr-btn-csv"   onclick="exportBookingDetailsCsv()">
                     <i class="fas fa-file-csv"></i> CSV
@@ -470,11 +531,61 @@
                         <!-- Amounts + toggle -->
                         <div class="bdr-amt-block">
                             <div class="bdr-amt-total">₹@bk.TotalBillAmount.ToString("N2")</div>
-                            <div class="bdr-amt-paid">Paid: ₹@bk.TotalPaid.ToString("N2")</div>
-                            <div class="bdr-amt-due @(bk.DueAmount > 0 ? "has-due" : "no-due")">
-                                @(bk.DueAmount > 0 ? "Due:" : "Settled")
-                                @(bk.DueAmount > 0 ? " ₹" + bk.DueAmount.ToString("N2") : "")
-                            </div>
+                            @if (bk.TotalPaid > 0)
+                            {
+                                <div class="bdr-amt-paid">Paid: ₹@bk.TotalPaid.ToString("N2")</div>
+                            }
+                            @if (bk.Status == "Cancelled")
+                            {
+                                @* Cancelled bookings: show cancellation financials, never "Due" *@
+                                @if (bk.CancellationDeduction > 0)
+                                {
+                                    <div class="bdr-amt-deduction">
+                                        <i class="fas fa-scissors" style="font-size:.65rem"></i>
+                                        Deduction: ₹@bk.CancellationDeduction.ToString("N2")
+                                    </div>
+                                }
+                                @if (bk.CancellationRefundAmount > 0)
+                                {
+                                    @if (bk.IsRefunded)
+                                    {
+                                        <div class="bdr-amt-refund-done">
+                                            <i class="fas fa-check-circle" style="font-size:.65rem"></i>
+                                            Refunded: ₹@bk.CancellationRefundAmount.ToString("N2")
+                                        </div>
+                                    }
+                                    else if (bk.RefundApprovalStatus == "Approved")
+                                    {
+                                        <div class="bdr-amt-refund-pending">
+                                            <i class="fas fa-clock" style="font-size:.65rem"></i>
+                                            Refund ₹@bk.CancellationRefundAmount.ToString("N2") (Processing)
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="bdr-amt-refund-pending">
+                                            <i class="fas fa-hourglass-half" style="font-size:.65rem"></i>
+                                            Refund ₹@bk.CancellationRefundAmount.ToString("N2") (Pending)
+                                        </div>
+                                    }
+                                }
+                                else if (bk.TotalPaid == 0)
+                                {
+                                    <div class="bdr-amt-cancelled">Adjusted</div>
+                                }
+                                else
+                                {
+                                    <div class="bdr-amt-cancelled">No Refund</div>
+                                }
+                            }
+                            else
+                            {
+                                @* Active bookings: show Due / Settled *@
+                                <div class="bdr-amt-due @(bk.DueAmount > 0 ? "has-due" : "no-due")">
+                                    @(bk.DueAmount > 0 ? "Due:" : "Settled")
+                                    @(bk.DueAmount > 0 ? " ₹" + bk.DueAmount.ToString("N2") : "")
+                                </div>
+                            }
                         </div>
 
                         <i class="fas fa-chevron-down bdr-toggle"></i>
@@ -482,6 +593,13 @@
 
                     <!-- ── Detail Panel ── -->
                     <div class="bdr-detail-panel">
+                        @{
+                            var drillLines    = Model.DrillDownLines.TryGetValue(bk.BookingId, out var dl) ? dl : new();
+                            var hasDrillLines = drillLines.Count > 0;
+                        }
+
+                        @* ── Billing-Head Panel (Details mode) ── *@
+                        <div class="bdr-panel-details">
                         @if (!hasLines)
                         {
                             <div style="padding:14px 0;color:#9ca3af;font-size:.85rem;">
@@ -491,17 +609,15 @@
                         else
                         {
                             <div class="bdr-detail-title">
-                                <i class="fas fa-list-ul"></i> Billing Lines
+                                <i class="fas fa-list-ul"></i> Billing Lines &mdash; By Billing Head
                             </div>
                             <table class="bdr-lines-table">
                                 <thead>
                                     <tr>
-                                        <th style="width:40%">Description</th>
-                                        <th class="text-center" style="width:8%">Qty</th>
-                                        <th class="text-end"   style="width:13%">Rate (₹)</th>
-                                        <th class="text-end"   style="width:13%">Base Amt (₹)</th>
-                                        <th class="text-end"   style="width:13%">GST (₹)</th>
-                                        <th class="text-end"   style="width:13%">Total (₹)</th>
+                                        <th style="width:40%">Billing Head</th>
+                                        <th class="text-end" style="width:20%">Base Amount (₹)</th>
+                                        <th class="text-end" style="width:20%">GST (₹)</th>
+                                        <th class="text-end" style="width:20%">Total (₹)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -520,19 +636,87 @@
                                                     <span class="line-type-icon" style="background:@LineColor(ln.LineType)">
                                                         <i class="fas @LineIcon(ln.LineType)"></i>
                                                     </span>
-                                                    <span>
-                                                        @ln.Description
-                                                        <small style="display:block;color:#9ca3af;font-size:.7rem">
-                                                            @(ln.LineType switch {
-                                                                "Stay"        => "Stay Charges",
-                                                                "OtherCharge" => "Other Charges",
-                                                                "RoomService" => "Room Service",
-                                                                _             => ln.LineType
-                                                            })
-                                                        </small>
-                                                    </span>
+                                                    <span style="font-weight:600;color:#1e1b4b">@ln.Description</span>
                                                 </div>
                                             </td>
+                                            <td class="text-end">@ln.BaseAmount.ToString("N2")</td>
+                                            <td class="text-end">@ln.GSTAmount.ToString("N2")</td>
+                                            <td class="text-end" style="font-weight:700">@ln.TotalAmount.ToString("N2")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td>Total</td>
+                                        <td class="text-end">@lineBase.ToString("N2")</td>
+                                        <td class="text-end">@lineGST.ToString("N2")</td>
+                                        <td class="text-end">@lineTotal.ToString("N2")</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        }
+                        </div>
+
+                        @* ── Item-Level Drill-Down Panel (Drill Down mode) ── *@
+                        <div class="bdr-panel-drilldown">
+                        @if (!hasDrillLines)
+                        {
+                            <div style="padding:14px 0;color:#9ca3af;font-size:.85rem;">
+                                <i class="fas fa-info-circle"></i> No item-level billing details available for this booking.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="bdr-detail-title">
+                                <i class="fas fa-sitemap"></i> Billing Lines &mdash; Item-wise Drill Down
+                            </div>
+                            <table class="bdr-lines-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:32%">Item</th>
+                                        <th class="text-center" style="width:8%">Qty</th>
+                                        <th class="text-end"   style="width:12%">Rate (₹)</th>
+                                        <th class="text-end"   style="width:16%">Base Amount (₹)</th>
+                                        <th class="text-end"   style="width:16%">GST (₹)</th>
+                                        <th class="text-end"   style="width:16%">Total (₹)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @{
+                                        decimal ddTotal = 0; decimal ddGST = 0; decimal ddBase = 0;
+                                        string? currentHead = null;
+                                    }
+                                    @foreach (var ln in drillLines)
+                                    {
+                                        ddBase  += ln.BaseAmount;
+                                        ddGST   += ln.GSTAmount;
+                                        ddTotal += ln.TotalAmount;
+                                        var trClass = ln.LineType switch
+                                        {
+                                            "Stay"        => "tr-stay",
+                                            "OtherCharge" => "tr-othercharge",
+                                            "RoomService" => "tr-roomservice",
+                                            _             => ""
+                                        };
+                                        @* Group header row when billing head changes *@
+                                        if (currentHead != ln.LineType)
+                                        {
+                                            currentHead = ln.LineType;
+                                            var headLabel = ln.LineType switch
+                                            {
+                                                "Stay"        => "Stay Charges",
+                                                "OtherCharge" => "Other Charges",
+                                                "RoomService" => "Room Service",
+                                                _             => ln.LineType
+                                            };
+                                            <tr style="background:@(LineColor(ln.LineType))18">
+                                                <td colspan="6" style="padding:6px 12px;font-weight:700;font-size:.75rem;color:@LineColor(ln.LineType);text-transform:uppercase;letter-spacing:.4px">
+                                                    <i class="fas @LineIcon(ln.LineType)"></i>&nbsp;@headLabel
+                                                </td>
+                                            </tr>
+                                        }
+                                        <tr class="@trClass">
+                                            <td style="padding-left:28px">@ln.Description</td>
                                             <td class="text-center">@ln.Qty.ToString("N0")</td>
                                             <td class="text-end">@ln.Rate.ToString("N2")</td>
                                             <td class="text-end">@ln.BaseAmount.ToString("N2")</td>
@@ -544,13 +728,14 @@
                                 <tfoot>
                                     <tr>
                                         <td colspan="3">Total</td>
-                                        <td class="text-end">@lineBase.ToString("N2")</td>
-                                        <td class="text-end">@lineGST.ToString("N2")</td>
-                                        <td class="text-end">@lineTotal.ToString("N2")</td>
+                                        <td class="text-end">@ddBase.ToString("N2")</td>
+                                        <td class="text-end">@ddGST.ToString("N2")</td>
+                                        <td class="text-end">@ddTotal.ToString("N2")</td>
                                     </tr>
                                 </tfoot>
                             </table>
                         }
+                        </div>
                     </div>
                 </div>
             }
@@ -563,30 +748,77 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
 <script>
-// ── Toggle card expand/collapse ──────────────────────────────────────────────
+// ── View mode ────────────────────────────────────────────────────────────────
+let currentMode = 'summary';
+
+document.querySelectorAll('input[name="bdrViewMode"]').forEach(r => {
+    r.addEventListener('change', function () {
+        currentMode = this.value;
+        const isSummary   = currentMode === 'summary';
+        const isExpandable = currentMode === 'details' || currentMode === 'drilldown';
+        document.body.classList.toggle('mode-summary',   isSummary);
+        document.body.classList.toggle('mode-details',   currentMode === 'details');
+        document.body.classList.toggle('mode-drilldown', currentMode === 'drilldown');
+        document.getElementById('bdrExpandAllBtn').style.display = isExpandable ? '' : 'none';
+        if (isSummary) {
+            document.querySelectorAll('.bdr-booking-card.expanded')
+                    .forEach(c => c.classList.remove('expanded'));
+            resetExpandAllBtn();
+        }
+    });
+});
+
+// Apply summary mode on load (default)
+document.body.classList.add('mode-summary');
+document.body.classList.add('mode-details'); // details panel shown by default when expanded
+
+// ── Expand / Collapse All ────────────────────────────────────────────────────
+let allExpanded = false;
+function resetExpandAllBtn() {
+    allExpanded = false;
+    document.getElementById('bdrExpandAllIcon').className = 'fas fa-expand-alt';
+    document.getElementById('bdrExpandAllText').textContent = 'Expand All';
+}
+function toggleExpandAll() {
+    allExpanded = !allExpanded;
+    document.querySelectorAll('.bdr-booking-card').forEach(c => {
+        c.classList.toggle('expanded', allExpanded);
+    });
+    document.getElementById('bdrExpandAllIcon').className =
+        allExpanded ? 'fas fa-compress-alt' : 'fas fa-expand-alt';
+    document.getElementById('bdrExpandAllText').textContent =
+        allExpanded ? 'Collapse All' : 'Expand All';
+}
+
+// ── Toggle single card expand/collapse ───────────────────────────────────────
 function toggleBookingCard(id) {
+    if (currentMode === 'summary') return; // no-op in summary mode
     const card = document.getElementById('card-' + id);
     card.classList.toggle('expanded');
 }
 
-// ── Build flat table rows for export ─────────────────────────────────────────
-// We embed the data as JSON from the model to avoid page-scraping
+// ── Data (embedded from server) ─────────────────────────────────────────────────
 const bookingData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Bookings.Select(b => new {
-    bookingNumber   = b.BookingNumber,
-    checkIn         = b.CheckInDate.ToString("dd-MMM-yyyy"),
-    checkOut        = b.CheckOutDate.ToString("dd-MMM-yyyy"),
-    nights          = b.Nights,
-    guest           = b.PrimaryGuestName,
-    iGuest          = b.IGuest,
-    rooms           = b.RoomsAssigned,
-    roomTypes       = b.RoomTypes,
-    bookingType     = b.BookingType,
-    b2bClient       = b.B2BClientName ?? "-",
-    totalBill       = b.TotalBillAmount,
-    totalPaid       = b.TotalPaid,
-    due             = b.DueAmount,
-    status          = b.Status,
-    payStatus       = b.PaymentStatus
+    bookingId                 = b.BookingId,
+    bookingNumber             = b.BookingNumber,
+    checkIn                   = b.CheckInDate.ToString("dd-MMM-yyyy"),
+    checkOut                  = b.CheckOutDate.ToString("dd-MMM-yyyy"),
+    nights                    = b.Nights,
+    guest                     = b.PrimaryGuestName,
+    iGuest                    = b.IGuest,
+    rooms                     = b.RoomsAssigned,
+    roomTypes                 = b.RoomTypes,
+    bookingType               = b.BookingType,
+    b2bClient                 = b.B2BClientName ?? "-",
+    totalBill                 = b.TotalBillAmount,
+    totalPaid                 = b.TotalPaid,
+    due                       = b.DueAmount,
+    cancellationDeduction     = b.CancellationDeduction,
+    cancellationRefundAmount  = b.CancellationRefundAmount,
+    refundApprovalStatus      = b.RefundApprovalStatus,
+    isRefunded                = b.IsRefunded,
+    status                    = b.Status,
+    payStatus                 = b.PaymentStatus
 })));
 
 const lineData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Lines.SelectMany(kvp =>
@@ -602,88 +834,272 @@ const lineData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Lines
     })
 )));
 
-// booking lookup for lines
-const bookingMap = {};
-@foreach (var bk in Model.Bookings)
-{
-    @:bookingMap[@bk.BookingId] = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(bk.BookingNumber));
+// Index lines by bookingId
+const linesMap = {};
+lineData.forEach(l => {
+    if (!linesMap[l.bookingId]) linesMap[l.bookingId] = [];
+    linesMap[l.bookingId].push(l);
+});
+
+const drillDownData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DrillDownLines.SelectMany(kvp =>
+    kvp.Value.Select(l => new {
+        bookingId   = kvp.Key,
+        lineType    = l.LineType,
+        description = l.Description,
+        qty         = l.Qty,
+        rate        = l.Rate,
+        baseAmount  = l.BaseAmount,
+        gstAmount   = l.GSTAmount,
+        totalAmount = l.TotalAmount
+    })
+)));
+
+// Index drill-down lines by bookingId
+const drillDownMap = {};
+drillDownData.forEach(l => {
+    if (!drillDownMap[l.bookingId]) drillDownMap[l.bookingId] = [];
+    drillDownMap[l.bookingId].push(l);
+});
+
+function lineTypeLabel(lt) {
+    return lt === 'Stay' ? 'Stay' : lt === 'OtherCharge' ? 'Other Charge' : lt === 'RoomService' ? 'Room Service' : lt;
 }
 
-// ── CSV Export ───────────────────────────────────────────────────────────────
-function exportBookingDetailsCsv() {
-    const hdr = ['Booking No','Check-In','Check-Out','Nights','Primary Guest','Guests','Rooms','Room Types','Type','B2B Client','Total Bill','Total Paid','Due','Status','Payment Status'];
-    const rows = bookingData.map(b => [
-        b.bookingNumber, b.checkIn, b.checkOut, b.nights, b.guest, b.iGuest,
-        b.rooms, b.roomTypes, b.bookingType, b.b2bClient,
-        b.totalBill, b.totalPaid, b.due, b.status, b.payStatus
-    ]);
+// ── Build flat rows: one row per billing line (no Qty/Rate — billing-head grouped) ──
+function buildFlatRows() {
+    const out = [];
+    bookingData.forEach(b => {
+        const lines = linesMap[b.bookingId] || [];
+        const bk = [
+            b.bookingNumber, b.checkIn, b.checkOut, b.nights,
+            b.guest, b.iGuest, b.rooms, b.roomTypes, b.bookingType, b.b2bClient
+        ];
+        const tail = [
+            b.totalBill, b.totalPaid,
+            b.status === 'Cancelled' ? '' : b.due,
+            b.status === 'Cancelled' ? b.cancellationDeduction : '',
+            b.status === 'Cancelled' ? b.cancellationRefundAmount : '',
+            b.status === 'Cancelled' ? cancellationStatusLabel(b) : '',
+            b.status, b.payStatus
+        ];
+        if (lines.length === 0) {
+            out.push([...bk, '', '', '', '', '', ...tail]);
+        } else {
+            lines.forEach(l => {
+                out.push([
+                    ...bk,
+                    lineTypeLabel(l.lineType), l.description,
+                    Number(l.baseAmount).toFixed(2),
+                    Number(l.gstAmount).toFixed(2),
+                    Number(l.totalAmount).toFixed(2),
+                    ...tail
+                ]);
+            });
+        }
+    });
+    return out;
+}
 
+// ── Build drill-down rows: one row per item with Qty, Rate ────────────────────────
+function buildDrillDownRows() {
+    const out = [];
+    bookingData.forEach(b => {
+        const lines = drillDownMap[b.bookingId] || [];
+        const bk = [
+            b.bookingNumber, b.checkIn, b.checkOut, b.nights,
+            b.guest, b.iGuest, b.rooms, b.roomTypes, b.bookingType, b.b2bClient
+        ];
+        const tail = [
+            b.totalBill, b.totalPaid,
+            b.status === 'Cancelled' ? '' : b.due,
+            b.status === 'Cancelled' ? b.cancellationDeduction : '',
+            b.status === 'Cancelled' ? b.cancellationRefundAmount : '',
+            b.status === 'Cancelled' ? cancellationStatusLabel(b) : '',
+            b.status, b.payStatus
+        ];
+        if (lines.length === 0) {
+            out.push([...bk, '', '', '', '', '', '', '', ...tail]);
+        } else {
+            lines.forEach(l => {
+                out.push([
+                    ...bk,
+                    lineTypeLabel(l.lineType), l.description,
+                    Number(l.qty).toFixed(0),
+                    Number(l.rate).toFixed(2),
+                    Number(l.baseAmount).toFixed(2),
+                    Number(l.gstAmount).toFixed(2),
+                    Number(l.totalAmount).toFixed(2),
+                    ...tail
+                ]);
+            });
+        }
+    });
+    return out;
+}
+
+// ── Cancellation status label for exports ──────────────────────────────────
+function cancellationStatusLabel(b) {
+    if (b.status !== 'Cancelled') return '';
+    if (b.cancellationRefundAmount > 0) {
+        if (b.isRefunded) return 'Refunded';
+        if (b.refundApprovalStatus === 'Approved') return 'Refund Processing';
+        return 'Refund Pending';
+    }
+    return b.totalPaid > 0 ? 'No Refund' : 'Adjusted';
+}
+
+// ── Summary rows: one row per booking header ───────────────────────────────
+function buildSummaryRows() {
+    return bookingData.map(b => [
+        b.bookingNumber, b.checkIn, b.checkOut, b.nights,
+        b.guest, b.iGuest, b.rooms, b.roomTypes, b.bookingType, b.b2bClient,
+        b.totalBill, b.totalPaid,
+        b.status === 'Cancelled' ? '' : b.due,
+        b.status === 'Cancelled' ? b.cancellationDeduction : '',
+        b.status === 'Cancelled' ? b.cancellationRefundAmount : '',
+        b.status === 'Cancelled' ? cancellationStatusLabel(b) : '',
+        b.status, b.payStatus
+    ]);
+}
+
+const SUMMARY_COLS = [
+    'Booking No','Check-In','Check-Out','Nights','Primary Guest','No. of Guests',
+    'Rooms Assigned','Room Types','Booking Type','B2B Client',
+    'Total Bill (\u20B9)','Total Paid (\u20B9)','Due (\u20B9)',
+    'Cancellation Deduction (\u20B9)','Refund Amount (\u20B9)','Refund Status',
+    'Status','Pmt Status'
+];
+const DETAILS_COLS = [
+    'Booking No','Check-In','Check-Out','Nights','Primary Guest','No. of Guests',
+    'Rooms Assigned','Room Types','Booking Type','B2B Client',
+    'Line Type','Description','Base Amt (\u20B9)','GST (\u20B9)','Line Total (\u20B9)',
+    'Total Bill (\u20B9)','Total Paid (\u20B9)','Due (\u20B9)',
+    'Cancellation Deduction (\u20B9)','Refund Amount (\u20B9)','Refund Status',
+    'Status','Pmt Status'
+];
+const DRILLDOWN_COLS = [
+    'Booking No','Check-In','Check-Out','Nights','Primary Guest','No. of Guests',
+    'Rooms Assigned','Room Types','Booking Type','B2B Client',
+    'Line Type','Item Description','Qty','Rate (\u20B9)','Base Amt (\u20B9)','GST (\u20B9)','Line Total (\u20B9)',
+    'Total Bill (\u20B9)','Total Paid (\u20B9)','Due (\u20B9)',
+    'Cancellation Deduction (\u20B9)','Refund Amount (\u20B9)','Refund Status',
+    'Status','Pmt Status'
+];
+
+function getExportCols()  { return currentMode==='summary' ? SUMMARY_COLS  : currentMode==='drilldown' ? DRILLDOWN_COLS  : DETAILS_COLS;  }
+function getExportRows()  { return currentMode==='summary' ? buildSummaryRows() : currentMode==='drilldown' ? buildDrillDownRows() : buildFlatRows(); }
+function getExportLabel() { return currentMode==='summary' ? 'Summary' : currentMode==='drilldown' ? 'DrillDown' : 'Details'; }
+
+// ── CSV Export ────────────────────────────────────────────────────────────────
+function exportBookingDetailsCsv() {
+    const cols = getExportCols();
+    const rows = getExportRows();
     const sep = '\r\n';
-    let csv = hdr.map(h => '"' + h + '"').join(',') + sep;
+    let csv = cols.map(h => '"' + h + '"').join(',') + sep;
     rows.forEach(r => {
         csv += r.map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(',') + sep;
     });
-
-    // Blank row then detail header
-    csv += sep;
-    csv += ['"BookingNo"','"Line Type"','"Description"','"Qty"','"Rate"','"Base Amt"','"GST"','"Total"'].join(',') + sep;
-    lineData.forEach(l => {
-        const bno = bookingMap[l.bookingId] ?? '';
-        csv += ['"'+bno+'"','"'+l.lineType+'"','"'+l.description+'"',l.qty,l.rate,l.baseAmount,l.gstAmount,l.totalAmount].join(',') + sep;
-    });
-
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'BookingDetails_@(Model.FromDate.ToString("yyyyMMdd"))_@(Model.ToDate.ToString("yyyyMMdd")).csv';
+    a.download = 'BookingDetails_@(Model.FromDate.ToString("yyyyMMdd"))_@(Model.ToDate.ToString("yyyyMMdd"))_' + getExportLabel() + '.csv';
     a.click();
 }
 
 // ── Excel Export ─────────────────────────────────────────────────────────────
 function exportBookingDetailsExcel() {
-    const now = new Date();
-    let xml = '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>';
+    const cols = getExportCols();
+    const rows = getExportRows();
+    const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    let xml  = '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>';
     xml += '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">';
-    xml += '<Worksheet ss:Name="Booking Summary"><Table>';
-
-    const add = (cells, bold) => {
-        xml += '<Row>' + cells.map(c =>
-            `<Cell${bold ? ' ss:StyleID="bold"' : ''}><Data ss:Type="${typeof c === 'number' ? 'Number' : 'String'}">${String(c ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</Data></Cell>`
-        ).join('') + '</Row>';
-    };
-
-    add(['Booking No','Check-In','Check-Out','Nights','Primary Guest','Guests','Rooms','Room Types','Type','B2B Client','Total Bill','Total Paid','Due','Status','Pmt Status'], true);
-    bookingData.forEach(b => add([b.bookingNumber,b.checkIn,b.checkOut,b.nights,b.guest,b.iGuest,b.rooms,b.roomTypes,b.bookingType,b.b2bClient,b.totalBill,b.totalPaid,b.due,b.status,b.payStatus], false));
-
-    xml += '</Table></Worksheet>';
-
-    // Second sheet: details
-    xml += '<Worksheet ss:Name="Billing Lines"><Table>';
-    add(['Booking No','Line Type','Description','Qty','Rate','Base Amt','GST','Total'], true);
-    lineData.forEach(l => add([bookingMap[l.bookingId]??'', l.lineType, l.description, l.qty, l.rate, l.baseAmount, l.gstAmount, l.totalAmount], false));
+    xml += '<Styles><Style ss:ID="hdr"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#4F46E5" ss:Pattern="Solid"/></Style></Styles>';
+    xml += '<Worksheet ss:Name="Booking Details"><Table>';
+    xml += '<Row>' + cols.map(c => `<Cell ss:StyleID="hdr"><Data ss:Type="String">${esc(c)}</Data></Cell>`).join('') + '</Row>';
+    rows.forEach(r => {
+        xml += '<Row>' + r.map(v => {
+            const isNum = v !== '' && v !== null && v !== undefined && !isNaN(Number(v));
+            return `<Cell><Data ss:Type="${isNum ? 'Number' : 'String'}">${esc(v)}</Data></Cell>`;
+        }).join('') + '</Row>';
+    });
     xml += '</Table></Worksheet></Workbook>';
-
     const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'BookingDetails_@(Model.FromDate.ToString("yyyyMMdd"))_@(Model.ToDate.ToString("yyyyMMdd")).xls';
+    a.download = 'BookingDetails_@(Model.FromDate.ToString("yyyyMMdd"))_@(Model.ToDate.ToString("yyyyMMdd"))_' + getExportLabel() + '.xls';
     a.click();
 }
 
 // ── PDF Export ───────────────────────────────────────────────────────────────
 function exportBookingDetailsPdf() {
+    if (currentMode === 'summary')   { exportSummaryPdf();   return; }
+    if (currentMode === 'drilldown') { exportDrillDownPdf(); return; }
+    exportDetailsPdf();
+}
+
+function exportSummaryPdf() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+    const W = doc.internal.pageSize.getWidth();
+    const margin = 30;
+    let y = margin;
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(30, 27, 75);
+    doc.text('Booking Details Report — Summary', W / 2, y, { align: 'center' }); y += 16;
+    @if (!string.IsNullOrWhiteSpace(Model.HotelName))
+    {
+    @:doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(100);
+    @:doc.text('@Model.HotelName.Replace("'", "\\'")', W/2, y, { align:'center' }); y += 13;
+    }
+    doc.setFontSize(9); doc.setTextColor(80);
+    doc.text('Period: @Model.FromDate.ToString("dd MMM yyyy") to @Model.ToDate.ToString("dd MMM yyyy")', W/2, y, { align:'center' }); y += 14;
+
+    doc.autoTable({
+        head: [SUMMARY_COLS],
+        body: buildSummaryRows(),
+        startY: y,
+        margin: { left: margin, right: margin },
+        styles: { fontSize: 7, cellPadding: 4, overflow: 'linebreak', lineColor: [220,220,220], lineWidth: 0.3 },
+        headStyles: { fillColor: [79,70,229], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
+        alternateRowStyles: { fillColor: [248,248,255] },
+        columnStyles: {
+            0:  { cellWidth: 90 },
+            1:  { cellWidth: 64 },
+            2:  { cellWidth: 64 },
+            3:  { cellWidth: 32, halign: 'center' },
+            4:  { cellWidth: 80 },
+            5:  { cellWidth: 38, halign: 'center' },
+            6:  { cellWidth: 60 },
+            7:  { cellWidth: 72 },
+            8:  { cellWidth: 38 },
+            9:  { cellWidth: 72 },
+            10: { cellWidth: 60, halign: 'right', fontStyle: 'bold' },
+            11: { cellWidth: 55, halign: 'right' },
+            12: { cellWidth: 50, halign: 'right' },
+            13: { cellWidth: 52 },
+            14: { cellWidth: 52 },
+        },
+        didDrawPage: (d) => {
+            const pg = doc.internal.getCurrentPageInfo().pageNumber;
+            const total = doc.internal.getNumberOfPages();
+            doc.setFontSize(7); doc.setTextColor(150);
+            doc.text('Page ' + pg + ' of ' + total, W - margin, doc.internal.pageSize.getHeight() - 10, { align: 'right' });
+            doc.text('Generated: ' + new Date().toLocaleString(), margin, doc.internal.pageSize.getHeight() - 10);
+        }
+    });
+    doc.save('BookingDetails_Summary_@(Model.FromDate.ToString("yyyyMMdd"))_@(Model.ToDate.ToString("yyyyMMdd")).pdf');
+}
+
+function exportDetailsPdf() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
     const W = doc.internal.pageSize.getWidth();
     const margin = 30;
 
-    // Header
+    // ── Document header ──
     let y = margin;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.setTextColor(30, 27, 75);
-    doc.text('Booking Details Report', W / 2, y, { align: 'center' });
-    y += 16;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(30, 27, 75);
+    doc.text('Booking Details Report', W / 2, y, { align: 'center' }); y += 16;
 
     @if (!string.IsNullOrWhiteSpace(Model.HotelName))
     {
@@ -698,55 +1114,106 @@ function exportBookingDetailsPdf() {
     {
     @:doc.text('GSTIN: @Model.GSTCode', W/2, y, { align:'center' }); y += 11;
     }
-
     doc.setFontSize(9); doc.setTextColor(80);
-    doc.text('Period: @Model.FromDate.ToString("dd MMM yyyy") to @Model.ToDate.ToString("dd MMM yyyy")', W/2, y, { align: 'center' });
-    y += 10;
-
-    // Summary line
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(50);
+    doc.text('Period: @Model.FromDate.ToString("dd MMM yyyy") to @Model.ToDate.ToString("dd MMM yyyy")', W/2, y, { align: 'center' }); y += 10;
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(50);
     doc.text(
         `Bookings: @Model.Summary.TotalBookings  |  Total Bill: \u20B9@Model.Summary.TotalBillAmount.ToString("N2")  |  Collected: \u20B9@Model.Summary.TotalPaidAmount.ToString("N2")  |  Due: \u20B9@Model.Summary.TotalDueAmount.ToString("N2")`,
         W/2, y + 4, { align: 'center' }
-    );
-    y += 16;
+    ); y += 16;
 
-    // Table — booking header rows
-    const colStyles = {
-        0: { cellWidth: 88, fontStyle: 'bold' },
-        1: { cellWidth: 64, halign: 'center' },
-        2: { cellWidth: 64, halign: 'center' },
-        3: { cellWidth: 38, halign: 'center' },
-        4: { cellWidth: 80 },
-        5: { cellWidth: 36, halign: 'center' },
-        6: { cellWidth: 70 },
-        7: { cellWidth: 36 },
-        8: { cellWidth: 52, halign: 'right' },
-        9: { cellWidth: 52, halign: 'right' },
-        10: { cellWidth: 48, halign: 'right', fontStyle: 'bold' },
-        11: { cellWidth: 52 },
-    };
+    // ── Build grouped table body ──
+    // 13 cols: BookingNo | CheckIn/Out | Guest | Rooms/Types | BkType |
+    //          LineType | Description | Base(₹) | GST(₹) | LineTotal(₹) |
+    //          TotalBill | Paid | Status
+    const body    = [];
+    const rowMeta = []; // 'H' | 'Stay' | 'OtherCharge' | 'RoomService' | 'None'
 
-    const headRow = [['Booking No','Check-In','Check-Out','Nts','Primary Guest','Gsts','Rooms','Type','Total Bill','Collected','Due','Status']];
-    const bodyRows = bookingData.map(b => [
-        b.bookingNumber, b.checkIn, b.checkOut, b.nights, b.guest, b.iGuest,
-        (b.rooms + '\n' + b.roomTypes),
-        (b.bookingType + (b.b2bClient && b.b2bClient !== '-' ? '\n' + b.b2bClient : '')),
-        '\u20B9' + Number(b.totalBill).toLocaleString('en-IN', {minimumFractionDigits:2}),
-        '\u20B9' + Number(b.totalPaid).toLocaleString('en-IN', {minimumFractionDigits:2}),
-        '\u20B9' + Number(b.due).toLocaleString('en-IN', {minimumFractionDigits:2}),
-        b.status
-    ]);
+    bookingData.forEach(b => {
+        const lines = linesMap[b.bookingId] || [];
+        // Booking header row (indigo bg, bold)
+        body.push([
+            b.bookingNumber,
+            b.checkIn + ' \u2192 ' + b.checkOut,
+            b.guest + '\n' + b.nights + 'N / ' + b.iGuest + ' Guest(s)',
+            b.rooms + '\n' + b.roomTypes,
+            b.bookingType + (b.b2bClient && b.b2bClient !== '-' ? '\n' + b.b2bClient : ''),
+            '', '',                            // LineType, Description blank on header
+            '', '', '',                        // Base, GST, LineTotal blank
+            '\u20B9' + Number(b.totalBill).toLocaleString('en-IN',{minimumFractionDigits:2}),
+            '\u20B9' + Number(b.totalPaid).toLocaleString('en-IN',{minimumFractionDigits:2}),
+            b.status
+        ]);
+        rowMeta.push('H');
+
+        if (lines.length === 0) {
+            body.push(['','','','','', '\u2014','No billing details','','','', '','','']);
+            rowMeta.push('None');
+        } else {
+            lines.forEach(l => {
+                body.push([
+                    '', '', '', '', '',        // booking cols blank
+                    lineTypeLabel(l.lineType),
+                    l.description,
+                    Number(l.baseAmount).toFixed(2),
+                    Number(l.gstAmount).toFixed(2),
+                    Number(l.totalAmount).toFixed(2),
+                    '', '', ''                 // booking total cols blank on line rows
+                ]);
+                rowMeta.push(l.lineType);
+            });
+        }
+    });
+
+    const headLabels = [
+        'Booking No','Check-In \u2192 Out','Guest','Rooms / Types','Type',
+        'Line Type','Description','Base (\u20B9)','GST (\u20B9)','Line Total (\u20B9)',
+        'Total Bill (\u20B9)','Paid (\u20B9)','Status'
+    ];
 
     doc.autoTable({
-        head: headRow,
-        body: bodyRows,
+        head: [headLabels],
+        body: body,
         startY: y,
         margin: { left: margin, right: margin },
-        styles: { fontSize: 7, cellPadding: 4, overflow: 'linebreak' },
-        headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold', fontSize: 7 },
-        alternateRowStyles: { fillColor: [248, 248, 255] },
-        columnStyles: colStyles,
+        styles: { fontSize: 6.5, cellPadding: 3.5, overflow: 'linebreak', lineColor: [220,220,220], lineWidth: 0.3 },
+        headStyles: { fillColor: [79,70,229], textColor: 255, fontStyle: 'bold', fontSize: 7 },
+        columnStyles: {
+            0:  { cellWidth: 84 },
+            1:  { cellWidth: 76 },
+            2:  { cellWidth: 80 },
+            3:  { cellWidth: 70 },
+            4:  { cellWidth: 42 },
+            5:  { cellWidth: 56 },
+            6:  { cellWidth: 120 },
+            7:  { cellWidth: 52, halign: 'right' },
+            8:  { cellWidth: 44, halign: 'right' },
+            9:  { cellWidth: 56, halign: 'right', fontStyle: 'bold' },
+            10: { cellWidth: 56, halign: 'right', fontStyle: 'bold' },
+            11: { cellWidth: 52, halign: 'right' },
+            12: { cellWidth: 44 },
+        },
+        didParseCell: (data) => {
+            if (data.section !== 'body') return;
+            const meta = rowMeta[data.row.index];
+            if (meta === 'H') {
+                data.cell.styles.fillColor     = [232, 234, 255];
+                data.cell.styles.textColor     = [30,  27,  75];
+                data.cell.styles.fontStyle     = 'bold';
+                data.cell.styles.fontSize      = 7;
+                data.cell.styles.minCellHeight = 20;
+            } else if (meta === 'Stay') {
+                data.cell.styles.fillColor = [248, 248, 255];
+            } else if (meta === 'OtherCharge') {
+                data.cell.styles.fillColor = [255, 251, 235];
+            } else if (meta === 'RoomService') {
+                data.cell.styles.fillColor = [236, 253, 245];
+            } else {
+                data.cell.styles.fillColor = [249, 250, 251];
+                data.cell.styles.textColor = [156, 163, 175];
+                data.cell.styles.fontStyle = 'italic';
+            }
+        },
         didDrawPage: (d) => {
             const pg = doc.internal.getCurrentPageInfo().pageNumber;
             const total = doc.internal.getNumberOfPages();
@@ -756,45 +1223,116 @@ function exportBookingDetailsPdf() {
         }
     });
 
-    // Billing Lines sheet (second table on new page)
-    doc.addPage();
-    let y2 = margin;
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(30, 27, 75);
-    doc.text('Billing Line Details', W / 2, y2, { align: 'center' });
-    y2 += 18;
+    doc.save('BookingDetails_Details_@(Model.FromDate.ToString("yyyyMMdd"))_@(Model.ToDate.ToString("yyyyMMdd")).pdf');
+}
 
-    const lineHead = [['Booking No', 'Line Type', 'Description', 'Qty', 'Rate (₹)', 'Base Amt (₹)', 'GST (₹)', 'Total (₹)']];
-    const lineBody = lineData.map(l => [
-        bookingMap[l.bookingId] ?? '',
-        l.lineType,
-        l.description,
-        l.qty,
-        Number(l.rate).toFixed(2),
-        Number(l.baseAmount).toFixed(2),
-        Number(l.gstAmount).toFixed(2),
-        Number(l.totalAmount).toFixed(2)
-    ]);
+// ── PDF Drill-Down Export ─────────────────────────────────────────────────────
+function exportDrillDownPdf() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+    const W = doc.internal.pageSize.getWidth();
+    const margin = 30;
+    let y = margin;
 
-    const lineColStyles = {
-        0: { cellWidth: 90, fontStyle: 'bold' },
-        1: { cellWidth: 62 },
-        2: { cellWidth: 180 },
-        3: { cellWidth: 30, halign: 'center' },
-        4: { cellWidth: 60, halign: 'right' },
-        5: { cellWidth: 70, halign: 'right' },
-        6: { cellWidth: 60, halign: 'right' },
-        7: { cellWidth: 70, halign: 'right', fontStyle: 'bold' },
-    };
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(30, 27, 75);
+    doc.text('Booking Details Report \u2014 Item-wise Drill Down', W / 2, y, { align: 'center' }); y += 16;
+    @if (!string.IsNullOrWhiteSpace(Model.HotelName))
+    {
+    @:doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(100);
+    @:doc.text('@Model.HotelName.Replace("'", "\\'")'.trim(), W/2, y, { align:'center' }); y += 13;
+    }
+    doc.setFontSize(9); doc.setTextColor(80);
+    doc.text('Period: @Model.FromDate.ToString("dd MMM yyyy") to @Model.ToDate.ToString("dd MMM yyyy")', W/2, y, { align: 'center' }); y += 14;
+
+    // 14 cols: BookingNo | Dates | Guest | Rooms | Type | BillingHead | Item | Qty | Rate | Base | GST | LineTotal | TotalBill | Status
+    const body    = [];
+    const rowMeta = [];
+
+    bookingData.forEach(b => {
+        const lines = drillDownMap[b.bookingId] || [];
+        body.push([
+            b.bookingNumber,
+            b.checkIn + ' \u2192 ' + b.checkOut,
+            b.guest + '\n' + b.nights + 'N / ' + b.iGuest + ' Guest(s)',
+            b.rooms + '\n' + b.roomTypes,
+            b.bookingType + (b.b2bClient && b.b2bClient !== '-' ? '\n' + b.b2bClient : ''),
+            '', '', '', '', '', '',
+            '\u20B9' + Number(b.totalBill).toLocaleString('en-IN',{minimumFractionDigits:2}),
+            '\u20B9' + Number(b.totalPaid).toLocaleString('en-IN',{minimumFractionDigits:2}),
+            b.status
+        ]);
+        rowMeta.push('H');
+
+        if (lines.length === 0) {
+            body.push(['','','','','', '\u2014','No items','','','','', '','','']);
+            rowMeta.push('None');
+        } else {
+            lines.forEach(l => {
+                body.push([
+                    '', '', '', '', '',
+                    lineTypeLabel(l.lineType),
+                    l.description,
+                    Number(l.qty).toFixed(0),
+                    Number(l.rate).toFixed(2),
+                    Number(l.baseAmount).toFixed(2),
+                    Number(l.gstAmount).toFixed(2),
+                    Number(l.totalAmount).toFixed(2),
+                    '', ''
+                ]);
+                rowMeta.push(l.lineType);
+            });
+        }
+    });
+
+    const headLabels = [
+        'Booking No','Check-In \u2192 Out','Guest','Rooms / Types','Type',
+        'Billing Head','Item Description','Qty','Rate (\u20B9)','Base (\u20B9)','GST (\u20B9)','Line Total (\u20B9)',
+        'Total Bill (\u20B9)','Paid (\u20B9)'
+    ];
 
     doc.autoTable({
-        head: lineHead,
-        body: lineBody,
-        startY: y2,
+        head: [headLabels],
+        body: body,
+        startY: y,
         margin: { left: margin, right: margin },
-        styles: { fontSize: 7.5, cellPadding: 4 },
-        headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
-        alternateRowStyles: { fillColor: [250, 250, 255] },
-        columnStyles: lineColStyles,
+        styles: { fontSize: 6, cellPadding: 3, overflow: 'linebreak', lineColor: [220,220,220], lineWidth: 0.3 },
+        headStyles: { fillColor: [79,70,229], textColor: 255, fontStyle: 'bold', fontSize: 6.5 },
+        columnStyles: {
+            0:  { cellWidth: 76 },
+            1:  { cellWidth: 68 },
+            2:  { cellWidth: 70 },
+            3:  { cellWidth: 62 },
+            4:  { cellWidth: 36 },
+            5:  { cellWidth: 50 },
+            6:  { cellWidth: 100 },
+            7:  { cellWidth: 20, halign: 'center' },
+            8:  { cellWidth: 38, halign: 'right' },
+            9:  { cellWidth: 44, halign: 'right' },
+            10: { cellWidth: 36, halign: 'right' },
+            11: { cellWidth: 48, halign: 'right', fontStyle: 'bold' },
+            12: { cellWidth: 50, halign: 'right', fontStyle: 'bold' },
+            13: { cellWidth: 44, halign: 'right' },
+        },
+        didParseCell: (data) => {
+            if (data.section !== 'body') return;
+            const meta = rowMeta[data.row.index];
+            if (meta === 'H') {
+                data.cell.styles.fillColor     = [232, 234, 255];
+                data.cell.styles.textColor     = [30,  27,  75];
+                data.cell.styles.fontStyle     = 'bold';
+                data.cell.styles.minCellHeight = 18;
+            } else if (meta === 'Stay') {
+                data.cell.styles.fillColor = [248, 248, 255];
+            } else if (meta === 'OtherCharge') {
+                data.cell.styles.fillColor = [255, 251, 235];
+            } else if (meta === 'RoomService') {
+                data.cell.styles.fillColor = [236, 253, 245];
+            } else {
+                data.cell.styles.fillColor = [249, 250, 251];
+                data.cell.styles.textColor = [156, 163, 175];
+                data.cell.styles.fontStyle = 'italic';
+            }
+        },
         didDrawPage: (d) => {
             const pg = doc.internal.getCurrentPageInfo().pageNumber;
             const total = doc.internal.getNumberOfPages();
@@ -804,7 +1342,7 @@ function exportBookingDetailsPdf() {
         }
     });
 
-    doc.save('BookingDetails_@(Model.FromDate.ToString("yyyyMMdd"))_@(Model.ToDate.ToString("yyyyMMdd")).pdf');
+    doc.save('BookingDetails_DrillDown_@(Model.FromDate.ToString("yyyyMMdd"))_@(Model.ToDate.ToString("yyyyMMdd")).pdf');
 }
 </script>
 }

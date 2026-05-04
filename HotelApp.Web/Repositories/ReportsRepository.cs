@@ -511,14 +511,16 @@ public sealed class ReportsRepository : IReportsRepository
 
         var summary  = (await grid.ReadAsync<BookingDetailsReportSummary>()).FirstOrDefault()
                        ?? new BookingDetailsReportSummary();
-        var headers  = (await grid.ReadAsync<BookingDetailsHeaderRow>()).ToList();
-        var lines    = (await grid.ReadAsync<BookingDetailsLineRow>()).ToList();
+        var headers   = (await grid.ReadAsync<BookingDetailsHeaderRow>()).ToList();
+        var lines     = (await grid.ReadAsync<BookingDetailsLineRow>()).ToList();
+        var drillDown = (await grid.ReadAsync<BookingDetailsLineRow>()).ToList();
 
         return new BookingDetailsReportData
         {
-            Summary  = summary,
-            Bookings = headers,
-            Lines    = lines
+            Summary       = summary,
+            Bookings      = headers,
+            Lines         = lines,
+            DrillDownLines = drillDown
         };
     }
 }
@@ -919,6 +921,7 @@ public sealed class BookingDetailsReportData
     public BookingDetailsReportSummary Summary { get; set; } = new();
     public List<BookingDetailsHeaderRow> Bookings { get; set; } = new();
     public List<BookingDetailsLineRow> Lines { get; set; } = new();
+    public List<BookingDetailsLineRow> DrillDownLines { get; set; } = new();
 }
 
 public sealed class BookingDetailsReportSummary
@@ -945,6 +948,11 @@ public sealed class BookingDetailsHeaderRow
     public decimal TotalBillAmount { get; set; }
     public decimal TotalPaid { get; set; }
     public decimal DueAmount { get; set; }
+    // Cancellation fields (non-zero only for cancelled bookings)
+    public decimal CancellationDeduction { get; set; }
+    public decimal CancellationRefundAmount { get; set; }
+    public string RefundApprovalStatus { get; set; } = string.Empty;
+    public bool IsRefunded { get; set; }
     public string Status { get; set; } = string.Empty;
     public string PaymentStatus { get; set; } = string.Empty;
 }

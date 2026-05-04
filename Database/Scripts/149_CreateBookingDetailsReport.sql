@@ -173,10 +173,12 @@ BEGIN
         ), 2)                                                                 AS TotalBillAmount,
         ROUND(SUM(b.TotalPaid), 2)                                            AS TotalPaidAmount,
         ROUND(SUM(
-            b.StayBillAmount
-            + ISNULL(oc.OCTotalAmount, 0)
-            + ISNULL(rs.RSTotalAmount, 0)
-            - b.TotalPaid
+            CASE WHEN b.Status = 'Cancelled' THEN 0
+                 ELSE b.StayBillAmount
+                    + ISNULL(oc.OCTotalAmount, 0)
+                    + ISNULL(rs.RSTotalAmount, 0)
+                    - b.TotalPaid
+            END
         ), 2)                                                                 AS TotalDueAmount
     FROM #B b
     LEFT JOIN #OCTotals oc ON oc.BookingId = b.Id
@@ -218,31 +220,40 @@ BEGIN
             + ISNULL(rs.RSTotalAmount, 0)
         , 2)                           AS TotalBillAmount,
         ROUND(b.TotalPaid, 2)          AS TotalPaid,
-        ROUND(
-            b.StayBillAmount
-            + ISNULL(oc.OCTotalAmount, 0)
-            + ISNULL(rs.RSTotalAmount, 0)
-            - b.TotalPaid
-        , 2)                           AS DueAmount,
+        -- DueAmount: 0 for cancelled bookings (adjusted per cancellation policy)
+        CASE WHEN b.Status = 'Cancelled' THEN CAST(0 AS DECIMAL(12,2))
+             ELSE ROUND(
+                b.StayBillAmount
+                + ISNULL(oc.OCTotalAmount, 0)
+                + ISNULL(rs.RSTotalAmount, 0)
+                - b.TotalPaid, 2)
+        END                            AS DueAmount,
+        -- Cancellation fields (NULL for non-cancelled bookings)
+        ROUND(ISNULL(canc.DeductionAmount, 0), 2)  AS CancellationDeduction,
+        ROUND(ISNULL(canc.RefundAmount, 0), 2)      AS CancellationRefundAmount,
+        ISNULL(canc.ApprovalStatus, '')             AS RefundApprovalStatus,
+        CAST(ISNULL(canc.IsRefunded, 0) AS BIT)    AS IsRefunded,
         b.Status,
         b.PaymentStatus
     FROM #B b
     LEFT JOIN #OCTotals oc ON oc.BookingId = b.Id
     LEFT JOIN #RSTotals rs ON rs.BookingId = b.Id
+    LEFT JOIN dbo.BookingCancellations canc ON canc.BookingId = b.Id
     ORDER BY b.CheckInDate, b.BookingNumber;
 
     -- ─────────────────────────────────────────────────────────
-    -- RS 3: Detail Lines per Booking
-    --   LineType: 'Stay' | 'OtherCharge' | 'RoomService'
-    --   SortOrder: 1=Stay, 2=OtherCharge, 3=RoomService
+    -- RS 3: Billing-Head Summary per Booking
+    --   One row per billing head that has data:
+    --   'Stay' | 'OtherCharge' | 'RoomService'
     -- ─────────────────────────────────────────────────────────
+
+    -- Stay Charges (always exists — one row per booking)
     SELECT
         bk.Id                                              AS BookingId,
         1                                                  AS SortOrder,
         'Stay'                                             AS LineType,
         CAST('Stay Charges'    AS NVARCHAR(200))           AS Description,
         CAST(bk.Nights AS DECIMAL(12,2))                   AS Qty,
-        -- per-night base rate (base / nights)
         CASE WHEN bk.Nights > 0
              THEN ROUND(bk2.BaseAmount / bk.Nights, 2)
              ELSE bk2.BaseAmount END                       AS Rate,
@@ -254,7 +265,66 @@ BEGIN
 
     UNION ALL
 
-    -- Other Charges detail
+    -- Other Charges — one aggregated row per booking
+    SELECT
+        oc.BookingId,
+        2                                                  AS SortOrder,
+        'OtherCharge'                                      AS LineType,
+        CAST('Other Charges'   AS NVARCHAR(200))           AS Description,
+        CAST(SUM(ISNULL(oc.Qty,1)) AS DECIMAL(12,2))       AS Qty,
+        0                                                  AS Rate,
+        SUM(oc.Rate * ISNULL(oc.Qty,1))                    AS BaseAmount,
+        SUM(oc.GSTAmount)                                  AS GSTAmount,
+        SUM(oc.Rate * ISNULL(oc.Qty,1) + oc.GSTAmount)    AS TotalAmount
+    FROM dbo.BookingOtherCharges oc
+    WHERE oc.BookingId IN (SELECT Id FROM #B)
+    GROUP BY oc.BookingId
+
+    UNION ALL
+
+    -- Room Services — one aggregated row per booking
+    SELECT
+        rs.BookingID                                       AS BookingId,
+        3                                                  AS SortOrder,
+        'RoomService'                                      AS LineType,
+        CAST('Room Service'    AS NVARCHAR(200))           AS Description,
+        CAST(SUM(ISNULL(rs.Qty,1)) AS DECIMAL(12,2))       AS Qty,
+        0                                                  AS Rate,
+        SUM(rs.NetAmount)                                  AS BaseAmount,
+        SUM(rs.GSTAmount)                                  AS GSTAmount,
+        SUM(rs.ActualBillAmount)                           AS TotalAmount
+    FROM dbo.RoomServices rs
+    WHERE rs.BookingID IN (SELECT Id FROM #B)
+    GROUP BY rs.BookingID
+
+    ORDER BY BookingId, SortOrder;
+
+    -- ─────────────────────────────────────────────────────────
+    -- RS 4: Drill-Down — Item-level lines per Booking
+    --   Stay: one row per booking (same as RS3 Stay)
+    --   OtherCharge: one row per OC item
+    --   RoomService: one row per RS item
+    -- ─────────────────────────────────────────────────────────
+
+    -- Stay (one row per booking — same as billing head)
+    SELECT
+        bk.Id                                              AS BookingId,
+        1                                                  AS SortOrder,
+        'Stay'                                             AS LineType,
+        CAST('Stay Charges'    AS NVARCHAR(200))           AS Description,
+        CAST(bk.Nights AS DECIMAL(12,2))                   AS Qty,
+        CASE WHEN bk.Nights > 0
+             THEN ROUND(bk2.BaseAmount / bk.Nights, 2)
+             ELSE bk2.BaseAmount END                       AS Rate,
+        bk2.BaseAmount                                     AS BaseAmount,
+        bk2.TaxAmount                                      AS GSTAmount,
+        bk2.TotalAmount                                    AS TotalAmount
+    FROM #B bk
+    INNER JOIN dbo.Bookings bk2 ON bk2.Id = bk.Id
+
+    UNION ALL
+
+    -- Other Charges — individual item rows
     SELECT
         oc.BookingId,
         2                                                  AS SortOrder,
@@ -271,7 +341,7 @@ BEGIN
 
     UNION ALL
 
-    -- Room Services detail
+    -- Room Services — individual item rows
     SELECT
         rs.BookingID                                       AS BookingId,
         3                                                  AS SortOrder,

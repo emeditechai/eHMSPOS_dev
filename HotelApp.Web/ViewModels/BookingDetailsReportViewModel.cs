@@ -17,6 +17,9 @@ public sealed class BookingDetailsReportViewModel
     public BookingDetailsReportSummary Summary { get; set; } = new();
     public List<BookingDetailsHeaderRow> Bookings { get; set; } = new();
 
-    // Keyed by BookingId for quick lookup in the view
+    // Billing-head grouped lines keyed by BookingId
     public Dictionary<int, List<BookingDetailsLineRow>> Lines { get; set; } = new();
+
+    // Item-level drill-down lines keyed by BookingId
+    public Dictionary<int, List<BookingDetailsLineRow>> DrillDownLines { get; set; } = new();
 }
