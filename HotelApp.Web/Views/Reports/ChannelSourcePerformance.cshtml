@@ -1,11 +1,551 @@
 @model HotelApp.Web.ViewModels.ChannelSourcePerformanceReportViewModel
 @{
     ViewData["Title"] = "Channel & Source Performance";
+    var dateLabel = Model.FromDate == Model.ToDate
+        ? Model.FromDate.ToString("dd MMM yyyy")
+        : $"{Model.FromDate:dd MMM yyyy} – {Model.ToDate:dd MMM yyyy}";
+    var daySpan   = (Model.ToDate.ToDateTime(TimeOnly.MinValue) - Model.FromDate.ToDateTime(TimeOnly.MinValue)).Days + 1;
+    var topRow    = Model.Rows.OrderByDescending(r => r.RoomRevenue).FirstOrDefault();
+    var channelGroups = Model.Rows
+        .GroupBy(r => string.IsNullOrWhiteSpace(r.Channel) ? "Unknown" : r.Channel)
+        .Select(g => new { Channel = g.Key, Revenue = g.Sum(x => x.RoomRevenue), Bookings = g.Sum(x => x.BookingCount) })
+        .OrderByDescending(g => g.Revenue)
+        .ToList();
 }
 
 @section Styles {
-    <link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
+<style>
+/* ── Layout ───────────────────────────────────────────────── */
+.csp-wrap { display:flex; flex-direction:column; gap:20px; }
+
+/* ── Filter Bar ───────────────────────────────────────────── */
+.csp-filter-bar {
+    background:#fff;
+    border:1px solid #e2e8f0;
+    border-radius:12px;
+    padding:16px 20px;
+    display:flex; flex-wrap:wrap; gap:14px;
+    align-items:flex-end; justify-content:space-between;
+    box-shadow:0 1px 4px rgba(0,0,0,.05);
 }
+.csp-filter-bar label { font-size:11.5px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:5px; }
+.csp-filter-bar input[type=date] {
+    border:1.5px solid #e2e8f0; border-radius:8px;
+    padding:8px 12px; font-size:13.5px; color:#1e293b;
+    background:#f8fafc; outline:none;
+}
+.csp-filter-bar input[type=date]:focus { border-color:#6366f1; background:#fff; }
+.csp-btn-apply {
+    display:inline-flex; align-items:center; gap:7px;
+    padding:9px 20px; background:#6366f1; color:#fff;
+    border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;
+    transition:background .2s;
+}
+.csp-btn-apply:hover { background:#4f46e5; }
+.csp-btn-reset {
+    display:inline-flex; align-items:center; gap:7px;
+    padding:9px 16px; background:#f1f5f9; color:#475569;
+    border:1.5px solid #e2e8f0; border-radius:8px;
+    font-size:13px; font-weight:600; cursor:pointer; text-decoration:none;
+    transition:border-color .2s;
+}
+.csp-btn-reset:hover { border-color:#6366f1; color:#6366f1; }
+
+/* ── KPI Cards ────────────────────────────────────────────── */
+.csp-kpi-grid {
+    display:grid;
+    grid-template-columns:repeat(6,1fr);
+    gap:14px;
+}
+@@media(max-width:1100px){ .csp-kpi-grid{ grid-template-columns:repeat(3,1fr); } }
+@@media(max-width:640px) { .csp-kpi-grid{ grid-template-columns:repeat(2,1fr); } }
+
+.csp-kpi {
+    background:#fff; border:1px solid #e2e8f0; border-radius:14px;
+    padding:18px 20px 16px;
+    position:relative; overflow:hidden;
+    box-shadow:0 1px 4px rgba(0,0,0,.05);
+    transition:box-shadow .2s, transform .15s;
+}
+.csp-kpi:hover { box-shadow:0 6px 20px rgba(0,0,0,.1); transform:translateY(-2px); }
+.csp-kpi-icon {
+    width:38px; height:38px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; margin-bottom:12px;
+}
+.csp-kpi-label { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#94a3b8; margin-bottom:4px; }
+.csp-kpi-value { font-size:22px; font-weight:800; color:#0f172a; line-height:1.1; }
+.csp-kpi-sub   { font-size:11px; color:#64748b; margin-top:5px; }
+.csp-kpi-accent {
+    position:absolute; right:-10px; bottom:-10px;
+    width:60px; height:60px; border-radius:50%; opacity:.08;
+}
+
+.kpi-blue   .csp-kpi-icon { background:#eff6ff; color:#3b82f6; }
+.kpi-blue   .csp-kpi-accent { background:#3b82f6; }
+.kpi-indigo .csp-kpi-icon { background:#eef2ff; color:#6366f1; }
+.kpi-indigo .csp-kpi-accent { background:#6366f1; }
+.kpi-emerald .csp-kpi-icon { background:#ecfdf5; color:#10b981; }
+.kpi-emerald .csp-kpi-accent { background:#10b981; }
+.kpi-amber  .csp-kpi-icon { background:#fffbeb; color:#f59e0b; }
+.kpi-amber  .csp-kpi-accent { background:#f59e0b; }
+.kpi-rose   .csp-kpi-icon { background:#fff1f2; color:#f43f5e; }
+.kpi-rose   .csp-kpi-accent { background:#f43f5e; }
+.kpi-violet .csp-kpi-icon { background:#f5f3ff; color:#8b5cf6; }
+.kpi-violet .csp-kpi-accent { background:#8b5cf6; }
+
+/* ── Charts Row ───────────────────────────────────────────── */
+.csp-charts-row {
+    display:grid; grid-template-columns:1fr 2fr; gap:14px;
+}
+@@media(max-width:900px){ .csp-charts-row{ grid-template-columns:1fr; } }
+
+.csp-chart-card {
+    background:#fff; border:1px solid #e2e8f0; border-radius:14px;
+    padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.05);
+}
+.csp-chart-title {
+    font-size:13px; font-weight:700; color:#1e293b;
+    margin-bottom:14px; display:flex; align-items:center; gap:8px;
+}
+.csp-chart-title i { color:#6366f1; }
+.csp-donut-wrap { position:relative; width:180px; height:180px; margin:0 auto 14px; }
+.csp-donut-legend { display:flex; flex-direction:column; gap:7px; }
+.csp-legend-item { display:flex; align-items:center; gap:8px; font-size:12px; color:#475569; }
+.csp-legend-dot  { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.csp-legend-pct  { font-weight:700; color:#0f172a; margin-left:auto; font-size:12.5px; }
+
+/* ── Table Panel ──────────────────────────────────────────── */
+.csp-table-card {
+    background:#fff; border:1px solid #e2e8f0; border-radius:14px;
+    box-shadow:0 1px 4px rgba(0,0,0,.05); overflow:hidden;
+}
+.csp-table-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 20px 12px; border-bottom:1px solid #f1f5f9; flex-wrap:wrap; gap:10px;
+}
+.csp-table-header h3 { font-size:14px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:8px; margin:0; }
+.csp-table-header h3 i { color:#6366f1; }
+.csp-export-btns { display:flex; gap:8px; }
+.csp-export-btn {
+    display:inline-flex; align-items:center; gap:5px;
+    padding:7px 13px; border-radius:8px; font-size:12px; font-weight:600;
+    cursor:pointer; border:1.5px solid #e2e8f0; background:#f8fafc;
+    color:#475569; transition:all .2s;
+}
+.csp-export-btn:hover { border-color:#6366f1; color:#6366f1; background:#eef2ff; }
+.csp-row-count { font-size:11.5px; color:#94a3b8; padding:0 20px 10px; }
+
+table.csp-table { width:100%; border-collapse:collapse; }
+table.csp-table thead th {
+    background:#f8fafc; font-size:10.5px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.06em; color:#64748b;
+    padding:11px 14px; border-bottom:2px solid #e2e8f0; white-space:nowrap;
+}
+table.csp-table thead th.num { text-align:right; }
+table.csp-table tbody tr { border-bottom:1px solid #f1f5f9; transition:background .15s; }
+table.csp-table tbody tr:last-child { border-bottom:none; }
+table.csp-table tbody tr:hover { background:#f8fafc; }
+table.csp-table td { padding:12px 14px; font-size:13px; color:#374151; vertical-align:middle; }
+table.csp-table td.num { text-align:right; font-variant-numeric:tabular-nums; }
+.csp-channel-badge {
+    display:inline-flex; align-items:center; gap:6px;
+    font-weight:700; color:#1e293b;
+}
+.csp-source-badge {
+    display:inline-block;
+    padding:2px 9px; border-radius:20px; font-size:11px; font-weight:600;
+    background:#f1f5f9; color:#475569;
+}
+.csp-share-bar-wrap { display:flex; align-items:center; gap:10px; }
+.csp-share-bar {
+    flex:1; height:8px; background:#f1f5f9; border-radius:6px; overflow:hidden; min-width:60px;
+}
+.csp-share-fill { height:100%; border-radius:6px; background:linear-gradient(90deg,#6366f1,#8b5cf6); }
+.csp-share-pct { font-size:12px; font-weight:700; color:#1e293b; min-width:40px; text-align:right; }
+.csp-rank { display:inline-flex; align-items:center; justify-content:center;
+    width:22px; height:22px; border-radius:50%; font-size:10.5px; font-weight:800;
+    background:#eef2ff; color:#6366f1; margin-right:4px; }
+.csp-rank-1 { background:#fef9c3; color:#a16207; }
+.csp-rank-2 { background:#f1f5f9; color:#475569; }
+.csp-rank-3 { background:#fff7ed; color:#c2410c; }
+
+/* ── Top Performer Banner ─────────────────────────────────── */
+.csp-top-banner {
+    background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);
+    border-radius:12px; padding:14px 20px;
+    display:flex; align-items:center; gap:16px; color:#fff;
+    box-shadow:0 4px 16px rgba(99,102,241,.3);
+}
+.csp-top-banner i { font-size:22px; opacity:.85; }
+.csp-top-banner-text { font-size:13px; }
+.csp-top-banner-text strong { font-size:15px; display:block; }
+</style>
+}
+
+@{
+    var palette = new[] { "#6366f1","#0ea5e9","#10b981","#f59e0b","#f43f5e","#8b5cf6","#14b8a6","#f97316" };
+}
+
+<div class="csp-wrap">
+
+    <!-- ── Page Header ───────────────────────────────────────── -->
+    <div class="page-header" style="margin-bottom:0;">
+        <h2><i class="fas fa-diagram-project"></i> Channel &amp; Source Performance</h2>
+    </div>
+
+    <!-- ── Filter Bar ────────────────────────────────────────── -->
+    <div class="csp-filter-bar">
+        <form method="get" action="@Url.Action("ChannelSourcePerformance","Reports")"
+              style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;width:100%;justify-content:space-between;">
+            <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;">
+                <div>
+                    <label for="fromDate">From Date</label>
+                    <input id="fromDate" name="fromDate" type="date" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div>
+                    <label for="toDate">To Date</label>
+                    <input id="toDate" name="toDate" type="date" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div style="font-size:12px;color:#94a3b8;padding-bottom:10px;">
+                    <i class="fas fa-calendar-days" style="color:#6366f1;"></i>
+                    @dateLabel &nbsp;·&nbsp; @daySpan day(s)
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:flex-end;">
+                <button class="csp-btn-apply" type="submit"><i class="fas fa-filter"></i> Apply</button>
+                <a class="csp-btn-reset" href="@Url.Action("ChannelSourcePerformance","Reports")"><i class="fas fa-undo"></i> Reset</a>
+            </div>
+        </form>
+    </div>
+
+    @if (topRow != null)
+    {
+        <!-- ── Top Performer Banner ──────────────────────────── -->
+        <div class="csp-top-banner">
+            <i class="fas fa-trophy"></i>
+            <div class="csp-top-banner-text">
+                <strong>Top Performer: @(topRow.Channel ?? "Unknown") / @(topRow.Source ?? "Unknown")</strong>
+                ₹@topRow.RoomRevenue.ToString("N0") revenue &nbsp;·&nbsp;
+                @topRow.BookingCount booking(s) &nbsp;·&nbsp;
+                @topRow.RevenueSharePercent.ToString("N1")% of total &nbsp;·&nbsp;
+                ADR ₹@topRow.Adr.ToString("N2")
+            </div>
+        </div>
+    }
+
+    <!-- ── KPI Cards ─────────────────────────────────────────── -->
+    <div class="csp-kpi-grid">
+        <div class="csp-kpi kpi-blue">
+            <div class="csp-kpi-icon"><i class="fas fa-bookmark"></i></div>
+            <div class="csp-kpi-label">Total Bookings</div>
+            <div class="csp-kpi-value">@Model.Summary.TotalBookings</div>
+            <div class="csp-kpi-sub">@Model.Rows.Select(r => r.Channel).Distinct().Count() channel(s)</div>
+            <div class="csp-kpi-accent"></div>
+        </div>
+        <div class="csp-kpi kpi-indigo">
+            <div class="csp-kpi-icon"><i class="fas fa-moon"></i></div>
+            <div class="csp-kpi-label">Sold Nights</div>
+            <div class="csp-kpi-value">@Model.Summary.SoldRoomNights</div>
+            <div class="csp-kpi-sub">of @Model.Summary.AvailableRoomNights avail.</div>
+            <div class="csp-kpi-accent"></div>
+        </div>
+        <div class="csp-kpi kpi-emerald">
+            <div class="csp-kpi-icon"><i class="fas fa-indian-rupee-sign"></i></div>
+            <div class="csp-kpi-label">Room Revenue</div>
+            <div class="csp-kpi-value" style="font-size:18px;">₹@Model.Summary.RoomRevenue.ToString("N0")</div>
+            <div class="csp-kpi-sub">Tax ₹@Model.Summary.RoomTax.ToString("N0")</div>
+            <div class="csp-kpi-accent"></div>
+        </div>
+        <div class="csp-kpi kpi-amber">
+            <div class="csp-kpi-icon"><i class="fas fa-chart-line"></i></div>
+            <div class="csp-kpi-label">ADR</div>
+            <div class="csp-kpi-value" style="font-size:18px;">₹@Model.Summary.Adr.ToString("N2")</div>
+            <div class="csp-kpi-sub">Avg. daily rate</div>
+            <div class="csp-kpi-accent"></div>
+        </div>
+        <div class="csp-kpi kpi-rose">
+            <div class="csp-kpi-icon"><i class="fas fa-gauge-high"></i></div>
+            <div class="csp-kpi-label">RevPAR</div>
+            <div class="csp-kpi-value" style="font-size:18px;">₹@Model.Summary.RevPar.ToString("N2")</div>
+            <div class="csp-kpi-sub">Revenue per avail. room</div>
+            <div class="csp-kpi-accent"></div>
+        </div>
+        <div class="csp-kpi kpi-violet">
+            <div class="csp-kpi-icon"><i class="fas fa-percent"></i></div>
+            <div class="csp-kpi-label">Occupancy</div>
+            <div class="csp-kpi-value">@Model.Summary.OccupancyPercent.ToString("N1")%</div>
+            <div class="csp-kpi-sub" style="display:flex;align-items:center;gap:6px;margin-top:8px;">
+                <div style="flex:1;height:6px;background:#f1f5f9;border-radius:4px;overflow:hidden;">
+                    <div style="height:100%;width:@(Math.Min(Model.Summary.OccupancyPercent,100).ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%;background:linear-gradient(90deg,#8b5cf6,#6366f1);border-radius:4px;"></div>
+                </div>
+            </div>
+            <div class="csp-kpi-accent"></div>
+        </div>
+    </div>
+
+    <!-- ── Charts Row ─────────────────────────────────────────── -->
+    @if (Model.Rows.Any())
+    {
+        <div class="csp-charts-row">
+            <!-- Donut: Revenue by Channel -->
+            <div class="csp-chart-card">
+                <div class="csp-chart-title"><i class="fas fa-chart-pie"></i> Revenue by Channel</div>
+                <div class="csp-donut-wrap">
+                    <canvas id="donutChart"></canvas>
+                </div>
+                <div class="csp-donut-legend">
+                    @{ int ci = 0; }
+                    @foreach (var cg in channelGroups)
+                    {
+                        var pct = Model.Summary.RoomRevenue > 0 ? (cg.Revenue / Model.Summary.RoomRevenue * 100) : 0;
+                        <div class="csp-legend-item">
+                            <span class="csp-legend-dot" style="background:@palette[ci % palette.Length];"></span>
+                            <span>@cg.Channel</span>
+                            <span class="csp-legend-pct">@pct.ToString("N1")%</span>
+                        </div>
+                        ci++;
+                    }
+                </div>
+            </div>
+
+            <!-- Bar: Revenue + Bookings by Channel -->
+            <div class="csp-chart-card">
+                <div class="csp-chart-title"><i class="fas fa-chart-bar"></i> Revenue &amp; Bookings by Channel</div>
+                <canvas id="barChart" style="max-height:260px;"></canvas>
+            </div>
+        </div>
+    }
+
+    <!-- ── Table ──────────────────────────────────────────────── -->
+    <div class="csp-table-card">
+        <div class="csp-table-header">
+            <h3><i class="fas fa-table-list"></i> Channel &amp; Source Mix</h3>
+            <div class="csp-export-btns">
+                <button class="csp-export-btn" onclick="exportToCsv()"><i class="fas fa-file-csv"></i> CSV</button>
+                <button class="csp-export-btn" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+                <button class="csp-export-btn" onclick="exportToPdf()"><i class="fas fa-file-pdf"></i> PDF</button>
+            </div>
+        </div>
+        <div class="csp-row-count">@Model.Rows.Count row(s) · Period: @dateLabel</div>
+        <div style="overflow-x:auto;">
+        <table class="csp-table" id="channelSourceTable">
+            <thead>
+                <tr>
+                    <th style="width:36px;">#</th>
+                    <th>Channel</th>
+                    <th>Source</th>
+                    <th class="num">Bookings</th>
+                    <th class="num">Sold Nights</th>
+                    <th class="num">Base Revenue</th>
+                    <th class="num">Tax</th>
+                    <th class="num">ADR</th>
+                    <th style="min-width:180px;">Revenue Share</th>
+                </tr>
+            </thead>
+            <tbody>
+            @{ int rank = 0; }
+            @foreach (var row in Model.Rows.OrderByDescending(r => r.RoomRevenue))
+            {
+                rank++;
+                var rankClass = rank == 1 ? "csp-rank csp-rank-1" : rank == 2 ? "csp-rank csp-rank-2" : rank == 3 ? "csp-rank csp-rank-3" : "csp-rank";
+                var avgNightsPerBooking = row.BookingCount > 0 ? (decimal)row.SoldRoomNights / row.BookingCount : 0;
+                <tr>
+                    <td><span class="@rankClass">@rank</span></td>
+                    <td>
+                        <span class="csp-channel-badge">
+                            <i class="fas fa-signal" style="color:#6366f1;font-size:11px;"></i>
+                            @(string.IsNullOrWhiteSpace(row.Channel) ? "Unknown" : row.Channel)
+                        </span>
+                    </td>
+                    <td><span class="csp-source-badge">@(string.IsNullOrWhiteSpace(row.Source) ? "Unknown" : row.Source)</span></td>
+                    <td class="num" style="font-weight:700;">@row.BookingCount</td>
+                    <td class="num">
+                        @row.SoldRoomNights
+                        <div style="font-size:10.5px;color:#94a3b8;">~@avgNightsPerBooking.ToString("N1") / booking</div>
+                    </td>
+                    <td class="num" style="font-weight:700;color:#10b981;">₹@row.RoomRevenue.ToString("N2")</td>
+                    <td class="num" style="color:#64748b;">₹@row.RoomTax.ToString("N2")</td>
+                    <td class="num">₹@row.Adr.ToString("N2")</td>
+                    <td>
+                        <div class="csp-share-bar-wrap">
+                            <div class="csp-share-bar">
+                                <div class="csp-share-fill" style="width:@row.RevenueSharePercent.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)%;"></div>
+                            </div>
+                            <span class="csp-share-pct">@row.RevenueSharePercent.ToString("N1")%</span>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+            <tfoot>
+                <tr style="background:#f8fafc;border-top:2px solid #e2e8f0;">
+                    <td colspan="3" style="padding:11px 14px;font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;">Total</td>
+                    <td class="num" style="font-weight:800;color:#1e293b;">@Model.Summary.TotalBookings</td>
+                    <td class="num" style="font-weight:800;color:#1e293b;">@Model.Summary.SoldRoomNights</td>
+                    <td class="num" style="font-weight:800;color:#10b981;">₹@Model.Summary.RoomRevenue.ToString("N2")</td>
+                    <td class="num" style="font-weight:700;color:#64748b;">₹@Model.Summary.RoomTax.ToString("N2")</td>
+                    <td class="num" style="font-weight:800;color:#1e293b;">₹@Model.Summary.Adr.ToString("N2")</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+(function(){
+    const palette = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(palette));
+    const channels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(channelGroups.Select(g => g.Channel).ToArray()));
+    const revenues = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(channelGroups.Select(g => g.Revenue).ToArray()));
+    const bookings = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(channelGroups.Select(g => g.Bookings).ToArray()));
+
+    // Donut
+    const donutEl = document.getElementById('donutChart');
+    if (donutEl) {
+        new Chart(donutEl, {
+            type: 'doughnut',
+            data: {
+                labels: channels,
+                datasets: [{ data: revenues, backgroundColor: palette, borderWidth: 2.5, borderColor: '#fff', hoverOffset: 8 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: true, cutout: '64%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => ' ' + ctx.label + ': ₹' + Number(ctx.raw).toLocaleString('en-IN', {maximumFractionDigits:0}) } }
+                }
+            }
+        });
+    }
+
+    // Bar
+    const barEl = document.getElementById('barChart');
+    if (barEl) {
+        new Chart(barEl, {
+            type: 'bar',
+            data: {
+                labels: channels,
+                datasets: [
+                    {
+                        label: 'Revenue (₹)',
+                        data: revenues,
+                        backgroundColor: palette.map(c => c + 'cc'),
+                        borderColor: palette,
+                        borderWidth: 1.5,
+                        borderRadius: 6,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Bookings',
+                        data: bookings,
+                        type: 'line',
+                        borderColor: '#f59e0b',
+                        backgroundColor: '#f59e0b22',
+                        borderWidth: 2.5,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#f59e0b',
+                        tension: 0.3,
+                        yAxisID: 'y2'
+                    }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 10, padding: 10, font: { size: 11 } } },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ctx.dataset.yAxisID === 'y'
+                                ? ' Revenue: ₹' + Number(ctx.raw).toLocaleString('en-IN', {maximumFractionDigits:0})
+                                : ' Bookings: ' + ctx.raw
+                        }
+                    }
+                },
+                scales: {
+                    y:  { position:'left',  ticks:{ callback: v => '₹'+Number(v).toLocaleString('en-IN',{maximumFractionDigits:0}), font:{size:10} }, grid:{color:'#f1f5f9'} },
+                    y2: { position:'right', ticks:{ stepSize:1, font:{size:10} }, grid:{ drawOnChartArea:false } }
+                }
+            }
+        });
+    }
+
+    // ── Export helpers ──────────────────────────────────────
+    const downloadBlob = (blob, name) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 500);
+    };
+
+    const getRows = () => {
+        const tbl = document.getElementById('channelSourceTable');
+        return Array.from(tbl.querySelectorAll('tbody tr')).map(tr => {
+            const tds = Array.from(tr.querySelectorAll('td'));
+            return {
+                rank:       (tds[0]?.innerText || '').trim(),
+                channel:    (tds[1]?.innerText || '').trim(),
+                source:     (tds[2]?.innerText || '').trim(),
+                bookings:   (tds[3]?.innerText || '').trim(),
+                soldNights: (tds[4]?.innerText || '').replace(/\n.*/,'').trim(),
+                revenue:    (tds[5]?.innerText || '').trim(),
+                tax:        (tds[6]?.innerText || '').trim(),
+                adr:        (tds[7]?.innerText || '').trim(),
+                share:      (tds[8]?.innerText || '').replace(/\s+/g,' ').trim(),
+            };
+        });
+    };
+
+    const FROM = document.getElementById('fromDate')?.value || '';
+    const TO   = document.getElementById('toDate')?.value || '';
+
+    window.exportToCsv = () => {
+        const rows = getRows();
+        const hdr = ['#','Channel','Source','Bookings','Sold Nights','Revenue','Tax','ADR','Revenue Share %'];
+        const esc = v => { const s=String(v??''); return /[\n\r,"]/g.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
+        const lines = [hdr.map(esc).join(',')];
+        rows.forEach(r => lines.push([r.rank,r.channel,r.source,r.bookings,r.soldNights,r.revenue,r.tax,r.adr,r.share].map(esc).join(',')));
+        downloadBlob(new Blob(['\uFEFF'+lines.join('\n')],{type:'text/csv;charset=utf-8;'}),`ChannelSource_${FROM}_${TO}.csv`);
+    };
+
+    window.exportToExcel = () => {
+        const rows = getRows();
+        const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const hdr = ['#','Channel','Source','Bookings','Sold Nights','Revenue','Tax','ADR','Revenue Share %'];
+        let html = '<table border="1"><tr>'+hdr.map(h=>`<th>${esc(h)}</th>`).join('')+'</tr>';
+        rows.forEach(r => { html += '<tr>'+[r.rank,r.channel,r.source,r.bookings,r.soldNights,r.revenue,r.tax,r.adr,r.share].map(v=>`<td>${esc(v)}</td>`).join('')+'</tr>'; });
+        html += '</table>';
+        downloadBlob(new Blob([`<!doctype html><html><head><meta charset="utf-8"></head><body>${html}</body></html>`],{type:'application/vnd.ms-excel;charset=utf-8;'}),`ChannelSource_${FROM}_${TO}.xls`);
+    };
+
+    window.exportToPdf = () => {
+        if (!window.jspdf?.jsPDF) { alert('PDF library not loaded. Refresh and try again.'); return; }
+        const rows = getRows();
+        const doc = new window.jspdf.jsPDF({ orientation:'landscape', unit:'pt', format:'a4' });
+        doc.setFontSize(13);
+        doc.text(`Channel & Source Performance  (${FROM} → ${TO})`, 40, 36);
+        doc.autoTable({
+            startY: 54,
+            head: [['#','Channel','Source','Bookings','Sold Nights','Revenue','Tax','ADR','Share %']],
+            body: rows.map(r => [r.rank,r.channel,r.source,r.bookings,r.soldNights,r.revenue,r.tax,r.adr,r.share]),
+            styles: { fontSize: 8, cellPadding: 4 },
+            headStyles: { fillColor: [99,102,241], textColor: 255, fontStyle:'bold' },
+            alternateRowStyles: { fillColor: [248,250,252] }
+        });
+        doc.save(`ChannelSource_${FROM}_${TO}.pdf`);
+    };
+})();
+</script>
+}
+
 
 <div class="page-header">
     <h2><i class="fas fa-diagram-project"></i> Channel &amp; Source Performance</h2>
