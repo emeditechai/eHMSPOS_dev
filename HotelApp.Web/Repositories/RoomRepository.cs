@@ -338,6 +338,57 @@ namespace HotelApp.Web.Repositories
             return rowsAffected > 0;
         }
 
+        /// <summary>
+        /// Resets all Cleaning rooms (with no active CheckedIn booking) to Available.
+        /// Rooms that have a current active checked-in booking are skipped to prevent data corruption.
+        /// </summary>
+        public async Task<(int resetCount, int skippedCount)> BulkResetCleaningToAvailableAsync(int branchId, int modifiedBy)
+        {
+            // Rooms in Cleaning that have an active CheckedIn booking assigned must NOT be reset.
+            // A room is considered "actually occupied" when BookingRooms links it to a Booking
+            // with Status = 'CheckedIn' (i.e. guest is physically present).
+            const string sql = @"
+                DECLARE @ResetIds TABLE (Id INT);
+
+                UPDATE r
+                SET r.Status = 'Available',
+                    r.LastModifiedDate = GETUTCDATE()
+                OUTPUT INSERTED.Id INTO @ResetIds
+                FROM Rooms r
+                WHERE r.BranchID   = @BranchId
+                  AND r.IsActive   = 1
+                  AND r.Status     = 'Cleaning'
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM BookingRooms br
+                      INNER JOIN Bookings b ON br.BookingId = b.Id
+                      WHERE br.RoomId   = r.Id
+                        AND br.IsActive = 1
+                        AND b.Status    = 'CheckedIn'
+                  );
+
+                SELECT COUNT(*) FROM @ResetIds;
+
+                SELECT COUNT(*)
+                FROM Rooms r
+                WHERE r.BranchID = @BranchId
+                  AND r.IsActive = 1
+                  AND r.Status   = 'Cleaning'
+                  AND EXISTS (
+                      SELECT 1
+                      FROM BookingRooms br
+                      INNER JOIN Bookings b ON br.BookingId = b.Id
+                      WHERE br.RoomId   = r.Id
+                        AND br.IsActive = 1
+                        AND b.Status    = 'CheckedIn'
+                  );";
+
+            using var multi = await _dbConnection.QueryMultipleAsync(sql, new { BranchId = branchId });
+            int resetCount   = await multi.ReadSingleAsync<int>();
+            int skippedCount = await multi.ReadSingleAsync<int>();
+            return (resetCount, skippedCount);
+        }
+
         public async Task<(bool success, int historyId, DateTime createdDate)> AddMaintenanceHistoryAsync(int roomId, string reason, int createdBy)
         {
             var normalizedReason = (reason ?? string.Empty).Trim();
@@ -529,6 +580,7 @@ namespace HotelApp.Web.Repositories
                     INNER JOIN Bookings b ON brl.BookingId = b.Id
                     WHERE b.BranchID = @BranchId
                         AND b.Status IN ('Confirmed', 'CheckedIn', 'PartialCancelled')
+                        AND b.ActualCheckOutDate IS NULL
                         AND ISNULL(brl.IsCancelled, 0) = 0
                         AND CAST(ISNULL(brl.CheckInDate, b.CheckInDate) AS DATE) <= CAST(@EndDate AS DATE)
                         AND CAST(ISNULL(brl.CheckOutDate, b.CheckOutDate) AS DATE) > CAST(@StartDate AS DATE)

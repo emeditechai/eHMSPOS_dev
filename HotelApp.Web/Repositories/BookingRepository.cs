@@ -421,6 +421,7 @@ namespace HotelApp.Web.Repositories
                     WHERE brl.RoomTypeId = @RoomTypeId
                         AND b.BranchID = @BranchId
                         AND b.Status IN ('Confirmed', 'CheckedIn', 'PartialCancelled')
+                        AND b.ActualCheckOutDate IS NULL
                         AND ISNULL(brl.IsCancelled, 0) = 0
                         AND CAST(ISNULL(brl.CheckInDate, b.CheckInDate) AS DATE) < CAST(@CheckOut AS DATE)
                         AND CAST(ISNULL(brl.CheckOutDate, b.CheckOutDate) AS DATE) > CAST(@CheckIn AS DATE);
@@ -2139,6 +2140,7 @@ namespace HotelApp.Web.Repositories
             const string sql = @"
                 UPDATE Bookings 
                 SET ActualCheckOutDate = @ActualCheckOutDate,
+                    Status = 'CheckedOut',
                     LastModifiedDate = GETDATE(),
                     LastModifiedBy = @PerformedBy
                 WHERE BookingNumber = @BookingNumber";

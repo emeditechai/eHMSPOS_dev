@@ -864,12 +864,45 @@
         <div class="room-availability-section">
             <div class="section-header">
                 <h2>Room Availability</h2>
-                <div class="floor-tabs">
-                    <button class="floor-tab active" data-floor="all">All Floors</button>
-                    @foreach (var floor in Model.Floors)
-                    {
-                        <button class="floor-tab" data-floor="@floor.Id">@floor.FloorName</button>
-                    }
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <div class="floor-tabs">
+                        <button class="floor-tab active" data-floor="all">All Floors</button>
+                        @foreach (var floor in Model.Floors)
+                        {
+                            <button class="floor-tab" data-floor="@floor.Id">@floor.FloorName</button>
+                        }
+                    </div>
+                    @Html.AntiForgeryToken()
+                    <button id="btnForceResetCleaning" title="Reset all Cleaning rooms (with no active guest) to Available"
+                            style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#0ea5e9;color:#fff;border:none;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .2s;">
+                        <i class="fas fa-broom"></i> Force Reset to Available
+                    </button>
+                </div>
+            </div>
+
+            <!-- Force Reset Confirmation Modal -->
+            <div id="forceResetModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.45);backdrop-filter:blur(2px);align-items:center;justify-content:center;">
+                <div style="background:#fff;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.22);max-width:440px;width:90%;padding:28px 28px 24px;">
+                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                        <div style="width:42px;height:42px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas fa-broom" style="color:#d97706;font-size:18px;"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b;">Force Reset Cleaning Rooms</h3>
+                            <p style="margin:2px 0 0;font-size:12px;color:#64748b;">Only rooms in <strong>Cleaning</strong> status will be affected</p>
+                        </div>
+                    </div>
+                    <p style="font-size:13px;color:#475569;margin-bottom:6px;">This will mark all <strong>Cleaning</strong> rooms as <strong style="color:#1fa97a;">Available</strong>.</p>
+                    <p style="font-size:12.5px;color:#ef4444;margin-bottom:20px;">
+                        <i class="fas fa-shield-alt"></i>&nbsp;
+                        Rooms with a guest currently <strong>Checked In</strong> are automatically protected and will <strong>not</strong> be changed.
+                    </p>
+                    <div style="display:flex;gap:10px;justify-content:flex-end;">
+                        <button id="forceResetCancel" style="padding:9px 20px;background:#f1f5f9;color:#475569;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
+                        <button id="forceResetConfirm" style="padding:9px 22px;background:#0ea5e9;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;">
+                            <i class="fas fa-broom"></i> Yes, Reset
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -1354,6 +1387,70 @@
 
 @section Scripts {
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function(){
+    var btn    = document.getElementById('btnForceResetCleaning');
+    var modal  = document.getElementById('forceResetModal');
+    var cancel = document.getElementById('forceResetCancel');
+    var confirm= document.getElementById('forceResetConfirm');
+    if (!btn || !modal) return;
+
+    btn.addEventListener('click', function(){
+        modal.style.display = 'flex';
+    });
+    cancel.addEventListener('click', function(){
+        modal.style.display = 'none';
+    });
+    modal.addEventListener('click', function(e){
+        if (e.target === modal) modal.style.display = 'none';
+    });
+
+    confirm.addEventListener('click', function(){
+        confirm.disabled = true;
+        confirm.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting…';
+
+        var token = document.querySelector('input[name="__RequestVerificationToken"]');
+        var headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+        if (token) headers['RequestVerificationToken'] = token.value;
+
+        fetch('/Rooms/ForceResetCleaningRooms', {
+            method: 'POST',
+            headers: headers,
+            body: token ? '__RequestVerificationToken=' + encodeURIComponent(token.value) : ''
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+            modal.style.display = 'none';
+            confirm.disabled = false;
+            confirm.innerHTML = '<i class="fas fa-broom"></i> Yes, Reset';
+            if (data.success) {
+                showResetToast(data.message, data.resetCount > 0 ? 'success' : 'info');
+                if (data.resetCount > 0) {
+                    setTimeout(function(){ window.location.reload(); }, 1800);
+                }
+            } else {
+                showResetToast(data.message || 'Reset failed.', 'error');
+            }
+        })
+        .catch(function(){
+            modal.style.display = 'none';
+            confirm.disabled = false;
+            confirm.innerHTML = '<i class="fas fa-broom"></i> Yes, Reset';
+            showResetToast('Network error. Please try again.', 'error');
+        });
+    });
+
+    function showResetToast(msg, type) {
+        var colors = { success: '#16a34a', info: '#0ea5e9', error: '#dc2626' };
+        var icons  = { success: 'fa-check-circle', info: 'fa-info-circle', error: 'fa-times-circle' };
+        var t = document.createElement('div');
+        t.style.cssText = 'position:fixed;bottom:28px;right:28px;z-index:99999;background:'+colors[type]+';color:#fff;padding:13px 20px;border-radius:10px;font-size:13.5px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.18);display:flex;align-items:center;gap:10px;max-width:360px;';
+        t.innerHTML = '<i class="fas '+icons[type]+'" style="font-size:16px;"></i><span>'+msg+'</span>';
+        document.body.appendChild(t);
+        setTimeout(function(){ t.style.transition='opacity .5s'; t.style.opacity='0'; setTimeout(function(){ t.remove(); }, 500); }, 3500);
+    }
+})();
+</script>
 <script>
 (function(){
     var rdDonut = document.getElementById('rdDonutChart');

@@ -215,6 +215,28 @@
             height: 30px;
         }
 
+        /* Final Bill stamp */
+        .final-bill-stamp {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 3px 12px;
+            border: 2px solid #16a34a;
+            border-radius: 4px;
+            color: #16a34a;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+        }
+        @@media print {
+            .final-bill-stamp {
+                border-color: #16a34a;
+                color: #16a34a;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+
         /* Print */
         .print-controls {
             text-align: center;
@@ -355,6 +377,10 @@
             <h2>Tax Invoice</h2>
             <div class="invoice-number">Invoice #: @(Model.InvoiceNumber ?? Model.BookingNumber)</div>
             <div class="invoice-date">Date: @invoiceDate.ToString("dd MMM yyyy")</div>
+            @if (Model.Status == "CheckedOut")
+            {
+                <div class="final-bill-stamp">&#10003; Final Bill</div>
+            }
         </div>
     </div>
 
@@ -386,6 +412,10 @@
                             <h2>Tax Invoice</h2>
                             <div class="invoice-number">Invoice #: @(Model.InvoiceNumber ?? Model.BookingNumber)</div>
                             <div class="invoice-date">Date: @invoiceDate.ToString("dd MMM yyyy")</div>
+                            @if (Model.Status == "CheckedOut")
+                            {
+                                <div class="final-bill-stamp">&#10003; Final Bill</div>
+                            }
                         </div>
                     </div>
                 </td>

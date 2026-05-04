@@ -381,6 +381,29 @@ public class RoomsController : BaseController
     }
 
     [HttpPost]
+    public async Task<IActionResult> ForceResetCleaningRooms()
+    {
+        try
+        {
+            var currentUserId = GetCurrentUserId();
+            var (resetCount, skippedCount) = await _roomRepository.BulkResetCleaningToAvailableAsync(CurrentBranchID, currentUserId);
+
+            string message = resetCount == 0
+                ? "No Cleaning rooms were eligible for reset."
+                : $"{resetCount} room(s) reset to Available.";
+
+            if (skippedCount > 0)
+                message += $" {skippedCount} room(s) skipped (guest currently checked in).";
+
+            return Json(new { success = true, message, resetCount, skippedCount });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = $"Error: {ex.Message}" });
+        }
+    }
+
+    [HttpPost]
     [HttpPost]
     public async Task<IActionResult> UpdateRoomStatus([FromBody] UpdateRoomStatusRequest request)
     {

@@ -19,6 +19,7 @@ namespace HotelApp.Web.Repositories
         Task<Dictionary<string, int>> GetYesterdayRoomStatusCountsAsync(int branchId);
         Task<string?> GetRoomStatusAsync(int roomId);
         Task<bool> UpdateRoomStatusAsync(int roomId, string status, int modifiedBy);
+        Task<(int resetCount, int skippedCount)> BulkResetCleaningToAvailableAsync(int branchId, int modifiedBy);
         Task<(bool success, int historyId, DateTime createdDate)> AddMaintenanceHistoryAsync(int roomId, string reason, int createdBy);
         Task<bool> CloseLatestMaintenanceAsync(int roomId);
         Task<(bool hasActiveBooking, string? bookingNumber, decimal balanceAmount)> GetActiveBookingForRoomAsync(int roomId);
