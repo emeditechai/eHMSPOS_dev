@@ -143,7 +143,9 @@
         .bad-kpi-revpar      { background: linear-gradient(135deg, #3b82f6, #2563eb); }
         .bad-kpi-collected   { background: linear-gradient(135deg, #0d9488, #0f766e); }
         .bad-kpi-occupancy   { background: linear-gradient(135deg, #f59e0b, #d97706); }
-        .bad-kpi-outstanding { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .bad-kpi-outstanding-due    { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .bad-kpi-outstanding-credit { background: linear-gradient(135deg, #0d9488, #0f766e); }
+        .bad-kpi-outstanding-zero   { background: linear-gradient(135deg, #6b7280, #4b5563); }
         .bad-kpi-gst         { background: linear-gradient(135deg, #ec4899, #db2777); }
 
         /* ── Table Card ── */
@@ -280,13 +282,13 @@
     <div class="bad-kpi-card bad-kpi-adr">
         <div class="bad-kpi-label">ADR</div>
         <div class="bad-kpi-value">₹@Model.Summary.Adr.ToString("N2")</div>
-        <div class="bad-kpi-sub">Avg daily rate</div>
+        <div class="bad-kpi-sub">Revenue ÷ sold room nights</div>
         <i class="fas fa-bed bad-kpi-icon"></i>
     </div>
     <div class="bad-kpi-card bad-kpi-revpar">
         <div class="bad-kpi-label">RevPAR</div>
         <div class="bad-kpi-value">₹@Model.Summary.RevPar.ToString("N2")</div>
-        <div class="bad-kpi-sub">Revenue per available room</div>
+        <div class="bad-kpi-sub">Revenue ÷ available room nights</div>
         <i class="fas fa-chart-bar bad-kpi-icon"></i>
     </div>
     <div class="bad-kpi-card bad-kpi-collected">
@@ -301,16 +303,31 @@
         <div class="bad-kpi-sub">@Model.Summary.SoldRoomNights / @Model.Summary.AvailableRoomNights room nights</div>
         <i class="fas fa-percent bad-kpi-icon"></i>
     </div>
-    <div class="bad-kpi-card bad-kpi-outstanding">
-        <div class="bad-kpi-label">Outstanding Balance</div>
-        <div class="bad-kpi-value">₹@Model.Summary.TotalBalance.ToString("N0")</div>
-        <div class="bad-kpi-sub">Pending dues</div>
-        <i class="fas fa-hourglass-half bad-kpi-icon"></i>
+@{
+    var balCardCss = Model.Summary.TotalBalance < 0 ? "bad-kpi-outstanding-credit"
+                   : Model.Summary.TotalBalance > 0 ? "bad-kpi-outstanding-due"
+                   : "bad-kpi-outstanding-zero";
+    var balLabel   = Model.Summary.TotalBalance < 0 ? "Net Credit / Advance"
+                   : Model.Summary.TotalBalance > 0 ? "Outstanding Balance"
+                   : "Net Balance";
+    var balSub     = Model.Summary.TotalBalance < 0 ? "Guests overpaid / advance credit"
+                   : Model.Summary.TotalBalance > 0 ? "Pending dues from guests"
+                   : "All bookings fully settled";
+    var balIcon    = Model.Summary.TotalBalance < 0 ? "fa-circle-check"
+                   : Model.Summary.TotalBalance > 0 ? "fa-hourglass-half"
+                   : "fa-check-double";
+    var balDisplay = "₹" + Math.Abs(Model.Summary.TotalBalance).ToString("N0");
+}
+    <div class="bad-kpi-card @balCardCss">
+        <div class="bad-kpi-label">@balLabel</div>
+        <div class="bad-kpi-value">@balDisplay</div>
+        <div class="bad-kpi-sub">@balSub</div>
+        <i class="fas @balIcon bad-kpi-icon"></i>
     </div>
     <div class="bad-kpi-card bad-kpi-gst">
-        <div class="bad-kpi-label">GST Collected</div>
-        <div class="bad-kpi-value">₹@Model.Summary.TotalGST.ToString("N0")</div>
-        <div class="bad-kpi-sub">Tax component</div>
+        <div class="bad-kpi-label">Room Tax Billed</div>
+        <div class="bad-kpi-value">₹@Model.Summary.TotalRoomTax.ToString("N0")</div>
+        <div class="bad-kpi-sub">GST on room revenue</div>
         <i class="fas fa-receipt bad-kpi-icon"></i>
     </div>
 </div>
