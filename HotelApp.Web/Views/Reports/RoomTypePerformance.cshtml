@@ -1,184 +1,489 @@
 @model HotelApp.Web.ViewModels.RoomTypePerformanceReportViewModel
 @{
     ViewData["Title"] = "Room Type Performance";
+    var dateLabel = Model.FromDate == Model.ToDate
+        ? Model.FromDate.ToString("dd MMM yyyy")
+        : $"{Model.FromDate:dd MMM yyyy} – {Model.ToDate:dd MMM yyyy}";
+    var daySpan = (Model.ToDate.ToDateTime(TimeOnly.MinValue) - Model.FromDate.ToDateTime(TimeOnly.MinValue)).Days + 1;
+    var sorted  = Model.Rows.OrderByDescending(r => r.Revenue).ToList();
+    var topRow  = sorted.FirstOrDefault();
+    var avgNightOverall = Model.Summary.SoldNights > 0
+        ? Model.Summary.Revenue / Model.Summary.SoldNights : 0m;
+    var palette = new[] { "#6366f1","#0ea5e9","#10b981","#f59e0b","#f43f5e","#8b5cf6","#14b8a6","#f97316" };
 }
 
 @section Styles {
-    <link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
+<style>
+/* ── Wrapper ─────────────────────────────────────────── */
+.rtp-wrap { display:flex; flex-direction:column; gap:20px; }
+
+/* ── Filter Bar ──────────────────────────────────────── */
+.rtp-filter {
+    background:#fff; border:1px solid #e2e8f0; border-radius:12px;
+    padding:16px 20px; display:flex; flex-wrap:wrap; gap:14px;
+    align-items:flex-end; justify-content:space-between;
+    box-shadow:0 1px 4px rgba(0,0,0,.05);
+}
+.rtp-filter label { font-size:11px; font-weight:700; color:#64748b;
+    text-transform:uppercase; letter-spacing:.06em; display:block; margin-bottom:5px; }
+.rtp-filter input[type=date] {
+    border:1.5px solid #e2e8f0; border-radius:8px;
+    padding:8px 12px; font-size:13.5px; color:#1e293b; background:#f8fafc; outline:none;
+}
+.rtp-filter input[type=date]:focus { border-color:#6366f1; background:#fff; }
+.rtp-btn-apply {
+    display:inline-flex; align-items:center; gap:7px;
+    padding:9px 20px; background:#6366f1; color:#fff;
+    border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;
+    transition:background .2s;
+}
+.rtp-btn-apply:hover { background:#4f46e5; }
+.rtp-btn-reset {
+    display:inline-flex; align-items:center; gap:7px;
+    padding:9px 16px; background:#f1f5f9; color:#475569;
+    border:1.5px solid #e2e8f0; border-radius:8px; font-size:13px;
+    font-weight:600; cursor:pointer; text-decoration:none; transition:border-color .2s;
+}
+.rtp-btn-reset:hover { border-color:#6366f1; color:#6366f1; }
+
+/* ── KPI Grid ────────────────────────────────────────── */
+.rtp-kpi-grid {
+    display:grid; grid-template-columns:repeat(4,1fr); gap:14px;
+}
+@@media(max-width:900px){ .rtp-kpi-grid{ grid-template-columns:repeat(2,1fr); } }
+@@media(max-width:500px){ .rtp-kpi-grid{ grid-template-columns:1fr; } }
+
+.rtp-kpi {
+    background:#fff; border:1px solid #e2e8f0; border-radius:14px;
+    padding:20px; position:relative; overflow:hidden;
+    box-shadow:0 1px 4px rgba(0,0,0,.05);
+    transition:box-shadow .2s,transform .15s;
+}
+.rtp-kpi:hover { box-shadow:0 6px 20px rgba(0,0,0,.1); transform:translateY(-2px); }
+.rtp-kpi-icon {
+    width:40px; height:40px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; margin-bottom:12px;
+}
+.rtp-kpi-label { font-size:10.5px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.08em; color:#94a3b8; margin-bottom:4px; }
+.rtp-kpi-value { font-size:24px; font-weight:800; color:#0f172a; line-height:1.1; }
+.rtp-kpi-sub   { font-size:11px; color:#64748b; margin-top:6px; }
+.rtp-kpi-accent { position:absolute; right:-12px; bottom:-12px;
+    width:64px; height:64px; border-radius:50%; opacity:.08; }
+
+.kpi-blue    .rtp-kpi-icon { background:#eff6ff; color:#3b82f6; }
+.kpi-blue    .rtp-kpi-accent { background:#3b82f6; }
+.kpi-emerald .rtp-kpi-icon { background:#ecfdf5; color:#10b981; }
+.kpi-emerald .rtp-kpi-accent { background:#10b981; }
+.kpi-amber   .rtp-kpi-icon { background:#fffbeb; color:#f59e0b; }
+.kpi-amber   .rtp-kpi-accent { background:#f59e0b; }
+.kpi-indigo  .rtp-kpi-icon { background:#eef2ff; color:#6366f1; }
+.kpi-indigo  .rtp-kpi-accent { background:#6366f1; }
+
+/* ── Top Performer ───────────────────────────────────── */
+.rtp-top-banner {
+    background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);
+    border-radius:12px; padding:14px 20px;
+    display:flex; align-items:center; gap:16px; color:#fff;
+    box-shadow:0 4px 16px rgba(99,102,241,.3);
+}
+.rtp-top-banner i { font-size:22px; opacity:.85; }
+.rtp-top-banner-text { font-size:13px; }
+.rtp-top-banner-text strong { font-size:15px; display:block; }
+
+/* ── Charts Row ─────────────────────────────────────── */
+.rtp-charts-row { display:grid; grid-template-columns:1fr 1.8fr; gap:14px; }
+@@media(max-width:860px){ .rtp-charts-row{ grid-template-columns:1fr; } }
+
+.rtp-chart-card {
+    background:#fff; border:1px solid #e2e8f0; border-radius:14px;
+    padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.05);
+}
+.rtp-chart-title {
+    font-size:13px; font-weight:700; color:#1e293b;
+    margin-bottom:14px; display:flex; align-items:center; gap:8px;
+}
+.rtp-chart-title i { color:#6366f1; }
+.rtp-donut-wrap { position:relative; width:190px; height:190px; margin:0 auto 14px; }
+.rtp-legend { display:flex; flex-direction:column; gap:7px; }
+.rtp-legend-item { display:flex; align-items:center; gap:8px; font-size:12px; color:#475569; }
+.rtp-legend-dot  { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.rtp-legend-pct  { font-weight:700; color:#0f172a; margin-left:auto; font-size:12px; }
+
+/* ── Table Panel ─────────────────────────────────────── */
+.rtp-table-card {
+    background:#fff; border:1px solid #e2e8f0; border-radius:14px;
+    box-shadow:0 1px 4px rgba(0,0,0,.05); overflow:hidden;
+}
+.rtp-table-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 20px 12px; border-bottom:1px solid #f1f5f9; flex-wrap:wrap; gap:10px;
+}
+.rtp-table-header h3 { font-size:14px; font-weight:700; color:#1e293b;
+    display:flex; align-items:center; gap:8px; margin:0; }
+.rtp-table-header h3 i { color:#6366f1; }
+.rtp-export-btns { display:flex; gap:8px; }
+.rtp-export-btn {
+    display:inline-flex; align-items:center; gap:5px;
+    padding:7px 13px; border-radius:8px; font-size:12px; font-weight:600;
+    cursor:pointer; border:1.5px solid #e2e8f0; background:#f8fafc;
+    color:#475569; transition:all .2s;
+}
+.rtp-export-btn:hover { border-color:#6366f1; color:#6366f1; background:#eef2ff; }
+.rtp-row-count { font-size:11.5px; color:#94a3b8; padding:0 20px 10px; }
+
+table.rtp-table { width:100%; border-collapse:collapse; }
+table.rtp-table thead th {
+    background:#f8fafc; font-size:10.5px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.06em; color:#64748b;
+    padding:11px 14px; border-bottom:2px solid #e2e8f0; white-space:nowrap;
+}
+table.rtp-table thead th.num { text-align:right; }
+table.rtp-table tbody tr { border-bottom:1px solid #f1f5f9; transition:background .15s; }
+table.rtp-table tbody tr:last-child { border-bottom:none; }
+table.rtp-table tbody tr:hover { background:#f8fafc; }
+table.rtp-table td { padding:13px 14px; font-size:13px; color:#374151; vertical-align:middle; }
+table.rtp-table td.num { text-align:right; font-variant-numeric:tabular-nums; }
+
+.rtp-rank { display:inline-flex; align-items:center; justify-content:center;
+    width:24px; height:24px; border-radius:50%; font-size:10.5px; font-weight:800;
+    background:#eef2ff; color:#6366f1; margin-right:6px; }
+.rtp-rank-1 { background:#fef9c3; color:#a16207; }
+.rtp-rank-2 { background:#f1f5f9; color:#475569; }
+.rtp-rank-3 { background:#fff7ed; color:#c2410c; }
+
+.rtp-room-type { font-weight:700; color:#1e293b; display:flex; align-items:center; gap:6px; }
+.rtp-room-type i { color:#6366f1; font-size:11px; }
+
+.rtp-share-bar-wrap { display:flex; align-items:center; gap:10px; }
+.rtp-share-bar { flex:1; height:8px; background:#f1f5f9; border-radius:6px; overflow:hidden; min-width:60px; }
+.rtp-share-fill { height:100%; border-radius:6px; background:linear-gradient(90deg,#6366f1,#8b5cf6); }
+.rtp-share-pct { font-size:12px; font-weight:700; color:#1e293b; min-width:42px; text-align:right; }
+</style>
 }
 
-<div class="page-header">
-    <h2><i class="fas fa-layer-group"></i> Room Type Performance</h2>
-</div>
+<div class="rtp-wrap">
 
-<div class="filters-container" style="margin-bottom: 18px;">
-    <form method="get" action="@Url.Action("RoomTypePerformance", "Reports")" style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; justify-content: space-between;">
-        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;">
-            <div>
-                <label for="fromDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">From Date</label>
-                <input id="fromDate" name="fromDate" type="date" class="form-control" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+    <!-- ── Page Header ──────────────────────────────────── -->
+    <div class="page-header" style="margin-bottom:0;">
+        <h2><i class="fas fa-layer-group"></i> Room Type Performance</h2>
+    </div>
+
+    <!-- ── Filter Bar ───────────────────────────────────── -->
+    <div class="rtp-filter">
+        <form method="get" action="@Url.Action("RoomTypePerformance","Reports")"
+              style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;width:100%;justify-content:space-between;">
+            <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;">
+                <div>
+                    <label for="fromDate">From Date</label>
+                    <input id="fromDate" name="fromDate" type="date" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div>
+                    <label for="toDate">To Date</label>
+                    <input id="toDate" name="toDate" type="date" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div style="font-size:12px;color:#94a3b8;padding-bottom:10px;">
+                    <i class="fas fa-calendar-days" style="color:#6366f1;"></i>
+                    @dateLabel &nbsp;·&nbsp; @daySpan day(s)
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:flex-end;">
+                <button class="rtp-btn-apply" type="submit"><i class="fas fa-filter"></i> Apply</button>
+                <a class="rtp-btn-reset" href="@Url.Action("RoomTypePerformance","Reports")"><i class="fas fa-undo"></i> Reset</a>
+            </div>
+        </form>
+    </div>
+
+    @if (topRow != null)
+    {
+        <!-- ── Top Performer Banner ──────────────────────── -->
+        <div class="rtp-top-banner">
+            <i class="fas fa-trophy"></i>
+            <div class="rtp-top-banner-text">
+                <strong>Top Room Type: @(topRow.RoomType ?? "Unknown")</strong>
+                ₹@topRow.Revenue.ToString("N0") revenue &nbsp;·&nbsp;
+                @topRow.SoldNights night(s) sold &nbsp;·&nbsp;
+                ADR ₹@topRow.AvgNightRevenue.ToString("N2")
+            </div>
+        </div>
+    }
+
+    <!-- ── KPI Cards ─────────────────────────────────────── -->
+    <div class="rtp-kpi-grid">
+        <div class="rtp-kpi kpi-blue">
+            <div class="rtp-kpi-icon"><i class="fas fa-moon"></i></div>
+            <div class="rtp-kpi-label">Sold Nights</div>
+            <div class="rtp-kpi-value">@Model.Summary.SoldNights</div>
+            <div class="rtp-kpi-sub">@Model.Rows.Count room type(s)</div>
+            <div class="rtp-kpi-accent"></div>
+        </div>
+        <div class="rtp-kpi kpi-emerald">
+            <div class="rtp-kpi-icon"><i class="fas fa-indian-rupee-sign"></i></div>
+            <div class="rtp-kpi-label">Total Revenue</div>
+            <div class="rtp-kpi-value" style="font-size:20px;">₹@Model.Summary.Revenue.ToString("N0")</div>
+            <div class="rtp-kpi-sub">Across all room types</div>
+            <div class="rtp-kpi-accent"></div>
+        </div>
+        <div class="rtp-kpi kpi-amber">
+            <div class="rtp-kpi-icon"><i class="fas fa-chart-line"></i></div>
+            <div class="rtp-kpi-label">Overall ADR</div>
+            <div class="rtp-kpi-value" style="font-size:20px;">₹@avgNightOverall.ToString("N2")</div>
+            <div class="rtp-kpi-sub">Avg revenue / sold night</div>
+            <div class="rtp-kpi-accent"></div>
+        </div>
+        <div class="rtp-kpi kpi-indigo">
+            <div class="rtp-kpi-icon"><i class="fas fa-star"></i></div>
+            <div class="rtp-kpi-label">Top Room Type</div>
+            <div class="rtp-kpi-value" style="font-size:16px;padding-top:4px;">@(topRow?.RoomType ?? "—")</div>
+            <div class="rtp-kpi-sub">₹@(topRow?.Revenue.ToString("N0") ?? "0") revenue</div>
+            <div class="rtp-kpi-accent"></div>
+        </div>
+    </div>
+
+    <!-- ── Charts Row ────────────────────────────────────── -->
+    @if (Model.Rows.Any())
+    {
+        <div class="rtp-charts-row">
+            <!-- Donut: Nights distribution -->
+            <div class="rtp-chart-card">
+                <div class="rtp-chart-title"><i class="fas fa-chart-pie"></i> Nights by Room Type</div>
+                <div class="rtp-donut-wrap">
+                    <canvas id="donutChart"></canvas>
+                </div>
+                <div class="rtp-legend">
+                    @{ int ci = 0; }
+                    @foreach (var row in sorted)
+                    {
+                        var pct = Model.Summary.SoldNights > 0
+                            ? ((decimal)row.SoldNights / Model.Summary.SoldNights * 100) : 0m;
+                        <div class="rtp-legend-item">
+                            <span class="rtp-legend-dot" style="background:@palette[ci % palette.Length];"></span>
+                            <span>@(row.RoomType ?? "Unknown")</span>
+                            <span class="rtp-legend-pct">@pct.ToString("N1")%</span>
+                        </div>
+                        ci++;
+                    }
+                </div>
             </div>
 
-            <div>
-                <label for="toDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">To Date</label>
-                <input id="toDate" name="toDate" type="date" class="form-control" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+            <!-- Bar: Revenue + ADR comparison -->
+            <div class="rtp-chart-card">
+                <div class="rtp-chart-title"><i class="fas fa-chart-bar"></i> Revenue &amp; ADR by Room Type</div>
+                <canvas id="barChart" style="max-height:280px;"></canvas>
             </div>
         </div>
+    }
 
-        <div style="display:flex; gap:10px; align-items:flex-end;">
-            <button class="btn-filter-apply" type="submit"><i class="fas fa-filter"></i> Apply</button>
-            <a class="btn-filter-clear" href="@Url.Action("RoomTypePerformance", "Reports")"><i class="fas fa-undo"></i> Reset</a>
+    <!-- ── Table ─────────────────────────────────────────── -->
+    <div class="rtp-table-card">
+        <div class="rtp-table-header">
+            <h3><i class="fas fa-table-list"></i> Room Type Breakdown</h3>
+            <div class="rtp-export-btns">
+                <button class="rtp-export-btn" onclick="exportToCsv()"><i class="fas fa-file-csv"></i> CSV</button>
+                <button class="rtp-export-btn" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+                <button class="rtp-export-btn" onclick="exportToPdf()"><i class="fas fa-file-pdf"></i> PDF</button>
+            </div>
         </div>
-    </form>
-</div>
-
-<div class="status-cards booking-status-cards" style="margin-bottom: 26px;">
-    <div class="status-card available">
-        <h3>Sold Nights</h3>
-        <div class="value">@Model.Summary.SoldNights</div>
+        <div class="rtp-row-count">@Model.Rows.Count room type(s) &nbsp;·&nbsp; Period: @dateLabel</div>
+        <div style="overflow-x:auto;">
+        <table class="rtp-table" id="roomTypePerfTable">
+            <thead>
+                <tr>
+                    <th style="width:36px;">#</th>
+                    <th>Room Type</th>
+                    <th class="num">Sold Nights</th>
+                    <th class="num">Revenue</th>
+                    <th class="num">ADR</th>
+                    <th style="min-width:180px;">Revenue Share</th>
+                </tr>
+            </thead>
+            <tbody>
+            @{ int rank = 0; }
+            @foreach (var row in sorted)
+            {
+                rank++;
+                var rankCls = rank == 1 ? "rtp-rank rtp-rank-1" : rank == 2 ? "rtp-rank rtp-rank-2" : rank == 3 ? "rtp-rank rtp-rank-3" : "rtp-rank";
+                var share = Model.Summary.Revenue > 0 ? (row.Revenue / Model.Summary.Revenue * 100m) : 0m;
+                <tr>
+                    <td><span class="@rankCls">@rank</span></td>
+                    <td>
+                        <span class="rtp-room-type">
+                            <i class="fas fa-bed"></i>
+                            @(string.IsNullOrWhiteSpace(row.RoomType) ? "Unknown" : row.RoomType)
+                        </span>
+                    </td>
+                    <td class="num" style="font-weight:700;">@row.SoldNights</td>
+                    <td class="num" style="font-weight:700;color:#10b981;">₹@row.Revenue.ToString("N2")</td>
+                    <td class="num">₹@row.AvgNightRevenue.ToString("N2")</td>
+                    <td>
+                        <div class="rtp-share-bar-wrap">
+                            <div class="rtp-share-bar">
+                                <div class="rtp-share-fill" style="width:@share.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)%;"></div>
+                            </div>
+                            <span class="rtp-share-pct">@share.ToString("N1")%</span>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+            <tfoot>
+                <tr style="background:#f8fafc;border-top:2px solid #e2e8f0;">
+                    <td colspan="2" style="padding:11px 14px;font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;">Total</td>
+                    <td class="num" style="font-weight:800;color:#1e293b;">@Model.Summary.SoldNights</td>
+                    <td class="num" style="font-weight:800;color:#10b981;">₹@Model.Summary.Revenue.ToString("N2")</td>
+                    <td class="num" style="font-weight:800;color:#1e293b;">₹@avgNightOverall.ToString("N2")</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+        </div>
     </div>
 
-    <div class="status-card occupied">
-        <h3>Revenue</h3>
-        <div class="value">₹@Model.Summary.Revenue.ToString("N0")</div>
-    </div>
-</div>
-
-<div class="filters-container" style="margin-bottom: 18px;">
-    <div style="display:flex; gap:12px; flex-wrap: wrap; align-items:center; justify-content: space-between;">
-        <div>
-            <div style="font-weight:700; color:#1f2937;">Room Type Report</div>
-            <div class="subtext" style="margin-top:4px;">@Model.Rows.Count rows</div>
-        </div>
-        <div style="display:flex; gap:10px;">
-            <button class="btn-filter-apply" type="button" onclick="exportToCsv()"><i class="fas fa-file-export"></i> CSV</button>
-            <button class="btn-filter-apply" type="button" onclick="exportToExcel()"><i class="fas fa-file-export"></i> Excel</button>
-            <button class="btn-filter-apply" type="button" onclick="exportToPdf()"><i class="fas fa-file-export"></i> PDF</button>
-        </div>
-    </div>
-</div>
-
-<div class="table-container" style="overflow: visible;">
-    <table class="data-table" id="roomTypePerfTable">
-        <thead>
-            <tr>
-                <th>Room Type</th>
-                <th class="text-end">Sold Nights</th>
-                <th class="text-end">Revenue</th>
-                <th class="text-end">Avg/Night</th>
-            </tr>
-        </thead>
-        <tbody>
-        @foreach (var row in Model.Rows)
-        {
-            <tr>
-                <td>@(string.IsNullOrWhiteSpace(row.RoomType) ? "Unknown" : row.RoomType)</td>
-                <td class="text-end">@row.SoldNights</td>
-                <td class="text-end">₹@row.Revenue.ToString("N2")</td>
-                <td class="text-end">₹@row.AvgNightRevenue.ToString("N2")</td>
-            </tr>
-        }
-        </tbody>
-    </table>
 </div>
 
 @section Scripts {
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script>
-        const downloadBlob = (blob, filename) => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 500);
-        };
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+(function(){
+    const palette  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(palette));
+    const labels   = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(sorted.Select(r => r.RoomType ?? "Unknown").ToArray()));
+    const nights   = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(sorted.Select(r => r.SoldNights).ToArray()));
+    const revenues = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(sorted.Select(r => r.Revenue).ToArray()));
+    const adrs     = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(sorted.Select(r => r.AvgNightRevenue).ToArray()));
 
-        const getRows = () => {
-            const table = document.getElementById('roomTypePerfTable');
-            const bodyRows = Array.from(table.querySelectorAll('tbody tr'))
-                .filter(tr => tr.style.display !== 'none');
-            return bodyRows.map(tr => {
-                const tds = Array.from(tr.querySelectorAll('td'));
-                return {
-                    roomType: (tds[0]?.innerText || '').trim(),
-                    soldNights: (tds[1]?.innerText || '').trim(),
-                    revenue: (tds[2]?.innerText || '').trim(),
-                    avg: (tds[3]?.innerText || '').trim(),
-                };
-            });
-        };
+    // Donut — sold nights
+    const donutEl = document.getElementById('donutChart');
+    if (donutEl) {
+        new Chart(donutEl, {
+            type: 'doughnut',
+            data: {
+                labels,
+                datasets: [{ data: nights, backgroundColor: palette, borderWidth: 2.5, borderColor: '#fff', hoverOffset: 8 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: true, cutout: '64%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => ' ' + ctx.label + ': ' + ctx.raw + ' nights' } }
+                }
+            }
+        });
+    }
 
-        const exportToCsv = () => {
-            const rows = getRows();
-            const header = ['Room Type','Sold Nights','Revenue','Avg/Night'];
+    // Bar + Line — revenue (bars) + ADR (line)
+    const barEl = document.getElementById('barChart');
+    if (barEl) {
+        new Chart(barEl, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Revenue (₹)',
+                        data: revenues,
+                        backgroundColor: palette.map(c => c + 'cc'),
+                        borderColor: palette,
+                        borderWidth: 1.5,
+                        borderRadius: 7,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'ADR (₹)',
+                        data: adrs,
+                        type: 'line',
+                        borderColor: '#f59e0b',
+                        backgroundColor: '#f59e0b22',
+                        borderWidth: 2.5,
+                        pointRadius: 6,
+                        pointBackgroundColor: '#f59e0b',
+                        tension: 0.3,
+                        yAxisID: 'y2'
+                    }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 11 } } },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ctx.dataset.yAxisID === 'y'
+                                ? ' Revenue: ₹' + Number(ctx.raw).toLocaleString('en-IN', { maximumFractionDigits: 0 })
+                                : ' ADR: ₹' + Number(ctx.raw).toLocaleString('en-IN', { maximumFractionDigits: 2 })
+                        }
+                    }
+                },
+                scales: {
+                    y:  { position: 'left',  ticks: { callback: v => '₹' + Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 }), font: { size: 10 } }, grid: { color: '#f1f5f9' } },
+                    y2: { position: 'right', ticks: { callback: v => '₹' + Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 }), font: { size: 10 } }, grid: { drawOnChartArea: false } }
+                }
+            }
+        });
+    }
 
-            const escape = (v) => {
-                const s = String(v ?? '');
-                if (/[^\S\r\n]*[\n\r,\"]/g.test(s) || /[\n\r,\"]/g.test(s)) return '"' + s.replace(/"/g, '""') + '"';
-                return s;
+    // ── Export helpers ─────────────────────────────────
+    const downloadBlob = (blob, name) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 500);
+    };
+    const getRows = () => {
+        const tbl = document.getElementById('roomTypePerfTable');
+        return Array.from(tbl.querySelectorAll('tbody tr')).map(tr => {
+            const tds = Array.from(tr.querySelectorAll('td'));
+            return {
+                rank:      (tds[0]?.innerText || '').trim(),
+                roomType:  (tds[1]?.innerText || '').trim(),
+                nights:    (tds[2]?.innerText || '').trim(),
+                revenue:   (tds[3]?.innerText || '').trim(),
+                adr:       (tds[4]?.innerText || '').trim(),
+                share:     (tds[5]?.innerText || '').replace(/\s+/g,' ').trim(),
             };
+        });
+    };
+    const FROM = document.getElementById('fromDate')?.value || '';
+    const TO   = document.getElementById('toDate')?.value   || '';
 
-            const lines = [header.map(escape).join(',')];
-            rows.forEach(r => lines.push([r.roomType, r.soldNights, r.revenue, r.avg].map(escape).join(',')));
+    window.exportToCsv = () => {
+        const rows = getRows();
+        const hdr  = ['#','Room Type','Sold Nights','Revenue','ADR','Revenue Share %'];
+        const esc  = v => { const s = String(v ?? ''); return /[\n\r,"]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+        const lines = [hdr.map(esc).join(',')];
+        rows.forEach(r => lines.push([r.rank,r.roomType,r.nights,r.revenue,r.adr,r.share].map(esc).join(',')));
+        downloadBlob(new Blob(['\uFEFF'+lines.join('\n')],{type:'text/csv;charset=utf-8;'}),`RoomTypePerf_${FROM}_${TO}.csv`);
+    };
 
-            const from = document.getElementById('fromDate')?.value || '';
-            const to = document.getElementById('toDate')?.value || '';
-            const csv = '\uFEFF' + lines.join('\n');
-            downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `RoomTypePerformance_${from}_${to}.csv`);
-        };
+    window.exportToExcel = () => {
+        const rows = getRows();
+        const esc  = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const hdr  = ['#','Room Type','Sold Nights','Revenue','ADR','Revenue Share %'];
+        let html = '<table border="1"><tr>'+hdr.map(h=>`<th>${esc(h)}</th>`).join('')+'</tr>';
+        rows.forEach(r => { html += '<tr>'+[r.rank,r.roomType,r.nights,r.revenue,r.adr,r.share].map(v=>`<td>${esc(v)}</td>`).join('')+'</tr>'; });
+        html += '</table>';
+        downloadBlob(new Blob([`<!doctype html><html><head><meta charset="utf-8"></head><body>${html}</body></html>`],{type:'application/vnd.ms-excel;charset=utf-8;'}),`RoomTypePerf_${FROM}_${TO}.xls`);
+    };
 
-        const exportToExcel = () => {
-            const rows = getRows();
-            const escHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-            let html = '<table border="1">';
-            html += '<tr>' + ['Room Type','Sold Nights','Revenue','Avg/Night'].map(h => `<th>${escHtml(h)}</th>`).join('') + '</tr>';
-            rows.forEach(r => {
-                html += '<tr>' + [r.roomType, r.soldNights, r.revenue, r.avg].map(v => `<td>${escHtml(v)}</td>`).join('') + '</tr>';
-            });
-            html += '</table>';
-
-            const content = `<!doctype html><html><head><meta charset="utf-8"></head><body>${html}</body></html>`;
-            const from = document.getElementById('fromDate')?.value || '';
-            const to = document.getElementById('toDate')?.value || '';
-            downloadBlob(new Blob([content], { type: 'application/vnd.ms-excel;charset=utf-8;' }), `RoomTypePerformance_${from}_${to}.xls`);
-        };
-
-        const exportToPdf = () => {
-            if (!window.jspdf || !window.jspdf.jsPDF) {
-                alert('PDF export library failed to load. Please refresh and try again.');
-                return;
-            }
-
-            const rows = getRows();
-            const from = document.getElementById('fromDate')?.value || '';
-            const to = document.getElementById('toDate')?.value || '';
-
-            const jsPDF = window.jspdf.jsPDF;
-            const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-
-            doc.setFontSize(14);
-            doc.text(`Room Type Performance (${from} to ${to})`, 40, 40);
-
-            const autoTableFn = doc.autoTable || (jsPDF.API && jsPDF.API.autoTable);
-            if (!autoTableFn) {
-                alert('PDF table plugin failed to load. Please refresh and try again.');
-                return;
-            }
-
-            (doc.autoTable || autoTableFn).call(doc, {
-                startY: 60,
-                head: [[ 'Room Type','Sold Nights','Revenue','Avg/Night' ]],
-                body: rows.map(r => [r.roomType, r.soldNights, r.revenue, r.avg]),
-                styles: { fontSize: 8 },
-                headStyles: { fillColor: [15, 23, 42] }
-            });
-
-            doc.save(`RoomTypePerformance_${from}_${to}.pdf`);
-        };
-    </script>
+    window.exportToPdf = () => {
+        if (!window.jspdf?.jsPDF) { alert('PDF library not loaded. Refresh and try again.'); return; }
+        const rows = getRows();
+        const doc  = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+        doc.setFontSize(13);
+        doc.text(`Room Type Performance  (${FROM} → ${TO})`, 40, 36);
+        doc.autoTable({
+            startY: 54,
+            head: [['#','Room Type','Sold Nights','Revenue','ADR','Share %']],
+            body: rows.map(r => [r.rank, r.roomType, r.nights, r.revenue, r.adr, r.share]),
+            styles: { fontSize: 9, cellPadding: 4 },
+            headStyles: { fillColor: [99,102,241], textColor: 255, fontStyle: 'bold' },
+            alternateRowStyles: { fillColor: [248,250,252] }
+        });
+        doc.save(`RoomTypePerf_${FROM}_${TO}.pdf`);
+    };
+})();
+</script>
 }

@@ -1,200 +1,536 @@
 @model HotelApp.Web.ViewModels.RoomPriceDetailsReportViewModel
 @{
     ViewData["Title"] = "Room Price Details";
+    var otherRooms = Model.TotalRooms - Model.AvailableRooms - Model.OccupiedRooms - Model.MaintenanceRooms;
+    // group rows by room type for chart data
+    var rateByType = Model.Rows
+        .Where(r => r.CurrentBaseRate.HasValue)
+        .GroupBy(r => r.RoomType ?? "Unknown")
+        .Select(g => new { Type = g.Key, AvgRate = g.Average(x => x.CurrentBaseRate!.Value) })
+        .OrderByDescending(g => g.AvgRate)
+        .ToList();
+    var palette = new[] { "#6366f1","#0ea5e9","#10b981","#f59e0b","#f43f5e","#8b5cf6","#14b8a6","#f97316" };
 }
 
 @section Styles {
-    <link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
+<style>
+/* ── Wrapper ─────────────────────────────────────────── */
+.rpd-wrap { display:flex; flex-direction:column; gap:20px; }
+
+/* ── Filter Bar ──────────────────────────────────────── */
+.rpd-filter {
+    background:#fff; border:1px solid #e2e8f0; border-radius:12px;
+    padding:16px 20px; display:flex; flex-wrap:wrap; gap:14px;
+    align-items:flex-end; justify-content:space-between;
+    box-shadow:0 1px 4px rgba(0,0,0,.05);
+}
+.rpd-filter label { font-size:11px; font-weight:700; color:#64748b;
+    text-transform:uppercase; letter-spacing:.06em; display:block; margin-bottom:5px; }
+.rpd-filter input[type=date],
+.rpd-filter select {
+    border:1.5px solid #e2e8f0; border-radius:8px;
+    padding:8px 12px; font-size:13px; color:#1e293b;
+    background:#f8fafc; outline:none; min-width:120px;
+}
+.rpd-filter input[type=date]:focus,
+.rpd-filter select:focus { border-color:#6366f1; background:#fff; }
+.rpd-btn-apply {
+    display:inline-flex; align-items:center; gap:7px;
+    padding:9px 20px; background:#6366f1; color:#fff;
+    border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;
+    transition:background .2s;
+}
+.rpd-btn-apply:hover { background:#4f46e5; }
+.rpd-btn-reset {
+    display:inline-flex; align-items:center; gap:7px;
+    padding:9px 16px; background:#f1f5f9; color:#475569;
+    border:1.5px solid #e2e8f0; border-radius:8px; font-size:13px;
+    font-weight:600; cursor:pointer; text-decoration:none; transition:border-color .2s;
+}
+.rpd-btn-reset:hover { border-color:#6366f1; color:#6366f1; }
+
+/* ── KPI Grid ────────────────────────────────────────── */
+.rpd-kpi-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; }
+@@media(max-width:1100px){ .rpd-kpi-grid{ grid-template-columns:repeat(3,1fr); } }
+@@media(max-width:640px) { .rpd-kpi-grid{ grid-template-columns:repeat(2,1fr); } }
+
+.rpd-kpi {
+    background:#fff; border:1px solid #e2e8f0; border-radius:14px;
+    padding:20px; position:relative; overflow:hidden;
+    box-shadow:0 1px 4px rgba(0,0,0,.05);
+    transition:box-shadow .2s, transform .15s;
+}
+.rpd-kpi:hover { box-shadow:0 6px 20px rgba(0,0,0,.1); transform:translateY(-2px); }
+.rpd-kpi-icon { width:40px; height:40px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; margin-bottom:12px; }
+.rpd-kpi-label { font-size:10.5px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.08em; color:#94a3b8; margin-bottom:4px; }
+.rpd-kpi-value { font-size:24px; font-weight:800; color:#0f172a; line-height:1.1; }
+.rpd-kpi-sub   { font-size:11px; color:#64748b; margin-top:6px; }
+.rpd-kpi-accent { position:absolute; right:-12px; bottom:-12px;
+    width:64px; height:64px; border-radius:50%; opacity:.08; }
+
+.kpi-blue    .rpd-kpi-icon { background:#eff6ff; color:#3b82f6; }
+.kpi-blue    .rpd-kpi-accent { background:#3b82f6; }
+.kpi-emerald .rpd-kpi-icon { background:#ecfdf5; color:#10b981; }
+.kpi-emerald .rpd-kpi-accent { background:#10b981; }
+.kpi-rose    .rpd-kpi-icon { background:#fff1f2; color:#f43f5e; }
+.kpi-rose    .rpd-kpi-accent { background:#f43f5e; }
+.kpi-amber   .rpd-kpi-icon { background:#fffbeb; color:#f59e0b; }
+.kpi-amber   .rpd-kpi-accent { background:#f59e0b; }
+.kpi-indigo  .rpd-kpi-icon { background:#eef2ff; color:#6366f1; }
+.kpi-indigo  .rpd-kpi-accent { background:#6366f1; }
+
+/* ── Summary Bar ─────────────────────────────────────── */
+.rpd-summary-bar {
+    background:#fff; border:1px solid #e2e8f0; border-radius:12px;
+    padding:14px 20px; display:flex; flex-wrap:wrap; gap:24px;
+    align-items:center; box-shadow:0 1px 4px rgba(0,0,0,.05);
+    font-size:13px; color:#475569;
+}
+.rpd-summary-bar .rpd-sum-item { display:flex; align-items:center; gap:8px; }
+.rpd-summary-bar .rpd-sum-label { font-size:11px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.06em; color:#94a3b8; }
+.rpd-summary-bar .rpd-sum-val { font-weight:800; color:#1e293b; font-size:14px; }
+
+/* ── Charts Row ─────────────────────────────────────── */
+.rpd-charts-row { display:grid; grid-template-columns:1fr 2fr; gap:14px; }
+@@media(max-width:900px){ .rpd-charts-row{ grid-template-columns:1fr; } }
+
+.rpd-chart-card {
+    background:#fff; border:1px solid #e2e8f0; border-radius:14px;
+    padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.05);
+}
+.rpd-chart-title { font-size:13px; font-weight:700; color:#1e293b;
+    margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+.rpd-chart-title i { color:#6366f1; }
+.rpd-donut-wrap { position:relative; width:180px; height:180px; margin:0 auto 14px; }
+.rpd-legend { display:flex; flex-direction:column; gap:8px; }
+.rpd-legend-item { display:flex; align-items:center; gap:8px; font-size:12px; color:#475569; }
+.rpd-legend-dot  { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.rpd-legend-val  { font-weight:700; color:#0f172a; margin-left:auto; }
+
+/* ── Table Panel ─────────────────────────────────────── */
+.rpd-table-card {
+    background:#fff; border:1px solid #e2e8f0; border-radius:14px;
+    box-shadow:0 1px 4px rgba(0,0,0,.05); overflow:hidden;
+}
+.rpd-table-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 20px 12px; border-bottom:1px solid #f1f5f9; flex-wrap:wrap; gap:10px;
+}
+.rpd-table-header h3 { font-size:14px; font-weight:700; color:#1e293b;
+    display:flex; align-items:center; gap:8px; margin:0; }
+.rpd-table-header h3 i { color:#6366f1; }
+.rpd-row-count { font-size:11.5px; color:#94a3b8; padding:0 20px 10px; }
+.rpd-export-btns { display:flex; gap:8px; }
+.rpd-export-btn {
+    display:inline-flex; align-items:center; gap:5px;
+    padding:7px 13px; border-radius:8px; font-size:12px; font-weight:600;
+    cursor:pointer; border:1.5px solid #e2e8f0; background:#f8fafc;
+    color:#475569; transition:all .2s;
+}
+.rpd-export-btn:hover { border-color:#6366f1; color:#6366f1; background:#eef2ff; }
+
+table.rpd-table { width:100%; border-collapse:collapse; }
+table.rpd-table thead th {
+    background:#f8fafc; font-size:10.5px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.06em; color:#64748b;
+    padding:11px 12px; border-bottom:2px solid #e2e8f0; white-space:nowrap;
+}
+table.rpd-table thead th.num { text-align:right; }
+table.rpd-table tbody tr { border-bottom:1px solid #f1f5f9; transition:background .15s; }
+table.rpd-table tbody tr:last-child { border-bottom:none; }
+table.rpd-table tbody tr:hover { background:#f8fafc; }
+table.rpd-table td { padding:11px 12px; font-size:12.5px; color:#374151; vertical-align:middle; }
+table.rpd-table td.num { text-align:right; font-variant-numeric:tabular-nums; }
+
+.rpd-room-no { font-weight:800; color:#1e293b; font-size:14px; }
+.rpd-type-name { font-weight:700; color:#1e293b; font-size:12.5px; }
+.rpd-type-desc { font-size:10.5px; color:#94a3b8; margin-top:2px; }
+.rpd-validity { font-size:11.5px; color:#475569; }
+.rpd-validity .rpd-validity-end { font-size:10.5px; color:#94a3b8; }
+
+/* Status badges */
+.rpd-badge {
+    display:inline-flex; align-items:center; gap:4px;
+    padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap;
+}
+.rpd-badge-available  { background:#dcfce7; color:#15803d; }
+.rpd-badge-occupied   { background:#fee2e2; color:#b91c1c; }
+.rpd-badge-cleaning   { background:#dbeafe; color:#1d4ed8; }
+.rpd-badge-maintenance{ background:#fef9c3; color:#a16207; }
+.rpd-badge-default    { background:#f1f5f9; color:#475569; }
+.rpd-badge-dynamic    { background:#ede9fe; color:#7c3aed; border:1px dashed #7c3aed; font-size:10px; }
+
+/* Rate highlight */
+.rpd-rate-active   { font-weight:800; color:#10b981; font-size:13.5px; }
+.rpd-rate-none     { color:#94a3b8; font-size:11.5px; font-style:italic; }
+</style>
 }
 
-<div class="page-header">
-    <h2><i class="fas fa-chart-line"></i> Room Price Details</h2>
-</div>
+<div class="rpd-wrap">
 
-<div class="filters-container" style="margin-bottom: 18px;">
-    <form method="get" action="@Url.Action("RoomPriceDetails", "Reports")" style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; justify-content: space-between;">
-        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;">
-            <div>
-                <label for="asOfDate" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">Rate as of</label>
-                <input id="asOfDate" name="asOfDate" type="date" class="form-control"
-                       value="@Model.AsOfDate.ToString("yyyy-MM-dd")" />
+    <!-- ── Page Header ───────────────────────────────────── -->
+    <div class="page-header" style="margin-bottom:0;">
+        <h2><i class="fas fa-chart-line"></i> Room Price Details</h2>
+    </div>
+
+    <!-- ── Filter Bar ────────────────────────────────────── -->
+    <div class="rpd-filter">
+        <form method="get" action="@Url.Action("RoomPriceDetails","Reports")"
+              style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;width:100%;justify-content:space-between;">
+            <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;">
+                <div>
+                    <label for="asOfDate">Rate as of</label>
+                    <input id="asOfDate" name="asOfDate" type="date" value="@Model.AsOfDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div>
+                    <label for="roomTypeId">Room Type</label>
+                    <select id="roomTypeId" name="roomTypeId">
+                        <option value="">All</option>
+                        @foreach (var opt in Model.RoomTypes)
+                        {
+                            <option value="@opt.Id" selected="@(Model.SelectedRoomTypeId == opt.Id)">@opt.Name</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label for="roomStatus">Status</label>
+                    <select id="roomStatus" name="roomStatus">
+                        <option value="">All</option>
+                        @foreach (var s in Model.RoomStatuses)
+                        {
+                            <option value="@s" selected="@(string.Equals(Model.SelectedRoomStatus, s, StringComparison.OrdinalIgnoreCase))">@s</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label for="floorId">Floor</label>
+                    <select id="floorId" name="floorId">
+                        <option value="">All</option>
+                        @foreach (var f in Model.Floors)
+                        {
+                            <option value="@f.Id" selected="@(Model.SelectedFloorId == f.Id)">@f.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:flex-end;">
+                <button class="rpd-btn-apply" type="submit"><i class="fas fa-filter"></i> Apply</button>
+                <a class="rpd-btn-reset" href="@Url.Action("RoomPriceDetails","Reports")"><i class="fas fa-undo"></i> Reset</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- ── KPI Cards ─────────────────────────────────────── -->
+    <div class="rpd-kpi-grid">
+        <div class="rpd-kpi kpi-blue">
+            <div class="rpd-kpi-icon"><i class="fas fa-building"></i></div>
+            <div class="rpd-kpi-label">Total Rooms</div>
+            <div class="rpd-kpi-value">@Model.TotalRooms</div>
+            <div class="rpd-kpi-sub">In selected filter</div>
+            <div class="rpd-kpi-accent"></div>
+        </div>
+        <div class="rpd-kpi kpi-emerald">
+            <div class="rpd-kpi-icon"><i class="fas fa-door-open"></i></div>
+            <div class="rpd-kpi-label">Available</div>
+            <div class="rpd-kpi-value">@Model.AvailableRooms</div>
+            <div class="rpd-kpi-sub">Ready for booking</div>
+            <div class="rpd-kpi-accent"></div>
+        </div>
+        <div class="rpd-kpi kpi-rose">
+            <div class="rpd-kpi-icon"><i class="fas fa-user-check"></i></div>
+            <div class="rpd-kpi-label">Occupied</div>
+            <div class="rpd-kpi-value">@Model.OccupiedRooms</div>
+            <div class="rpd-kpi-sub">Currently checked-in</div>
+            <div class="rpd-kpi-accent"></div>
+        </div>
+        <div class="rpd-kpi kpi-amber">
+            <div class="rpd-kpi-icon"><i class="fas fa-wrench"></i></div>
+            <div class="rpd-kpi-label">Maintenance</div>
+            <div class="rpd-kpi-value">@Model.MaintenanceRooms</div>
+            <div class="rpd-kpi-sub">Under maintenance</div>
+            <div class="rpd-kpi-accent"></div>
+        </div>
+        <div class="rpd-kpi kpi-indigo">
+            <div class="rpd-kpi-icon"><i class="fas fa-indian-rupee-sign"></i></div>
+            <div class="rpd-kpi-label">Avg Rate</div>
+            <div class="rpd-kpi-value" style="font-size:20px;">₹@Model.AvgCurrentBaseRate.ToString("N0")</div>
+            <div class="rpd-kpi-sub">Min ₹@Model.MinCurrentBaseRate.ToString("N0") · Max ₹@Model.MaxCurrentBaseRate.ToString("N0")</div>
+            <div class="rpd-kpi-accent"></div>
+        </div>
+    </div>
+
+    <!-- ── Charts Row ────────────────────────────────────── -->
+    @if (Model.Rows.Any())
+    {
+        <div class="rpd-charts-row">
+            <!-- Donut: room status distribution -->
+            <div class="rpd-chart-card">
+                <div class="rpd-chart-title"><i class="fas fa-chart-pie"></i> Room Status Mix</div>
+                <div class="rpd-donut-wrap">
+                    <canvas id="donutChart"></canvas>
+                </div>
+                <div class="rpd-legend">
+                    <div class="rpd-legend-item">
+                        <span class="rpd-legend-dot" style="background:#10b981;"></span><span>Available</span>
+                        <span class="rpd-legend-val">@Model.AvailableRooms</span>
+                    </div>
+                    <div class="rpd-legend-item">
+                        <span class="rpd-legend-dot" style="background:#f43f5e;"></span><span>Occupied</span>
+                        <span class="rpd-legend-val">@Model.OccupiedRooms</span>
+                    </div>
+                    <div class="rpd-legend-item">
+                        <span class="rpd-legend-dot" style="background:#f59e0b;"></span><span>Maintenance</span>
+                        <span class="rpd-legend-val">@Model.MaintenanceRooms</span>
+                    </div>
+                    @if (otherRooms > 0)
+                    {
+                        <div class="rpd-legend-item">
+                            <span class="rpd-legend-dot" style="background:#94a3b8;"></span><span>Other</span>
+                            <span class="rpd-legend-val">@otherRooms</span>
+                        </div>
+                    }
+                </div>
             </div>
 
-            <div>
-                <label for="roomTypeId" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">Room Type</label>
-                <select id="roomTypeId" name="roomTypeId" class="form-control">
-                    <option value="">All</option>
-                    @foreach (var opt in Model.RoomTypes)
-                    {
-                        <option value="@opt.Id" selected="@(Model.SelectedRoomTypeId == opt.Id)">@opt.Name</option>
-                    }
-                </select>
-            </div>
-
-            <div>
-                <label for="roomStatus" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">Status</label>
-                <select id="roomStatus" name="roomStatus" class="form-control">
-                    <option value="">All</option>
-                    @foreach (var s in Model.RoomStatuses)
-                    {
-                        <option value="@s" selected="@(string.Equals(Model.SelectedRoomStatus, s, StringComparison.OrdinalIgnoreCase))">@s</option>
-                    }
-                </select>
-            </div>
-
-            <div>
-                <label for="floorId" style="display:block; font-weight:700; color:#1f2937; margin-bottom:6px;">Floor</label>
-                <select id="floorId" name="floorId" class="form-control">
-                    <option value="">All</option>
-                    @foreach (var f in Model.Floors)
-                    {
-                        <option value="@f.Id" selected="@(Model.SelectedFloorId == f.Id)">@f.Name</option>
-                    }
-                </select>
+            <!-- Bar: avg rate by room type -->
+            <div class="rpd-chart-card">
+                <div class="rpd-chart-title"><i class="fas fa-chart-bar"></i> Avg Current Rate by Room Type</div>
+                <canvas id="barChart" style="max-height:280px;"></canvas>
             </div>
         </div>
-
-        <div style="display:flex; gap:10px; align-items:flex-end;">
-            <button class="btn-filter-apply" type="submit">
-                <i class="fas fa-filter"></i> Apply
-            </button>
-            <a class="btn-filter-clear" href="@Url.Action("RoomPriceDetails", "Reports")">
-                <i class="fas fa-undo"></i> Reset
-            </a>
-        </div>
-    </form>
-</div>
-
-<div class="status-cards booking-status-cards" style="margin-bottom: 26px;">
-    <div class="status-card available">
-        <h3>Total Rooms</h3>
-        <div class="value">@Model.TotalRooms</div>
-    </div>
-
-    <div class="status-card cleaning">
-        <h3>Available</h3>
-        <div class="value">@Model.AvailableRooms</div>
-    </div>
-
-    <div class="status-card occupied">
-        <h3>Occupied</h3>
-        <div class="value">@Model.OccupiedRooms</div>
-    </div>
-
-    <div class="status-card maintenance">
-        <h3>Avg Current Rate</h3>
-        <div class="value">₹@Model.AvgCurrentBaseRate.ToString("N0")</div>
-    </div>
-</div>
-
-<div class="filters-container" style="margin-bottom: 18px;">
-    <div style="display:flex; gap:12px; flex-wrap: wrap; align-items:center; justify-content: space-between;">
-        <div>
-            <div style="font-weight:700; color:#1f2937;">Summary</div>
-            <div class="subtext" style="margin-top:4px;">Min: ₹@Model.MinCurrentBaseRate.ToString("N0") • Max: ₹@Model.MaxCurrentBaseRate.ToString("N0")</div>
-        </div>
-        <div style="display:flex; gap:10px;">
-            <button class="btn-filter-apply" type="button" onclick="exportRoomPriceDetailsToCSV()">
-                <i class="fas fa-file-export"></i> Export CSV
-            </button>
-        </div>
-    </div>
-</div>
-
-<div class="table-container" style="overflow: visible;">
-    <table class="data-table" id="roomPriceTable">
-        <thead>
-            <tr>
-                <th>Room #</th>
-                <th>Status</th>
-                <th>Floor</th>
-                <th>Room Type</th>
-                <th>Max Occ.</th>
-                <th>Default Rate</th>
-                <th>Current Rate</th>
-                <th>Extra Pax</th>
-                <th>Tax %</th>
-                <th>Rate Validity</th>
-                <th>Customer Type</th>
-                <th>Source</th>
-            </tr>
-        </thead>
-        <tbody>
-        @foreach (var row in Model.Rows)
-        {
-            <tr>
-                <td><strong>@row.RoomNumber</strong></td>
-                <td>
-                    <span class="badge badge-available">@row.RoomStatus</span>
-                </td>
-                <td>@(row.FloorName ?? (row.Floor?.ToString() ?? "-"))</td>
-                <td>
-                    <div>@row.RoomType</div>
-                    @if (!string.IsNullOrWhiteSpace(row.RoomTypeDescription))
-                    {
-                        <div class="subtext">@row.RoomTypeDescription</div>
-                    }
-                </td>
-                <td>@(row.MaxOccupancy?.ToString() ?? "-")</td>
-                <td>₹@(row.DefaultBaseRate?.ToString("N0") ?? "0")</td>
-                <td>
-                    @if (row.CurrentBaseRate.HasValue)
-                    {
-                        <strong>₹@row.CurrentBaseRate.Value.ToString("N0")</strong>
-                    }
-                    else
-                    {
-                        <span class="subtext text-muted">No active rate</span>
-                    }
-                </td>
-                <td>₹@(row.CurrentExtraPaxRate?.ToString("N0") ?? "-")</td>
-                <td>@(row.CurrentTaxPercentage?.ToString("N0") ?? "-")</td>
-                <td>
-                    @if (row.CurrentRateStartDate.HasValue && row.CurrentRateEndDate.HasValue)
-                    {
-                        <div>@row.CurrentRateStartDate.Value.ToString("dd MMM yyyy")</div>
-                        <div class="subtext">to @row.CurrentRateEndDate.Value.ToString("dd MMM yyyy")</div>
-                    }
-                    else
-                    {
-                        <span class="subtext text-muted">-</span>
-                    }
-                </td>
-                <td>@(string.IsNullOrWhiteSpace(row.CurrentCustomerType) ? "-" : row.CurrentCustomerType)</td>
-                <td>@(string.IsNullOrWhiteSpace(row.CurrentSource) ? "-" : row.CurrentSource)</td>
-            </tr>
-        }
-        </tbody>
-    </table>
-</div>
-
-<style>
-    .text-muted { color: #a0aec0 !important; }
-</style>
-
-<script>
-    function exportRoomPriceDetailsToCSV() {
-        const table = document.getElementById('roomPriceTable');
-        if (!table) return;
-
-        const rows = Array.from(table.querySelectorAll('tr'));
-        const csv = rows.map(tr => {
-            const cols = Array.from(tr.querySelectorAll('th,td')).map(td => {
-                const text = (td.innerText || '').replace(/\s+/g, ' ').trim();
-                const escaped = '"' + text.replace(/"/g, '""') + '"';
-                return escaped;
-            });
-            return cols.join(',');
-        }).join('\n');
-
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'room-price-details.csv';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
     }
+
+    <!-- ── Table ─────────────────────────────────────────── -->
+    <div class="rpd-table-card">
+        <div class="rpd-table-header">
+            <h3><i class="fas fa-table-list"></i> Room Price Details</h3>
+            <div class="rpd-export-btns">
+                <button class="rpd-export-btn" onclick="exportToCsv()"><i class="fas fa-file-csv"></i> CSV</button>
+                <button class="rpd-export-btn" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+                <button class="rpd-export-btn" onclick="exportToPdf()"><i class="fas fa-file-pdf"></i> PDF</button>
+            </div>
+        </div>
+        <div class="rpd-row-count">
+            @Model.Rows.Count room(s) &nbsp;·&nbsp; Rate as of @Model.AsOfDate.ToString("dd MMM yyyy")
+        </div>
+        <div style="overflow-x:auto;">
+        <table class="rpd-table" id="roomPriceTable">
+            <thead>
+                <tr>
+                    <th>Room #</th>
+                    <th>Status</th>
+                    <th>Floor</th>
+                    <th>Room Type</th>
+                    <th class="num">Max Occ.</th>
+                    <th class="num">Default Rate</th>
+                    <th class="num">Current Rate</th>
+                    <th class="num">Extra Pax</th>
+                    <th class="num">Tax %</th>
+                    <th>Rate Validity</th>
+                    <th>Customer Type</th>
+                    <th>Source</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in Model.Rows)
+            {
+                var statusLower = (row.RoomStatus ?? "").ToLower();
+                var badgeCls = statusLower == "available"    ? "rpd-badge rpd-badge-available"
+                             : statusLower == "occupied"     ? "rpd-badge rpd-badge-occupied"
+                             : statusLower == "cleaning"     ? "rpd-badge rpd-badge-cleaning"
+                             : statusLower == "maintenance"  ? "rpd-badge rpd-badge-maintenance"
+                             : "rpd-badge rpd-badge-default";
+                var statusIcon = statusLower == "available"   ? "fa-circle-check"
+                               : statusLower == "occupied"    ? "fa-user"
+                               : statusLower == "cleaning"    ? "fa-broom"
+                               : statusLower == "maintenance" ? "fa-wrench"
+                               : "fa-circle";
+                <tr>
+                    <td><span class="rpd-room-no">@row.RoomNumber</span></td>
+                    <td>
+                        <span class="@badgeCls">
+                            <i class="fas @statusIcon" style="font-size:9px;"></i>
+                            @row.RoomStatus
+                        </span>
+                        @if (row.IsDynamicRate == true)
+                        {
+                            <br /><span class="rpd-badge rpd-badge-dynamic" style="margin-top:3px;">Dynamic</span>
+                        }
+                    </td>
+                    <td style="color:#475569;">@(row.FloorName ?? (row.Floor?.ToString() ?? "-"))</td>
+                    <td>
+                        <div class="rpd-type-name">@(row.RoomType ?? "-")</div>
+                        @if (!string.IsNullOrWhiteSpace(row.RoomTypeDescription))
+                        {
+                            <div class="rpd-type-desc">@row.RoomTypeDescription</div>
+                        }
+                    </td>
+                    <td class="num">@(row.MaxOccupancy?.ToString() ?? "-")</td>
+                    <td class="num" style="color:#94a3b8;">₹@(row.DefaultBaseRate?.ToString("N0") ?? "0")</td>
+                    <td class="num">
+                        @if (row.CurrentBaseRate.HasValue)
+                        {
+                            <span class="rpd-rate-active">₹@row.CurrentBaseRate.Value.ToString("N0")</span>
+                        }
+                        else
+                        {
+                            <span class="rpd-rate-none">No rate</span>
+                        }
+                    </td>
+                    <td class="num">@(row.CurrentExtraPaxRate.HasValue ? "₹" + row.CurrentExtraPaxRate.Value.ToString("N0") : "-")</td>
+                    <td class="num">@(row.CurrentTaxPercentage.HasValue ? row.CurrentTaxPercentage.Value.ToString("N0") + "%" : "-")</td>
+                    <td>
+                        @if (row.CurrentRateStartDate.HasValue && row.CurrentRateEndDate.HasValue)
+                        {
+                            <div class="rpd-validity">@row.CurrentRateStartDate.Value.ToString("dd MMM yyyy")</div>
+                            <div class="rpd-validity rpd-validity-end">to @row.CurrentRateEndDate.Value.ToString("dd MMM yyyy")</div>
+                        }
+                        else
+                        {
+                            <span style="color:#94a3b8;font-size:11.5px;">-</span>
+                        }
+                    </td>
+                    <td>@(string.IsNullOrWhiteSpace(row.CurrentCustomerType) ? "-" : row.CurrentCustomerType)</td>
+                    <td>@(string.IsNullOrWhiteSpace(row.CurrentSource) ? "-" : row.CurrentSource)</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+(function(){
+    // Donut – room status
+    const donutEl = document.getElementById('donutChart');
+    if (donutEl) {
+        new Chart(donutEl, {
+            type: 'doughnut',
+            data: {
+                labels: ['Available','Occupied','Maintenance','Other'],
+                datasets: [{
+                    data: [@Model.AvailableRooms, @Model.OccupiedRooms, @Model.MaintenanceRooms, @otherRooms],
+                    backgroundColor: ['#10b981','#f43f5e','#f59e0b','#94a3b8'],
+                    borderWidth: 2.5, borderColor: '#fff', hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: true, cutout: '64%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => ' ' + ctx.label + ': ' + ctx.raw + ' room(s)' } }
+                }
+            }
+        });
+    }
+
+    // Bar – avg rate by room type
+    const barEl = document.getElementById('barChart');
+    if (barEl) {
+        const palette = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(palette));
+        const labels   = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(rateByType.Select(r => r.Type).ToArray()));
+        const rates    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(rateByType.Select(r => Math.Round(r.AvgRate, 0)).ToArray()));
+        new Chart(barEl, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Avg Current Rate (₹)',
+                    data: rates,
+                    backgroundColor: palette.map(c => c + 'cc'),
+                    borderColor: palette,
+                    borderWidth: 1.5,
+                    borderRadius: 8,
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => ' ₹' + Number(ctx.raw).toLocaleString('en-IN', { maximumFractionDigits: 0 }) } }
+                },
+                scales: {
+                    y: { ticks: { callback: v => '₹' + Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 }), font: { size: 10 } }, grid: { color: '#f1f5f9' } },
+                    x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    // ── Export helpers ────────────────────────────────────
+    const downloadBlob = (blob, name) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 500);
+    };
+    const getRows = () => {
+        const tbl = document.getElementById('roomPriceTable');
+        return Array.from(tbl.querySelectorAll('tbody tr')).map(tr => {
+            const tds = Array.from(tr.querySelectorAll('td'));
+            return {
+                room:         (tds[0]?.innerText || '').trim(),
+                status:       (tds[1]?.innerText || '').replace(/\s+/g,' ').trim(),
+                floor:        (tds[2]?.innerText || '').trim(),
+                roomType:     (tds[3]?.innerText || '').replace(/\n.*/,'').trim(),
+                maxOcc:       (tds[4]?.innerText || '').trim(),
+                defRate:      (tds[5]?.innerText || '').trim(),
+                curRate:      (tds[6]?.innerText || '').trim(),
+                extraPax:     (tds[7]?.innerText || '').trim(),
+                tax:          (tds[8]?.innerText || '').trim(),
+                validity:     (tds[9]?.innerText || '').replace(/\n/g,' ').replace(/\s+/g,' ').trim(),
+                custType:     (tds[10]?.innerText || '').trim(),
+                source:       (tds[11]?.innerText || '').trim(),
+            };
+        });
+    };
+    const AS_OF = '@Model.AsOfDate.ToString("yyyy-MM-dd")';
+
+    window.exportToCsv = () => {
+        const rows = getRows();
+        const hdr = ['Room #','Status','Floor','Room Type','Max Occ','Default Rate','Current Rate','Extra Pax','Tax %','Rate Validity','Customer Type','Source'];
+        const esc = v => { const s = String(v ?? ''); return /[\n\r,"]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+        const lines = [hdr.map(esc).join(',')];
+        rows.forEach(r => lines.push([r.room,r.status,r.floor,r.roomType,r.maxOcc,r.defRate,r.curRate,r.extraPax,r.tax,r.validity,r.custType,r.source].map(esc).join(',')));
+        downloadBlob(new Blob(['\uFEFF'+lines.join('\n')],{type:'text/csv;charset=utf-8;'}),`RoomPriceDetails_${AS_OF}.csv`);
+    };
+
+    window.exportToExcel = () => {
+        const rows = getRows();
+        const esc  = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const hdr  = ['Room #','Status','Floor','Room Type','Max Occ','Default Rate','Current Rate','Extra Pax','Tax %','Rate Validity','Customer Type','Source'];
+        let html = '<table border="1"><tr>'+hdr.map(h=>`<th>${esc(h)}</th>`).join('')+'</tr>';
+        rows.forEach(r => { html += '<tr>'+[r.room,r.status,r.floor,r.roomType,r.maxOcc,r.defRate,r.curRate,r.extraPax,r.tax,r.validity,r.custType,r.source].map(v=>`<td>${esc(v)}</td>`).join('')+'</tr>'; });
+        html += '</table>';
+        downloadBlob(new Blob([`<!doctype html><html><head><meta charset="utf-8"></head><body>${html}</body></html>`],{type:'application/vnd.ms-excel;charset=utf-8;'}),`RoomPriceDetails_${AS_OF}.xls`);
+    };
+
+    window.exportToPdf = () => {
+        if (!window.jspdf?.jsPDF) { alert('PDF library not loaded. Refresh and try again.'); return; }
+        const rows = getRows();
+        const doc  = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+        doc.setFontSize(13);
+        doc.text(`Room Price Details  (Rate as of: ${AS_OF})`, 40, 36);
+        doc.autoTable({
+            startY: 54,
+            head: [['Room #','Status','Floor','Room Type','Occ.','Default','Current Rate','Extra Pax','Tax %','Validity','Customer','Source']],
+            body: rows.map(r => [r.room,r.status,r.floor,r.roomType,r.maxOcc,r.defRate,r.curRate,r.extraPax,r.tax,r.validity,r.custType,r.source]),
+            styles: { fontSize: 7.5, cellPadding: 3 },
+            headStyles: { fillColor: [99,102,241], textColor: 255, fontStyle: 'bold' },
+            alternateRowStyles: { fillColor: [248,250,252] }
+        });
+        doc.save(`RoomPriceDetails_${AS_OF}.pdf`);
+    };
+})();
 </script>
+}
