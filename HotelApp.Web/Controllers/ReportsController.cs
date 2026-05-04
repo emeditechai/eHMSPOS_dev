@@ -400,4 +400,48 @@ public sealed class ReportsController : BaseController
         ViewData["Title"] = "Police / Guest Register";
         return View(vm);
     }
+
+    [HttpGet]
+    public async Task<IActionResult> BookingDetailsReport(
+        DateOnly? fromDate, DateOnly? toDate,
+        string? bookingType, string? status)
+    {
+        var branchId = CurrentBranchID;
+
+        var effectiveFrom = fromDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var effectiveTo   = toDate   ?? effectiveFrom;
+
+        if (effectiveTo < effectiveFrom)
+            (effectiveFrom, effectiveTo) = (effectiveTo, effectiveFrom);
+
+        // Sanitise optional filters
+        var bType  = string.IsNullOrWhiteSpace(bookingType) ? null : bookingType.Trim();
+        var bStatus = string.IsNullOrWhiteSpace(status)     ? null : status.Trim();
+
+        var hotel = await _hotelSettingsRepository.GetByBranchAsync(branchId);
+        var data  = await _reportsRepository.GetBookingDetailsReportAsync(
+            branchId, effectiveFrom, effectiveTo, bType, bStatus);
+
+        // Group detail lines by BookingId for view lookup
+        var linesDict = data.Lines
+            .GroupBy(l => l.BookingId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var vm = new BookingDetailsReportViewModel
+        {
+            FromDate            = effectiveFrom,
+            ToDate              = effectiveTo,
+            SelectedBookingType = bType,
+            SelectedStatus      = bStatus,
+            HotelName           = hotel?.HotelName    ?? string.Empty,
+            HotelAddress        = hotel?.Address       ?? string.Empty,
+            GSTCode             = hotel?.GSTCode,
+            Summary             = data.Summary,
+            Bookings            = data.Bookings,
+            Lines               = linesDict
+        };
+
+        ViewData["Title"] = "Booking Details Report";
+        return View(vm);
+    }
 }

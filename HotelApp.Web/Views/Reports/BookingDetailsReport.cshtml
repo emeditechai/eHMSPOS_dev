@@ -1,0 +1,810 @@
+@model HotelApp.Web.ViewModels.BookingDetailsReportViewModel
+@{
+    ViewData["Title"] = "Booking Details Report";
+
+    string StatusBadge(string s) => s switch
+    {
+        "Confirmed"  => "badge-confirmed",
+        "CheckedIn"  => "badge-checkedin",
+        "CheckedOut" => "badge-checkedout",
+        "Cancelled"  => "badge-cancelled",
+        "Pending"    => "badge-pending",
+        _            => "badge-default"
+    };
+
+    string PayStatusBadge(string s) => s switch
+    {
+        "Paid"        => "badge-paid",
+        "PartiallyPaid" => "badge-partial",
+        "Pending"     => "badge-pmt-pending",
+        _             => "badge-default"
+    };
+
+    string LineIcon(string t) => t switch
+    {
+        "Stay"        => "fa-bed",
+        "OtherCharge" => "fa-receipt",
+        "RoomService" => "fa-utensils",
+        _             => "fa-circle"
+    };
+
+    string LineColor(string t) => t switch
+    {
+        "Stay"        => "#6366f1",
+        "OtherCharge" => "#f59e0b",
+        "RoomService" => "#10b981",
+        _             => "#6b7280"
+    };
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
+    <style>
+        /* ── Page header ── */
+        .bdr-page-header {
+            display: flex; align-items: center; gap: 14px; margin-bottom: 24px;
+        }
+        .bdr-header-icon {
+            width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 1.4rem;
+            box-shadow: 0 4px 14px rgba(99,102,241,.35);
+        }
+        .bdr-page-header h2 { margin: 0; font-size: 1.55rem; font-weight: 700; color: #1e1b4b; letter-spacing: -.3px; }
+        .bdr-page-header p  { margin: 2px 0 0; font-size: .85rem; color: #6b7280; }
+
+        /* ── Hotel card ── */
+        .bdr-hotel-card {
+            background: linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);
+            border-radius: 16px; padding: 18px 24px; color: #fff;
+            margin-bottom: 18px; display: flex; align-items: center; gap: 16px;
+            box-shadow: 0 4px 18px rgba(49,46,129,.25);
+        }
+        .bdr-hotel-icon { font-size: 2rem; opacity: .5; }
+        .bdr-hotel-name { font-size: 1.05rem; font-weight: 700; }
+        .bdr-hotel-meta { font-size: .8rem; opacity: .75; margin-top: 3px; }
+        .bdr-gstin-pill {
+            margin-left: auto; background: rgba(255,255,255,.12);
+            border: 1px solid rgba(255,255,255,.2); border-radius: 20px;
+            padding: 6px 16px; font-size: .78rem; font-weight: 700;
+            letter-spacing: .5px; white-space: nowrap;
+        }
+
+        /* ── Filter card ── */
+        .bdr-filter-card {
+            background: #fff; border-radius: 16px; padding: 20px 24px;
+            box-shadow: 0 1px 8px rgba(0,0,0,.07); margin-bottom: 22px;
+            border: 1px solid #e9eaf0;
+        }
+        .bdr-filter-row {
+            display: flex; flex-wrap: wrap; gap: 16px;
+            align-items: flex-end; justify-content: space-between;
+        }
+        .bdr-filter-fields { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
+        .bdr-field label {
+            display: block; font-size: .78rem; font-weight: 700; color: #374151;
+            margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px;
+        }
+        .bdr-field input[type="date"],
+        .bdr-field select {
+            border: 1.5px solid #d1d5db; border-radius: 10px;
+            padding: 9px 14px; font-size: .9rem; color: #1f2937;
+            outline: none; transition: border-color .2s, box-shadow .2s; background: #f9fafb;
+        }
+        .bdr-field input[type="date"]:focus,
+        .bdr-field select:focus {
+            border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+        }
+        .bdr-btn-search {
+            background: linear-gradient(135deg,#6366f1,#8b5cf6);
+            border: none; color: #fff; border-radius: 10px;
+            padding: 10px 22px; font-size: .9rem; font-weight: 600;
+            cursor: pointer; transition: opacity .2s; display: flex; align-items: center; gap: 8px;
+        }
+        .bdr-btn-search:hover { opacity: .88; }
+
+        /* ── KPI cards ── */
+        .bdr-kpi-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 16px; margin-bottom: 24px;
+        }
+        @@media (max-width: 900px) { .bdr-kpi-grid { grid-template-columns: repeat(2,1fr); } }
+        @@media (max-width: 500px) { .bdr-kpi-grid { grid-template-columns: 1fr; } }
+        .bdr-kpi-card {
+            background: #fff; border-radius: 16px; padding: 20px 22px;
+            box-shadow: 0 1px 8px rgba(0,0,0,.07); border: 1px solid #e9eaf0;
+            display: flex; align-items: center; gap: 16px;
+        }
+        .bdr-kpi-icon {
+            width: 46px; height: 46px; border-radius: 13px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.25rem; color: #fff;
+        }
+        .bdr-kpi-label { font-size: .76rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .4px; }
+        .bdr-kpi-value { font-size: 1.45rem; font-weight: 800; color: #1e1b4b; line-height: 1.1; }
+        .bdr-kpi-sub   { font-size: .75rem; color: #9ca3af; margin-top: 1px; }
+
+        /* ── Export bar ── */
+        .bdr-export-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 14px;
+        }
+        .bdr-export-bar .bdr-result-label { font-size: .85rem; color: #6b7280; }
+        .bdr-export-btn {
+            border: none; border-radius: 9px; padding: 8px 18px;
+            font-size: .82rem; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; gap: 7px; transition: opacity .2s;
+        }
+        .bdr-export-btn:hover { opacity: .85; }
+        .bdr-btn-csv   { background: #10b981; color: #fff; }
+        .bdr-btn-excel { background: #059669; color: #fff; }
+        .bdr-btn-pdf   { background: #ef4444; color: #fff; }
+
+        /* ── Booking card ── */
+        .bdr-booking-card {
+            background: #fff; border: 1px solid #e9eaf0; border-radius: 16px;
+            margin-bottom: 16px; overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,.06);
+        }
+        .bdr-booking-header {
+            padding: 16px 22px; display: grid;
+            grid-template-columns: 180px 1fr 1fr 1fr 1fr auto;
+            gap: 12px; align-items: center; cursor: pointer;
+            border-bottom: 1px solid #f1f2f6; position: relative;
+            transition: background .15s;
+        }
+        .bdr-booking-header:hover { background: #f8f8ff; }
+        @@media (max-width: 1024px) {
+            .bdr-booking-header { grid-template-columns: 1fr 1fr 1fr; }
+        }
+        @@media (max-width: 640px) {
+            .bdr-booking-header { grid-template-columns: 1fr 1fr; }
+        }
+
+        .bdr-bno { font-size: .95rem; font-weight: 800; color: #4338ca; }
+        .bdr-bno small { display: block; font-size: .72rem; font-weight: 500; color: #9ca3af; }
+        .bdr-hcol-label { font-size: .72rem; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px; }
+        .bdr-hcol-value { font-size: .88rem; font-weight: 600; color: #1e1b4b; }
+        .bdr-hcol-sub   { font-size: .76rem; color: #6b7280; }
+
+        .bdr-amt-block { text-align: right; }
+        .bdr-amt-total { font-size: 1.1rem; font-weight: 800; color: #1e1b4b; }
+        .bdr-amt-paid  { font-size: .78rem; color: #10b981; font-weight: 600; }
+        .bdr-amt-due   { font-size: .78rem; font-weight: 700; }
+        .bdr-amt-due.has-due { color: #ef4444; }
+        .bdr-amt-due.no-due  { color: #10b981; }
+
+        /* toggle chevron */
+        .bdr-toggle { font-size: 1rem; color: #a0aec0; transition: transform .25s; }
+        .bdr-booking-card.expanded .bdr-toggle { transform: rotate(180deg); }
+
+        /* ── Badges ── */
+        .bdr-badge {
+            display: inline-block; border-radius: 20px;
+            padding: 3px 10px; font-size: .7rem; font-weight: 700;
+            letter-spacing: .3px; white-space: nowrap;
+        }
+        .badge-confirmed  { background: #dbeafe; color: #1d4ed8; }
+        .badge-checkedin  { background: #d1fae5; color: #065f46; }
+        .badge-checkedout { background: #e0e7ff; color: #3730a3; }
+        .badge-cancelled  { background: #fee2e2; color: #b91c1c; }
+        .badge-pending    { background: #fef3c7; color: #92400e; }
+        .badge-default    { background: #f3f4f6; color: #374151; }
+        .badge-paid        { background: #d1fae5; color: #065f46; }
+        .badge-partial     { background: #fef3c7; color: #92400e; }
+        .badge-pmt-pending { background: #fee2e2; color: #b91c1c; }
+        .badge-b2b { background: #ede9fe; color: #6d28d9; }
+        .badge-b2c { background: #e0f2fe; color: #0369a1; }
+
+        /* ── Detail panel ── */
+        .bdr-detail-panel {
+            display: none; padding: 0 22px 18px;
+        }
+        .bdr-booking-card.expanded .bdr-detail-panel { display: block; }
+
+        .bdr-detail-title {
+            font-size: .78rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: .5px; color: #6b7280; margin: 14px 0 8px;
+        }
+
+        /* ── Line table ── */
+        .bdr-lines-table {
+            width: 100%; border-collapse: collapse; font-size: .85rem;
+        }
+        .bdr-lines-table thead th {
+            background: #f5f6fa; color: #6b7280; font-size: .72rem;
+            font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
+            padding: 8px 12px; border-bottom: 1px solid #e9eaf0; white-space: nowrap;
+        }
+        .bdr-lines-table tbody tr:hover { background: #fafafa; }
+        .bdr-lines-table tbody td {
+            padding: 8px 12px; border-bottom: 1px solid #f1f2f6; vertical-align: middle;
+        }
+        .bdr-lines-table tbody tr:last-child td { border-bottom: none; }
+        .bdr-lines-table tfoot td {
+            padding: 9px 12px; font-weight: 700; font-size: .88rem;
+            background: #f5f6fa; border-top: 2px solid #e9eaf0;
+        }
+        .tr-stay        td { background: rgba(99,102,241,.03); }
+        .tr-othercharge td { background: rgba(245,158,11,.03); }
+        .tr-roomservice td { background: rgba(16,185,129,.03); }
+
+        .line-type-icon {
+            width: 24px; height: 24px; border-radius: 6px;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: .72rem; color: #fff; margin-right: 7px; flex-shrink: 0;
+        }
+        .line-desc-cell { display: flex; align-items: center; }
+
+        /* ── No data ── */
+        .bdr-empty {
+            background: #fff; border-radius: 16px; padding: 60px 30px;
+            text-align: center; border: 1px solid #e9eaf0;
+            box-shadow: 0 1px 8px rgba(0,0,0,.06);
+        }
+        .bdr-empty i { font-size: 3rem; color: #d1d5db; margin-bottom: 14px; }
+        .bdr-empty h5 { color: #374151; font-weight: 700; margin-bottom: 6px; }
+        .bdr-empty p  { color: #9ca3af; font-size: .88rem; }
+    </style>
+}
+
+<div class="container-fluid px-4 py-4">
+
+    <!-- ── Page Header ── -->
+    <div class="bdr-page-header">
+        <div class="bdr-header-icon">
+            <i class="fas fa-file-invoice"></i>
+        </div>
+        <div>
+            <h2>Booking Details Report</h2>
+            <p>Comprehensive view of booking headers with billing line details</p>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.HotelName))
+    {
+        <!-- ── Hotel Info ── -->
+        <div class="bdr-hotel-card">
+            <i class="fas fa-hotel bdr-hotel-icon"></i>
+            <div>
+                <div class="bdr-hotel-name">@Model.HotelName</div>
+                @if (!string.IsNullOrWhiteSpace(Model.HotelAddress))
+                {
+                    <div class="bdr-hotel-meta">@Model.HotelAddress</div>
+                }
+            </div>
+            @if (!string.IsNullOrWhiteSpace(Model.GSTCode))
+            {
+                <div class="bdr-gstin-pill">GSTIN: @Model.GSTCode</div>
+            }
+        </div>
+    }
+
+    <!-- ── Filters ── -->
+    <div class="bdr-filter-card">
+        <form method="get" action="">
+            <div class="bdr-filter-row">
+                <div class="bdr-filter-fields">
+                    <div class="bdr-field">
+                        <label>From Date</label>
+                        <input type="date" name="fromDate"
+                               value="@Model.FromDate.ToString("yyyy-MM-dd")"
+                               max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="bdr-field">
+                        <label>To Date</label>
+                        <input type="date" name="toDate"
+                               value="@Model.ToDate.ToString("yyyy-MM-dd")"
+                               max="@DateTime.Today.AddYears(1).ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="bdr-field">
+                        <label>Booking Type</label>
+                        <select name="bookingType">
+                            <option value="" selected="@(Model.SelectedBookingType == null)">All Types</option>
+                            <option value="B2C" selected="@(Model.SelectedBookingType == "B2C")">B2C (Direct)</option>
+                            <option value="B2B" selected="@(Model.SelectedBookingType == "B2B")">B2B (Corporate)</option>
+                        </select>
+                    </div>
+                    <div class="bdr-field">
+                        <label>Status</label>
+                        <select name="status">
+                            <option value="" selected="@(Model.SelectedStatus == null)">All Statuses</option>
+                            <option value="Confirmed"  selected="@(Model.SelectedStatus == "Confirmed")">Confirmed</option>
+                            <option value="CheckedIn"  selected="@(Model.SelectedStatus == "CheckedIn")">Checked In</option>
+                            <option value="CheckedOut" selected="@(Model.SelectedStatus == "CheckedOut")">Checked Out</option>
+                            <option value="Pending"    selected="@(Model.SelectedStatus == "Pending")">Pending</option>
+                            <option value="Cancelled"  selected="@(Model.SelectedStatus == "Cancelled")">Cancelled</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <button type="submit" class="bdr-btn-search">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- ── KPI Summary ── -->
+    <div class="bdr-kpi-grid">
+        <div class="bdr-kpi-card">
+            <div class="bdr-kpi-icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">
+                <i class="fas fa-file-invoice"></i>
+            </div>
+            <div>
+                <div class="bdr-kpi-label">Total Bookings</div>
+                <div class="bdr-kpi-value">@Model.Summary.TotalBookings</div>
+                <div class="bdr-kpi-sub">in selected period</div>
+            </div>
+        </div>
+        <div class="bdr-kpi-card">
+            <div class="bdr-kpi-icon" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8)">
+                <i class="fas fa-indian-rupee-sign"></i>
+            </div>
+            <div>
+                <div class="bdr-kpi-label">Total Bill</div>
+                <div class="bdr-kpi-value">₹@Model.Summary.TotalBillAmount.ToString("N2")</div>
+                <div class="bdr-kpi-sub">Stay + OC + Room Service</div>
+            </div>
+        </div>
+        <div class="bdr-kpi-card">
+            <div class="bdr-kpi-icon" style="background:linear-gradient(135deg,#10b981,#059669)">
+                <i class="fas fa-circle-check"></i>
+            </div>
+            <div>
+                <div class="bdr-kpi-label">Total Collected</div>
+                <div class="bdr-kpi-value">₹@Model.Summary.TotalPaidAmount.ToString("N2")</div>
+                <div class="bdr-kpi-sub">payments received</div>
+            </div>
+        </div>
+        <div class="bdr-kpi-card">
+            <div class="bdr-kpi-icon" style="background:linear-gradient(135deg,@(Model.Summary.TotalDueAmount > 0 ? "#ef4444,#b91c1c" : "#10b981,#059669"))">
+                <i class="fas fa-@(Model.Summary.TotalDueAmount > 0 ? "hourglass-half" : "check-double")"></i>
+            </div>
+            <div>
+                <div class="bdr-kpi-label">Outstanding Due</div>
+                <div class="bdr-kpi-value" style="color:@(Model.Summary.TotalDueAmount > 0 ? "#ef4444" : "#10b981")">
+                    ₹@Math.Abs(Model.Summary.TotalDueAmount).ToString("N2")
+                </div>
+                <div class="bdr-kpi-sub">@(Model.Summary.TotalDueAmount > 0 ? "pending dues" : "fully settled")</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Export Bar ── -->
+    @if (Model.Bookings.Count > 0)
+    {
+        <div class="bdr-export-bar">
+            <span class="bdr-result-label">
+                <strong>@Model.Bookings.Count</strong> booking@(Model.Bookings.Count != 1 ? "s" : "")
+                &mdash; @Model.FromDate.ToString("dd MMM yyyy") to @Model.ToDate.ToString("dd MMM yyyy")
+            </span>
+            <div style="display:flex;gap:8px">
+                <button class="bdr-export-btn bdr-btn-csv"   onclick="exportBookingDetailsCsv()">
+                    <i class="fas fa-file-csv"></i> CSV
+                </button>
+                <button class="bdr-export-btn bdr-btn-excel" onclick="exportBookingDetailsExcel()">
+                    <i class="fas fa-file-excel"></i> Excel
+                </button>
+                <button class="bdr-export-btn bdr-btn-pdf"   onclick="exportBookingDetailsPdf()">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </button>
+            </div>
+        </div>
+    }
+
+    <!-- ── Booking Cards ── -->
+    @if (Model.Bookings.Count == 0)
+    {
+        <div class="bdr-empty">
+            <i class="fas fa-file-invoice"></i>
+            <h5>No Bookings Found</h5>
+            <p>No bookings match the selected filters. Try adjusting the date range or status.</p>
+        </div>
+    }
+    else
+    {
+        <div id="bdrBookingList">
+            @foreach (var bk in Model.Bookings)
+            {
+                var lines = Model.Lines.TryGetValue(bk.BookingId, out var l) ? l : new();
+                var hasLines = lines.Count > 0;
+                decimal lineTotal = lines.Sum(x => x.TotalAmount);
+                decimal lineGST   = lines.Sum(x => x.GSTAmount);
+                decimal lineBase  = lines.Sum(x => x.BaseAmount);
+
+                <div class="bdr-booking-card" id="card-@bk.BookingId">
+                    <!-- ── Header Row (clickable) ── -->
+                    <div class="bdr-booking-header" onclick="toggleBookingCard(@bk.BookingId)">
+
+                        <!-- Booking No -->
+                        <div>
+                            <div class="bdr-bno">
+                                @bk.BookingNumber
+                                <small>
+                                    <span class="bdr-badge @StatusBadge(bk.Status)">@bk.Status</span>
+                                    &nbsp;<span class="bdr-badge @PayStatusBadge(bk.PaymentStatus)">@bk.PaymentStatus</span>
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Check-in / Check-out -->
+                        <div>
+                            <div class="bdr-hcol-label">Check-in &rarr; Check-out</div>
+                            <div class="bdr-hcol-value">
+                                @bk.CheckInDate.ToString("dd MMM yyyy")
+                                &nbsp;&rarr;&nbsp;
+                                @bk.CheckOutDate.ToString("dd MMM yyyy")
+                            </div>
+                            <div class="bdr-hcol-sub">@bk.Nights night@(bk.Nights != 1 ? "s" : "")</div>
+                        </div>
+
+                        <!-- Guest -->
+                        <div>
+                            <div class="bdr-hcol-label">Primary Guest</div>
+                            <div class="bdr-hcol-value">@bk.PrimaryGuestName</div>
+                            <div class="bdr-hcol-sub">@bk.IGuest guest@(bk.IGuest != 1 ? "s" : "")</div>
+                        </div>
+
+                        <!-- Room / Type -->
+                        <div>
+                            <div class="bdr-hcol-label">Room(s) / Type</div>
+                            <div class="bdr-hcol-value">@bk.RoomsAssigned</div>
+                            <div class="bdr-hcol-sub">@bk.RoomTypes</div>
+                        </div>
+
+                        <!-- Booking Type -->
+                        <div>
+                            <div class="bdr-hcol-label">Type</div>
+                            <span class="bdr-badge @(bk.BookingType == "B2B" ? "badge-b2b" : "badge-b2c")">
+                                @bk.BookingType
+                            </span>
+                            @if (!string.IsNullOrWhiteSpace(bk.B2BClientName))
+                            {
+                                <div class="bdr-hcol-sub" style="margin-top:4px">@bk.B2BClientName</div>
+                            }
+                        </div>
+
+                        <!-- Amounts + toggle -->
+                        <div class="bdr-amt-block">
+                            <div class="bdr-amt-total">₹@bk.TotalBillAmount.ToString("N2")</div>
+                            <div class="bdr-amt-paid">Paid: ₹@bk.TotalPaid.ToString("N2")</div>
+                            <div class="bdr-amt-due @(bk.DueAmount > 0 ? "has-due" : "no-due")">
+                                @(bk.DueAmount > 0 ? "Due:" : "Settled")
+                                @(bk.DueAmount > 0 ? " ₹" + bk.DueAmount.ToString("N2") : "")
+                            </div>
+                        </div>
+
+                        <i class="fas fa-chevron-down bdr-toggle"></i>
+                    </div>
+
+                    <!-- ── Detail Panel ── -->
+                    <div class="bdr-detail-panel">
+                        @if (!hasLines)
+                        {
+                            <div style="padding:14px 0;color:#9ca3af;font-size:.85rem;">
+                                <i class="fas fa-info-circle"></i> No billing line details available for this booking.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="bdr-detail-title">
+                                <i class="fas fa-list-ul"></i> Billing Lines
+                            </div>
+                            <table class="bdr-lines-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:40%">Description</th>
+                                        <th class="text-center" style="width:8%">Qty</th>
+                                        <th class="text-end"   style="width:13%">Rate (₹)</th>
+                                        <th class="text-end"   style="width:13%">Base Amt (₹)</th>
+                                        <th class="text-end"   style="width:13%">GST (₹)</th>
+                                        <th class="text-end"   style="width:13%">Total (₹)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var ln in lines)
+                                    {
+                                        var trClass = ln.LineType switch
+                                        {
+                                            "Stay"        => "tr-stay",
+                                            "OtherCharge" => "tr-othercharge",
+                                            "RoomService" => "tr-roomservice",
+                                            _             => ""
+                                        };
+                                        <tr class="@trClass">
+                                            <td>
+                                                <div class="line-desc-cell">
+                                                    <span class="line-type-icon" style="background:@LineColor(ln.LineType)">
+                                                        <i class="fas @LineIcon(ln.LineType)"></i>
+                                                    </span>
+                                                    <span>
+                                                        @ln.Description
+                                                        <small style="display:block;color:#9ca3af;font-size:.7rem">
+                                                            @(ln.LineType switch {
+                                                                "Stay"        => "Stay Charges",
+                                                                "OtherCharge" => "Other Charges",
+                                                                "RoomService" => "Room Service",
+                                                                _             => ln.LineType
+                                                            })
+                                                        </small>
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">@ln.Qty.ToString("N0")</td>
+                                            <td class="text-end">@ln.Rate.ToString("N2")</td>
+                                            <td class="text-end">@ln.BaseAmount.ToString("N2")</td>
+                                            <td class="text-end">@ln.GSTAmount.ToString("N2")</td>
+                                            <td class="text-end" style="font-weight:700">@ln.TotalAmount.ToString("N2")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="3">Total</td>
+                                        <td class="text-end">@lineBase.ToString("N2")</td>
+                                        <td class="text-end">@lineGST.ToString("N2")</td>
+                                        <td class="text-end">@lineTotal.ToString("N2")</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+</div>
+
+@section Scripts {
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
+<script>
+// ── Toggle card expand/collapse ──────────────────────────────────────────────
+function toggleBookingCard(id) {
+    const card = document.getElementById('card-' + id);
+    card.classList.toggle('expanded');
+}
+
+// ── Build flat table rows for export ─────────────────────────────────────────
+// We embed the data as JSON from the model to avoid page-scraping
+const bookingData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Bookings.Select(b => new {
+    bookingNumber   = b.BookingNumber,
+    checkIn         = b.CheckInDate.ToString("dd-MMM-yyyy"),
+    checkOut        = b.CheckOutDate.ToString("dd-MMM-yyyy"),
+    nights          = b.Nights,
+    guest           = b.PrimaryGuestName,
+    iGuest          = b.IGuest,
+    rooms           = b.RoomsAssigned,
+    roomTypes       = b.RoomTypes,
+    bookingType     = b.BookingType,
+    b2bClient       = b.B2BClientName ?? "-",
+    totalBill       = b.TotalBillAmount,
+    totalPaid       = b.TotalPaid,
+    due             = b.DueAmount,
+    status          = b.Status,
+    payStatus       = b.PaymentStatus
+})));
+
+const lineData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Lines.SelectMany(kvp =>
+    kvp.Value.Select(l => new {
+        bookingId   = kvp.Key,
+        lineType    = l.LineType,
+        description = l.Description,
+        qty         = l.Qty,
+        rate        = l.Rate,
+        baseAmount  = l.BaseAmount,
+        gstAmount   = l.GSTAmount,
+        totalAmount = l.TotalAmount
+    })
+)));
+
+// booking lookup for lines
+const bookingMap = {};
+@foreach (var bk in Model.Bookings)
+{
+    @:bookingMap[@bk.BookingId] = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(bk.BookingNumber));
+}
+
+// ── CSV Export ───────────────────────────────────────────────────────────────
+function exportBookingDetailsCsv() {
+    const hdr = ['Booking No','Check-In','Check-Out','Nights','Primary Guest','Guests','Rooms','Room Types','Type','B2B Client','Total Bill','Total Paid','Due','Status','Payment Status'];
+    const rows = bookingData.map(b => [
+        b.bookingNumber, b.checkIn, b.checkOut, b.nights, b.guest, b.iGuest,
+        b.rooms, b.roomTypes, b.bookingType, b.b2bClient,
+        b.totalBill, b.totalPaid, b.due, b.status, b.payStatus
+    ]);
+
+    const sep = '\r\n';
+    let csv = hdr.map(h => '"' + h + '"').join(',') + sep;
+    rows.forEach(r => {
+        csv += r.map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(',') + sep;
+    });
+
+    // Blank row then detail header
+    csv += sep;
+    csv += ['"BookingNo"','"Line Type"','"Description"','"Qty"','"Rate"','"Base Amt"','"GST"','"Total"'].join(',') + sep;
+    lineData.forEach(l => {
+        const bno = bookingMap[l.bookingId] ?? '';
+        csv += ['"'+bno+'"','"'+l.lineType+'"','"'+l.description+'"',l.qty,l.rate,l.baseAmount,l.gstAmount,l.totalAmount].join(',') + sep;
+    });
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'BookingDetails_@(Model.FromDate.ToString("yyyyMMdd"))_@(Model.ToDate.ToString("yyyyMMdd")).csv';
+    a.click();
+}
+
+// ── Excel Export ─────────────────────────────────────────────────────────────
+function exportBookingDetailsExcel() {
+    const now = new Date();
+    let xml = '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>';
+    xml += '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">';
+    xml += '<Worksheet ss:Name="Booking Summary"><Table>';
+
+    const add = (cells, bold) => {
+        xml += '<Row>' + cells.map(c =>
+            `<Cell${bold ? ' ss:StyleID="bold"' : ''}><Data ss:Type="${typeof c === 'number' ? 'Number' : 'String'}">${String(c ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</Data></Cell>`
+        ).join('') + '</Row>';
+    };
+
+    add(['Booking No','Check-In','Check-Out','Nights','Primary Guest','Guests','Rooms','Room Types','Type','B2B Client','Total Bill','Total Paid','Due','Status','Pmt Status'], true);
+    bookingData.forEach(b => add([b.bookingNumber,b.checkIn,b.checkOut,b.nights,b.guest,b.iGuest,b.rooms,b.roomTypes,b.bookingType,b.b2bClient,b.totalBill,b.totalPaid,b.due,b.status,b.payStatus], false));
+
+    xml += '</Table></Worksheet>';
+
+    // Second sheet: details
+    xml += '<Worksheet ss:Name="Billing Lines"><Table>';
+    add(['Booking No','Line Type','Description','Qty','Rate','Base Amt','GST','Total'], true);
+    lineData.forEach(l => add([bookingMap[l.bookingId]??'', l.lineType, l.description, l.qty, l.rate, l.baseAmount, l.gstAmount, l.totalAmount], false));
+    xml += '</Table></Worksheet></Workbook>';
+
+    const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'BookingDetails_@(Model.FromDate.ToString("yyyyMMdd"))_@(Model.ToDate.ToString("yyyyMMdd")).xls';
+    a.click();
+}
+
+// ── PDF Export ───────────────────────────────────────────────────────────────
+function exportBookingDetailsPdf() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+    const W = doc.internal.pageSize.getWidth();
+    const margin = 30;
+
+    // Header
+    let y = margin;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(30, 27, 75);
+    doc.text('Booking Details Report', W / 2, y, { align: 'center' });
+    y += 16;
+
+    @if (!string.IsNullOrWhiteSpace(Model.HotelName))
+    {
+    @:doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(100);
+    @:doc.text('@Model.HotelName.Replace("'", "\\'")'.trim(), W/2, y, { align:'center' }); y += 13;
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.HotelAddress))
+    {
+    @:doc.setFontSize(8); doc.text('@Model.HotelAddress.Replace("'", "\\'")'.trim(), W/2, y, { align:'center' }); y += 11;
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.GSTCode))
+    {
+    @:doc.text('GSTIN: @Model.GSTCode', W/2, y, { align:'center' }); y += 11;
+    }
+
+    doc.setFontSize(9); doc.setTextColor(80);
+    doc.text('Period: @Model.FromDate.ToString("dd MMM yyyy") to @Model.ToDate.ToString("dd MMM yyyy")', W/2, y, { align: 'center' });
+    y += 10;
+
+    // Summary line
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(50);
+    doc.text(
+        `Bookings: @Model.Summary.TotalBookings  |  Total Bill: \u20B9@Model.Summary.TotalBillAmount.ToString("N2")  |  Collected: \u20B9@Model.Summary.TotalPaidAmount.ToString("N2")  |  Due: \u20B9@Model.Summary.TotalDueAmount.ToString("N2")`,
+        W/2, y + 4, { align: 'center' }
+    );
+    y += 16;
+
+    // Table — booking header rows
+    const colStyles = {
+        0: { cellWidth: 88, fontStyle: 'bold' },
+        1: { cellWidth: 64, halign: 'center' },
+        2: { cellWidth: 64, halign: 'center' },
+        3: { cellWidth: 38, halign: 'center' },
+        4: { cellWidth: 80 },
+        5: { cellWidth: 36, halign: 'center' },
+        6: { cellWidth: 70 },
+        7: { cellWidth: 36 },
+        8: { cellWidth: 52, halign: 'right' },
+        9: { cellWidth: 52, halign: 'right' },
+        10: { cellWidth: 48, halign: 'right', fontStyle: 'bold' },
+        11: { cellWidth: 52 },
+    };
+
+    const headRow = [['Booking No','Check-In','Check-Out','Nts','Primary Guest','Gsts','Rooms','Type','Total Bill','Collected','Due','Status']];
+    const bodyRows = bookingData.map(b => [
+        b.bookingNumber, b.checkIn, b.checkOut, b.nights, b.guest, b.iGuest,
+        (b.rooms + '\n' + b.roomTypes),
+        (b.bookingType + (b.b2bClient && b.b2bClient !== '-' ? '\n' + b.b2bClient : '')),
+        '\u20B9' + Number(b.totalBill).toLocaleString('en-IN', {minimumFractionDigits:2}),
+        '\u20B9' + Number(b.totalPaid).toLocaleString('en-IN', {minimumFractionDigits:2}),
+        '\u20B9' + Number(b.due).toLocaleString('en-IN', {minimumFractionDigits:2}),
+        b.status
+    ]);
+
+    doc.autoTable({
+        head: headRow,
+        body: bodyRows,
+        startY: y,
+        margin: { left: margin, right: margin },
+        styles: { fontSize: 7, cellPadding: 4, overflow: 'linebreak' },
+        headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold', fontSize: 7 },
+        alternateRowStyles: { fillColor: [248, 248, 255] },
+        columnStyles: colStyles,
+        didDrawPage: (d) => {
+            const pg = doc.internal.getCurrentPageInfo().pageNumber;
+            const total = doc.internal.getNumberOfPages();
+            doc.setFontSize(7); doc.setTextColor(150);
+            doc.text('Page ' + pg + ' of ' + total, W - margin, doc.internal.pageSize.getHeight() - 10, { align: 'right' });
+            doc.text('Generated: ' + new Date().toLocaleString(), margin, doc.internal.pageSize.getHeight() - 10);
+        }
+    });
+
+    // Billing Lines sheet (second table on new page)
+    doc.addPage();
+    let y2 = margin;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(30, 27, 75);
+    doc.text('Billing Line Details', W / 2, y2, { align: 'center' });
+    y2 += 18;
+
+    const lineHead = [['Booking No', 'Line Type', 'Description', 'Qty', 'Rate (₹)', 'Base Amt (₹)', 'GST (₹)', 'Total (₹)']];
+    const lineBody = lineData.map(l => [
+        bookingMap[l.bookingId] ?? '',
+        l.lineType,
+        l.description,
+        l.qty,
+        Number(l.rate).toFixed(2),
+        Number(l.baseAmount).toFixed(2),
+        Number(l.gstAmount).toFixed(2),
+        Number(l.totalAmount).toFixed(2)
+    ]);
+
+    const lineColStyles = {
+        0: { cellWidth: 90, fontStyle: 'bold' },
+        1: { cellWidth: 62 },
+        2: { cellWidth: 180 },
+        3: { cellWidth: 30, halign: 'center' },
+        4: { cellWidth: 60, halign: 'right' },
+        5: { cellWidth: 70, halign: 'right' },
+        6: { cellWidth: 60, halign: 'right' },
+        7: { cellWidth: 70, halign: 'right', fontStyle: 'bold' },
+    };
+
+    doc.autoTable({
+        head: lineHead,
+        body: lineBody,
+        startY: y2,
+        margin: { left: margin, right: margin },
+        styles: { fontSize: 7.5, cellPadding: 4 },
+        headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
+        alternateRowStyles: { fillColor: [250, 250, 255] },
+        columnStyles: lineColStyles,
+        didDrawPage: (d) => {
+            const pg = doc.internal.getCurrentPageInfo().pageNumber;
+            const total = doc.internal.getNumberOfPages();
+            doc.setFontSize(7); doc.setTextColor(150);
+            doc.text('Page ' + pg + ' of ' + total, W - margin, doc.internal.pageSize.getHeight() - 10, { align: 'right' });
+            doc.text('Generated: ' + new Date().toLocaleString(), margin, doc.internal.pageSize.getHeight() - 10);
+        }
+    });
+
+    doc.save('BookingDetails_@(Model.FromDate.ToString("yyyyMMdd"))_@(Model.ToDate.ToString("yyyyMMdd")).pdf');
+}
+</script>
+}

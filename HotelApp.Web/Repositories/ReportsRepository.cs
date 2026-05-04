@@ -78,6 +78,14 @@ public interface IReportsRepository
         string? nationality = null,
         string? guestName = null
     );
+
+    Task<BookingDetailsReportData> GetBookingDetailsReportAsync(
+        int branchId,
+        DateOnly fromDate,
+        DateOnly toDate,
+        string? bookingType = null,
+        string? status = null
+    );
 }
 
 public sealed class ReportsRepository : IReportsRepository
@@ -473,6 +481,46 @@ public sealed class ReportsRepository : IReportsRepository
             Rows    = rows
         };
     }
+
+    public async Task<BookingDetailsReportData> GetBookingDetailsReportAsync(
+        int branchId,
+        DateOnly fromDate,
+        DateOnly toDate,
+        string? bookingType = null,
+        string? status = null
+    )
+    {
+        if (_dbConnection.State != ConnectionState.Open)
+            _dbConnection.Open();
+
+        var from = fromDate.ToDateTime(TimeOnly.MinValue);
+        var to   = toDate.ToDateTime(TimeOnly.MinValue);
+
+        using var grid = await _dbConnection.QueryMultipleAsync(
+            "sp_GetBookingDetailsReport",
+            new
+            {
+                BranchID    = branchId,
+                FromDate    = from,
+                ToDate      = to,
+                BookingType = string.IsNullOrWhiteSpace(bookingType) ? null : bookingType,
+                Status      = string.IsNullOrWhiteSpace(status) ? null : status
+            },
+            commandType: CommandType.StoredProcedure
+        );
+
+        var summary  = (await grid.ReadAsync<BookingDetailsReportSummary>()).FirstOrDefault()
+                       ?? new BookingDetailsReportSummary();
+        var headers  = (await grid.ReadAsync<BookingDetailsHeaderRow>()).ToList();
+        var lines    = (await grid.ReadAsync<BookingDetailsLineRow>()).ToList();
+
+        return new BookingDetailsReportData
+        {
+            Summary  = summary,
+            Bookings = headers,
+            Lines    = lines
+        };
+    }
 }
 
 public sealed class CancellationRegisterReportData
@@ -862,4 +910,54 @@ public sealed class PoliceGuestRegisterRow
     public string BookingStatus { get; set; } = string.Empty;
     public bool IsForeignGuest { get; set; }
     public string Email { get; set; } = string.Empty;
+}
+
+// ─── Booking Details Report ───────────────────────────────────────────────────
+
+public sealed class BookingDetailsReportData
+{
+    public BookingDetailsReportSummary Summary { get; set; } = new();
+    public List<BookingDetailsHeaderRow> Bookings { get; set; } = new();
+    public List<BookingDetailsLineRow> Lines { get; set; } = new();
+}
+
+public sealed class BookingDetailsReportSummary
+{
+    public int TotalBookings { get; set; }
+    public decimal TotalBillAmount { get; set; }
+    public decimal TotalPaidAmount { get; set; }
+    public decimal TotalDueAmount { get; set; }
+}
+
+public sealed class BookingDetailsHeaderRow
+{
+    public int BookingId { get; set; }
+    public string BookingNumber { get; set; } = string.Empty;
+    public DateTime CheckInDate { get; set; }
+    public DateTime CheckOutDate { get; set; }
+    public int Nights { get; set; }
+    public string PrimaryGuestName { get; set; } = string.Empty;
+    public int IGuest { get; set; }
+    public string RoomsAssigned { get; set; } = string.Empty;
+    public string RoomTypes { get; set; } = string.Empty;
+    public string BookingType { get; set; } = string.Empty;
+    public string? B2BClientName { get; set; }
+    public decimal TotalBillAmount { get; set; }
+    public decimal TotalPaid { get; set; }
+    public decimal DueAmount { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string PaymentStatus { get; set; } = string.Empty;
+}
+
+public sealed class BookingDetailsLineRow
+{
+    public int BookingId { get; set; }
+    public int SortOrder { get; set; }
+    public string LineType { get; set; } = string.Empty;   // Stay / OtherCharge / RoomService
+    public string Description { get; set; } = string.Empty;
+    public decimal Qty { get; set; }
+    public decimal Rate { get; set; }
+    public decimal BaseAmount { get; set; }
+    public decimal GSTAmount { get; set; }
+    public decimal TotalAmount { get; set; }
 }
