@@ -87,19 +87,19 @@ namespace HotelApp.Web.Services
                     password = plainPassword
                 };
 
-                var content = new StringContent(
+                // Use HttpRequestMessage so headers are per-request (safe with pooled HttpClient)
+                var request = new HttpRequestMessage(HttpMethod.Post, settings.EInvoiceAuthUrl);
+                request.Content = new StringContent(
                     JsonSerializer.Serialize(requestBody),
                     Encoding.UTF8,
                     "application/json");
-
-                // IRP auth endpoint requires client credentials in headers
-                client.DefaultRequestHeaders.TryAddWithoutValidation("client_id",     settings.EInvoiceClientId);
-                client.DefaultRequestHeaders.TryAddWithoutValidation("client_secret", plainSecret);
-                client.DefaultRequestHeaders.TryAddWithoutValidation("gstin",         settings.GSTCode);
+                request.Headers.TryAddWithoutValidation("client_id",     settings.EInvoiceClientId);
+                request.Headers.TryAddWithoutValidation("client_secret", plainSecret);
+                request.Headers.TryAddWithoutValidation("gstin",         settings.GSTCode);
 
                 _logger.LogInformation("IRP: Authenticating at {AuthUrl}", settings.EInvoiceAuthUrl);
 
-                var response = await client.PostAsync(settings.EInvoiceAuthUrl, content);
+                var response = await client.SendAsync(request);
                 var responseBody = await response.Content.ReadAsStringAsync();
 
                 _logger.LogInformation("IRP Auth response ({Status}): {Body}", (int)response.StatusCode, responseBody[..Math.Min(500, responseBody.Length)]);
@@ -164,15 +164,15 @@ namespace HotelApp.Web.Services
             {
                 var client = _httpClientFactory.CreateClient("IrpClient");
 
-                client.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", accessToken);
-                client.DefaultRequestHeaders.TryAddWithoutValidation("gstin", settings.GSTCode);
-
-                var content = new StringContent(invoiceJson, Encoding.UTF8, "application/json");
+                // Use HttpRequestMessage so headers are per-request (safe with pooled HttpClient)
+                var request = new HttpRequestMessage(HttpMethod.Post, settings.EInvoiceIrnEndpoint);
+                request.Content = new StringContent(invoiceJson, Encoding.UTF8, "application/json");
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+                request.Headers.TryAddWithoutValidation("gstin", settings.GSTCode);
 
                 _logger.LogInformation("IRP: Calling IRN endpoint {Endpoint}", settings.EInvoiceIrnEndpoint);
 
-                var response = await client.PostAsync(settings.EInvoiceIrnEndpoint, content);
+                var response = await client.SendAsync(request);
                 var responseBody = await response.Content.ReadAsStringAsync();
 
                 _logger.LogInformation("IRP IRN response ({Status}): {Body}",
