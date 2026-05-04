@@ -26,5 +26,22 @@ namespace HotelApp.Web.Models
         public int BranchID { get; set; }
         public DateTime CreatedDate { get; set; }
         public int? CreatedBy { get; set; }
+        // ── Portal push / IRN tracking ─────────────────────────────────────────
+        public string? PushStatus { get; set; }   // null | PENDING | PUSHED | FAILED
+        public DateTime? PushedAt { get; set; }
+        public string? PushResponse { get; set; }
+        // ── IRP response fields (AUTO mode) ──────────────────────────────────
+        /// <summary>Invoice Reference Number from the GST portal.</summary>
+        public string? Irn { get; set; }
+        /// <summary>Acknowledgement number from IRP.</summary>
+        public string? AckNo { get; set; }
+        /// <summary>Acknowledgement date/time string from IRP.</summary>
+        public string? AckDt { get; set; }
+        /// <summary>Base-64 encoded signed QR code from IRP.</summary>
+        public string? SignedQRCode { get; set; }
+        /// <summary>Raw JSON sent to IRP for IRN generation.</summary>
+        public string? IrnRequestJson { get; set; }
+        /// <summary>Raw JSON response received from IRP.</summary>
+        public string? IrnResponseJson { get; set; }
     }
 }

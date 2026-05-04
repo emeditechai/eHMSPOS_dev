@@ -41,6 +41,11 @@ namespace HotelApp.Web.Models
         public string? EInvoiceUsername { get; set; }
         public string? EInvoicePassword { get; set; }       // stored encrypted
 
+        /// <summary>
+        /// File-system path where JSON files are exported in MANUAL (Option B) mode.
+        /// </summary>
+        public string? EInvoiceJsonStoragePath { get; set; }
+
         public bool IsActive { get; set; } = true;
         public DateTime CreatedDate { get; set; }
         public int? CreatedBy { get; set; }

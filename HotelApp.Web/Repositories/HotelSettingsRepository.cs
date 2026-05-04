@@ -64,6 +64,7 @@ namespace HotelApp.Web.Repositories
             parameters.Add("@EInvoiceClientSecret", settings.EInvoiceClientSecret, DbType.String);
             parameters.Add("@EInvoiceUsername", settings.EInvoiceUsername, DbType.String);
             parameters.Add("@EInvoicePassword", settings.EInvoicePassword, DbType.String);
+            parameters.Add("@EInvoiceJsonStoragePath", settings.EInvoiceJsonStoragePath, DbType.String);
             parameters.Add("@ModifiedBy", modifiedBy, DbType.Int32);
 
             var result = await connection.ExecuteAsync(

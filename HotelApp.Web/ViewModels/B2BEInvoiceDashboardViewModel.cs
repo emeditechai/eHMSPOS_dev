@@ -32,6 +32,14 @@ public sealed class B2BEInvoiceDashboardRow
     public DateTime? PushedAt { get; set; }
     public string? PushResponse { get; set; }
 
+    // IRP response fields (AUTO mode)
+    public string? Irn { get; set; }
+    public string? AckNo { get; set; }
+    public string? AckDt { get; set; }
+    public string? SignedQRCode { get; set; }
+
+    public bool HasIrn => !string.IsNullOrWhiteSpace(Irn);
+
     public DateTime EffectiveCheckOutDate => ActualCheckOutDate ?? CheckOutDate;
 
     public bool IsPushed => string.Equals(PushStatus, "PUSHED", StringComparison.OrdinalIgnoreCase);

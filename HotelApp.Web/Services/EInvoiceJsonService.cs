@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using HotelApp.Web.Models;
 using HotelApp.Web.Repositories;
+using Microsoft.Extensions.Logging;
 
 namespace HotelApp.Web.Services
 {
@@ -9,13 +10,19 @@ namespace HotelApp.Web.Services
     {
         private readonly IB2BEInvoiceLogRepository _logRepository;
         private readonly IGstSlabRepository _gstSlabRepository;
+        private readonly IIrpApiService _irpApiService;
+        private readonly ILogger<EInvoiceJsonService> _logger;
 
         public EInvoiceJsonService(
             IB2BEInvoiceLogRepository logRepository,
-            IGstSlabRepository gstSlabRepository)
+            IGstSlabRepository gstSlabRepository,
+            IIrpApiService irpApiService,
+            ILogger<EInvoiceJsonService> logger)
         {
             _logRepository = logRepository;
             _gstSlabRepository = gstSlabRepository;
+            _irpApiService = irpApiService;
+            _logger = logger;
         }
 
         public async Task<B2BEInvoiceLog?> GenerateAndSaveAsync(
@@ -23,8 +30,11 @@ namespace HotelApp.Web.Services
             HotelSettings hotelSettings,
             int? createdBy)
         {
-            // Only generate when EInvoiceMode = MANUAL
-            if (!string.Equals(hotelSettings.EInvoiceMode, "MANUAL", StringComparison.OrdinalIgnoreCase))
+            var isAuto = string.Equals(hotelSettings.EInvoiceMode, "AUTO", StringComparison.OrdinalIgnoreCase);
+            var isManual = string.Equals(hotelSettings.EInvoiceMode, "MANUAL", StringComparison.OrdinalIgnoreCase);
+
+            // Only MANUAL or AUTO supported
+            if (!isManual && !isAuto)
                 return null;
 
             // Only for B2B bookings
@@ -75,18 +85,113 @@ namespace HotelApp.Web.Services
 
             var log = new B2BEInvoiceLog
             {
-                BookingId = booking.Id,
-                BookingNo = booking.BookingNumber,
+                BookingId     = booking.Id,
+                BookingNo     = booking.BookingNumber,
                 InvoiceNumber = invoiceNo,
-                Version = version,
-                GenerationType = hotelSettings.EInvoiceMode,   // reflects the actual Hotel Settings value
-                JsonPayload = json,
-                BranchID = booking.BranchID,
-                CreatedBy = createdBy
+                Version       = version,
+                GenerationType = hotelSettings.EInvoiceMode,
+                JsonPayload   = json,
+                BranchID      = booking.BranchID,
+                CreatedBy     = createdBy
             };
 
+            // Set initial push status for AUTO mode
+            if (isAuto) log.PushStatus = "PENDING";   // will be updated after IRP call
+
             log.Id = await _logRepository.SaveAsync(log);
+
+            if (isAuto)
+            {
+                await TryGenerateIrnAsync(log, hotelSettings, json, createdBy);
+            }
+            else
+            {
+                // MANUAL Option B: export JSON file to configured storage path
+                await TryExportToFileAsync(log, hotelSettings);
+            }
+
             return log;
+        }
+
+        // ── AUTO mode: call IRP ───────────────────────────────────────────────
+
+        private async Task TryGenerateIrnAsync(
+            B2BEInvoiceLog log,
+            HotelSettings settings,
+            string invoiceJson,
+            int? userId)
+        {
+            try
+            {
+                var token = await _irpApiService.GetValidTokenAsync(settings, settings.BranchID, userId);
+                if (string.IsNullOrWhiteSpace(token))
+                {
+                    _logger.LogWarning("IRP: Could not obtain auth token for booking {BookingNo}", log.BookingNo);
+                    await _logRepository.UpdateIrnResponseAsync(
+                        log.Id, null, null, null, null, "FAILED",
+                        invoiceJson, "Authentication failed: could not obtain token.");
+                    return;
+                }
+
+                var result = await _irpApiService.GenerateIrnAsync(settings, token, invoiceJson);
+
+                if (result.Success)
+                {
+                    _logger.LogInformation("IRP: IRN generated for booking {BookingNo}: {Irn}", log.BookingNo, result.Irn);
+                    await _logRepository.UpdateIrnResponseAsync(
+                        log.Id,
+                        result.Irn,
+                        result.AckNo,
+                        result.AckDt,
+                        result.SignedQRCode,
+                        "PUSHED",
+                        result.RawRequest,
+                        result.RawResponse);
+                }
+                else
+                {
+                    _logger.LogWarning("IRP: IRN generation failed for booking {BookingNo}: {Error}", log.BookingNo, result.ErrorMessage);
+                    await _logRepository.UpdateIrnResponseAsync(
+                        log.Id, null, null, null, null, "FAILED",
+                        result.RawRequest, result.RawResponse ?? result.ErrorMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "IRP: Unexpected error for booking {BookingNo}", log.BookingNo);
+                try
+                {
+                    await _logRepository.UpdateIrnResponseAsync(
+                        log.Id, null, null, null, null, "FAILED",
+                        invoiceJson, ex.Message);
+                }
+                catch { /* best-effort update */ }
+            }
+        }
+
+        // ── MANUAL Option B: export JSON to file ──────────────────────────────
+
+        private async Task TryExportToFileAsync(B2BEInvoiceLog log, HotelSettings settings)
+        {
+            var storagePath = settings.EInvoiceJsonStoragePath;
+            if (string.IsNullOrWhiteSpace(storagePath))
+                return;
+
+            try
+            {
+                if (!Directory.Exists(storagePath))
+                    Directory.CreateDirectory(storagePath);
+
+                var fileName = $"EInvoice_{log.BookingNo}_{log.InvoiceNumber?.Replace("/", "-") ?? log.Id.ToString()}.json";
+                var filePath = Path.Combine(storagePath, fileName);
+
+                await File.WriteAllTextAsync(filePath, log.JsonPayload);
+                _logger.LogInformation("E-Invoice JSON exported to {FilePath}", filePath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "E-Invoice JSON file export failed (non-fatal) for booking {BookingNo}", log.BookingNo);
+            }
         }
 
         private async Task<List<InvoiceItem>> BuildItemListAsync(Booking booking)

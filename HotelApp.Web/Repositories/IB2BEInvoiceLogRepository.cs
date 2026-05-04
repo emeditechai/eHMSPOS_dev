@@ -25,6 +25,24 @@ namespace HotelApp.Web.Repositories
         Task<bool> ExistsForBookingAsync(int bookingId);
 
         /// <summary>
+        /// Fetch a single log row by primary key.
+        /// </summary>
+        Task<B2BEInvoiceLog?> GetByIdAsync(int id);
+
+        /// <summary>
+        /// Persists the IRP response (IRN, QR code, push status) after a portal submission attempt.
+        /// </summary>
+        Task UpdateIrnResponseAsync(
+            int logId,
+            string? irn,
+            string? ackNo,
+            string? ackDt,
+            string? signedQRCode,
+            string pushStatus,          // PUSHED | FAILED
+            string? irnRequestJson,
+            string? irnResponseJson);
+
+        /// <summary>
         /// Returns dashboard rows via stored procedure with filters.
         /// </summary>
         Task<IEnumerable<HotelApp.Web.ViewModels.B2BEInvoiceDashboardRow>> GetDashboardAsync(

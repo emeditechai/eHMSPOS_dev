@@ -177,6 +177,7 @@ builder.Services.AddScoped<ILicenseOtpService, LicenseOtpService>();
 
 builder.Services.AddScoped<IMailPasswordProtector, MailPasswordProtector>();
 builder.Services.AddScoped<IEInvoiceProtector, EInvoiceProtector>();
+builder.Services.AddScoped<IIrpApiService, IrpApiService>();
 builder.Services.AddScoped<IMailSender, MailSender>();
 builder.Services.AddScoped<IRazorViewToStringRenderer, RazorViewToStringRenderer>();
 builder.Services.AddScoped<IGuestFeedbackLinkService, GuestFeedbackLinkService>();

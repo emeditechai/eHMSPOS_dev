@@ -33,9 +33,9 @@ namespace HotelApp.Web.Repositories
         {
             const string sql = @"
                 INSERT INTO dbo.B2BEInvoiceJsonLogs
-                    (BookingId, BookingNo, InvoiceNumber, Version, GenerationType, JsonPayload, BranchID, CreatedDate, CreatedBy)
+                    (BookingId, BookingNo, InvoiceNumber, Version, GenerationType, JsonPayload, BranchID, CreatedDate, CreatedBy, PushStatus)
                 VALUES
-                    (@BookingId, @BookingNo, @InvoiceNumber, @Version, @GenerationType, @JsonPayload, @BranchID, SYSUTCDATETIME(), @CreatedBy);
+                    (@BookingId, @BookingNo, @InvoiceNumber, @Version, @GenerationType, @JsonPayload, @BranchID, SYSUTCDATETIME(), @CreatedBy, @PushStatus);
                 SELECT CAST(SCOPE_IDENTITY() AS INT);";
 
             return await _connection.ExecuteScalarAsync<int>(sql, log);
@@ -58,6 +58,54 @@ namespace HotelApp.Web.Repositories
                 SELECT COUNT(1) FROM dbo.B2BEInvoiceJsonLogs WHERE BookingId = @BookingId;";
 
             return await _connection.ExecuteScalarAsync<int>(sql, new { BookingId = bookingId }) > 0;
+        }
+
+        public async Task<B2BEInvoiceLog?> GetByIdAsync(int id)
+        {
+            const string sql = @"
+                SELECT Id, BookingId, BookingNo, InvoiceNumber, Version, GenerationType, JsonPayload,
+                       BranchID, CreatedDate, CreatedBy,
+                       Irn, AckNo, AckDt, SignedQRCode, IrnRequestJson, IrnResponseJson
+                FROM dbo.B2BEInvoiceJsonLogs
+                WHERE Id = @Id;";
+
+            return await _connection.QueryFirstOrDefaultAsync<B2BEInvoiceLog>(sql, new { Id = id });
+        }
+
+        public async Task UpdateIrnResponseAsync(
+            int logId,
+            string? irn,
+            string? ackNo,
+            string? ackDt,
+            string? signedQRCode,
+            string pushStatus,
+            string? irnRequestJson,
+            string? irnResponseJson)
+        {
+            const string sql = @"
+                UPDATE dbo.B2BEInvoiceJsonLogs
+                SET Irn             = @Irn,
+                    AckNo           = @AckNo,
+                    AckDt           = @AckDt,
+                    SignedQRCode    = @SignedQRCode,
+                    PushStatus      = @PushStatus,
+                    PushedAt        = SYSUTCDATETIME(),
+                    PushResponse    = @IrnResponseJson,
+                    IrnRequestJson  = @IrnRequestJson,
+                    IrnResponseJson = @IrnResponseJson
+                WHERE Id = @Id;";
+
+            await _connection.ExecuteAsync(sql, new
+            {
+                Id             = logId,
+                Irn            = irn,
+                AckNo          = ackNo,
+                AckDt          = ackDt,
+                SignedQRCode   = signedQRCode,
+                PushStatus     = pushStatus,
+                IrnRequestJson = irnRequestJson,
+                IrnResponseJson = irnResponseJson
+            });
         }
 
         public async Task<IEnumerable<B2BEInvoiceDashboardRow>> GetDashboardAsync(
