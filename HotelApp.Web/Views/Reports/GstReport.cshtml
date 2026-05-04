@@ -715,30 +715,138 @@
             }
 
             const jsPDF = window.jspdf.jsPDF;
+            // A4 landscape gives 841pt width; margins 30pt each side = 781pt usable
             const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+            const pageW = doc.internal.pageSize.getWidth();
             const from = document.getElementById('fromDate')?.value || '';
-            const to = document.getElementById('toDate')?.value || '';
+            const to   = document.getElementById('toDate')?.value   || '';
 
-            doc.setFontSize(14);
-            doc.text(`GST Report (${from} to ${to})`, 40, 40);
+            // ── Header block ─────────────────────────────────────────────────
+            const hotelName    = '@Html.Raw(Model.HotelName.Replace("'", "\\'"))';
+            const hotelAddress = '@Html.Raw(Model.HotelAddress.Replace("'", "\\'"))';
+            const gstCode      = '@Html.Raw((Model.GSTCode ?? "").Replace("'", "\\'"))';
 
-            const autoTableFn = doc.autoTable || (jsPDF.API && jsPDF.API.autoTable);
-            if (!autoTableFn) {
-                alert('PDF table plugin failed to load. Please refresh and try again.');
-                return;
-            }
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.text('GST Report', 30, 30);
 
-            (doc.autoTable || autoTableFn).call(doc, {
-                startY: 60,
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(80, 80, 80);
+            if (hotelName)    doc.text(hotelName,    30, 44);
+            if (hotelAddress) doc.text(hotelAddress, 30, 55);
+            if (gstCode)      doc.text('GSTIN: ' + gstCode, 30, 66);
+
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(30, 30, 30);
+            doc.text(`Period: ${from} to ${to}`, pageW - 30, 30, { align: 'right' });
+
+            // ── Summary block ─────────────────────────────────────────────────
+            const sumY = gstCode ? 78 : (hotelAddress ? 68 : (hotelName ? 58 : 44));
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(60, 60, 60);
+
+            const totalBookings    = document.querySelector('.gst-sc-bookings .gst-sc-value')?.innerText  || '';
+            const totalTaxable     = document.querySelector('.gst-sc-taxable .gst-sc-value')?.innerText   || '';
+            const totalGst         = document.querySelector('.gst-sc-gst .gst-sc-value')?.innerText       || '';
+            const totalPaid        = document.querySelector('.gst-sc-paid .gst-sc-value')?.innerText      || '';
+            const subtitleEl       = document.querySelector('.gst-table-subtitle');
+            const cgstSgst         = subtitleEl ? subtitleEl.innerText.replace(/\s+/g,' ').trim() : '';
+
+            doc.text(`Bookings: ${totalBookings}   Taxable: ${totalTaxable}   Total GST: ${totalGst}   Paid: ${totalPaid}`, 30, sumY);
+            if (cgstSgst) doc.text(cgstSgst, 30, sumY + 10);
+
+            const tableStartY = sumY + 22;
+
+            // ── Table ─────────────────────────────────────────────────────────
+            // Columns: Date(52) | Booking No(90) | Guest(80) | Room Type(52)
+            //          Billing Head(56) | Taxable(58) | CGST(46) | SGST(46)
+            //          GST(46) | Paid Amt(58) | Pmt Status(56)
+            // Total = 640 — fits comfortably in 781pt usable width
+            doc.autoTable({
+                startY: tableStartY,
+                margin: { left: 30, right: 30 },
                 head: [[
-                    'Payment Date','Booking No','Guest','Room Type','Billing Head','Taxable Value','CGST','SGST','GST','Paid Amount','Booking Status','Payment Status','Created By'
+                    'Date', 'Booking No', 'Guest', 'Room Type',
+                    'Billing Head', 'Taxable Value', 'CGST', 'SGST',
+                    'GST', 'Paid Amount', 'Pmt Status'
                 ]],
                 body: rows.map(r => [
-                    r.paymentDate, r.bookingNo, r.guest, r.roomType, r.billingHead, r.taxableValue, r.cgst, r.sgst, r.gst,
-                    r.paidAmount, r.bookingStatus, r.paymentStatus, r.createdBy
+                    r.paymentDate,
+                    r.bookingNo,
+                    r.guest,
+                    r.roomType,
+                    r.billingHead,
+                    r.taxableValue,
+                    r.cgst,
+                    r.sgst,
+                    r.gst,
+                    r.paidAmount,
+                    r.paymentStatus
                 ]),
-                styles: { fontSize: 8 },
-                headStyles: { fillColor: [15, 23, 42] }
+                columnStyles: {
+                    0:  { cellWidth: 58  },  // Date
+                    1:  { cellWidth: 100 },  // Booking No
+                    2:  { cellWidth: 80  },  // Guest
+                    3:  { cellWidth: 52  },  // Room Type
+                    4:  { cellWidth: 62  },  // Billing Head
+                    5:  { cellWidth: 62, halign: 'right' },  // Taxable Value
+                    6:  { cellWidth: 50, halign: 'right' },  // CGST
+                    7:  { cellWidth: 50, halign: 'right' },  // SGST
+                    8:  { cellWidth: 50, halign: 'right' },  // GST
+                    9:  { cellWidth: 62, halign: 'right' },  // Paid Amount
+                    10: { cellWidth: 58 }                    // Pmt Status
+                },
+                styles: {
+                    fontSize: 7.5,
+                    cellPadding: { top: 4, right: 5, bottom: 4, left: 5 },
+                    overflow: 'linebreak',
+                    lineColor: [220, 220, 220],
+                    lineWidth: 0.3
+                },
+                headStyles: {
+                    fillColor: [15, 23, 42],
+                    textColor: 255,
+                    fontStyle: 'bold',
+                    fontSize: 7.5,
+                    cellPadding: { top: 5, right: 5, bottom: 5, left: 5 }
+                },
+                alternateRowStyles: { fillColor: [250, 250, 255] },
+                didParseCell: (data) => {
+                    // Bold GST column
+                    if (data.section === 'body' && data.column.index === 8) {
+                        data.cell.styles.fontStyle = 'bold';
+                    }
+                },
+                // Footer row with totals
+                foot: [[
+                    '', '', '', '', 'TOTAL',
+                    totalTaxable, '', '', totalGst, totalPaid, ''
+                ]],
+                footStyles: {
+                    fillColor: [241, 245, 249],
+                    textColor: [15, 23, 42],
+                    fontStyle: 'bold',
+                    fontSize: 7.5,
+                    halign: 'right'
+                },
+                // Page number footer
+                didDrawPage: (data) => {
+                    const pageCount = doc.internal.getNumberOfPages();
+                    doc.setFontSize(7);
+                    doc.setTextColor(150);
+                    doc.text(
+                        `Page ${data.pageNumber} of ${pageCount}`,
+                        pageW - 30, doc.internal.pageSize.getHeight() - 12,
+                        { align: 'right' }
+                    );
+                    doc.text(
+                        `Generated: ${new Date().toLocaleString()}`,
+                        30, doc.internal.pageSize.getHeight() - 12
+                    );
+                }
             });
 
             doc.save(`GSTReport_${from}_${to}.pdf`);
