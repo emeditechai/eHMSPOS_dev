@@ -107,7 +107,7 @@ BEGIN
         SELECT
             br.BookingId,
             r.RoomNumber,
-            rt.[Name] AS RoomTypeName
+            rt.TypeName AS RoomTypeName
         FROM dbo.BookingRooms br
         INNER JOIN dbo.Rooms       r  ON r.Id  = br.RoomId
         INNER JOIN dbo.RoomTypes   rt ON rt.Id = r.RoomTypeId
@@ -119,7 +119,7 @@ BEGIN
         SELECT
             b.Id AS BookingId,
             r.RoomNumber,
-            rt.[Name] AS RoomTypeName
+            rt.TypeName AS RoomTypeName
         FROM #B b
         INNER JOIN dbo.Bookings bk ON bk.Id = b.Id
         INNER JOIN dbo.Rooms    r  ON r.Id  = bk.RoomId
