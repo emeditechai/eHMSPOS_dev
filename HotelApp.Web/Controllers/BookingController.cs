@@ -48,6 +48,7 @@ namespace HotelApp.Web.Controllers
         private readonly ICancellationPolicyRepository _cancellationPolicyRepository;
         private readonly INationalityRepository _nationalityRepository;
         private readonly IB2BEInvoiceLogRepository _eInvoiceLogRepository;
+        private readonly IIrpApiService _irpApiService;
 
         public BookingController(
             IBookingRepository bookingRepository,
@@ -67,7 +68,8 @@ namespace HotelApp.Web.Controllers
             IBookingReceiptTemplateRepository bookingReceiptTemplateRepository,
             ICancellationPolicyRepository cancellationPolicyRepository,
             INationalityRepository nationalityRepository,
-            IB2BEInvoiceLogRepository eInvoiceLogRepository)
+            IB2BEInvoiceLogRepository eInvoiceLogRepository,
+            IIrpApiService irpApiService)
         {
             _bookingRepository = bookingRepository;
             _roomRepository = roomRepository;
@@ -87,6 +89,7 @@ namespace HotelApp.Web.Controllers
             _cancellationPolicyRepository = cancellationPolicyRepository;
             _nationalityRepository = nationalityRepository;
             _eInvoiceLogRepository = eInvoiceLogRepository;
+            _irpApiService = irpApiService;
         }
 
         private static string GetFriendlyMailErrorMessage(Exception ex)
@@ -3621,6 +3624,77 @@ namespace HotelApp.Web.Controllers
 
             ViewData["Title"] = "E-Invoice Logs";
             return View(vm);
+        }
+
+        // ── E-Invoice: Retry IRP Submission ──────────────────────────────────
+
+        [HttpPost]
+        public async Task<IActionResult> RetryIrn(int id)
+        {
+            try
+            {
+                var log = await _eInvoiceLogRepository.GetByIdAsync(id);
+                if (log == null)
+                    return Json(new { success = false, message = "Log entry not found." });
+
+                if (!string.Equals(log.GenerationType, "AUTO", StringComparison.OrdinalIgnoreCase))
+                    return Json(new { success = false, message = "Retry is only applicable to AUTO mode invoices." });
+
+                var settings = await _hotelSettingsRepository.GetByBranchAsync(log.BranchID);
+                if (settings == null)
+                    return Json(new { success = false, message = "Hotel settings not found for this branch." });
+
+                if (!string.Equals(settings.EInvoiceMode, "AUTO", StringComparison.OrdinalIgnoreCase))
+                    return Json(new { success = false, message = "Hotel settings is not in AUTO mode. Change EInvoice Mode to AUTO and configure credentials." });
+
+                if (string.IsNullOrWhiteSpace(settings.EInvoiceAuthUrl) ||
+                    string.IsNullOrWhiteSpace(settings.EInvoiceIrnEndpoint) ||
+                    string.IsNullOrWhiteSpace(settings.EInvoiceClientId))
+                    return Json(new { success = false, message = "IRP credentials not fully configured in Hotel Settings. Please fill API Base URL, Auth URL, Client ID, Secret, Username and Password." });
+
+                var userId = GetCurrentUserId();
+
+                // Mark as pending before retrying
+                await _eInvoiceLogRepository.UpdateIrnResponseAsync(
+                    id, null, null, null, null, "PENDING", log.JsonPayload, null);
+
+                var token = await _irpApiService.GetValidTokenAsync(settings, log.BranchID, userId);
+                if (string.IsNullOrWhiteSpace(token))
+                {
+                    await _eInvoiceLogRepository.UpdateIrnResponseAsync(
+                        id, null, null, null, null, "FAILED",
+                        log.JsonPayload, "Authentication failed: could not obtain token.");
+                    return Json(new { success = false, message = "IRP authentication failed. Check credentials in Hotel Settings and ensure the portal URL is reachable." });
+                }
+
+                var result = await _irpApiService.GenerateIrnAsync(settings, token, log.JsonPayload);
+
+                if (result.Success)
+                {
+                    await _eInvoiceLogRepository.UpdateIrnResponseAsync(
+                        id, result.Irn, result.AckNo, result.AckDt, result.SignedQRCode,
+                        "PUSHED", result.RawRequest, result.RawResponse);
+                    return Json(new
+                    {
+                        success = true,
+                        message = $"IRN generated successfully: {result.Irn}",
+                        irn     = result.Irn,
+                        ackNo   = result.AckNo,
+                        ackDt   = result.AckDt
+                    });
+                }
+                else
+                {
+                    await _eInvoiceLogRepository.UpdateIrnResponseAsync(
+                        id, null, null, null, null, "FAILED",
+                        result.RawRequest, result.RawResponse ?? result.ErrorMessage);
+                    return Json(new { success = false, message = result.ErrorMessage ?? "IRN generation failed." });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Unexpected error: {ex.Message}" });
+            }
         }
     }
 

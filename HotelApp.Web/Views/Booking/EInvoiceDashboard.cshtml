@@ -226,6 +226,7 @@
 
 <!-- Filters -->
 <div class="ei-filter-card">
+    @Html.AntiForgeryToken()
     <form method="get" action="@Url.Action("EInvoiceDashboard", "Booking")">
         <div class="ei-filter-row">
             <div class="ei-filter-fields">
@@ -419,20 +420,30 @@
                                             data-json="@(row.JsonPayload ?? "{}")">
                                         <i class="fas fa-eye"></i> View
                                     </button>
-                                    <!-- Push to Portal placeholder -->
+                                    <!-- Push / Retry to Portal -->
                                     @if (row.IsPushed)
                                     {
                                         <button class="ei-push-btn ei-push-btn-done" disabled>
                                             <i class="fas fa-circle-check"></i> Pushed
                                         </button>
                                     }
-                                    else
+                                    else if (string.Equals(row.GenerationType, "AUTO", StringComparison.OrdinalIgnoreCase))
                                     {
+                                        <!-- AUTO mode: actual IRP retry call -->
                                         <button class="ei-push-btn @(row.IsFailed ? "ei-push-btn-failed" : "")"
-                                                onclick="openPushModal('@row.Id', '@row.BookingNo', '@row.InvoiceNumber')"
-                                                title="Portal Push — Coming Soon">
+                                                onclick="retryIrn(@row.Id, this)"
+                                                title="@(row.IsFailed ? "Retry IRP submission" : "Submit to IRP portal")">
                                             <i class="fas fa-paper-plane"></i>
                                             @(row.IsFailed ? "Retry" : "Push")
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <!-- MANUAL mode: coming soon placeholder -->
+                                        <button class="ei-push-btn"
+                                                onclick="openPushModal('@row.Id', '@row.BookingNo', '@row.InvoiceNumber')"
+                                                title="Portal Push — Coming Soon">
+                                            <i class="fas fa-paper-plane"></i> Push
                                         </button>
                                     }
                                 </div>
@@ -505,6 +516,43 @@
 
 @section Scripts {
     <script>
+        /* ── Retry IRP Submission ── */
+        async function retryIrn(logId, btn) {
+            const origHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…';
+
+            try {
+                const resp = await fetch('@Url.Action("RetryIrn", "Booking")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? ''
+                    },
+                    body: new URLSearchParams({ id: logId })
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    btn.innerHTML = '<i class="fas fa-circle-check"></i> Pushed';
+                    btn.classList.add('ei-push-btn-done');
+                    btn.disabled = true;
+                    // update portal status badge in the same row
+                    const row = btn.closest('tr');
+                    const badge = row?.querySelector('.ei-badge');
+                    if (badge) { badge.className = 'ei-badge ei-badge-pushed'; badge.textContent = 'Pushed'; }
+                    alert('Success! IRN: ' + (data.irn ?? 'generated'));
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = origHtml;
+                    alert('Failed: ' + data.message);
+                }
+            } catch (err) {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+                alert('Network error: ' + err.message);
+            }
+        }
+
         /* ── JSON Modal ── */
         function openJsonModal(bookingNo, invoiceNo, version, btn) {
             const rawJson = btn.getAttribute('data-json');
