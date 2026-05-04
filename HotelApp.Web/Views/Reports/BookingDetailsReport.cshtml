@@ -174,6 +174,8 @@
         .bdr-amt-due   { font-size: .78rem; font-weight: 700; }
         .bdr-amt-due.has-due { color: #ef4444; }
         .bdr-amt-due.no-due  { color: #10b981; }
+        .bdr-amt-discount    { font-size: .78rem; font-weight: 700; color: #8b5cf6; }
+        .bdr-amt-roundoff    { font-size: .78rem; font-weight: 700; color: #6b7280; }
         .bdr-amt-cancelled  { font-size: .78rem; font-weight: 700; color: #6b7280; }
         .bdr-amt-deduction  { font-size: .78rem; font-weight: 700; color: #f59e0b; }
         .bdr-amt-refund-pending  { font-size: .78rem; font-weight: 700; color: #3b82f6; }
@@ -580,7 +582,20 @@
                             }
                             else
                             {
-                                @* Active bookings: show Due / Settled *@
+                                @* Active bookings: show Discount (if any), then Due / Settled *@
+                                @if (bk.DiscountAmount > 0)
+                                {
+                                    <div class="bdr-amt-discount">
+                                        <i class="fas fa-tag" style="font-size:.65rem"></i>
+                                        Discount: ₹@bk.DiscountAmount.ToString("N2")
+                                    </div>
+                                }
+                                @if (bk.RoundOffAmount != 0)
+                                {
+                                    <div class="bdr-amt-roundoff">
+                                        Round-off: ₹@bk.RoundOffAmount.ToString("N2")
+                                    </div>
+                                }
                                 <div class="bdr-amt-due @(bk.DueAmount > 0 ? "has-due" : "no-due")">
                                     @(bk.DueAmount > 0 ? "Due:" : "Settled")
                                     @(bk.DueAmount > 0 ? " ₹" + bk.DueAmount.ToString("N2") : "")
@@ -812,6 +827,8 @@ const bookingData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Bo
     b2bClient                 = b.B2BClientName ?? "-",
     totalBill                 = b.TotalBillAmount,
     totalPaid                 = b.TotalPaid,
+    discountAmount            = b.DiscountAmount,
+    roundOffAmount            = b.RoundOffAmount,
     due                       = b.DueAmount,
     cancellationDeduction     = b.CancellationDeduction,
     cancellationRefundAmount  = b.CancellationRefundAmount,
@@ -876,6 +893,7 @@ function buildFlatRows() {
         ];
         const tail = [
             b.totalBill, b.totalPaid,
+            b.discountAmount > 0 ? Number(b.discountAmount).toFixed(2) : '',
             b.status === 'Cancelled' ? '' : b.due,
             b.status === 'Cancelled' ? b.cancellationDeduction : '',
             b.status === 'Cancelled' ? b.cancellationRefundAmount : '',
@@ -911,6 +929,7 @@ function buildDrillDownRows() {
         ];
         const tail = [
             b.totalBill, b.totalPaid,
+            b.discountAmount > 0 ? Number(b.discountAmount).toFixed(2) : '',
             b.status === 'Cancelled' ? '' : b.due,
             b.status === 'Cancelled' ? b.cancellationDeduction : '',
             b.status === 'Cancelled' ? b.cancellationRefundAmount : '',
@@ -954,6 +973,7 @@ function buildSummaryRows() {
         b.bookingNumber, b.checkIn, b.checkOut, b.nights,
         b.guest, b.iGuest, b.rooms, b.roomTypes, b.bookingType, b.b2bClient,
         b.totalBill, b.totalPaid,
+        b.discountAmount > 0 ? Number(b.discountAmount).toFixed(2) : '',
         b.status === 'Cancelled' ? '' : b.due,
         b.status === 'Cancelled' ? b.cancellationDeduction : '',
         b.status === 'Cancelled' ? b.cancellationRefundAmount : '',
@@ -965,7 +985,7 @@ function buildSummaryRows() {
 const SUMMARY_COLS = [
     'Booking No','Check-In','Check-Out','Nights','Primary Guest','No. of Guests',
     'Rooms Assigned','Room Types','Booking Type','B2B Client',
-    'Total Bill (\u20B9)','Total Paid (\u20B9)','Due (\u20B9)',
+    'Total Bill (\u20B9)','Total Paid (\u20B9)','Discount (\u20B9)','Due (\u20B9)',
     'Cancellation Deduction (\u20B9)','Refund Amount (\u20B9)','Refund Status',
     'Status','Pmt Status'
 ];
@@ -973,7 +993,7 @@ const DETAILS_COLS = [
     'Booking No','Check-In','Check-Out','Nights','Primary Guest','No. of Guests',
     'Rooms Assigned','Room Types','Booking Type','B2B Client',
     'Line Type','Description','Base Amt (\u20B9)','GST (\u20B9)','Line Total (\u20B9)',
-    'Total Bill (\u20B9)','Total Paid (\u20B9)','Due (\u20B9)',
+    'Total Bill (\u20B9)','Total Paid (\u20B9)','Discount (\u20B9)','Due (\u20B9)',
     'Cancellation Deduction (\u20B9)','Refund Amount (\u20B9)','Refund Status',
     'Status','Pmt Status'
 ];
@@ -981,7 +1001,7 @@ const DRILLDOWN_COLS = [
     'Booking No','Check-In','Check-Out','Nights','Primary Guest','No. of Guests',
     'Rooms Assigned','Room Types','Booking Type','B2B Client',
     'Line Type','Item Description','Qty','Rate (\u20B9)','Base Amt (\u20B9)','GST (\u20B9)','Line Total (\u20B9)',
-    'Total Bill (\u20B9)','Total Paid (\u20B9)','Due (\u20B9)',
+    'Total Bill (\u20B9)','Total Paid (\u20B9)','Discount (\u20B9)','Due (\u20B9)',
     'Cancellation Deduction (\u20B9)','Refund Amount (\u20B9)','Refund Status',
     'Status','Pmt Status'
 ];

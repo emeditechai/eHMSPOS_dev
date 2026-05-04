@@ -63,7 +63,9 @@ BEGIN
         BookingType     NVARCHAR(5)   NOT NULL,   -- 'B2B' / 'B2C'
         B2BClientName   NVARCHAR(200) NULL,
         StayBillAmount  DECIMAL(12,2) NOT NULL,   -- b.TotalAmount (stay only)
-        TotalPaid       DECIMAL(12,2) NOT NULL,   -- sum of all payments
+        TotalPaid       DECIMAL(12,2) NOT NULL,   -- sum of all payments collected
+        TotalDiscount   DECIMAL(12,2) NOT NULL,   -- discount given during payment
+        TotalRoundOff   DECIMAL(12,2) NOT NULL,   -- round-off applied during payment
         Status          NVARCHAR(50)  NOT NULL,
         PaymentStatus   NVARCHAR(50)  NOT NULL
     );
@@ -82,13 +84,24 @@ BEGIN
         ISNULL(NULLIF(LTRIM(RTRIM(ISNULL(bc.ClientName, b.B2BClientName))),''), NULL)
                                                                              AS B2BClientName,
         b.TotalAmount                                                        AS StayBillAmount,
-        ISNULL((
-            SELECT SUM(bp.Amount)
-            FROM   dbo.BookingPayments bp
-            WHERE  bp.BookingId = b.Id
-              AND  bp.Status IN ('Completed','Captured','Success')
-              AND  ISNULL(bp.IsRefund,0) = 0
+        ISNULL((SELECT SUM(bp.Amount)
+            FROM dbo.BookingPayments bp
+            WHERE bp.BookingId = b.Id
+              AND bp.Status IN ('Completed','Captured','Success')
+              AND ISNULL(bp.IsRefund,0) = 0
         ), 0)                                                                AS TotalPaid,
+        ISNULL((SELECT SUM(ISNULL(bp.DiscountAmount,0))
+            FROM dbo.BookingPayments bp
+            WHERE bp.BookingId = b.Id
+              AND bp.Status IN ('Completed','Captured','Success')
+              AND ISNULL(bp.IsRefund,0) = 0
+        ), 0)                                                                AS TotalDiscount,
+        ISNULL((SELECT SUM(ISNULL(bp.RoundOffAmount,0))
+            FROM dbo.BookingPayments bp
+            WHERE bp.BookingId = b.Id
+              AND bp.Status IN ('Completed','Captured','Success')
+              AND ISNULL(bp.IsRefund,0) = 0
+        ), 0)                                                                AS TotalRoundOff,
         b.Status,
         b.PaymentStatus
     FROM dbo.Bookings b
@@ -172,12 +185,16 @@ BEGIN
             + ISNULL(rs.RSTotalAmount, 0)
         ), 2)                                                                 AS TotalBillAmount,
         ROUND(SUM(b.TotalPaid), 2)                                            AS TotalPaidAmount,
+        ROUND(SUM(b.TotalDiscount), 2)                                        AS TotalDiscountAmount,
         ROUND(SUM(
             CASE WHEN b.Status = 'Cancelled' THEN 0
-                 ELSE b.StayBillAmount
+                 ELSE GREATEST(0,
+                    b.StayBillAmount
                     + ISNULL(oc.OCTotalAmount, 0)
                     + ISNULL(rs.RSTotalAmount, 0)
                     - b.TotalPaid
+                    - b.TotalDiscount
+                    - b.TotalRoundOff)
             END
         ), 2)                                                                 AS TotalDueAmount
     FROM #B b
@@ -220,13 +237,17 @@ BEGIN
             + ISNULL(rs.RSTotalAmount, 0)
         , 2)                           AS TotalBillAmount,
         ROUND(b.TotalPaid, 2)          AS TotalPaid,
-        -- DueAmount: 0 for cancelled bookings (adjusted per cancellation policy)
+        ROUND(b.TotalDiscount, 2)       AS DiscountAmount,
+        ROUND(b.TotalRoundOff, 2)       AS RoundOffAmount,
+        -- DueAmount: 0 for cancelled; subtract discount+roundoff for others
         CASE WHEN b.Status = 'Cancelled' THEN CAST(0 AS DECIMAL(12,2))
-             ELSE ROUND(
+             ELSE ROUND(GREATEST(0,
                 b.StayBillAmount
                 + ISNULL(oc.OCTotalAmount, 0)
                 + ISNULL(rs.RSTotalAmount, 0)
-                - b.TotalPaid, 2)
+                - b.TotalPaid
+                - b.TotalDiscount
+                - b.TotalRoundOff), 2)
         END                            AS DueAmount,
         -- Cancellation fields (NULL for non-cancelled bookings)
         ROUND(ISNULL(canc.DeductionAmount, 0), 2)  AS CancellationDeduction,

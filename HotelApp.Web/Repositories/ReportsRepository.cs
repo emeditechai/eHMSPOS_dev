@@ -929,6 +929,7 @@ public sealed class BookingDetailsReportSummary
     public int TotalBookings { get; set; }
     public decimal TotalBillAmount { get; set; }
     public decimal TotalPaidAmount { get; set; }
+    public decimal TotalDiscountAmount { get; set; }
     public decimal TotalDueAmount { get; set; }
 }
 
@@ -947,6 +948,8 @@ public sealed class BookingDetailsHeaderRow
     public string? B2BClientName { get; set; }
     public decimal TotalBillAmount { get; set; }
     public decimal TotalPaid { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public decimal RoundOffAmount { get; set; }
     public decimal DueAmount { get; set; }
     // Cancellation fields (non-zero only for cancelled bookings)
     public decimal CancellationDeduction { get; set; }
