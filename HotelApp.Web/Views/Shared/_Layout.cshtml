@@ -108,103 +108,114 @@
     <script>
         // Enhanced dropdown navigation functionality
         document.addEventListener('DOMContentLoaded', function() {
-            // Mobile navbar toggle
+            // Mobile navbar toggle — slide-in drawer
             const navbarToggle = document.getElementById('navbarToggle');
             const navbarMenu = document.querySelector('.navbar-menu');
 
-            function closeNavbarMenu() {
-                if (!navbarMenu || !navbarToggle) return;
+            // Inject real backdrop div (avoids ::before pointer-events issues)
+            const backdrop = document.createElement('div');
+            backdrop.id = 'navDrawerBackdrop';
+            document.body.appendChild(backdrop);
+
+            function openDrawer() {
+                if (!navbarMenu) return;
+                navbarMenu.classList.add('open');
+                backdrop.classList.add('open');
+                navbarToggle && navbarToggle.setAttribute('aria-expanded', 'true');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeDrawer() {
+                if (!navbarMenu) return;
                 navbarMenu.classList.remove('open');
-                navbarToggle.setAttribute('aria-expanded', 'false');
+                backdrop.classList.remove('open');
+                navbarToggle && navbarToggle.setAttribute('aria-expanded', 'false');
+                document.body.style.overflow = '';
+            }
+
+            backdrop.addEventListener('click', function() { closeDrawer(); });
+
+            if (navbarMenu) {
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'navbar-drawer-close';
+                closeBtn.setAttribute('aria-label', 'Close menu');
+                closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+                closeBtn.addEventListener('click', function(e) { e.stopPropagation(); closeDrawer(); });
+                navbarMenu.insertAdjacentElement('afterbegin', closeBtn);
             }
 
             if (navbarToggle && navbarMenu) {
                 navbarToggle.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    const isOpen = navbarMenu.classList.contains('open');
-                    navbarMenu.classList.toggle('open', !isOpen);
-                    navbarToggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+                    navbarMenu.classList.contains('open') ? closeDrawer() : openDrawer();
                 });
 
-                document.addEventListener('click', function(e) {
-                    if (!navbarMenu.classList.contains('open')) return;
-                    if (e.target.closest('.navbar-menu')) return;
-                    if (e.target.closest('#navbarToggle')) return;
-                    closeNavbarMenu();
+                // Swipe left to close drawer
+                let touchStartX = null;
+                navbarMenu.addEventListener('touchstart', function(e) {
+                    touchStartX = e.touches[0].clientX;
+                }, { passive: true });
+                navbarMenu.addEventListener('touchend', function(e) {
+                    if (touchStartX === null) return;
+                    const diff = touchStartX - e.changedTouches[0].clientX;
+                    if (diff > 60) closeDrawer();
+                    touchStartX = null;
+                }, { passive: true });
+
+                // Close when Escape key pressed
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') closeDrawer();
                 });
 
                 window.addEventListener('resize', function() {
-                    if (window.innerWidth > 992) {
-                        closeNavbarMenu();
-                    }
+                    if (window.innerWidth > 992) closeDrawer();
                 });
             }
 
             const dropdownMenuItems = document.querySelectorAll('.menu-item.has-dropdown');
-            let isTouchDevice = false;
-            
-            // Detect if this is a touch device
-            window.addEventListener('touchstart', function onFirstTouch() {
-                isTouchDevice = true;
-                window.removeEventListener('touchstart', onFirstTouch);
-            }, {passive: true});
-            
+
+            function toggleDropdownItem(item, e) {
+                const clickedInsideSubmenu = e.target.closest('.dropdown-menu');
+                const clickedLink = e.target.closest('a');
+
+                // Tapped a sub-menu link → allow navigation, close drawer
+                if (clickedInsideSubmenu && clickedLink) {
+                    closeDrawer();
+                    return; // let the event proceed — browser navigates
+                }
+
+                // Tapped the parent header row → toggle open/close
+                const isOpen = item.classList.contains('open');
+                dropdownMenuItems.forEach(function(o) { o.classList.remove('open'); });
+                if (!isOpen) item.classList.add('open');
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
             dropdownMenuItems.forEach(function(item) {
-                // For touch devices or when hover doesn't work well
+                let touchHandled = false;
+
+                // touchend fires on iOS Safari reliably; click on <div> does not
+                item.addEventListener('touchend', function(e) {
+                    touchHandled = true;
+                    toggleDropdownItem(item, e);
+                    setTimeout(function() { touchHandled = false; }, 600);
+                }, { passive: false });
+
+                // click for desktop / non-touch
                 item.addEventListener('click', function(e) {
-                    const clickedDropdownMenu = e.target.closest('.dropdown-menu');
-                    const clickedLink = e.target.closest('a');
-                    
-                    // If clicking a link inside dropdown, allow navigation
-                    if (clickedDropdownMenu && clickedLink) {
-                        return; // Let the link work normally
-                    }
-                    
-                    // If clicking the parent menu item itself
-                    if (!clickedDropdownMenu) {
-                        const isCurrentlyOpen = item.classList.contains('open');
-                        
-                        // Close all dropdowns
-                        dropdownMenuItems.forEach(function(otherItem) {
-                            otherItem.classList.remove('open');
-                        });
-                        
-                        // Toggle this one
-                        if (!isCurrentlyOpen) {
-                            item.classList.add('open');
-                        }
-                        
-                        // Only prevent default if we're toggling, not if hovering
-                        if (isTouchDevice || window.innerWidth < 768) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                        }
-                    }
+                    if (touchHandled) return;
+                    toggleDropdownItem(item, e);
                 });
             });
-            
-            // Close dropdowns when clicking outside
+
+            // Close dropdowns when clicking outside on desktop
             document.addEventListener('click', function(e) {
                 if (!e.target.closest('.menu-item.has-dropdown')) {
-                    dropdownMenuItems.forEach(function(item) {
-                        item.classList.remove('open');
-                    });
+                    dropdownMenuItems.forEach(function(item) { item.classList.remove('open'); });
                 }
             });
-            
-            // On desktop, ensure hover works properly
-            if (window.innerWidth >= 768) {
-                dropdownMenuItems.forEach(function(item) {
-                    item.addEventListener('mouseenter', function() {
-                        if (!isTouchDevice) {
-                            dropdownMenuItems.forEach(function(otherItem) {
-                                otherItem.classList.remove('open');
-                            });
-                        }
-                    });
-                });
-            }
         });
 
         // Fullscreen Toggle Functionality

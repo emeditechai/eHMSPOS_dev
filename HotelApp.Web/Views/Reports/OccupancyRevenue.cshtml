@@ -1,0 +1,252 @@
+@model HotelApp.Web.ViewModels.OccupancyRevenueViewModel
+@{
+    ViewData["Title"] = "Occupancy & Revenue";
+    var labels   = Model.Daily.Select(d => d.Date.ToString("dd MMM")).ToArray();
+    var revenue  = Model.Daily.Select(d => d.Revenue).ToArray();
+    var occupancy = Model.Daily.Select(d => d.OccupancyPct).ToArray();
+    var rtLabels = Model.RoomTypes.Select(r => r.RoomType).ToArray();
+    var rtRevenue = Model.RoomTypes.Select(r => r.Revenue).ToArray();
+}
+
+@section Styles {
+<style>
+    .or-header { display:flex; align-items:center; gap:14px; margin-bottom:24px; }
+    .or-header-icon { width:48px; height:48px; border-radius:14px;
+        background:linear-gradient(135deg,#0ea5e9,#6366f1);
+        display:flex; align-items:center; justify-content:center;
+        color:#fff; font-size:1.4rem; box-shadow:0 4px 14px rgba(99,102,241,.3); flex-shrink:0; }
+    .or-header h2 { margin:0; font-size:1.55rem; font-weight:700; color:#1e1b4b; }
+    .or-header p  { margin:2px 0 0; font-size:.85rem; color:#6b7280; }
+
+    .or-filter { background:#fff; border-radius:16px; padding:20px 24px;
+        box-shadow:0 1px 8px rgba(0,0,0,.07); margin-bottom:22px; border:1px solid #e9eaf0; }
+    .or-filter form { display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; }
+    .or-filter label { font-size:.8rem; font-weight:600; color:#374151; margin-bottom:4px; display:block; }
+    .or-filter input[type=date] { border:1px solid #d1d5db; border-radius:8px; padding:8px 12px;
+        font-size:.9rem; color:#111827; outline:none; }
+    .or-filter input[type=date]:focus { border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+    .or-filter .btn-filter { background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff;
+        border:none; border-radius:8px; padding:9px 20px; font-size:.9rem; font-weight:600; cursor:pointer; }
+
+    .or-kpi-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:16px; margin-bottom:24px; }
+    .or-kpi { background:#fff; border-radius:14px; padding:18px 20px;
+        box-shadow:0 1px 8px rgba(0,0,0,.07); border:1px solid #e9eaf0; }
+    .or-kpi .kpi-label { font-size:.78rem; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; }
+    .or-kpi .kpi-value { font-size:1.6rem; font-weight:700; color:#1e1b4b; }
+    .or-kpi .kpi-sub   { font-size:.78rem; color:#9ca3af; margin-top:2px; }
+    .or-kpi.blue  .kpi-value { color:#0ea5e9; }
+    .or-kpi.green .kpi-value { color:#10b981; }
+    .or-kpi.purple .kpi-value { color:#8b5cf6; }
+    .or-kpi.amber  .kpi-value { color:#f59e0b; }
+
+    .or-charts-row { display:grid; grid-template-columns:2fr 1fr; gap:20px; margin-bottom:24px; }
+    .or-chart-card { background:#fff; border-radius:16px; padding:20px 24px;
+        box-shadow:0 1px 8px rgba(0,0,0,.07); border:1px solid #e9eaf0; }
+    .or-chart-card h4 { margin:0 0 16px; font-size:1rem; font-weight:700; color:#374151; }
+    .or-chart-card canvas { max-height:280px; }
+
+    .or-revenue-card { background:#fff; border-radius:16px; padding:20px 24px;
+        box-shadow:0 1px 8px rgba(0,0,0,.07); border:1px solid #e9eaf0; margin-bottom:24px; }
+    .or-revenue-card h4 { margin:0 0 16px; font-size:1rem; font-weight:700; color:#374151; }
+    .or-revenue-card canvas { max-height:220px; }
+
+    .or-table { width:100%; border-collapse:collapse; font-size:.9rem; }
+    .or-table thead th { background:#f8f9ff; padding:10px 14px; text-align:left;
+        font-size:.78rem; font-weight:700; color:#6b7280; border-bottom:2px solid #e9eaf0; }
+    .or-table tbody tr:hover { background:#f8f9ff; }
+    .or-table tbody td { padding:10px 14px; border-bottom:1px solid #f3f4f6; color:#374151; }
+    .occ-bar { height:8px; border-radius:4px; background:linear-gradient(90deg,#0ea5e9,#6366f1); display:inline-block; }
+
+    @@media(max-width:768px){
+        .or-charts-row { grid-template-columns:1fr; }
+        .or-kpi-row { grid-template-columns:repeat(2,1fr); }
+    }
+</style>
+}
+
+<div class="main-content">
+    <!-- Header -->
+    <div class="or-header">
+        <div class="or-header-icon"><i class="fas fa-chart-bar"></i></div>
+        <div>
+            <h2>Occupancy &amp; Revenue</h2>
+            <p>Visual analytics for bookings, occupancy rate, and revenue trends</p>
+        </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="or-filter">
+        <form method="get">
+            <div>
+                <label>From Date</label>
+                <input type="date" name="fromDate" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+            </div>
+            <div>
+                <label>To Date</label>
+                <input type="date" name="toDate" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+            </div>
+            <button type="submit" class="btn-filter"><i class="fas fa-search"></i> Apply</button>
+        </form>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="or-kpi-row">
+        <div class="or-kpi blue">
+            <div class="kpi-label">Total Bookings</div>
+            <div class="kpi-value">@Model.Summary.TotalBookings</div>
+            <div class="kpi-sub">@Model.FromDate.ToString("dd MMM") – @Model.ToDate.ToString("dd MMM yyyy")</div>
+        </div>
+        <div class="or-kpi green">
+            <div class="kpi-label">Total Revenue</div>
+            <div class="kpi-value">₹@Model.Summary.TotalRevenue.ToString("N0")</div>
+            <div class="kpi-sub">Collected for period</div>
+        </div>
+        <div class="or-kpi purple">
+            <div class="kpi-label">Avg Daily Rate</div>
+            <div class="kpi-value">₹@Model.Summary.AverageDailyRate.ToString("N0")</div>
+            <div class="kpi-sub">Per occupied night</div>
+        </div>
+        <div class="or-kpi amber">
+            <div class="kpi-label">Cancelled</div>
+            <div class="kpi-value">@Model.Summary.CancelledBookings</div>
+            <div class="kpi-sub">Bookings cancelled</div>
+        </div>
+        <div class="or-kpi">
+            <div class="kpi-label">Total Rooms</div>
+            <div class="kpi-value">@Model.Summary.TotalRooms</div>
+            <div class="kpi-sub">Active rooms in branch</div>
+        </div>
+    </div>
+
+    @if (Model.Daily.Any())
+    {
+        <!-- Charts Row -->
+        <div class="or-charts-row">
+            <div class="or-chart-card">
+                <h4><i class="fas fa-chart-line" style="color:#6366f1;margin-right:6px"></i>Revenue Trend</h4>
+                <canvas id="revenueChart"></canvas>
+            </div>
+            <div class="or-chart-card">
+                <h4><i class="fas fa-chart-pie" style="color:#0ea5e9;margin-right:6px"></i>Room Type Revenue</h4>
+                <canvas id="roomTypeChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Occupancy Chart -->
+        <div class="or-revenue-card">
+            <h4><i class="fas fa-bed" style="color:#10b981;margin-right:6px"></i>Daily Occupancy Rate (%)</h4>
+            <canvas id="occupancyChart"></canvas>
+        </div>
+
+        <!-- Daily Table -->
+        <div class="or-chart-card">
+            <h4><i class="fas fa-table" style="color:#f59e0b;margin-right:6px"></i>Daily Breakdown</h4>
+            <div style="overflow-x:auto">
+                <table class="or-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Day</th>
+                            <th>Bookings</th>
+                            <th>Revenue (₹)</th>
+                            <th>Occupancy</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Daily)
+                        {
+                            <tr>
+                                <td>@row.Date.ToString("dd MMM yyyy")</td>
+                                <td>@row.DayName</td>
+                                <td>@row.BookingsCount</td>
+                                <td>₹@row.Revenue.ToString("N2")</td>
+                                <td>
+                                    <span class="occ-bar" style="width:@(Math.Min(row.OccupancyPct,100))px"></span>
+                                    <span style="margin-left:6px">@row.OccupancyPct%</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div style="text-align:center;padding:60px;color:#9ca3af">
+            <i class="fas fa-chart-bar" style="font-size:3rem;margin-bottom:12px;display:block"></i>
+            No booking data found for the selected period.
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+    const labels    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(labels));
+    const revenues  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(revenue));
+    const occupancy = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(occupancy));
+    const rtLabels  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(rtLabels));
+    const rtRevenue = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(rtRevenue));
+
+    Chart.defaults.font.family = "'Inter', 'Segoe UI', sans-serif";
+
+    // Revenue Trend
+    if (document.getElementById('revenueChart')) {
+        new Chart(document.getElementById('revenueChart'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Revenue (₹)',
+                    data: revenues,
+                    backgroundColor: 'rgba(99,102,241,0.7)',
+                    borderColor: '#6366f1',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                }]
+            },
+            options: { responsive:true, plugins:{ legend:{display:false} },
+                scales: { y:{ beginAtZero:true, ticks:{ callback: v=>'₹'+v.toLocaleString('en-IN') } } } }
+        });
+    }
+
+    // Room Type Doughnut
+    if (document.getElementById('roomTypeChart')) {
+        const palette = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899'];
+        new Chart(document.getElementById('roomTypeChart'), {
+            type: 'doughnut',
+            data: {
+                labels: rtLabels,
+                datasets: [{ data: rtRevenue, backgroundColor: palette, borderWidth: 2 }]
+            },
+            options: { responsive:true, plugins:{ legend:{ position:'bottom', labels:{ boxWidth:12, padding:10 } } } }
+        });
+    }
+
+    // Occupancy Line
+    if (document.getElementById('occupancyChart')) {
+        new Chart(document.getElementById('occupancyChart'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Occupancy %',
+                    data: occupancy,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16,185,129,0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: labels.length > 20 ? 0 : 4,
+                    pointBackgroundColor: '#10b981',
+                }]
+            },
+            options: { responsive:true, plugins:{ legend:{display:false} },
+                scales: { y:{ beginAtZero:true, max:100, ticks:{ callback: v=>v+'%' } } } }
+        });
+    }
+})();
+</script>
+}

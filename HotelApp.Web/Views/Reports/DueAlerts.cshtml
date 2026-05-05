@@ -1,0 +1,233 @@
+@model HotelApp.Web.ViewModels.DueAlertsViewModel
+@{
+    ViewData["Title"] = "Due Amount Alerts";
+}
+
+@section Styles {
+<style>
+    .da-header { display:flex; align-items:center; gap:14px; margin-bottom:24px; }
+    .da-header-icon { width:48px; height:48px; border-radius:14px;
+        background:linear-gradient(135deg,#ef4444,#f59e0b);
+        display:flex; align-items:center; justify-content:center;
+        color:#fff; font-size:1.4rem; box-shadow:0 4px 14px rgba(239,68,68,.3); flex-shrink:0; }
+    .da-header h2 { margin:0; font-size:1.55rem; font-weight:700; color:#1e1b4b; }
+    .da-header p  { margin:2px 0 0; font-size:.85rem; color:#6b7280; }
+
+    .da-kpi-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:24px; }
+    .da-kpi { background:#fff; border-radius:14px; padding:18px 22px;
+        box-shadow:0 1px 8px rgba(0,0,0,.07); border:1px solid #e9eaf0; }
+    .da-kpi.danger { border-left:4px solid #ef4444; }
+    .da-kpi.amber  { border-left:4px solid #f59e0b; }
+    .da-kpi .kpi-label { font-size:.78rem; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:.5px; }
+    .da-kpi .kpi-value { font-size:1.8rem; font-weight:800; color:#1e1b4b; margin-top:6px; }
+    .da-kpi.danger .kpi-value { color:#ef4444; }
+    .da-kpi.amber  .kpi-value { color:#f59e0b; }
+
+    .da-notice { background:#fef3c7; border:1px solid #fde68a; border-radius:12px;
+        padding:14px 18px; margin-bottom:22px; font-size:.88rem; color:#92400e; display:flex; gap:10px; align-items:flex-start; }
+
+    .da-card { background:#fff; border-radius:16px; padding:0;
+        box-shadow:0 1px 8px rgba(0,0,0,.07); border:1px solid #e9eaf0; overflow:hidden; }
+    .da-card-header { padding:16px 22px; border-bottom:1px solid #f3f4f6;
+        display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+    .da-card-header h4 { margin:0; font-size:1rem; font-weight:700; color:#374151; }
+
+    .da-search { border:1px solid #d1d5db; border-radius:8px; padding:7px 12px;
+        font-size:.88rem; outline:none; width:220px; }
+    .da-search:focus { border-color:#ef4444; box-shadow:0 0 0 3px rgba(239,68,68,.12); }
+
+    .da-table { width:100%; border-collapse:collapse; font-size:.88rem; }
+    .da-table thead th { background:#fff5f5; padding:11px 14px; text-align:left;
+        font-size:.78rem; font-weight:700; color:#991b1b; border-bottom:2px solid #fecaca; }
+    .da-table tbody tr { transition:background .15s; }
+    .da-table tbody tr:hover { background:#fff5f5; }
+    .da-table tbody td { padding:11px 14px; border-bottom:1px solid #f9fafb; vertical-align:middle; }
+    .da-table tbody tr:last-child td { border-bottom:none; }
+
+    .due-badge { display:inline-block; padding:4px 10px; border-radius:20px;
+        font-size:.82rem; font-weight:700; }
+    .due-badge.high   { background:#fee2e2; color:#991b1b; }
+    .due-badge.medium { background:#fef3c7; color:#92400e; }
+    .due-badge.low    { background:#ecfdf5; color:#065f46; }
+
+    .overdue-badge { display:inline-block; padding:3px 8px; border-radius:6px;
+        font-size:.75rem; font-weight:600; background:#fee2e2; color:#b91c1c; }
+
+    .btn-send-alert { border:none; border-radius:8px; padding:7px 14px;
+        font-size:.82rem; font-weight:600; cursor:pointer; display:inline-flex;
+        align-items:center; gap:6px; transition:all .2s; }
+    .btn-send-alert.has-email { background:linear-gradient(135deg,#ef4444,#f97316); color:#fff; }
+    .btn-send-alert.no-email  { background:#f3f4f6; color:#9ca3af; cursor:not-allowed; }
+    .btn-send-alert.has-email:hover { transform:translateY(-1px); box-shadow:0 4px 10px rgba(239,68,68,.3); }
+    .btn-send-alert.sending { opacity:.7; pointer-events:none; }
+
+    .toast-msg { position:fixed; bottom:24px; right:24px; padding:12px 20px;
+        border-radius:10px; font-size:.9rem; font-weight:600; z-index:9999;
+        box-shadow:0 4px 20px rgba(0,0,0,.15); animation:slideIn .3s ease; max-width:320px; }
+    .toast-msg.success { background:#10b981; color:#fff; }
+    .toast-msg.error   { background:#ef4444; color:#fff; }
+    @@keyframes slideIn { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+
+    @@media(max-width:768px) {
+        .da-kpi-row { grid-template-columns:1fr 1fr; }
+        .da-table { min-width:700px; }
+        .da-card { overflow-x:auto; }
+    }
+</style>
+}
+
+<div class="main-content">
+    <!-- Header -->
+    <div class="da-header">
+        <div class="da-header-icon"><i class="fas fa-exclamation-circle"></i></div>
+        <div>
+            <h2>Due Amount Alerts</h2>
+            <p>Bookings with outstanding balances — send email reminders to guests</p>
+        </div>
+    </div>
+
+    <!-- KPI -->
+    <div class="da-kpi-row">
+        <div class="da-kpi danger">
+            <div class="kpi-label">Bookings with Due</div>
+            <div class="kpi-value">@Model.Summary.TotalBookingsWithDue</div>
+        </div>
+        <div class="da-kpi amber">
+            <div class="kpi-label">Total Outstanding</div>
+            <div class="kpi-value">₹@Model.Summary.TotalDueAmount.ToString("N0")</div>
+        </div>
+    </div>
+
+    @if (!Model.Rows.Any())
+    {
+        <div style="text-align:center;padding:60px 20px;color:#10b981">
+            <i class="fas fa-check-circle" style="font-size:3.5rem;margin-bottom:12px;display:block"></i>
+            <strong style="font-size:1.2rem;color:#065f46">All Clear!</strong>
+            <p style="color:#6b7280;margin-top:6px">No outstanding dues at this time.</p>
+        </div>
+    }
+    else
+    {
+        <div class="da-notice">
+            <i class="fas fa-info-circle" style="margin-top:1px;flex-shrink:0"></i>
+            <span>Email alerts will be sent using the branch mail configuration. Only guests with a registered email address can receive alerts.</span>
+        </div>
+
+        <div class="da-card">
+            <div class="da-card-header">
+                <h4><i class="fas fa-list" style="color:#ef4444;margin-right:6px"></i>Outstanding Bookings (@Model.Rows.Count)</h4>
+                <input type="text" class="da-search" id="dueSearch" placeholder="Search guest / booking…" />
+            </div>
+            <div style="overflow-x:auto">
+                <table class="da-table" id="dueTable">
+                    <thead>
+                        <tr>
+                            <th>Booking #</th>
+                            <th>Guest</th>
+                            <th>Room</th>
+                            <th>Check-in</th>
+                            <th>Check-out</th>
+                            <th>Total Bill</th>
+                            <th>Paid</th>
+                            <th>Due Amount</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Rows)
+                        {
+                            var dueClass = row.DueAmount >= 5000 ? "high" : row.DueAmount >= 1000 ? "medium" : "low";
+                            var hasEmail = !string.IsNullOrWhiteSpace(row.GuestEmail);
+                            <tr>
+                                <td><strong>@row.BookingNumber</strong></td>
+                                <td>
+                                    <div style="font-weight:600;color:#1e1b4b">@row.GuestName</div>
+                                    @if (!string.IsNullOrWhiteSpace(row.GuestPhone))
+                                    { <div style="font-size:.78rem;color:#6b7280">@row.GuestPhone</div> }
+                                    @if (hasEmail)
+                                    { <div style="font-size:.75rem;color:#0ea5e9">@row.GuestEmail</div> }
+                                </td>
+                                <td>@(row.RoomNumber ?? "—")</td>
+                                <td>@row.CheckInDate.ToString("dd MMM yy")</td>
+                                <td>
+                                    @row.CheckOutDate.ToString("dd MMM yy")
+                                    @if (row.DaysOverdue > 0)
+                                    { <span class="overdue-badge">@row.DaysOverdue d overdue</span> }
+                                </td>
+                                <td>₹@row.TotalBill.ToString("N2")</td>
+                                <td>₹@row.TotalPaid.ToString("N2")</td>
+                                <td><span class="due-badge @dueClass">₹@row.DueAmount.ToString("N2")</span></td>
+                                <td><span style="font-size:.8rem;color:#6b7280">@row.Status</span></td>
+                                <td>
+                                    <button type="button"
+                                        class="btn-send-alert @(hasEmail ? "has-email" : "no-email")"
+                                        @(hasEmail ? "" : "disabled")
+                                        title="@(hasEmail ? $"Send alert to {row.GuestEmail}" : "No email on file")"
+                                        onclick="sendAlert(this,@row.BookingId,'@Html.Raw(row.GuestEmail ?? "")','@Html.Raw(row.GuestName)','@row.BookingNumber',@row.DueAmount)">
+                                        <i class="fas @(hasEmail ? "fa-paper-plane" : "fa-ban")"></i>
+                                        @(hasEmail ? "Send Alert" : "No Email")
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+// Live search
+document.getElementById('dueSearch')?.addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('#dueTable tbody tr').forEach(function(tr) {
+        tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+});
+
+function showToast(msg, type) {
+    const t = document.createElement('div');
+    t.className = 'toast-msg ' + type;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function() { t.remove(); }, 4000);
+}
+
+function sendAlert(btn, bookingId, email, guestName, bookingNumber, dueAmount) {
+    if (!email) return;
+    btn.classList.add('sending');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…';
+
+    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+
+    fetch('@Url.Action("SendDueAlert", "Reports")', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': token },
+        body: new URLSearchParams({ bookingId, guestEmail: email, guestName, bookingNumber, dueAmount })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            showToast('✓ ' + data.message, 'success');
+            btn.innerHTML = '<i class="fas fa-check"></i> Sent';
+            btn.classList.remove('sending','has-email');
+            btn.classList.add('no-email');
+            btn.disabled = true;
+        } else {
+            showToast('✗ ' + data.message, 'error');
+            btn.classList.remove('sending');
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Alert';
+        }
+    })
+    .catch(function() {
+        showToast('Network error. Please try again.', 'error');
+        btn.classList.remove('sending');
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Alert';
+    });
+}
+</script>
+@Html.AntiForgeryToken()
+}

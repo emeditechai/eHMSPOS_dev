@@ -52,12 +52,14 @@
     }
 
     <div class="menu-item has-dropdown @(IsActive(root) ? "active" : string.Empty)">
-        @if (!string.IsNullOrWhiteSpace(root.IconClass))
-        {
-            <i class="@root.IconClass"></i>
-        }
-        <span>@root.Title</span>
-        <i class="fas fa-chevron-down dropdown-icon"></i>
+        <div class="nav-item-header">
+            @if (!string.IsNullOrWhiteSpace(root.IconClass))
+            {
+                <i class="@root.IconClass"></i>
+            }
+            <span>@root.Title</span>
+            <i class="fas fa-chevron-down dropdown-icon"></i>
+        </div>
         <div class="dropdown-menu">
             @foreach (var child in childItems.OrderBy(x => x.SortOrder).ThenBy(x => x.Title))
             {

@@ -1,4 +1,5 @@
 using HotelApp.Web.Repositories;
+using HotelApp.Web.Services;
 using HotelApp.Web.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,11 +11,15 @@ public sealed class ReportsController : BaseController
 {
     private readonly IReportsRepository _reportsRepository;
     private readonly IHotelSettingsRepository _hotelSettingsRepository;
+    private readonly IMailSender _mailSender;
 
-    public ReportsController(IReportsRepository reportsRepository, IHotelSettingsRepository hotelSettingsRepository)
+    public ReportsController(IReportsRepository reportsRepository,
+        IHotelSettingsRepository hotelSettingsRepository,
+        IMailSender mailSender)
     {
         _reportsRepository = reportsRepository;
         _hotelSettingsRepository = hotelSettingsRepository;
+        _mailSender = mailSender;
     }
 
     [HttpGet]
@@ -449,5 +454,109 @@ public sealed class ReportsController : BaseController
 
         ViewData["Title"] = "Booking Details Report";
         return View(vm);
+    }
+
+    // ── Occupancy & Revenue Charts ─────────────────────────────────────────────
+    [HttpGet]
+    public async Task<IActionResult> OccupancyRevenue(DateOnly? fromDate, DateOnly? toDate)
+    {
+        var branchId = CurrentBranchID;
+        var effectiveFrom = fromDate ?? new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var effectiveTo   = toDate   ?? DateOnly.FromDateTime(DateTime.Today);
+        if (effectiveTo < effectiveFrom) (effectiveFrom, effectiveTo) = (effectiveTo, effectiveFrom);
+
+        var data = await _reportsRepository.GetOccupancyRevenueAnalyticsAsync(branchId, effectiveFrom, effectiveTo);
+        var vm = new OccupancyRevenueViewModel
+        {
+            FromDate  = effectiveFrom,
+            ToDate    = effectiveTo,
+            Summary   = data.Summary,
+            Daily     = data.Daily,
+            RoomTypes = data.RoomTypes
+        };
+        ViewData["Title"] = "Occupancy & Revenue";
+        return View(vm);
+    }
+
+    // ── Monthly Report ────────────────────────────────────────────────────────
+    [HttpGet]
+    public async Task<IActionResult> MonthlyReport(int? month, int? year)
+    {
+        var branchId = CurrentBranchID;
+        var m = month ?? DateTime.Today.Month;
+        var y = year  ?? DateTime.Today.Year;
+        // clamp
+        if (m < 1 || m > 12) m = DateTime.Today.Month;
+        if (y < 2000 || y > 2100) y = DateTime.Today.Year;
+
+        var vm = new MonthlyReportViewModel { Month = m, Year = y };
+        var data = await _reportsRepository.GetOccupancyRevenueAnalyticsAsync(branchId, vm.FromDate, vm.ToDate);
+        vm.Summary   = data.Summary;
+        vm.Daily     = data.Daily;
+        vm.RoomTypes = data.RoomTypes;
+
+        ViewData["Title"] = $"Monthly Report – {vm.MonthName}";
+        return View(vm);
+    }
+
+    // ── Due Amount Alerts ─────────────────────────────────────────────────────
+    [HttpGet]
+    public async Task<IActionResult> DueAlerts()
+    {
+        var branchId = CurrentBranchID;
+        var data = await _reportsRepository.GetDueAmountAlertsAsync(branchId);
+        var vm = new DueAlertsViewModel { Summary = data.Summary, Rows = data.Rows };
+        ViewData["Title"] = "Due Amount Alerts";
+        return View(vm);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SendDueAlert(int bookingId, string guestEmail,
+        string guestName, string bookingNumber, decimal dueAmount)
+    {
+        var branchId = CurrentBranchID;
+        if (string.IsNullOrWhiteSpace(guestEmail))
+            return Json(new { success = false, message = "No email address on file for this guest." });
+
+        var settings = await _hotelSettingsRepository.GetByBranchAsync(branchId);
+        var hotelName = settings?.HotelName ?? "Hotel";
+
+        var htmlBody = $"""
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+              <div style="background:#1e3a5f;padding:20px 24px;">
+                <h2 style="color:#fff;margin:0">{hotelName}</h2>
+                <p style="color:#93c5fd;margin:4px 0 0">Payment Due Notice</p>
+              </div>
+              <div style="padding:24px">
+                <p>Dear <strong>{guestName}</strong>,</p>
+                <p>This is a friendly reminder that your booking <strong>#{bookingNumber}</strong> has an outstanding balance.</p>
+                <table style="width:100%;border-collapse:collapse;margin:16px 0">
+                  <tr style="background:#f3f4f6">
+                    <td style="padding:10px 14px;font-weight:600">Booking Number</td>
+                    <td style="padding:10px 14px">{bookingNumber}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:10px 14px;font-weight:600">Outstanding Amount</td>
+                    <td style="padding:10px 14px;color:#dc2626;font-size:1.2em;font-weight:700">₹{dueAmount:N2}</td>
+                  </tr>
+                </table>
+                <p>Please settle this amount at the earliest convenience. If you have already made the payment, kindly ignore this message.</p>
+                <p style="margin-top:24px">Thank you for staying with us.</p>
+                <p style="color:#6b7280;font-size:0.9em">{hotelName}</p>
+              </div>
+            </div>
+            """;
+
+        try
+        {
+            await _mailSender.SendEmailAsync(branchId, guestEmail,
+                $"Payment Due Reminder – Booking #{bookingNumber}", htmlBody);
+            return Json(new { success = true, message = $"Alert sent to {guestEmail}" });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = ex.Message });
+        }
     }
 }

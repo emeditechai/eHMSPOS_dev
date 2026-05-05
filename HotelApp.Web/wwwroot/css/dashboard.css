@@ -111,6 +111,14 @@ body {
     position: relative;
 }
 
+/* Desktop: nav-item-header is a transparent flex row inside the menu item */
+.navbar-menu .menu-item.has-dropdown .nav-item-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+}
+
 .menu-item.has-dropdown .dropdown-icon {
     margin-left: 5px;
     font-size: 0.8rem;
@@ -133,6 +141,24 @@ body {
     display: none;
     z-index: 1001;
     pointer-events: auto;
+    max-height: 246px; /* ~6 items × 41px each */
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.dropdown-menu::-webkit-scrollbar {
+    width: 5px;
+}
+.dropdown-menu::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 0 0 8px 0;
+}
+.dropdown-menu::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 4px;
+}
+.dropdown-menu::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
 }
 
 .menu-item.has-dropdown:hover .dropdown-menu,
@@ -841,90 +867,226 @@ body {
     background-color: #23358a;
 }
 
-/* Responsive */
+/* ── Responsive — Tablet & Mobile (≤ 992px) ── */
 @media (max-width: 992px) {
+
+    /* Topbar: keep brand + toggle on one row, user items compact */
     .navbar-container {
         flex-wrap: wrap;
-        gap: 8px 10px;
-        padding: 6px 10px;
+        align-items: center;
+        padding: 0 12px;
+        gap: 0;
     }
 
     .navbar-brand {
         order: 1;
-        padding: 8px 0;
+        flex: 1;
+        padding: 10px 0;
     }
 
+    /* Compact right-side controls: hide non-essential items, keep bell + toggle */
+    .navbar-user {
+        order: 2;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0;
+        flex-wrap: nowrap;
+        flex-shrink: 0;
+    }
+
+    /* Hide fullscreen toggle on mobile — not useful on touch */
+    .navbar-user #fullscreenToggle {
+        display: none;
+    }
+
+    /* Keep branch pill but truncate it */
+    .navbar-pill {
+        max-width: 90px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 0.72rem;
+        padding: 4px 8px;
+    }
+
+    /* Hamburger always visible */
     .navbar-toggle {
         display: inline-flex;
-        order: 2;
-        margin-left: auto;
-    }
-
-    .navbar-user {
         order: 3;
-        width: 100%;
-        justify-content: flex-end;
-        flex-wrap: wrap;
-        gap: 8px;
-        padding: 0 0 6px 0;
+        flex-shrink: 0;
+        margin-left: 6px;
+        width: 44px;
+        height: 44px;
     }
 
+    /* ── Slide-in drawer ── */
     .navbar-menu {
+        /* Reset desktop styles */
+        flex: none;
         order: 4;
-        width: 100%;
-        display: none;
+
+        /* Drawer: fixed, full-height side panel */
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 290px;
+        max-width: 85vw;
+        height: 100dvh;           /* dynamic viewport height — handles mobile browser chrome */
+        height: 100vh;            /* fallback */
+        background: linear-gradient(160deg, var(--primary) 0%, var(--secondary) 100%);
         flex-direction: column;
         align-items: stretch;
         justify-content: flex-start;
         gap: 2px;
-        padding: 6px 0 10px;
-        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        padding: 80px 12px 40px;  /* top gap clears sticky navbar (~72px) + extra bottom scroll room */
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        z-index: 1200;
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
+
+        /* Hidden by default — translate off-screen to the left */
+        display: flex;
+        transform: translateX(-100%);
+        transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+        pointer-events: none;
     }
 
     .navbar-menu.open {
-        display: flex;
+        transform: translateX(0);
+        pointer-events: auto;
     }
 
+    /* Scrollbar styling inside drawer */
+    .navbar-menu::-webkit-scrollbar { width: 4px; }
+    .navbar-menu::-webkit-scrollbar-track { background: transparent; }
+    .navbar-menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 4px; }
+
+    /* Backdrop overlay — real element injected by JS (id="navDrawerBackdrop") */
+    #navDrawerBackdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 1199;
+        opacity: 0;
+        transition: opacity 0.28s ease;
+    }
+    #navDrawerBackdrop.open {
+        display: block;
+        opacity: 1;
+    }
+
+    /* Menu items — full width, large touch targets */
     .navbar-menu .menu-item,
     .navbar-menu .menu-item > a {
         width: 100%;
-    }
-
-    .navbar-menu a.menu-item,
-    .navbar-menu .menu-item.has-dropdown {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 10px;
+        padding: 0;
     }
 
     .navbar-menu a.menu-item {
-        justify-content: flex-start;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        border-radius: 12px;
+        font-size: 0.97rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+        border-bottom: none;
+        text-decoration: none;
+        transition: background 0.2s;
+    }
+    .navbar-menu a.menu-item:hover,
+    .navbar-menu a.menu-item.active {
+        background: rgba(255, 255, 255, 0.15);
+        color: #fff;
+        border-bottom: none;
     }
 
+    /* Parent items with dropdown — flex-column: header row on top, submenu below */
     .navbar-menu .menu-item.has-dropdown {
+        display: flex;
         flex-direction: column;
-        align-items: flex-start;
-        padding: 12px 14px;
+        padding: 0;
+        border-radius: 12px;
+        overflow: hidden;
+        border-bottom: none;
+        background: transparent;
+        cursor: pointer;
+        transition: background 0.2s;
+        color: rgba(255, 255, 255, 0.9);
+        font-weight: 500;
+        font-size: 0.97rem;
+    }
+    .navbar-menu .menu-item.has-dropdown:hover,
+    .navbar-menu .menu-item.has-dropdown.open,
+    .navbar-menu .menu-item.has-dropdown.active {
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
     }
 
-    .navbar-menu .menu-item.has-dropdown .dropdown-menu {
-        position: static;
+    /* Header row: icon + label + chevron */
+    .navbar-menu .menu-item.has-dropdown .nav-item-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        width: 100%;
+        color: inherit;
+        font-size: inherit;
+        font-weight: inherit;
+    }
+    .navbar-menu .menu-item.has-dropdown .nav-item-header .dropdown-icon {
+        margin-left: auto;
+    }
+
+    /* Submenu: always in DOM flow, hidden via max-height */
+    .navbar-menu .menu-item.has-dropdown > .dropdown-menu {
+        position: static !important;
+        display: block !important;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
         width: 100%;
         min-width: 0;
-        margin-top: 8px;
-        border-radius: 10px;
+        background: rgba(0, 0, 0, 0.22);
+        border: none;
+        padding: 0;
         box-shadow: none;
-        border: 1px solid #e9ecef;
+        border-radius: 0 0 12px 12px;
+        margin: 0;
+    }
+    .navbar-menu .menu-item.has-dropdown.open > .dropdown-menu {
+        max-height: 500px;
+        padding: 4px 0;
     }
 
-    .navbar-menu .menu-item.has-dropdown.open .dropdown-menu {
-        display: block;
+    .navbar-menu .dropdown-menu a {
+        color: rgba(255, 255, 255, 0.82);
+        padding: 12px 28px;
+        font-size: 0.9rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+        gap: 12px;
+        background: transparent;
+        transition: background 0.2s, color 0.2s;
     }
-
-    .navbar-pill {
-        max-width: 100%;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+    .navbar-menu .dropdown-menu a:last-child {
+        border-bottom: none;
+        border-radius: 0 0 12px 12px;
+    }
+    .navbar-menu .dropdown-menu a:hover,
+    .navbar-menu .dropdown-menu a.active {
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+        padding-left: 28px;  /* override desktop padding-left animation */
+    }
+    .navbar-menu .dropdown-menu a > i:first-of-type {
+        color: rgba(255, 255, 255, 0.7);
+    }
+    .navbar-menu .dropdown-menu a .dropdown-arrow {
+        display: none; /* hide arrow in drawer */
     }
 
     .charts-section {
@@ -932,9 +1094,48 @@ body {
     }
 }
 
-@media (max-width: 768px) {
+/* ── Close-drawer button (added by JS) ── */
+.navbar-drawer-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    flex-shrink: 0;
+    z-index: 10;
+}
+.navbar-drawer-close:hover {
+    background: rgba(255, 255, 255, 0.22);
+}
+
+@media (max-width: 992px) {
+    .navbar-drawer-close { display: flex; }
+}
+
+/* ── Tablet refinement (768–992) ── */
+@media (min-width: 768px) and (max-width: 992px) {
+    .navbar-menu {
+        width: 320px;
+    }
+    .navbar-pill {
+        max-width: 130px;
+    }
+}
+
+/* ── Mobile (< 768px) ── */
+@media (max-width: 767px) {
     .main-content {
-        padding: 14px;
+        padding: 12px;
     }
 
     .top-bar {
@@ -945,6 +1146,11 @@ body {
 
     .bookings-table {
         min-width: 900px;
+    }
+
+    /* Hide branch pill on very small screens */
+    .navbar-pill {
+        display: none;
     }
 }
 

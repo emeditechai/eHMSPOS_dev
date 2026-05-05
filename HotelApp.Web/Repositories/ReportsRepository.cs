@@ -86,6 +86,14 @@ public interface IReportsRepository
         string? bookingType = null,
         string? status = null
     );
+
+    Task<OccupancyRevenueAnalyticsData> GetOccupancyRevenueAnalyticsAsync(
+        int branchId,
+        DateOnly fromDate,
+        DateOnly toDate
+    );
+
+    Task<DueAmountAlertsData> GetDueAmountAlertsAsync(int branchId, decimal minDue = 1m);
 }
 
 public sealed class ReportsRepository : IReportsRepository
@@ -522,6 +530,40 @@ public sealed class ReportsRepository : IReportsRepository
             Lines         = lines,
             DrillDownLines = drillDown
         };
+    }
+
+    public async Task<OccupancyRevenueAnalyticsData> GetOccupancyRevenueAnalyticsAsync(
+        int branchId, DateOnly fromDate, DateOnly toDate)
+    {
+        if (_dbConnection.State != ConnectionState.Open)
+            _dbConnection.Open();
+
+        using var grid = await _dbConnection.QueryMultipleAsync(
+            "sp_GetOccupancyRevenueAnalytics",
+            new { BranchID = branchId, FromDate = fromDate.ToDateTime(TimeOnly.MinValue), ToDate = toDate.ToDateTime(TimeOnly.MinValue) },
+            commandType: CommandType.StoredProcedure);
+
+        var summary = (await grid.ReadAsync<OccupancyRevenueSummary>()).FirstOrDefault() ?? new();
+        var daily   = (await grid.ReadAsync<OccupancyRevenueDailyRow>()).ToList();
+        var roomTypes = (await grid.ReadAsync<RoomTypeRevenueRow>()).ToList();
+
+        return new OccupancyRevenueAnalyticsData { Summary = summary, Daily = daily, RoomTypes = roomTypes };
+    }
+
+    public async Task<DueAmountAlertsData> GetDueAmountAlertsAsync(int branchId, decimal minDue = 1m)
+    {
+        if (_dbConnection.State != ConnectionState.Open)
+            _dbConnection.Open();
+
+        using var grid = await _dbConnection.QueryMultipleAsync(
+            "sp_GetDueAmountAlerts",
+            new { BranchID = branchId, MinDue = minDue },
+            commandType: CommandType.StoredProcedure);
+
+        var summary = (await grid.ReadAsync<DueAlertsSummary>()).FirstOrDefault() ?? new();
+        var rows    = (await grid.ReadAsync<DueAlertRow>()).ToList();
+
+        return new DueAmountAlertsData { Summary = summary, Rows = rows };
     }
 }
 
@@ -971,4 +1013,72 @@ public sealed class BookingDetailsLineRow
     public decimal BaseAmount { get; set; }
     public decimal GSTAmount { get; set; }
     public decimal TotalAmount { get; set; }
+}
+// ─── Occupancy & Revenue Analytics ───────────────────────────────────────────
+
+public sealed class OccupancyRevenueAnalyticsData
+{
+    public OccupancyRevenueSummary Summary { get; set; } = new();
+    public List<OccupancyRevenueDailyRow> Daily { get; set; } = new();
+    public List<RoomTypeRevenueRow> RoomTypes { get; set; } = new();
+}
+
+public sealed class OccupancyRevenueSummary
+{
+    public int TotalRooms { get; set; }
+    public int TotalBookings { get; set; }
+    public decimal TotalRevenue { get; set; }
+    public int TotalOccupiedNights { get; set; }
+    public int CancelledBookings { get; set; }
+    public decimal AverageDailyRate { get; set; }
+    public int TotalDays { get; set; }
+}
+
+public sealed class OccupancyRevenueDailyRow
+{
+    public DateTime Date { get; set; }
+    public string DayName { get; set; } = string.Empty;
+    public int BookingsCount { get; set; }
+    public decimal Revenue { get; set; }
+    public decimal OccupancyPct { get; set; }
+}
+
+public sealed class RoomTypeRevenueRow
+{
+    public string RoomType { get; set; } = string.Empty;
+    public int Bookings { get; set; }
+    public decimal Revenue { get; set; }
+    public decimal RevenuePct { get; set; }
+}
+
+// ─── Due Amount Alerts ────────────────────────────────────────────────────────
+
+public sealed class DueAmountAlertsData
+{
+    public DueAlertsSummary Summary { get; set; } = new();
+    public List<DueAlertRow> Rows { get; set; } = new();
+}
+
+public sealed class DueAlertsSummary
+{
+    public int TotalBookingsWithDue { get; set; }
+    public decimal TotalDueAmount { get; set; }
+}
+
+public sealed class DueAlertRow
+{
+    public int BookingId { get; set; }
+    public string BookingNumber { get; set; } = string.Empty;
+    public string GuestName { get; set; } = string.Empty;
+    public string? GuestPhone { get; set; }
+    public string? GuestEmail { get; set; }
+    public string? RoomNumber { get; set; }
+    public DateTime CheckInDate { get; set; }
+    public DateTime CheckOutDate { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public decimal TotalBill { get; set; }
+    public decimal TotalPaid { get; set; }
+    public decimal TotalDiscount { get; set; }
+    public decimal DueAmount { get; set; }
+    public int DaysOverdue { get; set; }
 }
