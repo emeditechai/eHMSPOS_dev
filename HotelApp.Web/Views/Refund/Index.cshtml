@@ -662,8 +662,119 @@ else
     </div>
 }
 
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- Credit Notes for Date Range                                           -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<div class="section-card mt-3" id="creditNotesSection">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h6 class="mb-0 fw-bold" style="color:#1a237e;">
+            <i class="fas fa-file-invoice me-2" style="color:#3949ab;"></i>Credit Notes
+            <span class="badge bg-primary ms-2" id="cn-count-badge" style="font-size:11px;">—</span>
+        </h6>
+        <button class="btn btn-sm btn-outline-secondary" onclick="loadCreditNotes()" title="Refresh">
+            <i class="fas fa-sync-alt me-1"></i>Refresh
+        </button>
+    </div>
+
+    <!-- Loading state -->
+    <div id="cn-loading" class="text-center py-4 text-muted" style="display:none;">
+        <div class="spinner-border spinner-border-sm me-2"></div> Loading credit notes…
+    </div>
+
+    <!-- Empty state -->
+    <div id="cn-empty" class="text-center py-4 text-muted" style="display:none;">
+        <i class="fas fa-file-invoice fa-2x mb-2 d-block" style="color:#dee2e6;"></i>
+        No credit notes generated in this date range.
+    </div>
+
+    <!-- Table -->
+    <div id="cn-table-wrap" style="display:none;">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0" style="font-size:13px;">
+                <thead style="background:#e8eaf6;">
+                    <tr>
+                        <th style="color:#1a237e;font-size:11px;text-transform:uppercase;letter-spacing:.5px;">#</th>
+                        <th style="color:#1a237e;font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Credit Note No.</th>
+                        <th style="color:#1a237e;font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Booking</th>
+                        <th style="color:#1a237e;font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Guest / Company</th>
+                        <th style="color:#1a237e;font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Type</th>
+                        <th style="color:#1a237e;font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Refund Amount</th>
+                        <th style="color:#1a237e;font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Method</th>
+                        <th style="color:#1a237e;font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Generated On</th>
+                        <th style="color:#1a237e;font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="cn-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 <script>
+    // ── Credit Notes list ─────────────────────────────────────────────────
+    function loadCreditNotes() {
+        var from = document.getElementById('dfb_from')?.value || '@fromDateStr';
+        var to   = document.getElementById('dfb_to')?.value   || '@toDateStr';
+
+        document.getElementById('cn-loading').style.display   = 'block';
+        document.getElementById('cn-empty').style.display     = 'none';
+        document.getElementById('cn-table-wrap').style.display = 'none';
+        document.getElementById('cn-count-badge').textContent = '—';
+
+        fetch('/CreditNote/List?fromDate=' + from + '&toDate=' + to)
+            .then(r => r.json())
+            .then(res => {
+                document.getElementById('cn-loading').style.display = 'none';
+                if (!res.success || !res.data || res.data.length === 0) {
+                    document.getElementById('cn-empty').style.display = 'block';
+                    document.getElementById('cn-count-badge').textContent = '0';
+                    return;
+                }
+                document.getElementById('cn-count-badge').textContent = res.data.length;
+                var rows = res.data.map(function(cn, i) {
+                    var typeHtml = cn.customerType === 'B2B'
+                        ? '<span class="badge bg-info text-dark" style="font-size:10px;">B2B</span>'
+                        : '<span class="badge bg-secondary" style="font-size:10px;">B2C</span>';
+                    var displayName = (cn.customerType === 'B2B' && cn.companyName) ? cn.companyName : cn.guestName;
+                    return '<tr>' +
+                        '<td class="text-muted">' + (i + 1) + '</td>' +
+                        '<td><span class="fw-bold" style="color:#1a237e;font-family:monospace;">' + escHtml(cn.creditNoteNumber) + '</span></td>' +
+                        '<td><span class="text-primary fw-semibold">' + escHtml(cn.bookingNumber) + '</span></td>' +
+                        '<td>' + escHtml(displayName) + (cn.customerType==='B2B' && cn.guestName && cn.companyName ? '<br><small class="text-muted">' + escHtml(cn.guestName) + '</small>' : '') + '</td>' +
+                        '<td>' + typeHtml + '</td>' +
+                        '<td class="fw-bold text-success">₹' + fmtNum(cn.refundTotalAmount) + '</td>' +
+                        '<td>' + (cn.refundPaymentMethod ? '<span class="badge bg-light text-dark border" style="font-size:10px;">' + escHtml(cn.refundPaymentMethod) + '</span>' : '—') + '</td>' +
+                        '<td class="text-muted" style="font-size:11px;">' + escHtml(cn.generatedAt) + '</td>' +
+                        '<td>' +
+                            '<a href="' + cn.printUrl + '" target="_blank" class="btn btn-sm btn-primary" title="Print Credit Note (A5)" style="font-size:11px;padding:3px 10px;">' +
+                                '<i class="fas fa-print me-1"></i>Print A5' +
+                            '</a>' +
+                        '</td>' +
+                    '</tr>';
+                });
+                document.getElementById('cn-tbody').innerHTML = rows.join('');
+                document.getElementById('cn-table-wrap').style.display = 'block';
+            })
+            .catch(function() {
+                document.getElementById('cn-loading').style.display = 'none';
+                document.getElementById('cn-empty').style.display = 'block';
+                document.getElementById('cn-count-badge').textContent = '!';
+            });
+    }
+
+    function escHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    // Auto-load on page ready
+    document.addEventListener('DOMContentLoaded', function () { loadCreditNotes(); });
+
     var _activeCancellationId = null;
     var _canApproveRefund = @(_canApproveRazor ? "true" : "false");
 
@@ -972,9 +1083,17 @@ else
                         icon: 'success',
                         title: 'Refund Processed!',
                         html: '<p>Refund of <strong>₹' + fmtNum(data.refundAmount) + '</strong> processed successfully.</p>'
-                            + (data.receiptNumber ? '<p>Receipt No: <strong>' + data.receiptNumber + '</strong></p>' : ''),
+                            + (data.receiptNumber ? '<p>Receipt No: <strong>' + data.receiptNumber + '</strong></p>' : '')
+                            + (data.creditNoteNumber ? '<p>Credit Note: <strong>' + data.creditNoteNumber + '</strong></p>' : ''),
                         confirmButtonColor: '#198754',
-                        confirmButtonText: 'OK'
+                        confirmButtonText: data.printUrl ? 'Print Credit Note' : 'OK',
+                        showCancelButton: !!data.printUrl,
+                        cancelButtonText: 'Close',
+                        cancelButtonColor: '#6c757d'
+                    }).then(result => {
+                        if (result.isConfirmed && data.printUrl) {
+                            window.open(data.printUrl, '_blank');
+                        }
                     });
 
                     if (remaining === 0) {

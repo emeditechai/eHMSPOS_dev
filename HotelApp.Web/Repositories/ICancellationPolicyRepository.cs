@@ -14,4 +14,10 @@ public interface ICancellationPolicyRepository
 
     Task<CancellationPolicy?> GetApplicablePolicyAsync(int branchId, string source, string customerType, string rateType, DateTime checkInDate);
     Task<(int? policyId, string? snapshotJson)> GetApplicablePolicySnapshotAsync(int branchId, string source, string customerType, string rateType, DateTime checkInDate);
+
+    /// <summary>
+    /// Returns the snapshot JSON for a specific policy ID (used for B2B agreement-linked policies).
+    /// Returns (null, null) if the policy is not found or inactive.
+    /// </summary>
+    Task<(int? policyId, string? snapshotJson)> GetPolicySnapshotByIdAsync(int policyId);
 }

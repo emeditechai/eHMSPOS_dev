@@ -365,9 +365,11 @@
         </div>
     </div>
 
-    @if (isB2BMultiType && Model.B2BRoomLines != null && Model.B2BRoomLines.Any())
+    @if (isB2BMultiType && Model.B2BRoomLines != null && Model.B2BRoomLines.Any(l => !l.IsCancelled))
     {
         @* ========== B2B Multi-Room-Type Assignment ========== *@
+        var activeLines = (ViewBag.ActiveRoomLines as IEnumerable<HotelApp.Web.Models.B2BBookingRoomLine>)
+                          ?? Model.B2BRoomLines.Where(l => !l.IsCancelled);
         var hasAnyRooms = availableRoomsByType != null && availableRoomsByType.Values.Any(v => v.Any());
         if (hasAnyRooms)
         {
@@ -386,7 +388,7 @@
                     </span>
                 </div>
 
-                @foreach (var line in Model.B2BRoomLines)
+                @foreach (var line in activeLines)
                 {
                     var roomsForType = (availableRoomsByType != null && availableRoomsByType.ContainsKey(line.RoomTypeId))
                         ? availableRoomsByType[line.RoomTypeId]

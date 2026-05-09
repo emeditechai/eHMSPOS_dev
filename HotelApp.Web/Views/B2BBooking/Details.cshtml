@@ -1,6 +1,7 @@
 @model HotelApp.Web.Models.Booking
 @{
     ViewData["Title"] = "B2B Booking Details";
+    var isCancelled = Model.Status == "Cancelled";
 }
 
 @section Styles {
@@ -27,6 +28,13 @@
     <div class="b2b-actions">
         <a asp-action="Index" class="btn-create" style="background:#fff;color:#1f2937;border:1px solid #cbd5e1;"><i class="fas fa-arrow-left"></i> B2B Dashboard</a>
         <a asp-controller="Booking" asp-action="Details" asp-route-bookingNumber="@Model.BookingNumber" class="btn-create"><i class="fas fa-gears"></i> Open Standard Operations</a>
+        @if (!isCancelled)
+        {
+            <button type="button" class="btn-create" style="background:#ef4444;color:#fff;border:none;cursor:pointer;"
+                    onclick="cancelBooking('@Model.BookingNumber')">
+                <i class="fas fa-times-circle"></i> Cancel Booking
+            </button>
+        }
     </div>
 </div>
 
@@ -81,4 +89,247 @@
             </div>
         </section>
     </div>
+
+    @if (isCancelled && ViewBag.CancellationRecord != null)
+    {
+        var cr = (HotelApp.Web.Models.BookingCancellationRecord)ViewBag.CancellationRecord;
+        <section class="b2b-detail-card" style="border-left: 4px solid #ef4444;">
+            <div class="b2b-detail-head">
+                <h3 style="color:#dc2626;"><i class="fas fa-times-circle"></i> Cancellation &amp; Refund Details</h3>
+                <span class="badge" style="background:#fee2e2;color:#dc2626;">Cancelled</span>
+            </div>
+            <div class="b2b-detail-list">
+                <div class="b2b-detail-row"><span>Amount Paid</span><strong>₹@cr.AmountPaid.ToString("N2")</strong></div>
+                <div class="b2b-detail-row"><span>Refund Amount</span><strong style="color:@(cr.RefundAmount > 0 ? "#059669" : "#dc2626");">₹@cr.RefundAmount.ToString("N2") (@cr.RefundPercent.ToString("0.##")%)</strong></div>
+                <div class="b2b-detail-row"><span>Approval Status</span><strong>@cr.ApprovalStatus</strong></div>
+                @if (!string.IsNullOrWhiteSpace(cr.Reason))
+                {
+                    <div class="b2b-detail-row"><span>Reason</span><strong>@cr.Reason</strong></div>
+                }
+                <div class="b2b-detail-row"><span>Cancelled On</span><strong>@cr.CreatedDate.ToString("dd MMM yyyy, hh:mm tt")</strong></div>
+            </div>
+        </section>
+    }
 </div>
+
+@section Scripts {
+<form id="antiForgeryForm">@Html.AntiForgeryToken()</form>
+<script>
+    function antiForgeryToken() {
+        return document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+    }
+
+    async function cancelBooking(bookingNumber) {
+        Swal.fire({ title: 'Loading Preview\u2026', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        let preview = null;
+        try {
+            const r = await fetch('/Booking/CancellationPreview?bookingNumber=' + encodeURIComponent(bookingNumber));
+            const d = await r.json();
+            if (d.success) preview = d;
+        } catch (e) { console.error('Preview error:', e); }
+
+        // Multi-room-type: ask full or partial
+        if (preview && preview.isMultiRoomType && preview.roomLines && preview.roomLines.length > 1) {
+            const choiceResult = await Swal.fire({
+                title: 'Cancellation Type',
+                html: `<p>Booking <strong>${bookingNumber}</strong> has <strong>${preview.roomLines.length}</strong> room type(s).</p>
+                       <p style="margin-top:8px;">How would you like to cancel?</p>`,
+                icon: 'question',
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonText: '<i class="fas fa-times-circle"></i>&nbsp;Cancel Entire Booking',
+                denyButtonText: '<i class="fas fa-edit"></i>&nbsp;Cancel Specific Room Type(s)',
+                cancelButtonText: 'Go Back',
+                confirmButtonColor: '#ef4444',
+                denyButtonColor: '#f59e0b',
+                cancelButtonColor: '#6c757d',
+                width: 520
+            });
+            if (choiceResult.isDenied) {
+                await partialCancelBooking(bookingNumber, preview);
+                return;
+            }
+            if (!choiceResult.isConfirmed) return;
+        }
+
+        function buildPreviewHtml(title) {
+            let html = `<p style="margin-bottom:10px;">${title}</p>`;
+            if (preview) {
+                const hrs  = preview.hoursBeforeCheckIn != null ? `${Math.round(preview.hoursBeforeCheckIn)} hrs before check-in` : '\u2014';
+                const paid = preview.amountPaid   != null ? '\u20b9' + Number(preview.amountPaid).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '\u2014';
+                const ref  = preview.refundAmount != null ? '\u20b9' + Number(preview.refundAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '\u2014';
+                const refColor = (preview.refundAmount > 0) ? '#059669' : '#dc2626';
+                const pctLabel = preview.refundPercent != null && preview.refundPercent > 0 ? ` (${preview.refundPercent}%)` : '';
+                html += `<div style="background:#f8f9fa;border-radius:8px;padding:12px 16px;margin:10px 0;text-align:left;font-size:0.9rem;border:1px solid #e5e7eb;">
+                    <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e5e7eb;"><span style="color:#6b7280;">Amount Paid</span><strong>${paid}</strong></div>
+                    <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e5e7eb;"><span style="color:#6b7280;">Eligible Refund</span><strong style="color:${refColor};">${ref}${pctLabel}</strong></div>
+                    <div style="display:flex;justify-content:space-between;padding:5px 0;"><span style="color:#6b7280;">Time to Check-in</span><span>${hrs}</span></div>
+                </div>`;
+                if (preview.policyName) {
+                    html += `<p style="font-size:0.82rem;color:#6b7280;margin:4px 0 6px;"><i class="fas fa-file-alt"></i>&nbsp;Policy: <strong>${preview.policyName}</strong></p>`;
+                }
+                if (preview.refundBreakdownNote) {
+                    html += `<p style="font-size:0.82rem;color:#6b7280;margin:4px 0 6px;"><i class="fas fa-info-circle"></i>&nbsp;${preview.refundBreakdownNote}</p>`;
+                }
+                if (preview.approvalStatus === 'Pending') {
+                    html += `<p style="color:#d97706;font-size:0.83rem;margin:6px 0;"><i class="fas fa-clock"></i>&nbsp;Refund requires manager approval before processing.</p>`;
+                }
+            }
+            html += `<div style="margin-top:12px;text-align:left;">
+                <label style="font-size:0.85rem;color:#6b7280;display:block;margin-bottom:4px;">Reason for cancellation <span style="opacity:.6;">(optional)</span></label>
+                <textarea id="swal-cancel-reason" class="swal2-textarea" placeholder="Enter reason\u2026" style="margin:0;width:100%;box-sizing:border-box;font-size:0.9rem;min-height:64px;"></textarea>
+            </div>
+            <p style="margin-top:10px;color:#ef4444;font-size:0.8rem;">\u26a0\ufe0f This action cannot be undone.</p>`;
+            return html;
+        }
+
+        const confirm1 = await Swal.fire({
+            title: 'Cancel Booking?',
+            html: buildPreviewHtml(`You are about to cancel booking <strong>${bookingNumber}</strong>.`),
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-times-circle"></i>&nbsp;Yes, Cancel Booking',
+            cancelButtonText: 'Go Back',
+            width: 520,
+            preConfirm: () => document.getElementById('swal-cancel-reason')?.value?.trim() || ''
+        });
+        if (!confirm1.isConfirmed) return;
+        const reason = confirm1.value || '';
+
+        async function doCancel(isOverride, overrideReason) {
+            Swal.fire({ title: 'Processing Cancellation\u2026', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const resp = await fetch('/Booking/Cancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': antiForgeryToken() },
+                body: JSON.stringify({ bookingNumber, reason, isOverride, overrideReason: overrideReason || '' })
+            });
+            return resp.json();
+        }
+
+        try {
+            let data = await doCancel(false, '');
+
+            if (!data.success && data.requiresOverride) {
+                const overrideResult = await Swal.fire({
+                    title: '\u26a0\ufe0f Guest Is Currently Checked In',
+                    html: `<p style="color:#dc2626;font-weight:600;margin-bottom:10px;">This guest has already checked in.</p>
+                           <p>Cancelling an active stay is a non-standard operation and requires manager authorisation.</p>
+                           <div style="margin-top:12px;text-align:left;">
+                               <label style="font-size:0.85rem;color:#6b7280;display:block;margin-bottom:4px;">Override reason <span style="color:#ef4444;">*</span></label>
+                               <textarea id="swal-override-reason" class="swal2-textarea" placeholder="e.g. Guest requested early departure, emergency\u2026" style="margin:0;width:100%;box-sizing:border-box;font-size:0.9rem;min-height:72px;"></textarea>
+                           </div>`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: '<i class="fas fa-exclamation-triangle"></i>&nbsp;Force Cancel (Override)',
+                    cancelButtonText: 'Abort',
+                    width: 520,
+                    preConfirm: () => {
+                        const val = document.getElementById('swal-override-reason')?.value?.trim() || '';
+                        if (!val) { Swal.showValidationMessage('An override reason is required.'); return false; }
+                        return val;
+                    }
+                });
+                if (!overrideResult.isConfirmed) return;
+                data = await doCancel(true, overrideResult.value);
+            }
+
+            if (data.success) {
+                let successHtml = `<p>${data.message || 'Booking cancelled successfully.'}</p>`;
+                if (data.refundAmount != null && data.refundAmount > 0) {
+                    successHtml += `<p>Refund of <strong>\u20b9${Number(data.refundAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong> is applicable.</p>`;
+                }
+                if (data.approvalStatus === 'Pending') {
+                    successHtml += `<p style="color:#d97706;font-size:0.85rem;">\u23f3 Awaiting manager approval to process refund.</p>`;
+                }
+                await Swal.fire({ title: 'Booking Cancelled', html: successHtml, icon: 'success', confirmButtonColor: '#059669' });
+                window.location.reload();
+            } else {
+                Swal.fire({ title: 'Cancellation Failed', text: data.message || 'An error occurred.', icon: 'error', confirmButtonColor: '#ef4444' });
+            }
+        } catch (e) {
+            console.error('Cancel error:', e);
+            Swal.fire({ title: 'Error', text: 'An unexpected error occurred. Please try again.', icon: 'error' });
+        }
+    }
+
+    async function partialCancelBooking(bookingNumber, preview) {
+        if (!preview || !preview.roomLines || preview.roomLines.length === 0) return;
+
+        const checkboxes = preview.roomLines.map(l =>
+            `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #e5e7eb;">
+                <input type="checkbox" class="partial-line-cb" value="${l.id}" style="width:16px;height:16px;">
+                <span><strong>${l.roomTypeName}</strong> &mdash; ${l.requiredRooms} room(s), ₹${Number(l.grandTotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+             </label>`
+        ).join('');
+
+        const selectResult = await Swal.fire({
+            title: 'Select Room Types to Cancel',
+            html: `<div style="text-align:left;">${checkboxes}</div>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Preview Refund',
+            cancelButtonText: 'Go Back',
+            confirmButtonColor: '#f59e0b',
+            width: 560,
+            preConfirm: () => {
+                const ids = [...document.querySelectorAll('.partial-line-cb:checked')].map(cb => parseInt(cb.value));
+                if (ids.length === 0) { Swal.showValidationMessage('Select at least one room type to cancel.'); return false; }
+                return ids;
+            }
+        });
+        if (!selectResult.isConfirmed) return;
+        const selectedIds = selectResult.value;
+
+        Swal.fire({ title: 'Calculating Refund\u2026', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        const pr = await fetch('/Booking/PartialCancellationPreview?bookingNumber=' + encodeURIComponent(bookingNumber) + selectedIds.map(id => '&roomLineIds=' + id).join(''));
+        const pd = await pr.json();
+        if (!pd.success) { Swal.fire({ title: 'Error', text: pd.message, icon: 'error' }); return; }
+
+        let partialHtml = `<div style="background:#f8f9fa;border-radius:8px;padding:12px 16px;margin:10px 0;text-align:left;font-size:0.9rem;border:1px solid #e5e7eb;">
+            <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e5e7eb;"><span style="color:#6b7280;">Amount Paid</span><strong>₹${Number(pd.amountPaid).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong></div>
+            <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e5e7eb;"><span style="color:#6b7280;">Eligible Refund</span><strong style="color:#059669;">₹${Number(pd.refundAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong></div>
+            ${pd.dueAfterAdjustment > 0 ? `<div style="display:flex;justify-content:space-between;padding:5px 0;"><span style="color:#6b7280;">Due After Adjustment</span><strong style="color:#d97706;">₹${Number(pd.dueAfterAdjustment).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong></div>` : ''}
+        </div>
+        ${pd.policyName ? `<p style="font-size:0.82rem;color:#6b7280;margin:4px 0 6px;"><i class="fas fa-file-alt"></i>&nbsp;Policy: <strong>${pd.policyName}</strong></p>` : ''}
+        <div style="margin-top:12px;text-align:left;">
+            <label style="font-size:0.85rem;color:#6b7280;display:block;margin-bottom:4px;">Reason <span style="opacity:.6;">(optional)</span></label>
+            <textarea id="swal-partial-reason" class="swal2-textarea" placeholder="Enter reason\u2026" style="margin:0;width:100%;box-sizing:border-box;font-size:0.9rem;min-height:56px;"></textarea>
+        </div>
+        <p style="margin-top:10px;color:#ef4444;font-size:0.8rem;">\u26a0\ufe0f This action cannot be undone.</p>`;
+
+        const confirm2 = await Swal.fire({
+            title: 'Confirm Partial Cancellation',
+            html: partialHtml,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-times-circle"></i>&nbsp;Confirm Partial Cancel',
+            cancelButtonText: 'Go Back',
+            width: 520,
+            preConfirm: () => document.getElementById('swal-partial-reason')?.value?.trim() || ''
+        });
+        if (!confirm2.isConfirmed) return;
+
+        Swal.fire({ title: 'Processing\u2026', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        const resp = await fetch('/Booking/PartialCancel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': antiForgeryToken() },
+            body: JSON.stringify({ bookingNumber, reason: confirm2.value || '', roomLineIds: selectedIds, isOverride: false, overrideReason: '' })
+        });
+        const data = await resp.json();
+
+        if (data.success) {
+            await Swal.fire({ title: 'Partial Cancellation Done', text: data.message || 'Selected room types cancelled.', icon: 'success', confirmButtonColor: '#059669' });
+            window.location.reload();
+        } else {
+            Swal.fire({ title: 'Failed', text: data.message || 'An error occurred.', icon: 'error' });
+        }
+    }
+</script>
+}

@@ -10,13 +10,16 @@ public class RefundController : BaseController
 {
     private readonly IRefundRepository _refundRepository;
     private readonly IBankRepository _bankRepository;
+    private readonly ICreditNoteRepository _creditNoteRepository;
 
     public RefundController(
         IRefundRepository refundRepository,
-        IBankRepository bankRepository)
+        IBankRepository bankRepository,
+        ICreditNoteRepository creditNoteRepository)
     {
         _refundRepository = refundRepository;
         _bankRepository = bankRepository;
+        _creditNoteRepository = creditNoteRepository;
     }
 
     // GET /Refund or /Refund/Index
@@ -116,12 +119,33 @@ public class RefundController : BaseController
             return Json(new { success = false, message = "Unable to identify user. Please refresh and try again." });
 
         var result = await _refundRepository.ProcessRefundAsync(request, CurrentBranchID, CurrentUserId.Value);
+
+        if (!result.Success)
+            return Json(new { success = false, message = result.Message });
+
+        // ── Generate credit note automatically ───────────────────────────────
+        var (cnId, cnNumber) = await _creditNoteRepository.CreateAsync(
+            cancellationId:          request.CancellationId,
+            refundPaymentId:         result.RefundPaymentId,
+            refundPaymentMethod:     request.PaymentMethod,
+            refundPaymentReference:  request.PaymentReference,
+            branchId:                CurrentBranchID,
+            performedBy:             CurrentUserId.Value);
+
+        result.CreditNoteId     = cnId;
+        result.CreditNoteNumber = cnNumber;
+
         return Json(new
         {
-            success = result.Success,
-            message = result.Message,
-            refundAmount = result.RefundAmount,
-            receiptNumber = result.ReceiptNumber
+            success             = true,
+            message             = result.Message,
+            refundAmount        = result.RefundAmount,
+            receiptNumber       = result.ReceiptNumber,
+            creditNoteId        = result.CreditNoteId,
+            creditNoteNumber    = result.CreditNoteNumber,
+            printUrl            = result.CreditNoteId > 0
+                                      ? Url.Action("Print", "CreditNote", new { id = result.CreditNoteId })
+                                      : null
         });
     }
 }

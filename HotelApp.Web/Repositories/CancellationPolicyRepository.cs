@@ -244,6 +244,49 @@ public sealed class CancellationPolicyRepository : ICancellationPolicyRepository
         return (policy.Id, json);
     }
 
+    public async Task<(int? policyId, string? snapshotJson)> GetPolicySnapshotByIdAsync(int policyId)
+    {
+        var policy = await GetByIdAsync(policyId);
+        if (policy == null || !policy.IsActive)
+        {
+            return (null, null);
+        }
+
+        var rules = await GetRulesAsync(policy.Id);
+
+        var snapshot = new
+        {
+            policy.Id,
+            policy.PolicyName,
+            policy.BranchID,
+            policy.BookingSource,
+            policy.CustomerType,
+            policy.RateType,
+            policy.ValidFrom,
+            policy.ValidTo,
+            policy.NoShowRefundAllowed,
+            policy.ApprovalRequired,
+            policy.GatewayFeeDeductionPercent,
+            Rules = rules.Select(r => new
+            {
+                r.MinHoursBeforeCheckIn,
+                r.MaxHoursBeforeCheckIn,
+                r.RefundPercent,
+                r.FlatDeduction,
+                r.GatewayFeeDeductionPercent,
+                r.SortOrder,
+                r.IsActive
+            }).ToList()
+        };
+
+        var json = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions
+        {
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        });
+
+        return (policy.Id, json);
+    }
+
     private async Task ReplaceRulesAsync(int policyId, IReadOnlyList<CancellationPolicyRule> rules, int performedBy, IDbTransaction tx)
     {
         await _db.ExecuteAsync(

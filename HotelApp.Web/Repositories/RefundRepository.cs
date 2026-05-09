@@ -520,7 +520,8 @@ public class RefundRepository : IRefundRepository
                 Success = true,
                 Message = $"Refund of ₹{refundAmount:N2} processed successfully via {request.PaymentMethod}.",
                 RefundAmount = refundAmount,
-                ReceiptNumber = receiptNumber
+                ReceiptNumber = receiptNumber,
+                RefundPaymentId = newPaymentId
             };
         }
         catch (Exception ex)

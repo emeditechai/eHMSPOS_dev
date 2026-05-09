@@ -965,6 +965,7 @@ namespace HotelApp.Web.Repositories
                 const string bookingSql = @"
                     SELECT
                         Id, BookingNumber, Status, PaymentStatus, Channel, Source, CustomerType,
+                        B2BAgreementId,
                         RateType, CancellationPolicyId, CancellationPolicySnapshot, CancellationPolicyAccepted, CancellationPolicyAcceptedAt,
                         CheckInDate, CheckOutDate, ActualCheckInDate, ActualCheckOutDate, Nights, RoomTypeId, RoomId, RatePlanId,
                         BaseAmount, TaxAmount, CGSTAmount, SGSTAmount, DiscountAmount, TotalAmount, DepositAmount,
@@ -1318,6 +1319,28 @@ namespace HotelApp.Web.Repositories
                           ORDER BY COALESCE(ValidFrom, '1900-01-01') DESC, Id DESC",
                         new { BranchID = booking.BranchID, Source = booking.Source, CheckInDate = booking.CheckInDate },
                         transaction);
+                }
+
+                // 4th fallback (B2B only): look up the cancellation policy from the linked B2B Agreement Master.
+                // This ensures bookings created before the agreement-policy fix also resolve correctly.
+                if (policy == null
+                    && string.Equals(booking.CustomerType, "B2B", StringComparison.OrdinalIgnoreCase)
+                    && booking.B2BAgreementId.HasValue && booking.B2BAgreementId.Value > 0)
+                {
+                    var agreementPolicyId = await _dbConnection.QueryFirstOrDefaultAsync<int?>(
+                        @"SELECT TOP 1 CancellationPolicyId
+                          FROM B2BAgreements
+                          WHERE Id = @AgreementId AND IsActive = 1 AND CancellationPolicyId IS NOT NULL",
+                        new { AgreementId = booking.B2BAgreementId.Value },
+                        transaction);
+
+                    if (agreementPolicyId.HasValue && agreementPolicyId.Value > 0)
+                    {
+                        policy = await _dbConnection.QueryFirstOrDefaultAsync<CancellationPolicy>(
+                            "SELECT TOP 1 * FROM CancellationPolicies WHERE Id = @Id AND IsActive = 1",
+                            new { Id = agreementPolicyId.Value },
+                            transaction);
+                    }
                 }
 
                 policyId = policy?.Id;

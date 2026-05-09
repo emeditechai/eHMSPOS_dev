@@ -439,11 +439,12 @@
                                     }
                                     else
                                     {
-                                        <!-- MANUAL mode: coming soon placeholder -->
-                                        <button class="ei-push-btn"
-                                                onclick="openPushModal('@row.Id', '@row.BookingNo', '@row.InvoiceNumber')"
-                                                title="Portal Push — Coming Soon">
-                                            <i class="fas fa-paper-plane"></i> Push
+                                        <!-- MANUAL mode: download JSON -->
+                                        <button class="ei-push-btn ei-download-json-btn"
+                                                onclick="openDownloadModal(this, '@row.BookingNo', '@row.InvoiceNumber')"
+                                                data-json="@(row.JsonPayload ?? "{}")"
+                                                title="Download e-invoice JSON">
+                                            <i class="fas fa-download"></i> Download
                                         </button>
                                     }
                                 </div>
@@ -480,10 +481,10 @@
 <!-- ── Push to Portal Modal (placeholder) ── -->
 <div class="ei-modal-overlay" id="pushModal">
     <div class="ei-modal ei-modal-sm">
-        <div class="ei-modal-head ei-modal-head-green">
+        <div class="ei-modal-head" style="background:linear-gradient(135deg,#0ea5e9,#0284c7);">
             <div>
-                <h5><i class="fas fa-paper-plane" style="margin-right:8px;"></i>Push to Govt Portal</h5>
-                <div class="ei-modal-meta">Transmit this e-invoice JSON to the Government GST portal</div>
+                <h5><i class="fas fa-download" style="margin-right:8px;"></i>Download E-Invoice JSON</h5>
+                <div class="ei-modal-meta">Save the e-invoice JSON file to your machine</div>
             </div>
             <button class="ei-modal-close" onclick="closePushModal()"><i class="fas fa-times"></i></button>
         </div>
@@ -494,21 +495,15 @@
                 <dt>Invoice No</dt>
                 <dd id="pushInvoiceNo">—</dd>
             </div>
-            <div class="ei-coming-soon-notice">
-                <i class="fas fa-hourglass-half"></i>
-                <div>
-                    <strong>Portal Push — Coming Soon</strong><br />
-                    The e-invoice JSON is ready and stored. The integration with the Government GST / IRP portal
-                    will be enabled in a future release. When ready, this button will transmit the JSON to the portal API
-                    and automatically update the <em>Portal Status</em>, pushed timestamp, and API response for each record.
-                </div>
+            <div style="margin-top:14px;padding:12px 14px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;font-size:.85rem;color:#0369a1;display:flex;align-items:center;gap:10px;">
+                <i class="fas fa-circle-info" style="font-size:1rem;flex-shrink:0;"></i>
+                <span>The JSON file will be saved as <strong id="downloadFileName">EInvoice.json</strong> to your Downloads folder.</span>
             </div>
         </div>
         <div class="ei-modal-foot">
             <button class="ei-btn ei-btn-ghost" onclick="closePushModal()">Cancel</button>
-            <button class="ei-btn" style="background:linear-gradient(135deg,#9ca3af,#6b7280);color:#fff;cursor:not-allowed;opacity:.75;" disabled>
-                <i class="fas fa-paper-plane"></i> Push to Portal
-                <span class="ei-coming-soon-pill">Soon</span>
+            <button class="ei-btn ei-btn-primary" onclick="downloadInvoiceJson()">
+                <i class="fas fa-download"></i> Download JSON
             </button>
         </div>
     </div>
@@ -579,16 +574,37 @@
         }
         document.getElementById('jsonModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeJsonModal(); });
 
-        /* ── Push Modal ── */
-        function openPushModal(id, bookingNo, invoiceNo) {
+        /* ── Download JSON Modal ── */
+        let _dlJson = null;
+
+        function openDownloadModal(btn, bookingNo, invoiceNo) {
+            _dlJson = btn.getAttribute('data-json');
             document.getElementById('pushBookingNo').textContent = bookingNo;
             document.getElementById('pushInvoiceNo').textContent = invoiceNo;
+            const safeInv = invoiceNo.replace(/[^a-zA-Z0-9\-_]/g, '_');
+            document.getElementById('downloadFileName').textContent = `${safeInv}.json`;
             document.getElementById('pushModal').classList.add('open');
             document.body.style.overflow = 'hidden';
         }
         function closePushModal() {
             document.getElementById('pushModal').classList.remove('open');
             document.body.style.overflow = '';
+            _dlJson = null;
+        }
+        function downloadInvoiceJson() {
+            if (!_dlJson) return;
+            let formatted;
+            try { formatted = JSON.stringify(JSON.parse(_dlJson), null, 2); }
+            catch { formatted = _dlJson; }
+            const blob = new Blob([formatted], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = document.getElementById('downloadFileName').textContent;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+            closePushModal();
         }
         document.getElementById('pushModal').addEventListener('click', e => { if (e.target === e.currentTarget) closePushModal(); });
 

@@ -4,7 +4,11 @@
     Layout = null;
     var hotelSettings = ViewBag.HotelSettings as HotelApp.Web.Models.HotelSettings;
     var payments = ViewBag.Payments as IEnumerable<HotelApp.Web.Models.BookingPayment>;
-    var totalPaid = payments?.Sum(p => p.Amount) ?? 0;
+    // totalPaid: cash + settlement discounts (partial cancellation adjustments) minus any refunds processed
+    var totalPaid = payments != null
+        ? payments.Where(p => !p.IsRefund).Sum(p => p.Amount + p.DiscountAmount)
+          - payments.Where(p => p.IsRefund).Sum(p => p.Amount)
+        : 0m;
     var invoiceDate = DateTime.Now;
 
     var otherCharges = ViewBag.BookingOtherCharges as IEnumerable<HotelApp.Web.Repositories.BookingOtherChargeDetailRow>
@@ -14,18 +18,22 @@
     var ocGstTotal = otherCharges.Sum(x => x.GSTAmount);
     var ocGrandTotal = ocAmountTotal + ocGstTotal;
 
-    var roomLines = Model.B2BRoomLines ?? new List<HotelApp.Web.Models.B2BBookingRoomLine>();
+    var allRoomLines = Model.B2BRoomLines ?? new List<HotelApp.Web.Models.B2BBookingRoomLine>();
+    // Only active (non-cancelled) lines contribute to invoice totals
+    var roomLines = allRoomLines.Where(l => !l.IsCancelled).ToList();
+    var cancelledRoomLines = allRoomLines.Where(l => l.IsCancelled).ToList();
+    var isPartialCancelled = cancelledRoomLines.Any();
+
     var roomLineBaseTotal = roomLines.Sum(l => l.BaseAmount);
     var roomLineTaxTotal = roomLines.Sum(l => l.TaxAmount);
-    var roomLineGrandTotal = roomLines.Sum(l => l.GrandTotal);
 
-    // Use B2BRoomLines totals for base when available, else fall back to booking header
-    var stayBaseAmount = roomLines.Any() ? roomLineBaseTotal : Model.BaseAmount;
-    var stayTaxAmount = roomLines.Any() ? roomLineTaxTotal : Model.TaxAmount;
+    // Use active B2BRoomLines totals for base when available, else fall back to booking header
+    var stayBaseAmount = allRoomLines.Any() ? roomLineBaseTotal : Model.BaseAmount;
+    var stayTaxAmount = allRoomLines.Any() ? roomLineTaxTotal : Model.TaxAmount;
     var stayGrandTotal = stayBaseAmount + stayTaxAmount;
 
     var grandTotal = stayGrandTotal + ocGrandTotal;
-    var balanceDue = grandTotal - totalPaid;
+    var balanceDue = Math.Max(0m, grandTotal - totalPaid);
 
     var cgstPct = ViewBag.CGSTPercentage != null ? (decimal)ViewBag.CGSTPercentage : 0m;
     var sgstPct = ViewBag.SGSTPercentage != null ? (decimal)ViewBag.SGSTPercentage : 0m;
@@ -416,6 +424,12 @@
                             {
                                 <div class="final-bill-stamp">&#10003; Final Bill</div>
                             }
+                            @if (isPartialCancelled)
+                            {
+                                <div style="margin-top:6px;display:inline-block;padding:3px 10px;background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:0.5px;">
+                                    &#9888; PARTIALLY CANCELLED
+                                </div>
+                            }
                         </div>
                     </div>
                 </td>
@@ -525,28 +539,35 @@
                 </tr>
             </thead>
             <tbody>
-                @if (roomLines.Any())
+                @if (allRoomLines.Any())
                 {
                     var idx = 0;
-                    foreach (var rl in roomLines)
+                    // Show active lines first, then cancelled lines (grayed out)
+                    foreach (var rl in allRoomLines.OrderBy(l => l.IsCancelled))
                     {
-                        idx++;
-                        <tr>
-                            <td class="text-center">@idx</td>
+                        if (!rl.IsCancelled) idx++;
+                        var rowStyle = rl.IsCancelled ? "opacity:0.5; background:#fef2f2;" : "";
+                        var textStyle = rl.IsCancelled ? "text-decoration:line-through; color:#94a3b8;" : "";
+                        <tr style="@rowStyle">
+                            <td class="text-center" style="@textStyle">@(rl.IsCancelled ? "—" : idx.ToString())</td>
                             <td>
-                                <strong>@rl.RoomTypeName</strong>
+                                <span style="@textStyle"><strong>@rl.RoomTypeName</strong></span>
+                                @if (rl.IsCancelled)
+                                {
+                                    <span style="display:inline-block;margin-left:6px;padding:1px 6px;background:#fca5a5;color:#7f1d1d;border-radius:4px;font-size:10px;font-weight:700;text-decoration:none;">CANCELLED</span>
+                                }
                                 @if (rl.CheckInDate.HasValue)
                                 {
-                                    <br /><span class="text-muted">@rl.CheckInDate.Value.ToString("dd MMM") — @(rl.CheckOutDate?.ToString("dd MMM") ?? "")</span>
+                                    <br /><span class="text-muted" style="@textStyle">@rl.CheckInDate.Value.ToString("dd MMM") — @(rl.CheckOutDate?.ToString("dd MMM") ?? "")</span>
                                 }
                             </td>
-                            <td class="text-center">@rl.Nights</td>
-                            <td class="text-center">@rl.RequiredRooms</td>
-                            <td class="text-center">@(rl.MealPlan ?? Model.MealPlan ?? "EP")</td>
-                            <td class="text-right mono">₹ @rl.RatePerNight.ToString("N2")</td>
-                            <td class="text-right mono">₹ @rl.BaseAmount.ToString("N2")</td>
-                            <td class="text-right mono">₹ @rl.TaxAmount.ToString("N2")</td>
-                            <td class="text-right mono">₹ @rl.GrandTotal.ToString("N2")</td>
+                            <td class="text-center" style="@textStyle">@rl.Nights</td>
+                            <td class="text-center" style="@textStyle">@rl.RequiredRooms</td>
+                            <td class="text-center" style="@textStyle">@(rl.MealPlan ?? Model.MealPlan ?? "EP")</td>
+                            <td class="text-right mono" style="@textStyle">₹ @rl.RatePerNight.ToString("N2")</td>
+                            <td class="text-right mono" style="@textStyle">₹ @rl.BaseAmount.ToString("N2")</td>
+                            <td class="text-right mono" style="@textStyle">₹ @rl.TaxAmount.ToString("N2")</td>
+                            <td class="text-right mono" style="@textStyle">@(rl.IsCancelled ? "Cancelled" : "₹ " + rl.GrandTotal.ToString("N2"))</td>
                         </tr>
                     }
                 }
@@ -673,14 +694,15 @@
                 </div>
                 @if (totalPaid > 0)
                 {
+                    var displayPaid = Math.Min(totalPaid, grandTotal);
                     <div class="totals-row paid">
                         <span class="totals-label">Amount Paid</span>
-                        <span class="totals-value mono">₹ @totalPaid.ToString("N2")</span>
+                        <span class="totals-value mono">₹ @displayPaid.ToString("N2")</span>
                     </div>
                 }
-                <div class="totals-row due">
-                    <span class="totals-label">Balance Due</span>
-                    <span class="totals-value mono">₹ @balanceDue.ToString("N2")</span>
+                <div class="totals-row due" style="@(balanceDue == 0 ? "color:#16a34a;" : "")">
+                    <span class="totals-label">@(balanceDue == 0 ? "Balance Due" : "Balance Due")</span>
+                    <span class="totals-value mono">@(balanceDue == 0 ? "SETTLED" : "₹ " + balanceDue.ToString("N2"))</span>
                 </div>
             </div>
         </div>

@@ -164,6 +164,7 @@ builder.Services.AddScoped<IBookingReceiptTemplateRepository, BookingReceiptTemp
 builder.Services.AddScoped<IGuestFeedbackRepository, GuestFeedbackRepository>();
 builder.Services.AddScoped<IAssetManagementRepository, AssetManagementRepository>();
 builder.Services.AddScoped<IRefundRepository, RefundRepository>();
+builder.Services.AddScoped<ICreditNoteRepository, CreditNoteRepository>();
 builder.Services.AddScoped<IB2BEInvoiceLogRepository, B2BEInvoiceLogRepository>();
 
 // Licensing

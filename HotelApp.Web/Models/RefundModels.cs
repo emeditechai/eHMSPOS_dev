@@ -88,6 +88,12 @@ public class ProcessRefundResult
     public string Message { get; set; } = string.Empty;
     public decimal RefundAmount { get; set; }
     public string? ReceiptNumber { get; set; }
+    /// <summary>Id of the generated credit note (0 if generation failed).</summary>
+    public int CreditNoteId { get; set; }
+    /// <summary>Human-readable credit note number e.g. CR-2627-00001.</summary>
+    public string? CreditNoteNumber { get; set; }
+    /// <summary>Id of the refund BookingPayment row (used for credit note FK).</summary>
+    public int? RefundPaymentId { get; set; }
 }
 
 /// <summary>Request body for POST /Refund/Approve.</summary>

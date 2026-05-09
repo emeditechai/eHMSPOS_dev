@@ -270,12 +270,27 @@ namespace HotelApp.Web.Controllers
                 : $"{primaryGstSlab.SlabName} | {primaryGstSlab.TariffFrom:N2} - {(primaryGstSlab.TariffTo.HasValue ? primaryGstSlab.TariffTo.Value.ToString("N2") : "Open")}";
 
             var derivedRateType = agreement.DiscountPercent > 0 ? "Discounted" : "Standard";
-            var (policyId, snapshotJson) = await _cancellationPolicyRepository.GetApplicablePolicySnapshotAsync(
-                CurrentBranchID,
-                model.Source,
-                "B2B",
-                derivedRateType,
-                model.CheckInDate);
+
+            // Priority 1: Use the cancellation policy directly assigned to the Agreement Master.
+            // This ensures the B2B-specific policy (mapped in Agreement Master) is honoured.
+            int? policyId = null;
+            string? snapshotJson = null;
+
+            if (agreement.CancellationPolicyId.HasValue && agreement.CancellationPolicyId.Value > 0)
+            {
+                (policyId, snapshotJson) = await _cancellationPolicyRepository.GetPolicySnapshotByIdAsync(agreement.CancellationPolicyId.Value);
+            }
+
+            // Fallback: generic lookup by Source / CustomerType / RateType
+            if (policyId == null)
+            {
+                (policyId, snapshotJson) = await _cancellationPolicyRepository.GetApplicablePolicySnapshotAsync(
+                    CurrentBranchID,
+                    model.Source,
+                    "B2B",
+                    derivedRateType,
+                    model.CheckInDate);
+            }
 
             var bookingNumber = GenerateB2BBookingNumber();
             var createdBy = GetCurrentUserId();
@@ -389,6 +404,19 @@ namespace HotelApp.Web.Controllers
             if (booking == null || booking.BranchID != CurrentBranchID || !IsB2BBooking(booking))
             {
                 return NotFound();
+            }
+
+            // Load cancellation record for cancelled bookings (shown in the view)
+            if (booking.Status == "Cancelled")
+            {
+                try
+                {
+                    ViewBag.CancellationRecord = await _bookingRepository.GetBookingCancellationRecordAsync(bookingNumber, CurrentBranchID);
+                }
+                catch
+                {
+                    ViewBag.CancellationRecord = null;
+                }
             }
 
             ViewData["Title"] = "B2B Booking Details";

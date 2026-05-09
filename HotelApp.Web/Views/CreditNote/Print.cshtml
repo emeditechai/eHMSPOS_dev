@@ -1,0 +1,495 @@
+@model HotelApp.Web.Models.CreditNoteViewModel
+@{
+    Layout = null;
+    var isB2B = string.Equals(Model.CustomerType, "B2B", StringComparison.OrdinalIgnoreCase);
+    var receiptTo = isB2B && !string.IsNullOrWhiteSpace(Model.CompanyName)
+        ? Model.CompanyName : Model.GuestName;
+    var gstLabel = isB2B && !string.IsNullOrWhiteSpace(Model.CompanyGstNo)
+        ? $"GSTIN: {Model.CompanyGstNo}" : null;
+    var hasGst = Model.RefundCGSTAmount > 0 || Model.RefundSGSTAmount > 0;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Credit Note — @Model.CreditNoteNumber</title>
+<style>
+/* ── Reset ─────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #1a1a2e; background: #f4f5f7; }
+
+/* ── Page / Print layout ────────────────────────────────────────────────── */
+@@page { size: A5 portrait; margin: 10mm; }
+@@media print {
+    html, body { background: white; }
+    .no-print { display: none !important; }
+    .page-wrapper { box-shadow: none; border: none; }
+    .print-btn-bar { display: none !important; }
+}
+.page-wrapper {
+    width: 148mm;
+    min-height: 210mm;
+    margin: 12px auto;
+    background: #fff;
+    border-radius: 6px;
+    box-shadow: 0 4px 24px rgba(0,0,0,.12);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Header band ────────────────────────────────────────────────────────── */
+.cn-header {
+    background: linear-gradient(135deg, #1a237e 0%, #283593 60%, #3949ab 100%);
+    color: #fff;
+    padding: 14px 18px 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+}
+.cn-logo {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    background: #fff;
+    border-radius: 6px;
+    padding: 3px;
+    flex-shrink: 0;
+    box-shadow: 0 1px 4px rgba(0,0,0,.18);
+}
+.cn-logo-placeholder {
+    width: 52px;
+    height: 52px;
+    background: rgba(255,255,255,.15);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+.cn-hotel-info { flex: 1; }
+.cn-hotel-name { font-size: 16px; font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
+.cn-hotel-sub  { font-size: 9.5px; opacity: .85; margin-top: 2px; line-height: 1.5; }
+.cn-doc-label  {
+    text-align: right;
+    flex-shrink: 0;
+}
+.cn-doc-label .doc-title {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: .5px;
+    line-height: 1;
+    color: #ffd54f;
+}
+.cn-doc-label .doc-subtitle {
+    font-size: 9px;
+    opacity: .8;
+    margin-top: 2px;
+}
+.cn-doc-label .doc-number {
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 5px;
+    background: rgba(255,255,255,.2);
+    border-radius: 4px;
+    padding: 2px 8px;
+    letter-spacing: .3px;
+}
+
+/* ── Meta bar ───────────────────────────────────────────────────────────── */
+.cn-meta {
+    display: flex;
+    justify-content: space-between;
+    background: #e8eaf6;
+    padding: 7px 18px;
+    font-size: 9.5px;
+    color: #37474f;
+    border-bottom: 1px solid #c5cae9;
+}
+.cn-meta strong { color: #1a237e; }
+
+/* ── Two-column party section ───────────────────────────────────────────── */
+.cn-parties {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border-bottom: 2px solid #e8eaf6;
+}
+.cn-party {
+    padding: 10px 18px;
+    font-size: 9.5px;
+    line-height: 1.6;
+}
+.cn-party:first-child { border-right: 1px solid #e8eaf6; }
+.cn-party-label {
+    font-size: 8.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: #3949ab;
+    margin-bottom: 4px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid #c5cae9;
+}
+.cn-party-name   { font-weight: 700; font-size: 11px; color: #1a237e; }
+.cn-party-detail { color: #546e7a; }
+
+/* ── Stay summary ───────────────────────────────────────────────────────── */
+.cn-stay {
+    background: #f5f5f5;
+    border-bottom: 2px solid #e8eaf6;
+    display: flex;
+    gap: 0;
+    font-size: 9.5px;
+}
+.cn-stay-cell {
+    flex: 1;
+    padding: 7px 14px;
+    text-align: center;
+    border-right: 1px solid #e8eaf6;
+}
+.cn-stay-cell:last-child { border-right: none; }
+.cn-stay-cell .sc-label { color: #78909c; font-size: 8px; text-transform: uppercase; letter-spacing: .5px; }
+.cn-stay-cell .sc-value { font-weight: 700; color: #1a237e; font-size: 11px; margin-top: 1px; }
+
+/* ── Amount table ───────────────────────────────────────────────────────── */
+.cn-table-wrap { padding: 12px 18px 0; }
+.cn-section-title {
+    font-size: 8.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: #3949ab;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.cn-section-title::after { content: ''; flex: 1; height: 1px; background: #c5cae9; }
+.cn-table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
+.cn-table thead tr { background: #3949ab; color: #fff; }
+.cn-table thead th {
+    padding: 5px 8px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+}
+.cn-table thead th:last-child { text-align: right; }
+.cn-table tbody tr { border-bottom: 1px solid #eeeeee; }
+.cn-table tbody tr:nth-child(even) { background: #f8f9ff; }
+.cn-table tbody td { padding: 5px 8px; color: #37474f; }
+.cn-table tbody td:last-child { text-align: right; font-weight: 600; }
+.cn-table tfoot tr.total-row { background: #e8eaf6; }
+.cn-table tfoot td { padding: 6px 8px; font-weight: 700; color: #1a237e; }
+.cn-table tfoot td:last-child { text-align: right; font-size: 13px; }
+.cn-table tfoot tr.subtotal-row td { padding: 4px 8px; color: #546e7a; font-size: 9px; }
+.cn-table tfoot tr.subtotal-row td:last-child { text-align: right; }
+
+/* ── Refund payment box ─────────────────────────────────────────────────── */
+.cn-refund-box {
+    margin: 10px 18px 0;
+    background: #e8f5e9;
+    border: 1px solid #a5d6a7;
+    border-radius: 6px;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 9.5px;
+}
+.cn-refund-icon { font-size: 18px; }
+.cn-refund-text strong { font-size: 12px; color: #2e7d32; }
+.cn-refund-method { margin-left: auto; color: #388e3c; font-weight: 600; font-size: 9px; }
+
+/* ── Cancellation note ──────────────────────────────────────────────────── */
+.cn-cancel-note {
+    margin: 8px 18px 0;
+    background: #fff3e0;
+    border-left: 3px solid #f57c00;
+    border-radius: 0 4px 4px 0;
+    padding: 5px 10px;
+    font-size: 9px;
+    color: #e65100;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+.cn-footer {
+    margin-top: auto;
+    padding: 10px 18px 12px;
+    font-size: 8.5px;
+    color: #90a4ae;
+    border-top: 1px solid #e8eaf6;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+.cn-footer .seal {
+    font-size: 9px;
+    color: #37474f;
+    text-align: right;
+}
+.cn-footer .seal strong { display: block; color: #1a237e; font-size: 10px; }
+
+/* ── Print button bar ───────────────────────────────────────────────────── */
+.print-btn-bar {
+    position: fixed;
+    bottom: 18px;
+    right: 18px;
+    display: flex;
+    gap: 10px;
+    z-index: 100;
+}
+.btn-print {
+    background: #1a237e;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 22px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(26,35,126,.35);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    transition: background .2s;
+}
+.btn-print:hover { background: #283593; }
+.btn-close {
+    background: #fff;
+    color: #1a237e;
+    border: 2px solid #1a237e;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,.1);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+</style>
+</head>
+<body>
+
+<!-- ── Print action bar (hidden on print) ───────────────────────────────── -->
+<div class="print-btn-bar no-print">
+    <button class="btn-close" onclick="window.close()">✕ Close</button>
+    <button class="btn-print" onclick="window.print()">🖨 Print Credit Note</button>
+</div>
+
+<div class="page-wrapper">
+
+    <!-- ── Header ─────────────────────────────────────────────────────────── -->
+    <div class="cn-header">
+        @if (!string.IsNullOrWhiteSpace(Model.HotelLogoPath))
+        {
+            <img class="cn-logo" src="@Model.HotelLogoPath" alt="Hotel Logo" />
+        }
+        else
+        {
+            <div class="cn-logo-placeholder">🏨</div>
+        }
+        <div class="cn-hotel-info">
+            <div class="cn-hotel-name">@Model.HotelName</div>
+            <div class="cn-hotel-sub">
+                @Model.HotelAddress<br />
+                📞 @Model.HotelPhone &nbsp;|&nbsp; ✉ @Model.HotelEmail
+                @if (!string.IsNullOrWhiteSpace(Model.HotelGstNo))
+                {
+                    <br />@:GSTIN: @Model.HotelGstNo
+                }
+            </div>
+        </div>
+        <div class="cn-doc-label">
+            <div class="doc-title">CREDIT NOTE</div>
+            <div class="doc-subtitle">Refund Document</div>
+            <div class="doc-number">@Model.CreditNoteNumber</div>
+        </div>
+    </div>
+
+    <!-- ── Meta bar ───────────────────────────────────────────────────────── -->
+    <div class="cn-meta">
+        <span><strong>Date:</strong> @Model.GeneratedAt.ToString("dd MMM yyyy")</span>
+        <span><strong>Booking No:</strong> @Model.BookingNumber</span>
+        @if (!string.IsNullOrWhiteSpace(Model.OriginalInvoiceNumber))
+        {
+            <span><strong>Invoice Ref:</strong> @Model.OriginalInvoiceNumber</span>
+        }
+        <span><strong>Type:</strong> @(isB2B ? "B2B Corporate" : "B2C Guest")</span>
+    </div>
+
+    <!-- ── Party details ──────────────────────────────────────────────────── -->
+    <div class="cn-parties">
+        <div class="cn-party">
+            <div class="cn-party-label">From (Supplier)</div>
+            <div class="cn-party-name">@Model.HotelName</div>
+            <div class="cn-party-detail">@Model.HotelAddress</div>
+            @if (!string.IsNullOrWhiteSpace(Model.HotelGstNo))
+            {
+                <div class="cn-party-detail">GSTIN: @Model.HotelGstNo</div>
+            }
+        </div>
+        <div class="cn-party">
+            <div class="cn-party-label">To (Recipient)</div>
+            <div class="cn-party-name">@receiptTo</div>
+            @if (isB2B && !string.IsNullOrWhiteSpace(Model.CompanyName) && Model.CompanyName != Model.GuestName)
+            {
+                <div class="cn-party-detail">Guest: @Model.GuestName</div>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.GuestPhone))
+            {
+                <div class="cn-party-detail">📞 @Model.GuestPhone</div>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.GuestEmail))
+            {
+                <div class="cn-party-detail">✉ @Model.GuestEmail</div>
+            }
+            @if (!string.IsNullOrWhiteSpace(gstLabel))
+            {
+                <div class="cn-party-detail">@gstLabel</div>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.BillingAddress))
+            {
+                <div class="cn-party-detail">@Model.BillingAddress</div>
+            }
+        </div>
+    </div>
+
+    <!-- ── Stay summary strip ─────────────────────────────────────────────── -->
+    <div class="cn-stay">
+        <div class="cn-stay-cell">
+            <div class="sc-label">Check-In</div>
+            <div class="sc-value">@Model.CheckInDate.ToString("dd MMM yyyy")</div>
+        </div>
+        <div class="cn-stay-cell">
+            <div class="sc-label">Check-Out</div>
+            <div class="sc-value">@Model.CheckOutDate.ToString("dd MMM yyyy")</div>
+        </div>
+        <div class="cn-stay-cell">
+            <div class="sc-label">Nights</div>
+            <div class="sc-value">@Model.Nights</div>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Model.RoomType))
+        {
+            <div class="cn-stay-cell">
+                <div class="sc-label">Room Type(s)</div>
+                <div class="sc-value" style="font-size:@(Model.RoomType.Length > 20 ? "9px" : "11px");">@Model.RoomType</div>
+            </div>
+        }
+    </div>
+
+    <!-- ── Amount table ───────────────────────────────────────────────────── -->
+    <div class="cn-table-wrap">
+        <div class="cn-section-title">Credit Note Particulars</div>
+        <table class="cn-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Description</th>
+                    <th>HSN/SAC</th>
+                    <th style="text-align:right;">Amount (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>
+                        Room Stay Reversal<br />
+                        <span style="font-size:8.5px;color:#90a4ae;">
+                            @Model.CheckInDate.ToString("dd MMM") – @Model.CheckOutDate.ToString("dd MMM yyyy")
+                            &bull; @Model.Nights night(s)
+                            @if (!string.IsNullOrWhiteSpace(Model.RoomType)) { @(" · " + Model.RoomType) }
+                        </span>
+                    </td>
+                    <td>996311</td>
+                    <td>@Model.RefundBaseAmount.ToString("N2")</td>
+                </tr>
+                @if (hasGst)
+                {
+                    <tr>
+                        <td>2</td>
+                        <td>CGST Reversal (on accommodation)</td>
+                        <td>—</td>
+                        <td>@Model.RefundCGSTAmount.ToString("N2")</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td>SGST Reversal (on accommodation)</td>
+                        <td>—</td>
+                        <td>@Model.RefundSGSTAmount.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                @if (hasGst)
+                {
+                    <tr class="subtotal-row">
+                        <td colspan="3">Base Amount</td>
+                        <td>₹ @Model.RefundBaseAmount.ToString("N2")</td>
+                    </tr>
+                    <tr class="subtotal-row">
+                        <td colspan="3">Total Tax (CGST + SGST)</td>
+                        <td>₹ @Model.RefundTaxAmount.ToString("N2")</td>
+                    </tr>
+                }
+                <tr class="total-row">
+                    <td colspan="3">TOTAL CREDIT AMOUNT</td>
+                    <td>₹ @Model.RefundTotalAmount.ToString("N2")</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- ── Refund payment info ─────────────────────────────────────────────── -->
+    <div class="cn-refund-box">
+        <div class="cn-refund-icon">💳</div>
+        <div class="cn-refund-text">
+            Refund Processed:<br />
+            <strong>₹ @Model.RefundTotalAmount.ToString("N2")</strong>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Model.RefundPaymentMethod))
+        {
+            <div class="cn-refund-method">
+                via @Model.RefundPaymentMethod
+                @if (!string.IsNullOrWhiteSpace(Model.RefundPaymentReference))
+                {
+                    <br />@:Ref: @Model.RefundPaymentReference
+                }
+            </div>
+        }
+    </div>
+
+    <!-- ── Cancellation note ──────────────────────────────────────────────── -->
+    <div class="cn-cancel-note">
+        <strong>Cancellation:</strong>
+        @Model.CancellationDate.ToString("dd MMM yyyy, hh:mm tt")
+        @if (!string.IsNullOrWhiteSpace(Model.CancellationReason))
+        {
+            @(" — Reason: " + Model.CancellationReason)
+        }
+        &nbsp;|&nbsp; Original booking total: ₹ @Model.OriginalTotalAmount.ToString("N2")
+    </div>
+
+    <!-- ── Footer ─────────────────────────────────────────────────────────── -->
+    <div class="cn-footer">
+        <div>
+            This is a system-generated credit note.<br />
+            Credit Note No: <strong>@Model.CreditNoteNumber</strong><br />
+            Generated: @Model.GeneratedAt.ToString("dd MMM yyyy, hh:mm tt")
+        </div>
+        <div class="seal">
+            <strong>For @Model.HotelName</strong>
+            Authorised Signatory
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

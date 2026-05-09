@@ -2989,17 +2989,22 @@ namespace HotelApp.Web.Controllers
             }
 
             var allRooms = await _roomRepository.GetAllByBranchAsync(CurrentBranchID);
-            var isMultiRoomType = booking.B2BRoomLines != null && booking.B2BRoomLines.Any();
+
+            // Only active (non-cancelled) room lines are relevant for room assignment
+            var activeRoomLines = booking.B2BRoomLines?.Where(l => !l.IsCancelled).ToList()
+                                  ?? new List<Models.B2BBookingRoomLine>();
+            var isMultiRoomType = activeRoomLines.Any();
 
             if (isMultiRoomType)
             {
-                // Multi-room-type (B2B or B2C): group available rooms by each room-type line
-                var roomTypeIds = booking.B2BRoomLines!.Select(l => l.RoomTypeId).Distinct().ToList();
+                // Multi-room-type (B2B or B2C): group available rooms by each active room-type line
+                var roomTypeIds = activeRoomLines.Select(l => l.RoomTypeId).Distinct().ToList();
                 var availableRoomsByType = allRooms
                     .Where(r => roomTypeIds.Contains(r.RoomTypeId) && r.Status == "Available")
                     .GroupBy(r => r.RoomTypeId)
                     .ToDictionary(g => g.Key, g => g.ToList());
                 ViewBag.AvailableRoomsByType = availableRoomsByType;
+                ViewBag.ActiveRoomLines = activeRoomLines;
                 ViewBag.IsB2BMultiType = true;
             }
             else
@@ -3057,12 +3062,15 @@ namespace HotelApp.Web.Controllers
                 return RedirectToAction(nameof(AssignRoom), new { bookingNumber });
             }
 
-            var isMultiRoomType = booking.B2BRoomLines != null && booking.B2BRoomLines.Any();
+            // Only validate against active (non-cancelled) room lines
+            var activeRoomLinesPost = booking.B2BRoomLines?.Where(l => !l.IsCancelled).ToList()
+                                      ?? new List<Models.B2BBookingRoomLine>();
+            var isMultiRoomType = activeRoomLinesPost.Any();
 
             if (isMultiRoomType)
             {
-                // Multi-room-type: validate per room-type line
-                foreach (var line in booking.B2BRoomLines!)
+                // Multi-room-type: validate per active room-type line only
+                foreach (var line in activeRoomLinesPost)
                 {
                     var roomsForType = selectedRooms.Where(r => r.RoomTypeId == line.RoomTypeId).ToList();
                     if (roomsForType.Count != line.RequiredRooms)
