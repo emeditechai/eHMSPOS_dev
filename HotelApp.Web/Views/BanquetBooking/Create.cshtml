@@ -1,0 +1,894 @@
+@model HotelApp.Web.ViewModels.BanquetBookingCreateViewModel
+@using HotelApp.Web.Models
+@{
+    ViewData["Title"] = "New Event Booking";
+    var venues     = ViewBag.Venues     as IEnumerable<BanquetVenue>         ?? Enumerable.Empty<BanquetVenue>();
+    var eventTypes = ViewBag.EventTypes as IEnumerable<BanquetEventType>     ?? Enumerable.Empty<BanquetEventType>();
+    var packages   = ViewBag.Packages   as IEnumerable<BanquetPackage>       ?? Enumerable.Empty<BanquetPackage>();
+    var addons     = ViewBag.Addons     as IEnumerable<BanquetAddonService>  ?? Enumerable.Empty<BanquetAddonService>();
+    var b2bClients = ViewBag.B2BClients as IEnumerable<B2BClient>            ?? Enumerable.Empty<B2BClient>();
+    var banks      = ViewBag.Banks      as IEnumerable<Bank>                 ?? Enumerable.Empty<Bank>();
+}
+
+<style>
+    .booking-form-container { max-width: 100%; }
+    .booking-section { background: white; border-radius: 12px; padding: 25px 35px; box-shadow: 0 2px 12px rgba(0,0,0,.07); margin-bottom: 20px; }
+    .booking-section-title { font-size: 17px; font-weight: 700; color: var(--primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; border-bottom: 2px solid #f0f0f0; padding-bottom: 12px; }
+    .form-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 18px 22px; }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group label { font-weight: 500; font-size: 13px; color: #444; margin-bottom: 6px; }
+    .form-group input, .form-group select, .form-group textarea { padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,42,108,.1); }
+    .col2 { grid-column: span 2; }
+    .col3 { grid-column: span 3; }
+    .col4 { grid-column: span 4; }
+    .customer-tabs { display: flex; gap: 0; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; width: fit-content; }
+    .customer-tab-btn { padding: 10px 24px; font-weight: 600; font-size: 14px; background: white; border: none; cursor: pointer; }
+    .customer-tab-btn.active { background: var(--primary); color: white; }
+    .addon-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .addon-table th { background: #f7f8fc; font-size: 13px; font-weight: 600; padding: 10px; border-bottom: 2px solid #eee; }
+    .addon-table td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; font-size: 14px; vertical-align: middle; }
+    .billing-summary { background: #f7f8fc; border-radius: 10px; padding: 18px; margin-top: 10px; }
+    .billing-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
+    .billing-total { font-size: 20px; font-weight: 700; color: var(--primary); border-top: 2px solid #ddd; padding-top: 10px; margin-top: 10px; }
+    .form-actions { display: flex; gap: 15px; justify-content: flex-end; padding: 20px 35px; background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.07); }
+    .availability-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 4px 10px; border-radius: 20px; }
+    /* ── Package Menu Preview ── */
+    .pkg-menu-toggle { background:none; border:none; cursor:pointer; color:#4338ca; font-size:15px; padding:2px 4px; margin-left:6px; vertical-align:middle; display:none; }
+    .pkg-menu-toggle:hover { color:#6366f1; }
+    .pkg-menu-panel { display:none; background:#fff; border:1.5px solid #e0e7ff; border-radius:10px; padding:14px 16px; margin-top:10px; }
+    .pkg-menu-panel.open { display:block; }
+    .pkg-menu-panel-title { font-size:13px; font-weight:700; color:#4338ca; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+    .pkg-menu-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; }
+    .pkg-menu-card { border-radius:8px; overflow:hidden; border:1.5px solid #e5e7eb; }
+    .pkg-menu-card-head { padding:7px 11px; font-size:12px; font-weight:700; color:#fff; display:flex; align-items:center; gap:6px; }
+    .pkg-menu-card-body { padding:7px 11px; font-size:12px; color:#374151; line-height:1.55; white-space:pre-wrap; background:#fff; }
+    .pkg-menu-card-body.empty { color:#9ca3af; font-style:italic; }
+    .pkg-head-starter    { background:#16a34a; }
+    .pkg-head-maincourse { background:#4338ca; }
+    .pkg-head-dessert    { background:#d97706; }
+    .pkg-head-beverages  { background:#0891b2; }
+    .pkg-head-live       { background:#dc2626; }
+    @@media(max-width:1200px){ .form-grid{ grid-template-columns: repeat(2,1fr); } }
+</style>
+
+<div class="page-header">
+    <h2><i class="fas fa-champagne-glasses"></i> New Event Booking</h2>
+    <a asp-action="List" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+</div>
+
+<div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+<form asp-action="Create" method="post" id="banquetCreateForm">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="AddonLinesJson" id="addonLinesJson" />
+
+    <div class="booking-form-container">
+
+        <!-- Step 1: Customer -->
+        <div class="booking-section">
+            <div class="booking-section-title"><i class="fas fa-user"></i> Step 1 — Customer Details</div>
+
+            <div class="customer-tabs">
+                <button type="button" class="customer-tab-btn active" onclick="switchCustomerType('B2C')">B2C (Walk-in / Guest)</button>
+                <button type="button" class="customer-tab-btn" onclick="switchCustomerType('B2B')">B2B (Corporate / Agent)</button>
+            </div>
+            <input type="hidden" asp-for="CustomerType" id="customerTypeHidden" />
+
+            <!-- B2C Fields -->
+            <div id="b2cFields" class="form-grid">
+                <div class="form-group">
+                    <label asp-for="GuestPhone">Phone <span class="text-danger">*</span></label>
+                    <input asp-for="GuestPhone" id="guestPhone" type="tel" maxlength="10" placeholder="10-digit mobile number" autocomplete="off" />
+                    <span id="b2cPhoneMsg" class="text-danger" style="font-size:12px;display:none;">Please enter a valid 10-digit mobile number.</span>
+                    <span asp-validation-for="GuestPhone" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="GuestName">Contact Name <span class="text-danger">*</span></label>
+                    <input asp-for="GuestName" id="guestName" autocomplete="off" />
+                    <span asp-validation-for="GuestName" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="GuestEmail">Email</label>
+                    <input asp-for="GuestEmail" id="guestEmail" type="email" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="GuestGSTIN">GSTIN (if any)</label>
+                    <input asp-for="GuestGSTIN" id="guestGstin" style="text-transform:uppercase" />
+                </div>
+                <div class="form-group col2">
+                    <label asp-for="GuestAddress">Address</label>
+                    <input asp-for="GuestAddress" id="guestAddress" />
+                </div>
+            </div>
+
+            <!-- B2B Fields (hidden initially) -->
+            <div id="b2bFields" class="form-grid" style="display:none">
+                <div class="form-group">
+                    <label>B2B Client <span class="text-danger">*</span></label>
+                    <select asp-for="B2BClientId" id="b2bClientSelect" onchange="onB2BClientChange()">
+                        <option value="">-- Select Client --</option>
+                        @foreach (var c in b2bClients)
+                        {
+                            <option value="@c.Id"
+                                    data-name="@c.ClientName"
+                                    data-gstin="@c.GstNo"
+                                    data-pan="@c.Pan"
+                                    data-credit="@c.CreditDays"
+                                    data-contact="@c.ContactPerson"
+                                    data-phone="@c.ContactNo">@c.ClientName</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Agreement</label>
+                    <select asp-for="B2BAgreementId" id="b2bAgreementSelect">
+                        <option value="">-- Select Agreement --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label asp-for="CompanyName">Company Name</label>
+                    <input asp-for="CompanyName" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="CompanyGSTIN">Company GSTIN</label>
+                    <input asp-for="CompanyGSTIN" style="text-transform:uppercase" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="CompanyPAN">PAN</label>
+                    <input asp-for="CompanyPAN" style="text-transform:uppercase" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="CreditDays">Credit Days</label>
+                    <input asp-for="CreditDays" type="number" min="0" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="BillingTo">Bill To</label>
+                    <select asp-for="BillingTo">
+                        <option value="Guest">Guest</option>
+                        <option value="Company">Company</option>
+                    </select>
+                </div>
+                <div class="form-group col2">
+                    <label asp-for="GuestName">Event Contact Name <span class="text-danger">*</span></label>
+                    <input asp-for="GuestName" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="GuestPhone">Contact Phone</label>
+                    <input asp-for="GuestPhone" type="tel" />
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <label class="d-flex align-items-center gap-2">
+                    <input asp-for="IsInterState" type="checkbox" id="isInterStateCheck" /> Inter-State GST (IGST applies instead of CGST+SGST)
+                </label>
+            </div>
+        </div>
+
+        <!-- Step 2: Venue & Event -->
+        <div class="booking-section">
+            <div class="booking-section-title"><i class="fas fa-building-columns"></i> Step 2 — Venue & Event Details</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label asp-for="VenueId">Venue <span class="text-danger">*</span></label>
+                    <select asp-for="VenueId" id="venueSelect" onchange="onVenueChange()">
+                        <option value="">-- Select Venue --</option>
+                        @foreach (var v in venues)
+                        { <option value="@v.Id">@v.VenueName (@v.VenueType, cap. @v.CapacitySeated)</option> }
+                    </select>
+                    <span asp-validation-for="VenueId" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="EventTypeId">Event Type <span class="text-danger">*</span></label>
+                    <select asp-for="EventTypeId">
+                        <option value="">-- Select Type --</option>
+                        @foreach (var et in eventTypes)
+                        { <option value="@et.Id"><i class="@et.IconClass"></i> @et.EventTypeName</option> }
+                    </select>
+                    <span asp-validation-for="EventTypeId" class="text-danger"></span>
+                </div>
+                <div class="form-group col2">
+                    <label asp-for="EventName">Event Name <span class="text-danger">*</span></label>
+                    <input asp-for="EventName" placeholder="e.g. Sharma Wedding Reception" />
+                    <span asp-validation-for="EventName" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="EventDate">Event Date <span class="text-danger">*</span></label>
+                    <input asp-for="EventDate" type="date" id="eventDate" onchange="checkAvailability()" />
+                    <span asp-validation-for="EventDate" class="text-danger"></span>
+                    <div id="availabilityResult" class="mt-1"></div>
+                </div>
+                <div class="form-group">
+                    <label asp-for="EventEndDate">End Date (Multi-day)</label>
+                    <input asp-for="EventEndDate" type="date" onchange="checkAvailability()" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="EventStartTime">Start Time</label>
+                    <input asp-for="EventStartTime" type="time" onchange="checkAvailability()" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="EventEndTime">End Time</label>
+                    <input asp-for="EventEndTime" type="time" onchange="checkAvailability()" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="SetupTime">Setup Time</label>
+                    <input asp-for="SetupTime" type="time" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="TeardownTime">Teardown Time</label>
+                    <input asp-for="TeardownTime" type="time" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="VenueHireType">Venue Hire</label>
+                    <select asp-for="VenueHireType" onchange="onVenueChange()">
+                        <option value="FullDay">Full Day</option>
+                        <option value="HalfDay">Half Day</option>
+                        <option value="Hourly">Hourly</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label asp-for="AttendeeCount">Expected Pax</label>
+                    <input asp-for="AttendeeCount" type="number" min="1" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="GuaranteePax">Guarantee Pax</label>
+                    <input asp-for="GuaranteePax" type="number" min="0" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="ChildCount">Children</label>
+                    <input asp-for="ChildCount" type="number" min="0" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="MealType">Meal Type</label>
+                    <select asp-for="MealType">
+                        <option value="Veg">Veg</option>
+                        <option value="NonVeg">Non-Veg</option>
+                        <option value="Mixed">Mixed</option>
+                        <option value="Jain">Jain</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Venue Quote Box -->
+            <div id="venueQuoteBox" class="billing-summary mt-3" style="display:none">
+                <strong>Venue Rate</strong>
+                <div id="venueQuoteDetails" class="mt-2"></div>
+            </div>
+        </div>
+
+        <!-- Step 3: Menu Package -->
+        <div class="booking-section">
+            <div class="booking-section-title"><i class="fas fa-utensils"></i> Step 3 — Menu Package</div>
+            <div class="form-grid">
+                <div class="form-group col2">
+                    <label asp-for="PackageId">
+                        Select Package (optional)
+                        <button type="button" id="pkgMenuToggleBtn" class="pkg-menu-toggle" title="View menu inclusions" onclick="togglePkgMenuPanel()">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </label>
+                    <select asp-for="PackageId" id="packageSelect" onchange="onPackageChange()">
+                        <option value="">-- No Package / Custom Menu --</option>
+                        @foreach (var p in packages)
+                        { <option value="@p.Id"
+                                  data-price="@p.PricePerPax"
+                                  data-cgst="@p.CGSTPercent"
+                                  data-sgst="@p.SGSTPercent"
+                                  data-igst="@p.IGSTPercent"
+                                  data-minguar="@p.MinimumGuaranteePax"
+                                  data-menudesc="@(p.MenuDescription ?? "")"
+                                  data-inc-starter="@p.IncludesStarter.ToString().ToLower()"
+                                  data-inc-maincourse="@p.IncludesMainCourse.ToString().ToLower()"
+                                  data-inc-dessert="@p.IncludesDessert.ToString().ToLower()"
+                                  data-inc-beverages="@p.IncludesBeverages.ToString().ToLower()"
+                                  data-inc-live="@p.IncludesLive.ToString().ToLower()">@p.PackageName — ₹@p.PricePerPax.ToString("N0")/pax (@p.PackageType)</option> }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label asp-for="PackageTotalPax">Billing Pax (for package)</label>
+                    <input asp-for="PackageTotalPax" type="number" min="0" id="packagePax" />
+                </div>
+            </div>
+            <div id="packageQuoteBox" class="billing-summary mt-2" style="display:none">
+                <div id="packageQuoteDetails"></div>
+            </div>
+            <div id="pkgMenuPanel" class="pkg-menu-panel">
+                <div class="pkg-menu-panel-title"><i class="fas fa-list-ul"></i> Menu Inclusions</div>
+                <div id="pkgMenuGrid" class="pkg-menu-grid"></div>
+            </div>
+        </div>
+
+        <!-- Step 4: Addons -->
+        <div class="booking-section">
+            <div class="booking-section-title"><i class="fas fa-puzzle-piece"></i> Step 4 — Addon Services</div>
+            <div class="form-grid">
+                <div class="form-group col2">
+                    <label>Add Service</label>
+                    <div class="d-flex gap-2">
+                        <select id="addonPicker" class="form-control">
+                            <option value="">-- Select Addon Service --</option>
+                            @foreach (var a in addons)
+                            { <option value="@a.Id"
+                                      data-name="@a.ServiceName"
+                                      data-rate="@a.Rate"
+                                      data-ratetype="@a.RateType"
+                                      data-cgst="@a.CGSTPercent"
+                                      data-sgst="@a.SGSTPercent"
+                                      data-igst="@a.IGSTPercent"
+                                      data-sac="@a.SACCode">@a.ServiceName — ₹@a.Rate.ToString("N0") / @a.RateType</option> }
+                        </select>
+                        <button type="button" class="btn btn-primary" onclick="addAddon()"><i class="fas fa-plus"></i> Add</button>
+                    </div>
+                </div>
+            </div>
+            <table class="addon-table" id="addonTable">
+                <thead>
+                    <tr>
+                        <th>Service</th><th>Rate</th><th>Rate Type</th><th>Qty</th><th>Base Amt</th><th>CGST</th><th>SGST</th><th>IGST</th><th>Total</th><th></th>
+                    </tr>
+                </thead>
+                <tbody id="addonTableBody">
+                    <tr id="addonEmpty"><td colspan="10" class="text-center text-muted py-3">No addons added.</td></tr>
+                </tbody>
+                <tfoot>
+                    <tr style="font-weight:600;background:#f7f8fc">
+                        <td colspan="4">Total Addons</td>
+                        <td id="addonTotalBase">₹0.00</td>
+                        <td id="addonTotalCgst">₹0.00</td>
+                        <td id="addonTotalSgst">₹0.00</td>
+                        <td id="addonTotalIgst">₹0.00</td>
+                        <td id="addonTotalAmt">₹0.00</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Step 5: Billing Summary -->
+        <div class="booking-section">
+            <div class="booking-section-title"><i class="fas fa-file-invoice-dollar"></i> Step 5 — Billing Summary</div>
+            <div class="row">
+                <div class="col-lg-5">
+                    <div class="billing-summary">
+                        <div class="billing-row"><span>Venue Charges</span><span id="summVenue">₹0.00</span></div>
+                        <div class="billing-row"><span>Package Charges</span><span id="summPackage">₹0.00</span></div>
+                        <div class="billing-row"><span>Addon Services</span><span id="summAddon">₹0.00</span></div>
+                        <hr />
+                        <div class="billing-row"><span>Sub-total (Base)</span><span id="summBase">₹0.00</span></div>
+                        <div class="billing-row"><span>CGST</span><span id="summCgst">₹0.00</span></div>
+                        <div class="billing-row"><span>SGST</span><span id="summSgst">₹0.00</span></div>
+                        <div class="billing-row"><span>IGST</span><span id="summIgst">₹0.00</span></div>
+                        <hr />
+                        <div class="billing-row">
+                            <span>Service Charge (₹)</span>
+                            <input asp-for="ServiceChargeAmount" type="number" step="0.01" min="0" style="width:120px;text-align:right;padding:4px 8px;border:1px solid #ddd;border-radius:6px" onchange="recalcTotal()" />
+                        </div>
+
+                        <!-- ── Discount ──────────────────────────────────── -->
+                        <div style="margin-bottom:8px;">
+                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                                <span style="font-size:13px;color:#555;font-weight:600;">Discount:</span>
+                                <div style="display:flex;border:1px solid #d1d5db;border-radius:6px;overflow:hidden;font-size:12px;font-weight:700;">
+                                    <button type="button" id="cDiscBtn-None" onclick="setCreateDiscType('None')"
+                                            style="padding:4px 11px;background:linear-gradient(135deg,#1a2a6c,#4338ca);color:#fff;border:none;cursor:pointer;">None</button>
+                                    <button type="button" id="cDiscBtn-Percent" onclick="setCreateDiscType('Percent')"
+                                            style="padding:4px 11px;background:#f7f8fc;color:#6b7280;border:none;border-left:1px solid #d1d5db;cursor:pointer;">% Percent</button>
+                                    <button type="button" id="cDiscBtn-Flat" onclick="setCreateDiscType('Flat')"
+                                            style="padding:4px 11px;background:#f7f8fc;color:#6b7280;border:none;border-left:1px solid #d1d5db;cursor:pointer;">₹ Flat</button>
+                                </div>
+                            </div>
+                            <div id="cDiscPctRow" style="display:none;" class="billing-row">
+                                <span style="font-size:13px;color:#374151;">Percentage (%)</span>
+                                <span style="display:flex;align-items:center;gap:6px;">
+                                    <input type="number" step="0.01" min="0" max="100" id="cDiscPctVal" placeholder="0.00"
+                                           style="width:90px;text-align:right;padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px" oninput="recalcTotal()" />
+                                    <small id="cDiscPctBadge" style="color:#16a34a;font-weight:700;min-width:72px;text-align:right;"></small>
+                                </span>
+                            </div>
+                            <div id="cDiscFlatRow" style="display:none;" class="billing-row">
+                                <span style="font-size:13px;color:#374151;">Flat Amount (₹)</span>
+                                <span style="display:flex;align-items:center;gap:6px;">
+                                    <input type="number" step="0.01" min="0" id="cDiscFlatVal" placeholder="0.00"
+                                           style="width:90px;text-align:right;padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px" oninput="recalcTotal()" />
+                                    <small id="cDiscFlatBadge" style="color:#16a34a;font-weight:700;min-width:72px;text-align:right;"></small>
+                                </span>
+                            </div>
+                            <div class="billing-row" id="cDiscResultRow" style="display:none;">
+                                <span style="color:#16a34a;font-size:13px;"><i class="fas fa-tag" style="font-size:11px;"></i> Discount Applied</span>
+                                <span style="color:#16a34a;font-weight:700;" id="cDiscAmtDisplay"></span>
+                            </div>
+                        </div>
+                        <input asp-for="DiscountAmount" type="hidden" id="hiddenCreateDiscount" />
+                        <!-- ─────────────────────────────────────────────── -->
+                        <div class="billing-row">
+                            <span><label><input asp-for="ApplyRoundOff" type="checkbox" onchange="recalcTotal()" /> Apply Round-Off</label></span>
+                            <span id="summRoundOff">₹0.00</span>
+                        </div>
+                        <div class="billing-total billing-row">
+                            <span><i class="fas fa-indian-rupee-sign"></i> GRAND TOTAL</span>
+                            <span id="summTotal">₹0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 6: Advance Payment -->
+        <div class="booking-section">
+            <div class="booking-section-title"><i class="fas fa-hand-holding-dollar"></i> Step 6 — Advance Payment (Optional)</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label asp-for="AdvancePaymentAmount">Advance Amount (₹)</label>
+                    <input asp-for="AdvancePaymentAmount" type="number" step="0.01" min="0" id="advanceAmt" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="AdvancePaymentMethod">Payment Method</label>
+                    <select asp-for="AdvancePaymentMethod" id="advanceMethod" onchange="toggleAdvanceBank()">
+                        <option value="Cash">Cash</option>
+                        <option value="Card">Card</option>
+                        <option value="UPI">UPI</option>
+                        <option value="BankTransfer">Bank Transfer</option>
+                        <option value="Cheque">Cheque</option>
+                        <option value="DD">DD</option>
+                    </select>
+                </div>
+                <div class="form-group" id="advanceBankGroup" style="display:none">
+                    <label asp-for="AdvanceBankId">Bank</label>
+                    <select asp-for="AdvanceBankId">
+                        <option value="">-- Select Bank --</option>
+                        @foreach (var b in banks)
+                        { <option value="@b.Id">@b.BankName</option> }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label asp-for="AdvancePaymentReference">Reference / UTR</label>
+                    <input asp-for="AdvancePaymentReference" />
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 7: Remarks -->
+        <div class="booking-section">
+            <div class="booking-section-title"><i class="fas fa-comment-lines"></i> Step 7 — Additional Information</div>
+            <div class="form-grid">
+                <div class="form-group col2">
+                    <label asp-for="SpecialRequests">Special Requests</label>
+                    <textarea asp-for="SpecialRequests" rows="3" placeholder="Dietary requirements, decoration preferences, etc."></textarea>
+                </div>
+                <div class="form-group col2">
+                    <label asp-for="InternalNotes">Internal Notes</label>
+                    <textarea asp-for="InternalNotes" rows="3" placeholder="Staff notes (not visible to customer)"></textarea>
+                </div>
+                <div class="form-group">
+                    <label asp-for="LinkedHotelBookingId">Linked Hotel Booking ID (if any)</label>
+                    <input asp-for="LinkedHotelBookingId" type="number" placeholder="Optional" />
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /booking-form-container -->
+
+    <div class="form-actions">
+        <a asp-action="List" class="btn btn-secondary"><i class="fas fa-times"></i> Cancel</a>
+        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+            <i class="fas fa-save"></i> Create Booking
+        </button>
+    </div>
+</form>
+
+@section Scripts {
+@{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+<script>
+// ── Addon Line State ──────────────────────────────────────────────────────────
+let addonLines = [];
+
+function addAddon() {
+    const sel = document.getElementById('addonPicker');
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt.value) return;
+
+    const existing = addonLines.find(a => a.addonServiceId == opt.value);
+    if (existing) { existing.qty += 1; renderAddons(); return; }
+
+    const isInterState = document.getElementById('isInterStateCheck').checked;
+    const cgst = parseFloat(opt.dataset.cgst) || 0;
+    const sgst = parseFloat(opt.dataset.sgst) || 0;
+    const igst = parseFloat(opt.dataset.igst) || 0;
+    const rate = parseFloat(opt.dataset.rate) || 0;
+    const qty  = 1;
+    const base = rate * qty;
+    const cgstAmt = isInterState ? 0 : Math.round(base * cgst) / 100;
+    const sgstAmt = isInterState ? 0 : Math.round(base * sgst) / 100;
+    const igstAmt = isInterState ? Math.round(base * igst) / 100 : 0;
+
+    addonLines.push({
+        addonServiceId: parseInt(opt.value),
+        serviceName:    opt.dataset.name,
+        rate:           rate,
+        rateType:       opt.dataset.ratetype,
+        cgstPct:        cgst, sgstPct: sgst, igstPct: igst,
+        qty:            qty,
+        base:           base,
+        cgstAmt:        cgstAmt, sgstAmt: sgstAmt, igstAmt: igstAmt,
+        total:          base + cgstAmt + sgstAmt + igstAmt,
+        notes:          ''
+    });
+    renderAddons();
+}
+
+function removeAddon(idx) {
+    addonLines.splice(idx, 1);
+    renderAddons();
+}
+
+function renderAddons() {
+    const tbody = document.getElementById('addonTableBody');
+    const empty = document.getElementById('addonEmpty');
+    const isInterState = document.getElementById('isInterStateCheck').checked;
+
+    // Recalculate GST for inter-state toggle
+    addonLines.forEach(a => {
+        a.base    = a.rate * a.qty;
+        a.cgstAmt = isInterState ? 0 : Math.round(a.base * a.cgstPct * 100) / 10000;
+        a.sgstAmt = isInterState ? 0 : Math.round(a.base * a.sgstPct * 100) / 10000;
+        a.igstAmt = isInterState ? Math.round(a.base * a.igstPct * 100) / 10000 : 0;
+        a.total   = a.base + a.cgstAmt + a.sgstAmt + a.igstAmt;
+    });
+
+    tbody.innerHTML = '';
+    if (addonLines.length === 0) {
+        tbody.innerHTML = '<tr id="addonEmpty"><td colspan="10" class="text-center text-muted py-3">No addons added.</td></tr>';
+    } else {
+        addonLines.forEach((a, i) => {
+            tbody.innerHTML += `<tr>
+                <td>${a.serviceName}</td>
+                <td>₹${a.rate.toFixed(2)}</td>
+                <td>${a.rateType}</td>
+                <td><input type="number" min="0.01" step="0.01" value="${a.qty}" style="width:70px;padding:4px 8px;border:1px solid #ddd;border-radius:6px" onchange="updateAddonQty(${i},this.value)" /></td>
+                <td>₹${a.base.toFixed(2)}</td>
+                <td>₹${a.cgstAmt.toFixed(2)}</td>
+                <td>₹${a.sgstAmt.toFixed(2)}</td>
+                <td>₹${a.igstAmt.toFixed(2)}</td>
+                <td><strong>₹${a.total.toFixed(2)}</strong></td>
+                <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeAddon(${i})"><i class="fas fa-trash"></i></button></td>
+            </tr>`;
+        });
+    }
+
+    // Totals row
+    const totBase = addonLines.reduce((s,a)=>s+a.base,0);
+    const totCgst = addonLines.reduce((s,a)=>s+a.cgstAmt,0);
+    const totSgst = addonLines.reduce((s,a)=>s+a.sgstAmt,0);
+    const totIgst = addonLines.reduce((s,a)=>s+a.igstAmt,0);
+    const totAmt  = addonLines.reduce((s,a)=>s+a.total,0);
+    document.getElementById('addonTotalBase').textContent = '₹'+totBase.toFixed(2);
+    document.getElementById('addonTotalCgst').textContent = '₹'+totCgst.toFixed(2);
+    document.getElementById('addonTotalSgst').textContent = '₹'+totSgst.toFixed(2);
+    document.getElementById('addonTotalIgst').textContent = '₹'+totIgst.toFixed(2);
+    document.getElementById('addonTotalAmt').textContent  = '₹'+totAmt.toFixed(2);
+
+    // Sync hidden JSON
+    document.getElementById('addonLinesJson').value = JSON.stringify(addonLines.map(a => ({
+        addonServiceId: a.addonServiceId, qty: a.qty, notes: a.notes
+    })));
+
+    recalcTotal();
+}
+
+function updateAddonQty(idx, val) {
+    addonLines[idx].qty = parseFloat(val) || 0;
+    renderAddons();
+}
+
+// ── Venue Quote ───────────────────────────────────────────────────────────────
+let venueBase=0, venueCgst=0, venueSgst=0, venueIgst=0, venueTotal=0;
+
+async function onVenueChange() {
+    const venueId = document.getElementById('venueSelect').value;
+    const hireType = document.querySelector('[name="VenueHireType"]').value;
+    const isInterState = document.getElementById('isInterStateCheck').checked;
+    if (!venueId) { venueBase=venueCgst=venueSgst=venueIgst=venueTotal=0; document.getElementById('availabilityResult').innerHTML=''; recalcTotal(); return; }
+
+    const res = await fetch(`/BanquetBooking/GetVenueQuote?venueId=${venueId}&hireType=${hireType}&isInterState=${isInterState}`);
+    if (!res.ok) return;
+    const q = await res.json();
+    venueBase  = q.baseAmount ?? q.rate ?? 0;
+    venueCgst  = q.cgstAmount ?? 0;
+    venueSgst  = q.sgstAmount ?? 0;
+    venueIgst  = q.igstAmount ?? 0;
+    venueTotal = q.totalAmount ?? 0;
+
+    const box = document.getElementById('venueQuoteBox');
+    box.style.display='block';
+    document.getElementById('venueQuoteDetails').innerHTML =
+        `<div class="billing-row"><span>Base Rate (${hireType})</span><span>₹${venueBase.toFixed(2)}</span></div>
+         <div class="billing-row"><span>CGST (${q.cgstPercent}%)</span><span>₹${venueCgst.toFixed(2)}</span></div>
+         <div class="billing-row"><span>SGST (${q.sgstPercent}%)</span><span>₹${venueSgst.toFixed(2)}</span></div>
+         <div class="billing-row"><span>IGST (${q.igstPercent}%)</span><span>₹${venueIgst.toFixed(2)}</span></div>
+         <div class="billing-row fw-bold"><span>Venue Total</span><span>₹${venueTotal.toFixed(2)}</span></div>`;
+    recalcTotal();
+    checkAvailability();
+}
+
+// ── Package Quote ─────────────────────────────────────────────────────────────
+let pkgBase=0, pkgCgst=0, pkgSgst=0, pkgIgst=0, pkgTotal=0;
+
+function onPackageChange() {
+    const sel    = document.getElementById('packageSelect');
+    const opt    = sel.options[sel.selectedIndex];
+    const btn    = document.getElementById('pkgMenuToggleBtn');
+    const panel  = document.getElementById('pkgMenuPanel');
+
+    if (!opt.value) {
+        pkgBase=pkgCgst=pkgSgst=pkgIgst=pkgTotal=0;
+        document.getElementById('packageQuoteBox').style.display='none';
+        btn.style.display='none';
+        panel.classList.remove('open');
+        recalcTotal();
+        return;
+    }
+
+    const isInterState = document.getElementById('isInterStateCheck').checked;
+    const pax   = parseInt(document.getElementById('packagePax').value) || parseInt(document.querySelector('[name="AttendeeCount"]').value) || 1;
+    const price = parseFloat(opt.dataset.price)||0;
+    const cgst  = parseFloat(opt.dataset.cgst)||0;
+    const sgst  = parseFloat(opt.dataset.sgst)||0;
+    const igst  = parseFloat(opt.dataset.igst)||0;
+    pkgBase = price * pax;
+    pkgCgst = isInterState ? 0 : Math.round(pkgBase * cgst) / 100;
+    pkgSgst = isInterState ? 0 : Math.round(pkgBase * sgst) / 100;
+    pkgIgst = isInterState ? Math.round(pkgBase * igst) / 100 : 0;
+    pkgTotal = pkgBase + pkgCgst + pkgSgst + pkgIgst;
+
+    document.getElementById('packageQuoteBox').style.display='block';
+    document.getElementById('packageQuoteDetails').innerHTML =
+        `<div class="billing-row"><span>${opt.text} × ${pax} pax</span><span>₹${pkgBase.toFixed(2)}</span></div>
+         <div class="billing-row"><span>CGST (${cgst}%)</span><span>₹${pkgCgst.toFixed(2)}</span></div>
+         <div class="billing-row"><span>SGST (${sgst}%)</span><span>₹${pkgSgst.toFixed(2)}</span></div>
+         <div class="billing-row"><span>IGST (${igst}%)</span><span>₹${pkgIgst.toFixed(2)}</span></div>
+         <div class="billing-row fw-bold"><span>Package Total</span><span>₹${pkgTotal.toFixed(2)}</span></div>`;
+
+    // Populate menu inclusions panel (hidden by default, revealed by toggle btn)
+    buildPkgMenuPanel(opt);
+    btn.style.display = 'inline';
+    // Keep panel closed on package change — user opens explicitly
+    panel.classList.remove('open');
+
+    recalcTotal();
+}
+
+function buildPkgMenuPanel(opt) {
+    const inclDefs = [
+        { key:'starter',    label:'Starter',      icon:'fa-bowl-food',   css:'pkg-head-starter',    flag: opt.dataset.incStarter    === 'true' },
+        { key:'maincourse', label:'Main Course',  icon:'fa-utensils',    css:'pkg-head-maincourse', flag: opt.dataset.incMaincourse  === 'true' },
+        { key:'dessert',    label:'Dessert',      icon:'fa-ice-cream',   css:'pkg-head-dessert',    flag: opt.dataset.incDessert     === 'true' },
+        { key:'beverages',  label:'Beverages',    icon:'fa-glass-water', css:'pkg-head-beverages',  flag: opt.dataset.incBeverages   === 'true' },
+        { key:'live',       label:'Live Counter', icon:'fa-fire',        css:'pkg-head-live',       flag: opt.dataset.incLive        === 'true' },
+    ];
+    const labelToKey = { 'Starter':'starter','Main Course':'maincourse','Dessert':'dessert','Beverages':'beverages','Live Counter':'live' };
+    const descMap = {};
+    const raw = opt.dataset.menudesc || '';
+    if (raw.includes('||')) {
+        raw.split('||').forEach(part => {
+            const ci = part.indexOf(': ');
+            if (ci < 0) return;
+            const cat = part.substring(0, ci).trim();
+            const k   = labelToKey[cat];
+            if (k) descMap[k] = part.substring(ci + 2).trim();
+        });
+    }
+    const grid = document.getElementById('pkgMenuGrid');
+    grid.innerHTML = '';
+    inclDefs.filter(d => d.flag).forEach(d => {
+        const desc = descMap[d.key] || '';
+        grid.innerHTML += `<div class="pkg-menu-card">
+            <div class="pkg-menu-card-head ${d.css}"><i class="fas ${d.icon}"></i> ${d.label}</div>
+            <div class="pkg-menu-card-body${desc ? '' : ' empty'}">${desc || 'No items listed'}</div>
+        </div>`;
+    });
+    if (!grid.innerHTML) grid.innerHTML = '<span style="font-size:13px;color:#6b7280;">No inclusions defined for this package.</span>';
+}
+
+function togglePkgMenuPanel() {
+    document.getElementById('pkgMenuPanel').classList.toggle('open');
+}
+
+// ── Grand Total ───────────────────────────────────────────────────────────────
+let createDiscType = 'None';
+
+function setCreateDiscType(type) {
+    createDiscType = type;
+    ['None','Percent','Flat'].forEach(t => {
+        const btn = document.getElementById('cDiscBtn-' + t);
+        if (!btn) return;
+        if (t === type) {
+            btn.style.background = 'linear-gradient(135deg,#1a2a6c,#4338ca)';
+            btn.style.color = '#fff';
+        } else {
+            btn.style.background = '#f7f8fc';
+            btn.style.color = '#6b7280';
+        }
+    });
+    document.getElementById('cDiscPctRow').style.display  = type === 'Percent' ? 'flex' : 'none';
+    document.getElementById('cDiscFlatRow').style.display = type === 'Flat'    ? 'flex' : 'none';
+    if (type !== 'Percent') document.getElementById('cDiscPctVal').value  = '';
+    if (type !== 'Flat')    document.getElementById('cDiscFlatVal').value = '';
+    recalcTotal();
+}
+
+function recalcTotal() {
+    const addonTotBase = addonLines.reduce((s,a)=>s+a.base,0);
+    const addonTotCgst = addonLines.reduce((s,a)=>s+a.cgstAmt,0);
+    const addonTotSgst = addonLines.reduce((s,a)=>s+a.sgstAmt,0);
+    const addonTotIgst = addonLines.reduce((s,a)=>s+a.igstAmt,0);
+    const addonTotAmt  = addonLines.reduce((s,a)=>s+a.total,0);
+
+    const svcChg    = parseFloat(document.querySelector('[name="ServiceChargeAmount"]').value)||0;
+    const applyRound = document.querySelector('[name="ApplyRoundOff"]').checked;
+
+    const totalBase = venueBase + pkgBase + addonTotBase;
+    const totalCgst = venueCgst + pkgCgst + addonTotCgst;
+    const totalSgst = venueSgst + pkgSgst + addonTotSgst;
+    const totalIgst = venueIgst + pkgIgst + addonTotIgst;
+    const preDisc   = totalBase + totalCgst + totalSgst + totalIgst + svcChg;
+
+    // Compute discount from toggle type
+    let disc = 0;
+    if (createDiscType === 'Percent') {
+        const pct = Math.min(100, Math.max(0, parseFloat(document.getElementById('cDiscPctVal').value)||0));
+        disc = Math.round(preDisc * pct / 100 * 100) / 100;
+        const badge = document.getElementById('cDiscPctBadge');
+        if (badge) badge.textContent = pct > 0 ? `-₹${disc.toFixed(2)}` : '';
+    } else if (createDiscType === 'Flat') {
+        disc = Math.min(preDisc, Math.max(0, parseFloat(document.getElementById('cDiscFlatVal').value)||0));
+        const pct = preDisc > 0 ? (disc / preDisc * 100) : 0;
+        const badge = document.getElementById('cDiscFlatBadge');
+        if (badge) badge.textContent = disc > 0 ? `(${pct.toFixed(2)}%)` : '';
+    }
+    // Write to hidden field so controller receives the computed flat value
+    document.getElementById('hiddenCreateDiscount').value = disc.toFixed(2);
+    // Show/hide discount result row
+    const resRow = document.getElementById('cDiscResultRow');
+    const resAmt = document.getElementById('cDiscAmtDisplay');
+    if (disc > 0) {
+        resRow.style.display = 'flex';
+        resAmt.textContent = `-₹${disc.toFixed(2)}`;
+    } else {
+        resRow.style.display = 'none';
+    }
+
+    const preRound  = preDisc - disc;
+    const roundOff  = applyRound ? Math.round(preRound) - preRound : 0;
+    const grandTotal = preRound + roundOff;
+
+    const f = v => '₹'+v.toFixed(2);
+    document.getElementById('summVenue').textContent   = f(venueTotal);
+    document.getElementById('summPackage').textContent = f(pkgTotal);
+    document.getElementById('summAddon').textContent   = f(addonTotAmt);
+    document.getElementById('summBase').textContent    = f(totalBase);
+    document.getElementById('summCgst').textContent    = f(totalCgst);
+    document.getElementById('summSgst').textContent    = f(totalSgst);
+    document.getElementById('summIgst').textContent    = f(totalIgst);
+    document.getElementById('summRoundOff').textContent= f(roundOff);
+    document.getElementById('summTotal').textContent   = f(grandTotal);
+}
+
+// ── Venue Availability ────────────────────────────────────────────────────────
+async function checkAvailability() {
+    const venueId   = document.getElementById('venueSelect').value;
+    const eventDate = document.getElementById('eventDate').value;
+    const div = document.getElementById('availabilityResult');
+    if (!venueId || !eventDate) { div.innerHTML = ''; return; }
+
+    div.innerHTML = '<span class="availability-badge" style="background:#e3f2fd;color:#1565c0"><i class="fas fa-spinner fa-spin"></i> Checking…</span>';
+
+    const startTime = document.querySelector('[name="EventStartTime"]').value;
+    const endTime   = document.querySelector('[name="EventEndTime"]').value;
+    const url = `/BanquetVenueMaster/CheckAvailability?venueId=${venueId}&eventDate=${eventDate}&startTime=${startTime}&endTime=${endTime}`;
+    try {
+        const res  = await fetch(url);
+        const data = await res.json();
+        if (data.available) {
+            div.innerHTML = '<span class="availability-badge" style="background:#e8f5e9;color:#2e7d32"><i class="fas fa-check-circle"></i> Available</span>';
+        } else {
+            div.innerHTML = '<span class="availability-badge" style="background:#ffebee;color:#c62828"><i class="fas fa-times-circle"></i> Not Available — Venue already booked for this slot</span>';
+        }
+    } catch(e) {
+        div.innerHTML = '<span class="availability-badge" style="background:#fff3e0;color:#e65100"><i class="fas fa-exclamation-triangle"></i> Could not check availability</span>';
+    }
+}
+
+// ── Customer type toggle ──────────────────────────────────────────────────────
+function switchCustomerType(type) {
+    document.getElementById('customerTypeHidden').value = type;
+    document.querySelectorAll('.customer-tab-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('b2cFields').style.display = type === 'B2C' ? 'grid' : 'none';
+    document.getElementById('b2bFields').style.display = type === 'B2B' ? 'grid' : 'none';
+}
+
+async function onB2BClientChange() {
+    const sel      = document.getElementById('b2bClientSelect');
+    const clientId = sel.value;
+    const opt      = sel.options[sel.selectedIndex];
+
+    // Auto-populate B2B fields from data attributes
+    const setVal = (name, val) => { const el = document.querySelector(`[name="${name}"]`); if (el) el.value = val || ''; };
+    setVal('CompanyName',   clientId ? opt.dataset.name    : '');
+    setVal('CompanyGSTIN',  clientId ? opt.dataset.gstin   : '');
+    setVal('CompanyPAN',    clientId ? opt.dataset.pan     : '');
+    setVal('CreditDays',    clientId ? opt.dataset.credit  : '');
+    // Populate event contact from client contact person
+    const nameEl  = document.querySelector('#b2bFields [name="GuestName"]');
+    const phoneEl = document.querySelector('#b2bFields [name="GuestPhone"]');
+    if (nameEl)  nameEl.value  = clientId ? (opt.dataset.contact || '') : '';
+    if (phoneEl) phoneEl.value = clientId ? (opt.dataset.phone   || '') : '';
+
+    // Fetch & populate agreements
+    const agrmSel = document.getElementById('b2bAgreementSelect');
+    agrmSel.innerHTML = '<option value="">-- Select Agreement --</option>';
+    if (!clientId) return;
+    const res = await fetch(`/BanquetBooking/GetClientAgreements?clientId=${clientId}`);
+    const agreements = await res.json();
+    agreements.forEach(a => agrmSel.innerHTML += `<option value="${a.id}" data-credit="${a.creditDays}">${a.agreementCode} — ${a.agreementName}</option>`);
+}
+
+// ── Advance payment bank toggle ───────────────────────────────────────────────
+function toggleAdvanceBank() {
+    const m = document.getElementById('advanceMethod').value;
+    const show = ['Card','BankTransfer','Cheque','DD','UPI'].includes(m);
+    document.getElementById('advanceBankGroup').style.display = show ? 'flex' : 'none';
+}
+
+// ── Inter-state toggle (recalculate addons + quote) ───────────────────────────
+document.getElementById('isInterStateCheck').addEventListener('change', function() {
+    onVenueChange();
+    onPackageChange();
+    renderAddons();
+});
+
+// ── B2C Phone auto-populate ───────────────────────────────────────────────────
+(function() {
+    const phoneInput = document.getElementById('guestPhone');
+    const phoneMsg   = document.getElementById('b2cPhoneMsg');
+    if (!phoneInput) return;
+
+    // Strip non-digits and cap at 10 chars
+    phoneInput.addEventListener('input', function() {
+        this.value = this.value.replace(/\D/g, '').slice(0, 10);
+        phoneMsg.style.display = 'none';
+    });
+
+    phoneInput.addEventListener('blur', async function() {
+        const phone = this.value.trim();
+        if (phone.length === 0) { phoneMsg.style.display = 'none'; return; }
+        if (phone.length !== 10) { phoneMsg.style.display = 'inline'; return; }
+        phoneMsg.style.display = 'none';
+        try {
+            const res = await fetch(`/BanquetBooking/LookupGuestByPhone?phone=${encodeURIComponent(phone)}`);
+            const data = await res.json();
+            if (!data) return;
+            const nameEl    = document.getElementById('guestName');
+            const emailEl   = document.getElementById('guestEmail');
+            const addressEl = document.getElementById('guestAddress');
+            const gstinEl   = document.getElementById('guestGstin');
+            if (nameEl    && !nameEl.value    && data.guestName)    nameEl.value    = data.guestName;
+            if (emailEl   && !emailEl.value   && data.guestEmail)   emailEl.value   = data.guestEmail;
+            if (addressEl && !addressEl.value && data.guestAddress) addressEl.value = data.guestAddress;
+            if (gstinEl   && !gstinEl.value   && data.guestGSTIN)   gstinEl.value   = data.guestGSTIN;
+        } catch(e) {}
+    });
+})();
+
+// Init
+// Default Start Time = 00:00 (12 AM) and End Time = 23:59 (11:59 PM) for new bookings
+(function setDefaultTimes() {
+    const startEl = document.querySelector('[name="EventStartTime"]');
+    const endEl   = document.querySelector('[name="EventEndTime"]');
+    if (startEl && !startEl.value) startEl.value = '00:00';
+    if (endEl   && !endEl.value)   endEl.value   = '23:59';
+})();
+recalcTotal();
+</script>
+}

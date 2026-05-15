@@ -1,0 +1,7 @@
+@model HotelApp.Web.Models.BanquetPackage
+@{ ViewData["Title"] = "Edit Package"; }
+@{await Html.RenderPartialAsync("Create", Model);}
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_PackageFormScripts", Model);}
+}

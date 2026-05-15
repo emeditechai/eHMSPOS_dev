@@ -140,22 +140,62 @@ public class CreditNoteRepository : ICreditNoteRepository
             decimal amountPaid  = Convert.ToDecimal(row.AmountPaid ?? 0m);
             decimal deduction   = Convert.ToDecimal(row.DeductionAmount ?? 0m);
 
-            // Tax proportion = refund / amount-paid-for-this-portion (avoids stale TotalAmount)
-            // amountPaid is the tax-inclusive paid amount for the cancelled portion
-            decimal taxBase     = amountPaid > 0 ? amountPaid : originalPortionTotal;
-            decimal cgstFull    = Convert.ToDecimal(row.CGSTAmount ?? 0m);
-            decimal sgstFull    = Convert.ToDecimal(row.SGSTAmount ?? 0m);
+            decimal cgstFull, sgstFull;
+
+            if (isPartial && !string.IsNullOrWhiteSpace(cancelledRoomLineIds))
+            {
+                // For partial cancellations: b.CGSTAmount/SGSTAmount has already been reduced
+                // to reflect only the remaining active lines — NOT the cancelled ones.
+                // So we must source GST directly from the cancelled B2BBookingRoomLines.
+                var lineIds = cancelledRoomLineIds
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(s => s.Trim())
+                    .Where(s => int.TryParse(s, out _))
+                    .Select(int.Parse)
+                    .ToArray();
+
+                if (lineIds.Length > 0)
+                {
+                    var cancelledLineTax = await _db.QueryFirstOrDefaultAsync<decimal>(
+                        "SELECT ISNULL(SUM(TaxAmount), 0) FROM B2BBookingRoomLines WHERE Id IN @Ids AND BookingId = @BookingId",
+                        new { Ids = lineIds, BookingId = bookingId });
+                    cgstFull = Math.Round(cancelledLineTax / 2m, 2, MidpointRounding.AwayFromZero);
+                    sgstFull = cancelledLineTax - cgstFull;
+                }
+                else
+                {
+                    cgstFull = Convert.ToDecimal(row.CGSTAmount ?? 0m);
+                    sgstFull = Convert.ToDecimal(row.SGSTAmount ?? 0m);
+                }
+            }
+            else
+            {
+                // Entire cancellation: booking-level CGST/SGST is still the original total
+                cgstFull = Convert.ToDecimal(row.CGSTAmount ?? 0m);
+                sgstFull = Convert.ToDecimal(row.SGSTAmount ?? 0m);
+            }
 
             // Original full-booking total for GST proportion
-            decimal fullBookingTotal = isPartial
-                ? originalPortionTotal   // proportional amount for cancelled lines
-                : originalPortionTotal;  // same field for full cancel (is b.TotalAmount)
+            decimal fullBookingTotal = originalPortionTotal;  // cancelled-portion amount (tax-inclusive)
 
             decimal refundCgst, refundSgst;
-            if (fullBookingTotal > 0)
+            if (fullBookingTotal > 0 && (cgstFull + sgstFull) > 0)
             {
-                refundCgst = Math.Round(cgstFull * (refundTotal / fullBookingTotal), 2, MidpointRounding.AwayFromZero);
-                refundSgst = Math.Round(sgstFull * (refundTotal / fullBookingTotal), 2, MidpointRounding.AwayFromZero);
+                // Proportion: how much of the eligible GST is being refunded
+                var totalCancelledTax = cgstFull + sgstFull;
+                var totalCancelledBase = fullBookingTotal - totalCancelledTax;
+                var refundBase0 = totalCancelledBase > 0
+                    ? Math.Round(refundTotal * (totalCancelledBase / fullBookingTotal), 2, MidpointRounding.AwayFromZero)
+                    : refundTotal;
+                var refundTax0 = refundTotal - refundBase0;
+                refundCgst = Math.Round(refundTax0 / 2m, 2, MidpointRounding.AwayFromZero);
+                refundSgst = refundTax0 - refundCgst;
+            }
+            else if (fullBookingTotal > 0)
+            {
+                // No GST applicable for this room type (e.g. exempt room)
+                refundCgst = 0m;
+                refundSgst = 0m;
             }
             else
             {

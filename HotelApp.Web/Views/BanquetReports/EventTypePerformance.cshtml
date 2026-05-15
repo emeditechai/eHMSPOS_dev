@@ -1,0 +1,83 @@
+@using HotelApp.Web.Repositories
+@model HotelApp.Web.ViewModels.BanquetEventTypePerformanceViewModel
+@{
+    ViewData["Title"] = "Event Type Performance";
+    var grandTotal = Model.Rows.Sum(r => r.TotalRevenue);
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-trophy"></i> Event Type Performance</h2>
+</div>
+
+<form method="get" class="filter-bar mb-4">
+    <div class="filter-grid">
+        <div class="master-form-group">
+            <label>From Date</label>
+            <input type="date" name="fromDate" class="form-control" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="master-form-group">
+            <label>To Date</label>
+            <input type="date" name="toDate" class="form-control" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="master-form-group" style="align-self:flex-end">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Apply</button>
+        </div>
+    </div>
+</form>
+
+<div class="card">
+    <div class="card-header fw-600"><i class="fas fa-tags"></i> Performance by Event Type (@Model.FromDate.ToString("dd MMM yyyy") — @Model.ToDate.ToString("dd MMM yyyy"))</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table data-table mb-0">
+                <thead>
+                    <tr>
+                        <th>#</th><th>Event Type</th><th>Total Bookings</th><th>Completed</th>
+                        <th>Total Revenue ₹</th><th>Revenue Share %</th><th>Avg Pax</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ int idx = 1; }
+                    @foreach (var r in Model.Rows)
+                    {
+                        var share = grandTotal > 0 ? (r.TotalRevenue / grandTotal * 100) : 0;
+                        <tr>
+                            <td>@idx</td>
+                            <td><strong>@r.EventTypeName</strong></td>
+                            <td>@r.TotalBookings</td>
+                            <td class="text-success">@r.CompletedEvents</td>
+                            <td class="fw-600">@r.TotalRevenue.ToString("N2")</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height:8px">
+                                        <div class="progress-bar bg-primary" style="width:@share.ToString("F1")%"></div>
+                                    </div>
+                                    <small>@share.ToString("F1")%</small>
+                                </div>
+                            </td>
+                            <td>@r.AvgAttendees.ToString("N0")</td>
+                        </tr>
+                        idx++;
+                    }
+                    @if (!Model.Rows.Any())
+                    {
+                        <tr><td colspan="7" class="text-center text-muted py-4">No data for this period.</td></tr>
+                    }
+                </tbody>
+                @if (Model.Rows.Any())
+                {
+                    <tfoot class="table-light fw-600">
+                        <tr>
+                            <td colspan="2">Total</td>
+                            <td>@Model.Rows.Sum(r => r.TotalBookings)</td>
+                            <td class="text-success">@Model.Rows.Sum(r => r.CompletedEvents)</td>
+                            <td>@grandTotal.ToString("N2")</td>
+                            <td>100%</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                }
+            </table>
+        </div>
+    </div>
+</div>

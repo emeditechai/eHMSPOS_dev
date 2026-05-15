@@ -40,12 +40,21 @@
             continue;
         }
 
-        <a asp-controller="@root.Controller" asp-action="@root.Action" class="menu-item @(IsActive(root) ? "active" : string.Empty)">
+        var isDashboardItem = root.Title.Equals("Dashboard", StringComparison.OrdinalIgnoreCase)
+                           || (root.Controller?.Equals("Dashboard", StringComparison.OrdinalIgnoreCase) == true
+                               && root.Action?.Equals("Index", StringComparison.OrdinalIgnoreCase) == true);
+
+        <a asp-controller="@root.Controller" asp-action="@root.Action"
+           class="menu-item @(IsActive(root) ? "active" : string.Empty)"
+           title="@(isDashboardItem ? root.Title : string.Empty)">
             @if (!string.IsNullOrWhiteSpace(root.IconClass))
             {
                 <i class="@root.IconClass"></i>
             }
-            <span>@root.Title</span>
+            @if (!isDashboardItem)
+            {
+                <span>@root.Title</span>
+            }
         </a>
 
         continue;

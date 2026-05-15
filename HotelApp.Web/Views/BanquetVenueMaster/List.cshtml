@@ -1,0 +1,77 @@
+@model IEnumerable<HotelApp.Web.Models.BanquetVenue>
+@{
+    ViewData["Title"] = "Venue Master";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-building-columns"></i> Banquet Venues</h2>
+    <a asp-action="Create" class="btn-create">
+        <i class="fas fa-plus"></i> Add Venue
+    </a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success"><i class="fas fa-check-circle"></i> @TempData["SuccessMessage"]</div>
+}
+
+@if (Model.Any())
+{
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Venue Name</th>
+                    <th>Type</th>
+                    <th>Capacity (Seated)</th>
+                    <th>GST %</th>
+                    <th>Rate/Day</th>
+                    <th>Amenities</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var v in Model)
+                {
+                    <tr>
+                        <td><strong>@v.VenueCode</strong></td>
+                        <td>@v.VenueName</td>
+                        <td><span class="badge badge-info">@v.VenueType</span></td>
+                        <td>@v.CapacitySeated</td>
+                        <td>@v.GSTPercent.ToString("0.00")</td>
+                        <td>₹@v.BaseRatePerDay.ToString("N2")</td>
+                        <td>
+                            @if (v.IsAC) { <i class="fas fa-snowflake text-info" title="AC"></i> }
+                            @if (v.HasStage) { <i class="fas fa-microphone text-success" title="Stage"></i> }
+                            @if (v.HasProjector) { <i class="fas fa-projector text-primary" title="Projector"></i> }
+                            @if (v.HasParking) { <i class="fas fa-square-parking text-warning" title="Parking"></i> }
+                            @if (v.HasWifi) { <i class="fas fa-wifi text-secondary" title="WiFi"></i> }
+                        </td>
+                        <td>
+                            @if (v.IsActive)
+                            { <span class="badge badge-available">Active</span> }
+                            else
+                            { <span class="badge badge-maintenance">Inactive</span> }
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <a asp-action="Details" asp-route-id="@v.Id" class="btn-action btn-view" title="View"><i class="fas fa-eye"></i><span>View</span></a>
+                                <a asp-action="Edit" asp-route-id="@v.Id" class="btn-action btn-edit" title="Edit"><i class="fas fa-pen"></i><span>Edit</span></a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="empty-state">
+        <i class="fas fa-building-columns fa-3x"></i>
+        <p>No venues configured yet.</p>
+        <a asp-action="Create" class="btn btn-primary">Add First Venue</a>
+    </div>
+}

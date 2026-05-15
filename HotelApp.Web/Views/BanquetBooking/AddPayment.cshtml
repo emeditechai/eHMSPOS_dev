@@ -1,0 +1,409 @@
+@model HotelApp.Web.ViewModels.BanquetAddPaymentViewModel
+@{
+    ViewData["Title"] = "Add Payment";
+    var banks = ViewBag.Banks as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+}
+
+@section Styles {
+<style>
+/* ── Page Header ─────────────────────────────────────── */
+.pay-page-header {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: .6rem;
+    background: linear-gradient(135deg,#1a2a6c 0%,#4338ca 100%);
+    border-radius: 16px; padding: 1rem 1.5rem; margin-bottom: 1.4rem;
+    box-shadow: 0 6px 24px rgba(26,42,108,.22); position: relative; overflow: hidden;
+}
+.pay-page-header::before {
+    content:''; position:absolute; right:-50px; top:-50px;
+    width:160px; height:160px; background:rgba(255,255,255,.06); border-radius:50%;
+}
+.pay-page-title { display:flex; align-items:center; gap:14px; }
+.pay-page-icon  { width:46px; height:46px; border-radius:12px; background:rgba(255,255,255,.15);
+                  display:flex; align-items:center; justify-content:center; font-size:1.3rem; color:#fff; }
+.pay-page-title h2 { margin:0; font-size:1.15rem; font-weight:700; color:#fff; }
+.pay-page-title span { font-size:.8rem; color:rgba(255,255,255,.7); display:block; margin-top:1px; }
+
+/* ── Layout ──────────────────────────────────────────── */
+.pay-layout { display:grid; grid-template-columns:300px 1fr; gap:1.2rem; align-items:start; }
+@@media(max-width:860px){ .pay-layout { grid-template-columns:1fr; } }
+
+/* ── Summary Sidebar ─────────────────────────────────── */
+.pay-summary-card {
+    background:#fff; border-radius:14px; padding:20px;
+    box-shadow:0 2px 12px rgba(0,0,0,.07); border:1px solid #e5e7eb;
+    position:sticky; top:20px;
+}
+.pay-summary-card h5 {
+    font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em;
+    color:#9ca3af; margin-bottom:14px;
+}
+.sum-row { display:flex; justify-content:space-between; align-items:center; padding:7px 0;
+           border-bottom:1px solid #f3f4f6; font-size:.87rem; }
+.sum-row:last-child { border-bottom:none; }
+.sum-row .lbl { color:#6b7280; }
+.sum-row .val { font-weight:600; color:#111827; }
+.balance-chip {
+    margin-top:14px; background:#fff1f2; border:1px solid #fecdd3; border-left:4px solid #e11d48;
+    border-radius:10px; padding:14px 16px; text-align:center;
+}
+.balance-chip .bc-lbl { font-size:.75rem; color:#9f1239; font-weight:600; text-transform:uppercase; letter-spacing:.05em; }
+.balance-chip .bc-val { font-size:1.55rem; font-weight:800; color:#be123c; margin-top:2px; }
+
+/* ── Net Payable Chip ─────────────────────────────────── */
+.net-chip {
+    background: linear-gradient(135deg,#1a2a6c,#4338ca);
+    border-radius:12px; padding:16px 20px; text-align:center; margin-top:10px;
+}
+.net-chip .nc-lbl { font-size:.74rem; color:rgba(255,255,255,.75); font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
+.net-chip .nc-val { font-size:1.6rem; font-weight:800; color:#fff; margin-top:3px; }
+
+/* ── Form Card ───────────────────────────────────────── */
+.pay-form-card {
+    background:#fff; border-radius:14px; padding:24px 28px;
+    box-shadow:0 2px 12px rgba(0,0,0,.07); border:1px solid #e5e7eb;
+}
+
+/* ── Section ─────────────────────────────────────────── */
+.pay-section { margin-bottom:22px; }
+.pay-section-hdr {
+    display:flex; align-items:center; gap:9px;
+    font-size:.74rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em;
+    color:#6b7280; padding-bottom:8px; border-bottom:2px solid #f3f4f6; margin-bottom:14px;
+}
+.pay-section-hdr i { color:#4338ca; font-size:.85rem; }
+
+/* ── Grid ────────────────────────────────────────────── */
+.fg2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.fg3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+@@media(max-width:600px){ .fg2,.fg3{ grid-template-columns:1fr; } }
+.fg-full { grid-column:1/-1; }
+
+/* ── Form Group ──────────────────────────────────────── */
+.fg { display:flex; flex-direction:column; }
+.fg label { font-size:.78rem; font-weight:600; color:#374151; margin-bottom:5px; }
+.fg input, .fg select {
+    padding:10px 13px; border:1px solid #d1d5db; border-radius:8px;
+    font-size:.9rem; color:#111827; transition: border-color .18s, box-shadow .18s;
+    background:#fff;
+}
+.fg input:focus, .fg select:focus {
+    outline:none; border-color:#4338ca;
+    box-shadow:0 0 0 3px rgba(67,56,202,.12);
+}
+.fg .req { color:#e11d48; }
+
+/* ── Discount Toggle ─────────────────────────────────── */
+.disc-toggle { display:flex; gap:0; border:1px solid #d1d5db; border-radius:8px; overflow:hidden; margin-bottom:12px; }
+.disc-toggle label {
+    flex:1; margin:0; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:5px;
+    padding:9px 14px; font-size:.83rem; font-weight:600; color:#6b7280;
+    background:#f9fafb; border-right:1px solid #d1d5db; transition:all .18s;
+    user-select:none;
+}
+.disc-toggle label:last-child { border-right:none; }
+.disc-toggle input[type=radio] { display:none; }
+.disc-toggle input[type=radio]:checked + span,
+.disc-toggle label:has(input:checked) {
+    background: linear-gradient(135deg,#1a2a6c,#4338ca);
+    color:#fff !important; border-color:#4338ca !important;
+}
+/* Fallback for browsers that don't support :has() */
+.disc-toggle label.active { background: linear-gradient(135deg,#1a2a6c,#4338ca); color:#fff !important; }
+
+.disc-input-row { display:flex; align-items:center; gap:10px; }
+.disc-input-row input { flex:1; }
+.disc-badge {
+    font-size:.8rem; font-weight:700; color:#4338ca; background:#ede9fe;
+    border:1px solid #c4b5fd; border-radius:6px; padding:4px 10px; white-space:nowrap;
+}
+
+/* ── Refund toggle ───────────────────────────────────── */
+.refund-row {
+    display:flex; align-items:center; gap:10px; padding:10px 14px;
+    background:#fff7ed; border:1px solid #fed7aa; border-radius:8px;
+    cursor:pointer; user-select:none;
+}
+.refund-row input { width:16px; height:16px; accent-color:#ea580c; cursor:pointer; }
+.refund-row span { font-size:.87rem; font-weight:600; color:#9a3412; }
+
+/* ── Actions ─────────────────────────────────────────── */
+.pay-actions { display:flex; gap:10px; flex-wrap:wrap; padding-top:6px; border-top:1px solid #f3f4f6; margin-top:6px; }
+.btn-record {
+    display:inline-flex; align-items:center; gap:8px;
+    padding:11px 28px; border-radius:9px; border:none; cursor:pointer;
+    font-size:.93rem; font-weight:700; transition:all .18s;
+    background: linear-gradient(135deg,#16a34a,#15803d); color:#fff;
+    box-shadow: 0 2px 8px rgba(22,163,74,.25);
+}
+.btn-record:hover { opacity:.92; transform:translateY(-1px); }
+.btn-cancel-link {
+    display:inline-flex; align-items:center; gap:7px;
+    padding:11px 20px; border-radius:9px; border:1px solid #d1d5db;
+    background:#fff; color:#374151; font-size:.9rem; font-weight:600; text-decoration:none;
+    transition:all .18s;
+}
+.btn-cancel-link:hover { background:#f9fafb; border-color:#9ca3af; color:#111827; }
+</style>
+}
+
+<!-- Page Header -->
+<div class="pay-page-header">
+    <div class="pay-page-title">
+        <div class="pay-page-icon"><i class="fas fa-indian-rupee-sign"></i></div>
+        <div>
+            <h2>Add Payment</h2>
+            <span>@Model.BanquetBookingNumber &mdash; @Model.EventName</span>
+        </div>
+    </div>
+    <a asp-action="Details" asp-route-id="@Model.BanquetBookingId" class="btn-cancel-link">
+        <i class="fas fa-arrow-left"></i> Back to Booking
+    </a>
+</div>
+
+<div class="pay-layout">
+
+    <!-- ── Left: Summary Sidebar ── -->
+    <div class="pay-summary-card">
+        <h5><i class="fas fa-receipt me-1"></i> Booking Summary</h5>
+        <div class="sum-row"><span class="lbl">Event</span><span class="val">@Model.EventName</span></div>
+        <div class="sum-row"><span class="lbl">Booking No.</span><span class="val">@Model.BanquetBookingNumber</span></div>
+        <div class="sum-row"><span class="lbl">Total Amount</span><span class="val">₹@Model.TotalAmount.ToString("N2")</span></div>
+        <div class="sum-row"><span class="lbl">Amount Paid</span><span class="val">₹@((Model.TotalAmount - Model.BalanceAmount).ToString("N2"))</span></div>
+        <div class="balance-chip">
+            <div class="bc-lbl">Balance Due</div>
+            <div class="bc-val">₹@Model.BalanceAmount.ToString("N2")</div>
+        </div>
+        <div class="net-chip mt-3">
+            <div class="nc-lbl">Net Payable Now</div>
+            <div class="nc-val" id="sideNetDisplay">₹@Model.BalanceAmount.ToString("N2")</div>
+        </div>
+    </div>
+
+    <!-- ── Right: Payment Form ── -->
+    <div class="pay-form-card">
+        <form asp-action="AddPayment" method="post" id="payForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="BanquetBookingId" />
+            <input type="hidden" asp-for="BanquetBookingNumber" />
+            <input type="hidden" asp-for="EventName" />
+            <input type="hidden" asp-for="TotalAmount" />
+            <input type="hidden" asp-for="BalanceAmount" />
+            <input type="hidden" asp-for="DiscountAmount" id="hiddenDiscountAmount" />
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger mb-3"></div>
+
+            <!-- ─── Section 1: Discount ─── -->
+            <div class="pay-section">
+                <div class="pay-section-hdr">
+                    <i class="fas fa-tag"></i> Discount
+                </div>
+
+                <!-- Discount Type Toggle -->
+                <div class="disc-toggle" id="discTypeToggle">
+                    <label id="lbl-none" class="active" onclick="setDiscType('None')">
+                        <i class="fas fa-ban"></i> None
+                    </label>
+                    <label id="lbl-percent" onclick="setDiscType('Percent')">
+                        <i class="fas fa-percent"></i> Percentage
+                    </label>
+                    <label id="lbl-flat" onclick="setDiscType('Flat')">
+                        <i class="fas fa-indian-rupee-sign"></i> Flat Amount
+                    </label>
+                </div>
+                <input type="hidden" asp-for="DiscountType" id="discTypeInput" />
+
+                <!-- Percent input -->
+                <div id="discPercentRow" style="display:none" class="fg mb-2">
+                    <label>Discount Percentage <span class="req">*</span></label>
+                    <div class="disc-input-row">
+                        <input asp-for="DiscountPercent" type="number" step="0.01" min="0" max="100"
+                               id="discPercentInput" placeholder="0.00" oninput="recalc()" />
+                        <span class="disc-badge" id="discPercentBadge">₹0.00 off</span>
+                    </div>
+                </div>
+
+                <!-- Flat input -->
+                <div id="discFlatRow" style="display:none" class="fg mb-2">
+                    <label>Discount Amount (₹) <span class="req">*</span></label>
+                    <div class="disc-input-row">
+                        <input type="number" step="0.01" min="0" id="discFlatInput"
+                               placeholder="0.00" oninput="recalc()" />
+                        <span class="disc-badge" id="discFlatBadge">0.00%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── Section 2: Payment Amount ─── -->
+            <div class="pay-section">
+                <div class="pay-section-hdr">
+                    <i class="fas fa-coins"></i> Payment Amount
+                </div>
+                <div class="fg3">
+                    <div class="fg">
+                        <label asp-for="Amount">Collection Amount (₹) <span class="req">*</span></label>
+                        <input asp-for="Amount" type="number" step="0.01" min="0.01"
+                               id="grossInput" oninput="recalc()" />
+                        <span asp-validation-for="Amount" class="text-danger" style="font-size:.77rem;"></span>
+                    </div>
+                    <div class="fg">
+                        <label asp-for="RoundOffAmount">Round-Off (₹)</label>
+                        <input asp-for="RoundOffAmount" type="number" step="0.01" id="roundInput" oninput="recalc()" />
+                    </div>
+                    <div class="fg">
+                        <label>Net Payable (₹)</label>
+                        <input type="text" id="netDisplay" readonly
+                               style="background:#f0fdf4;border-color:#86efac;color:#15803d;font-weight:700;font-size:1rem;" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── Section 3: Payment Method ─── -->
+            <div class="pay-section">
+                <div class="pay-section-hdr">
+                    <i class="fas fa-credit-card"></i> Payment Method
+                </div>
+                <div class="fg2">
+                    <div class="fg">
+                        <label asp-for="PaymentMethod">Payment Method <span class="req">*</span></label>
+                        <select asp-for="PaymentMethod" id="pmMethod" onchange="togglePmFields()">
+                            <option value="Cash">Cash</option>
+                            <option value="Card">Card</option>
+                            <option value="UPI">UPI</option>
+                            <option value="BankTransfer">Bank Transfer</option>
+                            <option value="Cheque">Cheque</option>
+                            <option value="DD">Demand Draft</option>
+                        </select>
+                    </div>
+                    <div class="fg">
+                        <label asp-for="PaymentReference">Reference / UTR / Cheque#</label>
+                        <input asp-for="PaymentReference" placeholder="Optional" />
+                    </div>
+                    <div class="fg" id="bankGroup" style="display:none">
+                        <label asp-for="BankId">Bank</label>
+                        <select asp-for="BankId">
+                            <option value="">-- Select Bank --</option>
+                            @foreach (dynamic b in banks)
+                            { <option value="@b.Id">@b.BankName</option> }
+                        </select>
+                    </div>
+                    <div class="fg" id="cardTypeGroup" style="display:none">
+                        <label asp-for="CardType">Card Type</label>
+                        <select asp-for="CardType">
+                            <option value="">--</option>
+                            <option value="Visa">Visa</option>
+                            <option value="Mastercard">Mastercard</option>
+                            <option value="RuPay">RuPay</option>
+                            <option value="Amex">Amex</option>
+                        </select>
+                    </div>
+                    <div class="fg" id="card4Group" style="display:none">
+                        <label asp-for="CardLastFourDigits">Last 4 Digits</label>
+                        <input asp-for="CardLastFourDigits" maxlength="4" placeholder="XXXX" />
+                    </div>
+                    <div class="fg" id="chequeDateGroup" style="display:none">
+                        <label asp-for="ChequeDate">Cheque Date</label>
+                        <input asp-for="ChequeDate" type="date" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── Section 4: Other Details ─── -->
+            <div class="pay-section">
+                <div class="pay-section-hdr">
+                    <i class="fas fa-ellipsis-h"></i> Other Details
+                </div>
+                <div class="fg2">
+                    <div class="fg fg-full">
+                        <label asp-for="Remarks">Remarks</label>
+                        <input asp-for="Remarks" placeholder="Optional notes..." />
+                    </div>
+                    <div class="fg fg-full">
+                        <label class="refund-row" style="cursor:pointer">
+                            <input asp-for="IsRefund" type="checkbox" />
+                            <span><i class="fas fa-undo me-1"></i> This is a Refund transaction</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── Actions ─── -->
+            <div class="pay-actions">
+                <button type="submit" class="btn-record">
+                    <i class="fas fa-save"></i> Record Payment
+                </button>
+                <a asp-action="Details" asp-route-id="@Model.BanquetBookingId" class="btn-cancel-link">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+@{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+<script>
+(function(){
+    const balance = @Model.BalanceAmount;
+
+    // ── Discount Type ──────────────────────────────────────
+    let discType = 'None';
+
+    window.setDiscType = function(type) {
+        discType = type;
+        document.getElementById('discTypeInput').value = type;
+
+        ['None','Percent','Flat'].forEach(t => {
+            document.getElementById('lbl-' + t.toLowerCase()).classList.toggle('active', t === type);
+        });
+
+        document.getElementById('discPercentRow').style.display = type === 'Percent' ? '' : 'none';
+        document.getElementById('discFlatRow').style.display    = type === 'Flat'    ? '' : 'none';
+
+        if (type !== 'Percent') document.getElementById('discPercentInput').value = '';
+        if (type !== 'Flat')    document.getElementById('discFlatInput').value    = '';
+        recalc();
+    };
+
+    // ── Recalculate ────────────────────────────────────────
+    window.recalc = function() {
+        const gross     = parseFloat(document.getElementById('grossInput').value)   || 0;
+        const roundOff  = parseFloat(document.getElementById('roundInput').value)   || 0;
+        let discAmt     = 0;
+
+        if (discType === 'Percent') {
+            const pct = parseFloat(document.getElementById('discPercentInput').value) || 0;
+            discAmt = Math.round(gross * pct / 100 * 100) / 100;
+            document.getElementById('discPercentBadge').textContent = '₹' + discAmt.toFixed(2) + ' off';
+        } else if (discType === 'Flat') {
+            discAmt = Math.min(parseFloat(document.getElementById('discFlatInput').value) || 0, gross);
+            const pct = gross > 0 ? ((discAmt / gross) * 100) : 0;
+            document.getElementById('discFlatBadge').textContent = pct.toFixed(2) + '%';
+        }
+
+        // Write computed discount to hidden field so server gets it
+        document.getElementById('hiddenDiscountAmount').value = discAmt.toFixed(2);
+
+        const net = Math.max(0, Math.round((gross - discAmt + roundOff) * 100) / 100);
+        document.getElementById('netDisplay').value    = net.toFixed(2);
+        document.getElementById('sideNetDisplay').textContent = '₹' + net.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+    };
+
+    // ── Payment Method ─────────────────────────────────────
+    window.togglePmFields = function() {
+        const m = document.getElementById('pmMethod').value;
+        document.getElementById('bankGroup').style.display      = ['Card','BankTransfer','Cheque','DD','UPI'].includes(m) ? '' : 'none';
+        document.getElementById('cardTypeGroup').style.display  = m === 'Card' ? '' : 'none';
+        document.getElementById('card4Group').style.display     = m === 'Card' ? '' : 'none';
+        document.getElementById('chequeDateGroup').style.display= ['Cheque','DD'].includes(m) ? '' : 'none';
+    };
+
+    // Init
+    document.getElementById('discTypeInput').value = 'None';
+    document.getElementById('grossInput').value    = balance.toFixed(2);
+    recalc();
+    togglePmFields();
+})();
+</script>
+}
+

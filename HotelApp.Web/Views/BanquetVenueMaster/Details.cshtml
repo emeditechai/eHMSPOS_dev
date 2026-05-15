@@ -1,0 +1,73 @@
+@using Microsoft.AspNetCore.Html
+@model HotelApp.Web.Models.BanquetVenue
+@{
+    ViewData["Title"] = "Venue Details";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-building-columns"></i> @Model.VenueName</h2>
+    <div>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary"><i class="fas fa-pen"></i> Edit</a>
+        <a asp-action="List" class="btn btn-secondary ms-2"><i class="fas fa-arrow-left"></i> Back</a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6"><strong>Venue Code:</strong> @Model.VenueCode</div>
+                    <div class="col-6"><strong>Type:</strong> @Model.VenueType</div>
+                    <div class="col-6 mt-2"><strong>Seated:</strong> @Model.CapacitySeated</div>
+                    <div class="col-6 mt-2"><strong>Buffet:</strong> @Model.CapacityBuffet</div>
+                    <div class="col-6 mt-2"><strong>Theater:</strong> @Model.CapacityTheater</div>
+                    <div class="col-6 mt-2"><strong>Cocktail:</strong> @Model.CapacityCockTail</div>
+                    <div class="col-6 mt-2"><strong>Area:</strong> @Model.Area_SqFt?.ToString("N0") sq.ft.</div>
+                    <div class="col-6 mt-2"><strong>Rate/Day:</strong> ₹@Model.BaseRatePerDay.ToString("N2")</div>
+                    <div class="col-6 mt-2"><strong>Rate/Half Day:</strong> ₹@Model.BaseRatePerHalfDay.ToString("N2")</div>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Description))
+                {
+                    <div class="mt-3"><strong>Description:</strong><br />@Model.Description</div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header"><strong>GST Setup</strong></div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tr><td>Total GST %</td><td><strong>@Model.GSTPercent %</strong></td></tr>
+                    <tr><td>CGST %</td><td>@Model.CGSTPercent %</td></tr>
+                    <tr><td>SGST %</td><td>@Model.SGSTPercent %</td></tr>
+                    <tr><td>IGST %</td><td>@Model.IGSTPercent %</td></tr>
+                    <tr><td>SAC Code</td><td>@Model.SACCode</td></tr>
+                </table>
+            </div>
+        </div>
+        <div class="card mt-3">
+            <div class="card-header"><strong>Amenities</strong></div>
+            <div class="card-body">
+                @AmenityRow("Air Conditioned", Model.IsAC, "fa-snowflake")
+                @AmenityRow("Stage", Model.HasStage, "fa-microphone")
+                @AmenityRow("Projector", Model.HasProjector, "fa-projector")
+                @AmenityRow("Sound System", Model.HasSoundSystem, "fa-volume-high")
+                @AmenityRow("Parking", Model.HasParking, "fa-square-parking")
+                @AmenityRow("Catering", Model.HasCatering, "fa-utensils")
+                @AmenityRow("WiFi", Model.HasWifi, "fa-wifi")
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    Microsoft.AspNetCore.Html.IHtmlContent AmenityRow(string name, bool val, string icon)
+    {
+        var color = val ? "text-success" : "text-muted";
+        var ico = val ? "fa-check-circle" : "fa-times-circle";
+        return new HtmlString($"<div class='d-flex align-items-center gap-2 mb-1'><i class='fas {ico} {color}'></i> {name}</div>");
+    }
+}

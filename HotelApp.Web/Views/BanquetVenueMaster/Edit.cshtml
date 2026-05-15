@@ -1,0 +1,7 @@
+@model HotelApp.Web.Models.BanquetVenue
+@{
+    ViewData["Title"] = "Edit Venue";
+    var floors   = ViewBag.Floors   as IEnumerable<HotelApp.Web.Models.Floor>   ?? Enumerable.Empty<HotelApp.Web.Models.Floor>();
+    var gstSlabs = ViewBag.GstSlabs as IEnumerable<HotelApp.Web.Models.GstSlab> ?? Enumerable.Empty<HotelApp.Web.Models.GstSlab>();
+}
+@Html.Partial("Create", Model)

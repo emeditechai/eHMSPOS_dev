@@ -1,25 +1,261 @@
 ﻿@model ErrorViewModel
 @{
-    ViewData["Title"] = "Error";
+    Layout = null;
+    var isDatabaseError = Model.IsDatabaseError;
+    var icon      = isDatabaseError ? "fa-database"         : "fa-triangle-exclamation";
+    var title     = isDatabaseError ? "Database Unavailable" : "Something Went Wrong";
+    var subtitle  = isDatabaseError
+        ? "Unable to connect to the database. The server may be offline or restarting."
+        : "An unexpected error occurred while processing your request.";
+    var accentColor = isDatabaseError ? "#dc2626" : "#b45309";
+    var accentLight = isDatabaseError ? "#fef2f2" : "#fffbeb";
+    var accentBorder = isDatabaseError ? "#fecaca" : "#fde68a";
 }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@title — eLUX Stay</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-<h1 class="text-danger">Error.</h1>
-<h2 class="text-danger">An error occurred while processing your request.</h2>
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #1a2a6c 100%);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            padding: 24px;
+        }
 
-@if (Model.ShowRequestId)
-{
-    <p>
-        <strong>Request ID:</strong> <code>@Model.RequestId</code>
-    </p>
-}
+        .card {
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 24px 64px rgba(0,0,0,.45);
+            width: 100%;
+            max-width: 540px;
+            overflow: hidden;
+        }
 
-<h3>Development Mode</h3>
-<p>
-    Swapping to <strong>Development</strong> environment will display more detailed information about the error that occurred.
-</p>
-<p>
-    <strong>The Development environment shouldn't be enabled for deployed applications.</strong>
-    It can result in displaying sensitive information from exceptions to end users.
-    For local debugging, enable the <strong>Development</strong> environment by setting the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong>
-    and restarting the app.
-</p>
+        .card-header {
+            background: linear-gradient(135deg, #1a2a6c 0%, #4338ca 100%);
+            padding: 28px 32px 24px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .header-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            background: rgba(255,255,255,.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .header-text h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.2;
+        }
+
+        .header-text span {
+            font-size: .82rem;
+            color: rgba(255,255,255,.7);
+            display: block;
+            margin-top: 3px;
+        }
+
+        .card-body {
+            padding: 28px 32px;
+        }
+
+        .error-box {
+            background: @accentLight;
+            border: 1px solid @accentBorder;
+            border-left: 4px solid @accentColor;
+            border-radius: 10px;
+            padding: 16px 18px;
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            margin-bottom: 22px;
+        }
+
+        .error-box-icon {
+            color: @accentColor;
+            font-size: 1.25rem;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .error-box-title {
+            font-weight: 700;
+            color: @accentColor;
+            font-size: .88rem;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .error-box-msg {
+            font-size: .88rem;
+            color: #374151;
+            line-height: 1.55;
+        }
+
+        @if (isDatabaseError)
+        {
+            <text>
+        .steps {
+            margin-bottom: 22px;
+        }
+        .steps-title {
+            font-size: .78rem;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            margin-bottom: 10px;
+        }
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 9px 0;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: .85rem;
+            color: #374151;
+        }
+        .step:last-child { border-bottom: none; }
+        .step i { color: #9ca3af; width: 16px; text-align: center; margin-top: 2px; }
+            </text>
+        }
+
+        .info-row {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: .8rem;
+            color: #6b7280;
+            margin-bottom: 22px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .info-row code {
+            font-family: 'Courier New', monospace;
+            font-size: .78rem;
+            color: #374151;
+            word-break: break-all;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: .87rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            text-decoration: none;
+            transition: all .18s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #1a2a6c, #4338ca);
+            color: #fff;
+        }
+        .btn-primary:hover { opacity: .9; transform: translateY(-1px); color: #fff; }
+
+        .btn-outline {
+            background: #fff;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+        .btn-outline:hover { background: #f9fafb; border-color: #9ca3af; color: #111827; }
+
+        .footer-note {
+            margin-top: 22px;
+            font-size: .76rem;
+            color: #9ca3af;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="card-header">
+            <div class="header-icon">
+                <i class="fas @icon"></i>
+            </div>
+            <div class="header-text">
+                <h2>@title</h2>
+                <span>eLUX Stay &mdash; Emeditech Plus LLP</span>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <div class="error-box">
+                <div class="error-box-icon"><i class="fas @icon"></i></div>
+                <div>
+                    <div class="error-box-title">@(isDatabaseError ? "Connection Error" : "Unhandled Error")</div>
+                    <div class="error-box-msg">@subtitle</div>
+                </div>
+            </div>
+
+            @if (isDatabaseError)
+            {
+                <div class="steps">
+                    <div class="steps-title">What you can do</div>
+                    <div class="step"><i class="fas fa-circle-check"></i> Verify that SQL Server is running on this machine.</div>
+                    <div class="step"><i class="fas fa-rotate-right"></i> Wait a moment and retry — the server may be restarting.</div>
+                    <div class="step"><i class="fas fa-plug"></i> Check the database connection string in <code>appsettings.json</code>.</div>
+                    <div class="step"><i class="fas fa-headset"></i> If the issue persists, contact your system administrator.</div>
+                </div>
+            }
+
+            @if (Model.ShowRequestId)
+            {
+                <div class="info-row">
+                    <i class="fas fa-fingerprint"></i>
+                    <span>Request ID: <code>@Model.RequestId</code></span>
+                </div>
+            }
+
+            <div class="actions">
+                <a href="javascript:location.reload()" class="btn btn-primary">
+                    <i class="fas fa-rotate-right"></i> Try Again
+                </a>
+                <a href="/" class="btn btn-outline">
+                    <i class="fas fa-house"></i> Go to Dashboard
+                </a>
+                <a href="javascript:history.back()" class="btn btn-outline">
+                    <i class="fas fa-arrow-left"></i> Go Back
+                </a>
+            </div>
+
+            <p class="footer-note">&copy; @DateTime.Now.Year eLUX Stay &mdash; Powered by Emeditech Plus LLP</p>
+        </div>
+    </div>
+</body>
+</html>
+

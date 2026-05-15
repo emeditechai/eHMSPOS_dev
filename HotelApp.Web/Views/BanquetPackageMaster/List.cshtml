@@ -1,0 +1,50 @@
+@model IEnumerable<HotelApp.Web.Models.BanquetPackage>
+@{ ViewData["Title"] = "Menu Packages"; }
+
+<div class="page-header">
+    <h2><i class="fas fa-utensils"></i> Menu Packages</h2>
+    <a asp-action="Create" class="btn-create"><i class="fas fa-plus"></i> Add Package</a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{ <div class="alert alert-success"><i class="fas fa-check-circle"></i> @TempData["SuccessMessage"]</div> }
+
+@if (Model.Any())
+{
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr><th>Code</th><th>Package Name</th><th>Type</th><th>Price/Pax</th><th>Min. Pax</th><th>GST %</th><th>Inclusions</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Model)
+                {
+                    <tr>
+                        <td><strong>@p.PackageCode</strong></td>
+                        <td>@p.PackageName</td>
+                        <td>@p.PackageType</td>
+                        <td>₹@p.PricePerPax.ToString("N2")</td>
+                        <td>@p.MinimumGuaranteePax</td>
+                        <td>@p.GSTPercent %</td>
+                        <td>
+                            @if (p.IncludesStarter) { <i class="fas fa-bowl-food text-success" title="Starter"></i> }
+                            @if (p.IncludesMainCourse) { <i class="fas fa-utensils text-primary" title="Main Course"></i> }
+                            @if (p.IncludesDessert) { <i class="fas fa-ice-cream text-warning" title="Dessert"></i> }
+                            @if (p.IncludesBeverages) { <i class="fas fa-glass-water text-info" title="Beverages"></i> }
+                            @if (p.IncludesLive) { <i class="fas fa-fire text-danger" title="Live Counter"></i> }
+                        </td>
+                        <td>@if(p.IsActive){<span class="badge badge-available">Active</span>}else{<span class="badge badge-maintenance">Inactive</span>}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <a asp-action="Details" asp-route-id="@p.Id" class="btn-action btn-view"><i class="fas fa-eye"></i><span>View</span></a>
+                                <a asp-action="Edit" asp-route-id="@p.Id" class="btn-action btn-edit"><i class="fas fa-pen"></i><span>Edit</span></a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{ <div class="empty-state"><i class="fas fa-utensils fa-3x"></i><p>No packages configured.</p></div> }

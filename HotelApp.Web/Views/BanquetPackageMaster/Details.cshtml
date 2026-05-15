@@ -1,0 +1,187 @@
+@using Microsoft.AspNetCore.Html
+@model HotelApp.Web.Models.BanquetPackage
+@{ ViewData["Title"] = "Package Details"; }
+
+@{
+    // All 5 possible inclusion categories in display order
+    var inclusionDefs = new[]
+    {
+        (label: "Starter",      icon: "fa-bowl-food",   color: "text-success", included: Model.IncludesStarter),
+        (label: "Main Course",  icon: "fa-utensils",    color: "text-primary", included: Model.IncludesMainCourse),
+        (label: "Dessert",      icon: "fa-ice-cream",   color: "text-warning", included: Model.IncludesDessert),
+        (label: "Beverages",    icon: "fa-glass-water", color: "text-info",    included: Model.IncludesBeverages),
+        (label: "Live Counter", icon: "fa-fire",        color: "text-danger",  included: Model.IncludesLive),
+    };
+
+    // Parse per-course descriptions from MenuDescription (||–delimited format)
+    var descByCategory = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    if (!string.IsNullOrWhiteSpace(Model.MenuDescription) && Model.MenuDescription.Contains("||"))
+    {
+        foreach (var part in Model.MenuDescription.Split("||", StringSplitOptions.RemoveEmptyEntries))
+        {
+            var colonIdx = part.IndexOf(": ");
+            if (colonIdx < 0) continue;
+            descByCategory[part.Substring(0, colonIdx).Trim()] = part.Substring(colonIdx + 2).Trim();
+        }
+    }
+
+    // Build display entries: one card per checked inclusion
+    var menuEntries = inclusionDefs
+        .Where(x => x.included)
+        .Select(x => (x.label, x.icon, x.color, desc: descByCategory.TryGetValue(x.label, out var d) ? d : ""))
+        .ToList();
+}
+
+<style>
+    /* ── Package Details page overrides ───────────────────────────────────── */
+    .pkg-detail-wrap   { background:#fff; border-radius:14px; box-shadow:0 2px 16px rgba(0,0,0,.09); overflow:hidden; }
+    .pkg-detail-hero   { background:linear-gradient(135deg,#4338ca 0%,#6366f1 100%); color:#fff; padding:28px 32px 22px; position:relative; }
+    .pkg-detail-hero h2{ margin:0 0 4px; font-size:24px; font-weight:700; }
+    .pkg-detail-hero .pkg-sub{ font-size:13px; opacity:.85; }
+    .pkg-hero-badges   { display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
+    .pkg-hero-badge    { background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.3); border-radius:8px; padding:6px 14px; font-size:13px; font-weight:600; line-height:1.3; }
+    .pkg-hero-badge small{ display:block; font-size:11px; font-weight:400; opacity:.8; }
+    .pkg-status-active { background:#dcfce7; color:#15803d; border:none; font-weight:700; font-size:12px; padding:4px 12px; border-radius:20px; display:inline-block; }
+    .pkg-status-inactive{ background:#fee2e2; color:#b91c1c; border:none; font-weight:700; font-size:12px; padding:4px 12px; border-radius:20px; display:inline-block; }
+    .pkg-detail-body   { padding:24px 32px; background:#fff; }
+    /* Inclusion cards */
+    .incl-det-grid  { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:14px; margin-top:12px; }
+    .incl-det-card  { border-radius:10px; overflow:hidden; border:1.5px solid #e5e7eb; background:#fff; }
+    .incl-det-head  { display:flex; align-items:center; gap:8px; padding:10px 14px; font-weight:700; font-size:13px; color:#fff; }
+    .incl-det-body  { padding:10px 14px; font-size:13px; color:#1f2937; line-height:1.65; white-space:pre-wrap; background:#fff; min-height:40px; }
+    .incl-det-body.empty { color:#6b7280; font-style:italic; }
+    /* Per-course accent colours */
+    .incl-head-starter    { background:#16a34a; }
+    .incl-head-maincourse { background:#4338ca; }
+    .incl-head-dessert    { background:#d97706; }
+    .incl-head-beverages  { background:#0891b2; }
+    .incl-head-live       { background:#dc2626; }
+    /* Right-side cards */
+    .side-card          { background:#fff; border-radius:12px; box-shadow:0 1px 8px rgba(0,0,0,.08); overflow:hidden; margin-bottom:16px; }
+    .side-card-header   { padding:12px 18px; font-weight:700; font-size:14px; color:#fff; background:linear-gradient(135deg,#4338ca,#6366f1); }
+    .side-card-body     { padding:14px 18px; }
+    .gst-row            { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #f3f4f6; font-size:14px; color:#374151; }
+    .gst-row:last-child { border-bottom:none; }
+    .gst-row strong     { color:#111827; }
+    .incl-row           { display:flex; align-items:center; gap:9px; padding:5px 0; font-size:14px; font-weight:500; }
+    .incl-row.yes       { color:#15803d; }
+    .incl-row.no        { color:#9ca3af; }
+</style>
+
+<div class="page-header">
+    <h2><i class="fas fa-utensils"></i> @Model.PackageName</h2>
+    <div>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary"><i class="fas fa-pen"></i> Edit</a>
+        <a asp-action="List" class="btn btn-secondary ms-2"><i class="fas fa-arrow-left"></i> Back</a>
+    </div>
+</div>
+
+<div class="row g-3 align-items-start">
+    @*  ── LEFT: main info + inclusions ── *@
+    <div class="col-lg-8">
+        <div class="pkg-detail-wrap">
+            @* Hero strip *@
+            <div class="pkg-detail-hero">
+                <h2><i class="fas fa-utensils me-2"></i>@Model.PackageName</h2>
+                <div class="pkg-sub">@Model.PackageType</div>
+                <div class="pkg-hero-badges">
+                    <div class="pkg-hero-badge">
+                        <small>Package Code</small>@Model.PackageCode
+                    </div>
+                    <div class="pkg-hero-badge">
+                        <small>Price / Pax</small>₹@Model.PricePerPax.ToString("N2")
+                    </div>
+                    <div class="pkg-hero-badge">
+                        <small>Min. Guarantee</small>@Model.MinimumGuaranteePax pax
+                    </div>
+                    <div class="pkg-hero-badge" style="padding:6px 14px;">
+                        @if (Model.IsActive)
+                        { <span class="pkg-status-active"><i class="fas fa-check-circle me-1"></i>Active</span> }
+                        else
+                        { <span class="pkg-status-inactive"><i class="fas fa-times-circle me-1"></i>Inactive</span> }
+                    </div>
+                </div>
+            </div>
+
+            @* Menu Inclusions body *@
+            <div class="pkg-detail-body">
+                <div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:4px;">
+                    <i class="fas fa-list-ul me-2 text-indigo-600" style="color:#4338ca;"></i>Menu Inclusions
+                </div>
+                <div style="font-size:12.5px;color:#6b7280;margin-bottom:4px;">Items included in this package per course</div>
+
+                @{
+                    var cssKey = new Dictionary<string, string>
+                    {
+                        { "Starter",      "starter" },
+                        { "Main Course",  "maincourse" },
+                        { "Dessert",      "dessert" },
+                        { "Beverages",    "beverages" },
+                        { "Live Counter", "live" },
+                    };
+                }
+
+                @if (menuEntries.Any())
+                {
+                    <div class="incl-det-grid">
+                        @foreach (var (label, icon, color, desc) in menuEntries)
+                        {
+                            var css = cssKey.TryGetValue(label, out var k) ? k : "maincourse";
+                            <div class="incl-det-card">
+                                <div class="incl-det-head incl-head-@css">
+                                    <i class="fas @icon"></i> @label
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(desc))
+                                {
+                                    <div class="incl-det-body">@desc</div>
+                                }
+                                else
+                                {
+                                    <div class="incl-det-body empty">No items listed</div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p style="color:#6b7280;font-size:13px;margin-top:8px;">No menu inclusions configured.</p>
+                }
+            </div>
+        </div>
+    </div>
+
+    @*  ── RIGHT: GST + Inclusions ── *@
+    <div class="col-lg-4">
+        <div class="side-card">
+            <div class="side-card-header"><i class="fas fa-percent me-2"></i>GST Setup</div>
+            <div class="side-card-body">
+                <div class="gst-row"><span>Total GST %</span><strong>@Model.GSTPercent.ToString("0.00") %</strong></div>
+                <div class="gst-row"><span>CGST %</span><span>@Model.CGSTPercent.ToString("0.00") %</span></div>
+                <div class="gst-row"><span>SGST %</span><span>@Model.SGSTPercent.ToString("0.00") %</span></div>
+                <div class="gst-row"><span>IGST %</span><span>@Model.IGSTPercent.ToString("0.00") %</span></div>
+                <div class="gst-row"><span>SAC Code</span><span>@Model.SACCode</span></div>
+            </div>
+        </div>
+
+        <div class="side-card">
+            <div class="side-card-header"><i class="fas fa-check-square me-2"></i>Course Inclusions</div>
+            <div class="side-card-body">
+                @InclRow("Starter",      Model.IncludesStarter,    "fa-bowl-food")
+                @InclRow("Main Course",  Model.IncludesMainCourse, "fa-utensils")
+                @InclRow("Dessert",      Model.IncludesDessert,    "fa-ice-cream")
+                @InclRow("Beverages",    Model.IncludesBeverages,  "fa-glass-water")
+                @InclRow("Live Counter", Model.IncludesLive,       "fa-fire")
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    Microsoft.AspNetCore.Html.IHtmlContent InclRow(string name, bool val, string icon)
+    {
+        var cls = val ? "yes" : "no";
+        var ico = val ? "fa-check-circle" : "fa-circle";
+        return new HtmlString($"<div class='incl-row {cls}'><i class='fas {ico}'></i> <i class='fas {icon}'></i> {name}</div>");
+    }
+}

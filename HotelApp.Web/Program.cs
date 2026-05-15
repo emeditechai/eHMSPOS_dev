@@ -6,8 +6,17 @@ using HotelApp.Web.Repositories;
 using HotelApp.Web.Services;
 using Microsoft.AspNetCore.DataProtection;
 using System.IO;
+using Dapper;
+using HotelApp.Web;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Register Dapper DateOnly / TimeOnly type handlers so DATE and TIME columns
+// map correctly to C# DateOnly / TimeOnly, and DateOnly params are accepted.
+SqlMapper.AddTypeHandler(new DateOnlyDapperHandler());
+SqlMapper.AddTypeHandler(new NullableDateOnlyDapperHandler());
+SqlMapper.AddTypeHandler(new TimeOnlyDapperHandler());
+SqlMapper.AddTypeHandler(new NullableTimeOnlyDapperHandler());
 
 // Add services to the container.
 builder.Services.AddControllersWithViews(options =>
@@ -167,6 +176,17 @@ builder.Services.AddScoped<IRefundRepository, RefundRepository>();
 builder.Services.AddScoped<ICreditNoteRepository, CreditNoteRepository>();
 builder.Services.AddScoped<IB2BEInvoiceLogRepository, B2BEInvoiceLogRepository>();
 
+// Banquet & Events
+builder.Services.AddScoped<IBanquetVenueRepository, BanquetVenueRepository>();
+builder.Services.AddScoped<IBanquetEventTypeRepository, BanquetEventTypeRepository>();
+builder.Services.AddScoped<IBanquetPackageRepository, BanquetPackageRepository>();
+builder.Services.AddScoped<IBanquetAddonServiceRepository, BanquetAddonServiceRepository>();
+builder.Services.AddScoped<IBanquetBookingRepository, BanquetBookingRepository>();
+builder.Services.AddScoped<IBanquetCancellationRepository, BanquetCancellationRepository>();
+builder.Services.AddScoped<IBanquetBookingNumberService, BanquetBookingNumberService>();
+builder.Services.AddScoped<IBanquetGSTService, BanquetGSTService>();
+builder.Services.AddScoped<IBanquetReportsRepository, BanquetReportsRepository>();
+
 // Licensing
 builder.Services.AddMemoryCache();   // used by LicenseMiddleware for midnight-reset daily validation cache
 builder.Services.AddHttpClient();    // used by PublicIpService for outbound public-IP echo calls
@@ -244,9 +264,9 @@ if (dataProtectionInitError is not null)
 }
 
 // Configure the HTTP request pipeline.
+app.UseExceptionHandler("/Home/Error");
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }

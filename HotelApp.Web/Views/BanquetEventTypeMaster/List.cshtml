@@ -1,0 +1,42 @@
+@model IEnumerable<HotelApp.Web.Models.BanquetEventType>
+@{ViewData["Title"] = "Event Types";}
+
+<div class="page-header">
+    <h2><i class="fas fa-calendar-star"></i> Banquet Event Types</h2>
+    <a asp-action="Create" class="btn-create"><i class="fas fa-plus"></i> Add Event Type</a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{ <div class="alert alert-success"><i class="fas fa-check-circle"></i> @TempData["SuccessMessage"]</div> }
+
+@if (Model.Any())
+{
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr><th>Code</th><th>Event Type</th><th>Icon</th><th>Description</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var e in Model)
+                {
+                    <tr>
+                        <td><strong>@e.EventTypeCode</strong></td>
+                        <td>@e.EventTypeName</td>
+                        <td><i class="@e.IconClass fa-lg"></i></td>
+                        <td>@e.Description</td>
+                        <td>@if(e.IsActive){<span class="badge badge-available">Active</span>}else{<span class="badge badge-maintenance">Inactive</span>}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <a asp-action="Edit" asp-route-id="@e.Id" class="btn-action btn-edit"><i class="fas fa-pen"></i><span>Edit</span></a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="empty-state"><i class="fas fa-calendar-star fa-3x"></i><p>No event types configured.</p></div>
+}

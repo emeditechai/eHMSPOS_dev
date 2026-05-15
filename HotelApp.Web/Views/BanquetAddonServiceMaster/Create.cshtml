@@ -1,0 +1,265 @@
+@model HotelApp.Web.Models.BanquetAddonService
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? "Edit Addon Service" : "Add Addon Service";
+    var gstSlabs = ViewBag.GstSlabs as IEnumerable<HotelApp.Web.Models.GstSlab> ?? Enumerable.Empty<HotelApp.Web.Models.GstSlab>();
+}
+
+<style>
+    .master-create-container { background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.08); padding: 30px 50px; max-width: 95%; margin: 0 auto; }
+    .master-form-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 20px 25px; }
+    .master-form-group { display: flex; flex-direction: column; }
+    .master-form-group label { font-weight: 500; margin-bottom: 8px; color: #333; font-size: 14px; }
+    .master-form-group input, .master-form-group select, .master-form-group textarea { padding: 12px 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+    .col-span-2 { grid-column: span 2; }
+    .col-span-4 { grid-column: span 4; }
+    .section-title { font-size: 16px; font-weight: 600; color: #333; margin: 20px 0 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+    .master-form-actions { display: flex; gap: 15px; justify-content: flex-end; padding-top: 25px; border-top: 2px solid #f0f0f0; margin-top: 20px; }
+    @@media(max-width:1200px){ .master-form-grid{ grid-template-columns: repeat(2,1fr); } }
+</style>
+
+<div class="page-header"><h2><i class="fas fa-puzzle-piece"></i> @ViewData["Title"]</h2></div>
+
+<div class="master-create-container">
+    <form asp-action="@(isEdit ? "Edit" : "Create")" method="post">
+        @Html.AntiForgeryToken()
+        @if (isEdit) { <input type="hidden" asp-for="Id" /> }
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+        <div class="section-title">Service Details</div>
+        <div class="master-form-grid">
+            <div class="master-form-group">
+                <label asp-for="ServiceCode">Service Code</label>
+                <input asp-for="ServiceCode" readonly="@isEdit" />
+                <span asp-validation-for="ServiceCode" class="text-danger"></span>
+            </div>
+            <div class="master-form-group col-span-2">
+                <label asp-for="ServiceName">Service Name</label>
+                <input asp-for="ServiceName" />
+                <span asp-validation-for="ServiceName" class="text-danger"></span>
+            </div>
+            <div class="master-form-group">
+                <label asp-for="ServiceType">Service Type</label>
+                <select asp-for="ServiceType">
+                    <option value="AVEquipment">AV Equipment</option>
+                    <option value="Decoration">Decoration</option>
+                    <option value="Photography">Photography</option>
+                    <option value="Videography">Videography</option>
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Parking">Parking</option>
+                    <option value="Transportation">Transportation</option>
+                    <option value="Floral">Floral Arrangement</option>
+                    <option value="Stationery">Stationery</option>
+                    <option value="Gifts">Gifts / Favours</option>
+                    <option value="SecurityService">Security Service</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="master-form-group">
+                <label asp-for="Rate">Rate (₹)</label>
+                <input asp-for="Rate" type="number" step="0.01" min="0" />
+                <span asp-validation-for="Rate" class="text-danger"></span>
+            </div>
+            <div class="master-form-group">
+                <label asp-for="RateType">Rate Type</label>
+                <select asp-for="RateType">
+                    <option value="PerEvent">Per Event</option>
+                    <option value="PerHour">Per Hour</option>
+                    <option value="PerDay">Per Day</option>
+                    <option value="PerPax">Per Pax</option>
+                    <option value="PerUnit">Per Unit</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section-title">GST Configuration</div>
+
+        @* GST Slab Picker *@
+        <div class="master-form-grid" style="margin-bottom:12px;">
+            <div class="master-form-group col-span-3">
+                <label for="gstSlabPicker">GST Slab</label>
+                <select id="gstSlabPicker" name="GstSlabId" class="form-control" style="padding:12px 15px;border:1px solid #ddd;border-radius:8px;font-size:14px;">
+                    <option value="">-- Select GST Slab (rates will resolve automatically) --</option>
+                    @foreach (var s in gstSlabs)
+                    {
+                        <option value="@s.Id"
+                                selected="@(Model.GstSlabId == s.Id ? "selected" : null)">
+                            @s.SlabCode — @s.SlabName
+                            @if (s.MinimumTariffFrom.HasValue || s.MaximumTariffTo.HasValue)
+                            {
+                                <text>(₹@s.MinimumTariffFrom – ₹@s.MaximumTariffTo)</text>
+                            }
+                        </option>
+                    }
+                </select>
+                <small class="text-muted">Select a slab to auto-resolve GST rates from the tariff band that matches the service Rate.</small>
+            </div>
+            <div class="master-form-group">
+                <label asp-for="SACCode">SAC Code</label>
+                <input asp-for="SACCode" placeholder="e.g. 998599" />
+            </div>
+        </div>
+
+        @* GST Preview Card *@
+        <div id="gstPreviewSection" style="display:none; margin-bottom:16px;">
+            <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:14px; max-width:500px;">
+                <div style="font-weight:600; color:#15803d; margin-bottom:8px;"><i class="fas fa-indian-rupee-sign"></i> Service Rate — Resolved GST Band</div>
+                <div id="ratePreview">—</div>
+            </div>
+            <div id="gstSlabAlert" class="alert alert-warning" style="display:none; margin-top:10px; padding:8px 14px;">
+                <i class="fas fa-exclamation-triangle"></i> <span id="gstSlabAlertMsg"></span>
+            </div>
+        </div>
+
+        @* GST Rate Fields *@
+        <div class="master-form-grid" id="gstRateFields">
+            <div class="master-form-group">
+                <label asp-for="GSTPercent">Total GST %</label>
+                <input asp-for="GSTPercent" id="gstPctField" type="number" step="0.01" min="0" max="100" />
+            </div>
+            <div class="master-form-group">
+                <label asp-for="CGSTPercent">CGST %</label>
+                <input asp-for="CGSTPercent" id="cgstField" type="number" step="0.01" min="0" max="100" />
+            </div>
+            <div class="master-form-group">
+                <label asp-for="SGSTPercent">SGST %</label>
+                <input asp-for="SGSTPercent" id="sgstField" type="number" step="0.01" min="0" max="100" />
+            </div>
+            <div class="master-form-group">
+                <label asp-for="IGSTPercent">IGST % (Inter-State)</label>
+                <input asp-for="IGSTPercent" id="igstField" type="number" step="0.01" min="0" max="100" />
+            </div>
+        </div>
+
+        <div class="master-form-grid" style="margin-top:15px">
+            <div class="master-form-group col-span-4">
+                <label asp-for="Description"></label>
+                <textarea asp-for="Description" rows="3" placeholder="Describe this addon service..."></textarea>
+            </div>
+            <div class="master-form-group">
+                <label class="d-flex align-items-center gap-2">
+                    <input asp-for="IsActive" type="checkbox" /> Active
+                </label>
+            </div>
+        </div>
+
+        <div class="master-form-actions">
+            <a asp-action="List" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> @(isEdit ? "Update Service" : "Create Service")</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+    (function () {
+        const slabPicker  = document.getElementById('gstSlabPicker');
+        const rateInput   = document.getElementById('Rate');
+        const previewSec  = document.getElementById('gstPreviewSection');
+        const alertBox    = document.getElementById('gstSlabAlert');
+        const alertMsg    = document.getElementById('gstSlabAlertMsg');
+        const gstField    = document.getElementById('gstPctField');
+        const cgstField   = document.getElementById('cgstField');
+        const sgstField   = document.getElementById('sgstField');
+        const igstField   = document.getElementById('igstField');
+
+        let allBands = [];
+
+        function resolveBand(rate) {
+            if (!rate || rate <= 0) return null;
+            return allBands.find(b =>
+                rate >= b.tariffFrom &&
+                (b.tariffTo == null || b.tariffTo === 0 || rate <= b.tariffTo)
+            ) || null;
+        }
+
+        function bandHtml(band, rateAmt) {
+            if (band) {
+                const gstAmt = (rateAmt * band.gstPercent / 100).toFixed(2);
+                return `<table style="width:100%;font-size:13px;border-collapse:collapse;">
+                    <tr><td style="color:#6b7280;padding:2px 0;">Tariff Band</td>
+                        <td>₹${band.tariffFrom.toLocaleString('en-IN')} – ${band.tariffTo ? '₹' + band.tariffTo.toLocaleString('en-IN') : '∞'}</td></tr>
+                    <tr><td style="color:#6b7280;padding:2px 0;">Total GST %</td><td><strong>${band.gstPercent}%</strong></td></tr>
+                    <tr><td style="color:#6b7280;padding:2px 0;">CGST %</td><td>${band.cgstPercent}%</td></tr>
+                    <tr><td style="color:#6b7280;padding:2px 0;">SGST %</td><td>${band.sgstPercent}%</td></tr>
+                    <tr><td style="color:#6b7280;padding:2px 0;">IGST %</td><td>${band.igstPercent}%</td></tr>
+                    <tr style="border-top:1px solid #e5e7eb;">
+                        <td style="color:#6b7280;padding:4px 0 2px;">GST on Rate ₹${rateAmt.toLocaleString('en-IN')}</td>
+                        <td><strong>₹${parseFloat(gstAmt).toLocaleString('en-IN')}</strong></td></tr>
+                </table>`;
+            }
+            return `<span style="color:#ef4444;font-size:13px;"><i class="fas fa-exclamation-triangle"></i>
+                    No active tariff band covers ₹${rateAmt.toLocaleString('en-IN')} in the selected slab.</span>`;
+        }
+
+        function setFieldsReadOnly(ro) {
+            [gstField, cgstField, sgstField, igstField].forEach(f => {
+                f.readOnly         = ro;
+                f.style.background = ro ? '#f3f4f6' : '';
+                f.style.cursor     = ro ? 'not-allowed' : '';
+            });
+        }
+
+        function updateDisplay() {
+            const rate = parseFloat(rateInput.value) || 0;
+            const band = resolveBand(rate);
+
+            document.getElementById('ratePreview').innerHTML =
+                rate > 0 ? bandHtml(band, rate)
+                         : '<span style="color:#9ca3af;font-size:13px;">Enter Rate (₹) to see resolved band.</span>';
+
+            if (band) {
+                gstField.value  = band.gstPercent;
+                cgstField.value = band.cgstPercent;
+                sgstField.value = band.sgstPercent;
+                igstField.value = band.igstPercent;
+                setFieldsReadOnly(true);
+                alertBox.style.display = 'none';
+            } else if (rate > 0) {
+                setFieldsReadOnly(false);
+                alertMsg.textContent   = 'No tariff band covers Rate (₹' + rate.toLocaleString('en-IN') + '). Please verify the slab bands or enter rates manually below.';
+                alertBox.style.display = 'block';
+            } else {
+                setFieldsReadOnly(false);
+                alertBox.style.display = 'none';
+            }
+        }
+
+        async function loadBands(slabId) {
+            try {
+                const resp = await fetch(`/BanquetVenueMaster/GetGstSlabBands?slabId=${encodeURIComponent(slabId)}`);
+                if (!resp.ok) { allBands = []; return; }
+                allBands = await resp.json();
+            } catch (e) {
+                allBands = [];
+            }
+        }
+
+        slabPicker.addEventListener('change', async function () {
+            if (!this.value) {
+                allBands = [];
+                previewSec.style.display = 'none';
+                setFieldsReadOnly(false);
+                alertBox.style.display = 'none';
+                return;
+            }
+            await loadBands(this.value);
+            previewSec.style.display = 'block';
+            updateDisplay();
+        });
+
+        rateInput.addEventListener('input', function () {
+            if (allBands.length) updateDisplay();
+        });
+
+        // On page load: if slab already selected (edit mode), reload bands and show preview
+        if (slabPicker.value) {
+            loadBands(slabPicker.value).then(() => {
+                previewSec.style.display = 'block';
+                updateDisplay();
+            });
+        }
+    })();
+    </script>
+}

@@ -1,0 +1,402 @@
+@{
+    ViewData["Title"] = "Availability Calendar";
+    var venues = ViewBag.Venues as IEnumerable<HotelApp.Web.Models.BanquetVenue> ?? Enumerable.Empty<HotelApp.Web.Models.BanquetVenue>();
+}
+
+<style>
+/* ── Page Header ────────────────────────────────────────────────────────── */
+.cal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(135deg, #1a2a6c 0%, #4338ca 100%);
+    border-radius: 14px; padding: 22px 28px; margin-bottom: 20px;
+    box-shadow: 0 4px 18px rgba(26,42,108,.25);
+}
+.cal-header-left h2 { color: #fff; font-size: 22px; font-weight: 700; margin: 0; }
+.cal-header-left p  { color: rgba(255,255,255,.7); font-size: 13px; margin: 3px 0 0; }
+.cal-header-right { display: flex; gap: 10px; }
+
+/* ── Legend Strip ───────────────────────────────────────────────────────── */
+.cal-legend {
+    display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center;
+    background: #fff; border-radius: 10px; padding: 12px 20px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.07); margin-bottom: 16px;
+}
+.cal-legend-title { font-size: 12px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .5px; margin-right: 6px; }
+.cal-legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #374151; font-weight: 500; cursor: default; }
+.cal-legend-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── Controls Bar ───────────────────────────────────────────────────────── */
+.cal-controls {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    background: #fff; border-radius: 10px; padding: 14px 20px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.07); margin-bottom: 16px;
+}
+.cal-filter-group { display: flex; align-items: center; gap: 8px; }
+.cal-filter-group label { font-size: 13px; font-weight: 600; color: #374151; white-space: nowrap; }
+.cal-filter-group select {
+    padding: 7px 12px; border: 1px solid #d1d5db; border-radius: 8px;
+    font-size: 13px; color: #1f2937; background: #f9fafb; min-width: 160px;
+}
+.cal-filter-group select:focus { outline: none; border-color: #4338ca; box-shadow: 0 0 0 3px rgba(67,56,202,.1); }
+.cal-divider { width: 1px; height: 28px; background: #e5e7eb; }
+
+/* ── Calendar Container ─────────────────────────────────────────────────── */
+.cal-wrapper {
+    background: #fff; border-radius: 14px; padding: 20px 22px;
+    box-shadow: 0 2px 14px rgba(0,0,0,.08); min-height: 680px;
+}
+
+/* ── FullCalendar Overrides ─────────────────────────────────────────────── */
+.fc .fc-toolbar-title { font-size: 18px; font-weight: 700; color: #1a2a6c; }
+.fc .fc-button {
+    background: #f3f4f6 !important; color: #374151 !important; border: 1px solid #d1d5db !important;
+    border-radius: 7px !important; font-size: 13px !important; font-weight: 600 !important;
+    padding: 6px 14px !important; box-shadow: none !important; text-transform: capitalize !important;
+}
+.fc .fc-button:hover { background: #e5e7eb !important; }
+.fc .fc-button-active,
+.fc .fc-button:focus { background: #4338ca !important; color: #fff !important; border-color: #4338ca !important; outline: none !important; box-shadow: none !important; }
+.fc .fc-col-header-cell { background: #f8f9ff; padding: 10px 0; }
+.fc .fc-col-header-cell-cushion { font-size: 12px; font-weight: 700; color: #4338ca; text-transform: uppercase; letter-spacing: .4px; text-decoration: none; }
+.fc .fc-daygrid-day-number { font-size: 13px; font-weight: 600; color: #374151; text-decoration: none; }
+.fc .fc-day-today { background: #f0f4ff !important; }
+.fc .fc-day-today .fc-daygrid-day-number { color: #4338ca; background: #4338ca; color: #fff; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; }
+.fc-event { border-radius: 5px !important; border: none !important; font-size: 12px !important; font-weight: 600 !important; padding: 2px 6px !important; cursor: pointer !important; }
+.fc-event:hover { filter: brightness(1.1); }
+.fc-daygrid-event-dot { display: none; }
+.fc-list-event-time { font-size: 12px; }
+.fc-list-event-title a { font-weight: 600; font-size: 13px; }
+
+/* ── Hover Tooltip ──────────────────────────────────────────────────────── */
+#calTooltip {
+    display: none; position: fixed; z-index: 99999;
+    background: #fff; border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.18), 0 1px 6px rgba(0,0,0,.08);
+    padding: 0; min-width: 280px; max-width: 340px;
+    pointer-events: none;
+    animation: tooltipFadeIn .15s ease;
+}
+@@keyframes tooltipFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.tt-header {
+    background: var(--tt-color, #4338ca); border-radius: 12px 12px 0 0;
+    padding: 12px 16px;
+}
+.tt-header-title { font-size: 13px; font-weight: 700; color: #fff; margin: 0 0 2px; }
+.tt-header-sub   { font-size: 11px; color: rgba(255,255,255,.82); }
+.tt-body { padding: 12px 16px; }
+.tt-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 7px; font-size: 12px; color: #374151; }
+.tt-row i { width: 14px; text-align: center; color: #6b7280; flex-shrink: 0; margin-top: 1px; }
+.tt-row-val { font-weight: 600; color: #111827; }
+.tt-divider { height: 1px; background: #f3f4f6; margin: 8px 0; }
+.tt-fin-row { display: flex; justify-content: space-between; font-size: 12px; color: #374151; margin-bottom: 4px; }
+.tt-fin-row.tt-balance { color: #dc2626; font-weight: 700; }
+.tt-fin-row.tt-paid    { color: #16a34a; font-weight: 600; }
+.tt-footer { background: #f8f9ff; border-radius: 0 0 12px 12px; padding: 8px 16px; font-size: 11px; color: #6b7280; text-align: center; }
+
+/* ── Click Popup ────────────────────────────────────────────────────────── */
+#eventPopup {
+    display: none; position: fixed; z-index: 99998;
+    background: #fff; border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.2);
+    width: 340px; overflow: hidden;
+}
+.popup-header {
+    padding: 16px 18px 14px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+}
+.popup-title  { font-size: 15px; font-weight: 700; color: #fff; margin: 0 0 3px; }
+.popup-sub    { font-size: 12px; color: rgba(255,255,255,.8); }
+.popup-close  { background: rgba(255,255,255,.2); border: none; color: #fff; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; flex-shrink: 0; }
+.popup-close:hover { background: rgba(255,255,255,.35); }
+.popup-body   { padding: 14px 18px; }
+.popup-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.popup-info-cell { background: #f8f9ff; border-radius: 8px; padding: 8px 10px; }
+.popup-info-label { font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .4px; }
+.popup-info-val   { font-size: 13px; font-weight: 700; color: #1f2937; margin-top: 2px; }
+.popup-fin { background: #f8f9ff; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
+.popup-fin-row { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; }
+.popup-fin-row.total { font-weight: 700; color: #1a2a6c; font-size: 13px; border-top: 1px dashed #d1d5db; margin-top: 4px; padding-top: 6px; }
+.popup-fin-row.paid  { color: #16a34a; font-weight: 600; }
+.popup-fin-row.bal   { color: #dc2626; font-weight: 700; font-size: 13px; }
+.popup-actions { display: flex; gap: 8px; }
+</style>
+
+<!-- Page Header -->
+<div class="cal-header">
+    <div class="cal-header-left">
+        <h2><i class="fas fa-calendar-days me-2"></i>Venue Availability Calendar</h2>
+        <p>View and manage all banquet bookings at a glance</p>
+    </div>
+    <div class="cal-header-right">
+        <a asp-action="List" class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);">
+            <i class="fas fa-list me-1"></i> All Bookings
+        </a>
+        <a asp-action="Create" class="btn btn-sm" style="background:#fff;color:#1a2a6c;font-weight:700;">
+            <i class="fas fa-plus me-1"></i> New Booking
+        </a>
+    </div>
+</div>
+
+<!-- Status Legend -->
+<div class="cal-legend">
+    <span class="cal-legend-title"><i class="fas fa-circle-info me-1"></i>Status Legend:</span>
+    <span class="cal-legend-item"><span class="cal-legend-dot" style="background:#9E9E9E"></span> Inquiry</span>
+    <span class="cal-legend-item"><span class="cal-legend-dot" style="background:#FF9800"></span> Tentative</span>
+    <span class="cal-legend-item"><span class="cal-legend-dot" style="background:#2196F3"></span> Confirmed</span>
+    <span class="cal-legend-item"><span class="cal-legend-dot" style="background:#4CAF50"></span> Checked-In</span>
+    <span class="cal-legend-item"><span class="cal-legend-dot" style="background:#009688"></span> Event Complete</span>
+    <span class="cal-legend-item"><span class="cal-legend-dot" style="background:#3F51B5"></span> Checked-Out</span>
+    <span class="cal-legend-item"><span class="cal-legend-dot" style="background:#795548"></span> No-Show</span>
+    <span style="margin-left:auto;font-size:11px;color:#9ca3af;"><i class="fas fa-hand-pointer me-1"></i>Click a booking for details · Hover for quick info</span>
+</div>
+
+<!-- Controls Bar -->
+<div class="cal-controls">
+    <div class="cal-filter-group">
+        <label><i class="fas fa-building-columns me-1" style="color:#4338ca"></i>Venue:</label>
+        <select id="venueFilter" onchange="refreshCalendar()">
+            <option value="">All Venues</option>
+            @foreach (var v in venues)
+            { <option value="@v.Id">@v.VenueName</option> }
+        </select>
+    </div>
+    <div class="cal-divider"></div>
+    <div class="cal-filter-group">
+        <label><i class="fas fa-tag me-1" style="color:#4338ca"></i>Status:</label>
+        <select id="statusFilter" onchange="refreshCalendar()">
+            <option value="">All Statuses</option>
+            <option value="Inquiry">Inquiry</option>
+            <option value="Tentative">Tentative</option>
+            <option value="Confirmed">Confirmed</option>
+            <option value="CheckedIn">Checked-In</option>
+            <option value="EventComplete">Event Complete</option>
+            <option value="CheckedOut">Checked-Out</option>
+            <option value="NoShow">No-Show</option>
+        </select>
+    </div>
+    <div class="cal-divider"></div>
+    <div class="cal-filter-group" style="margin-left:auto;">
+        <span id="calEventCount" style="font-size:12px;color:#6b7280;"><i class="fas fa-calendar-check me-1"></i>Loading events…</span>
+    </div>
+</div>
+
+<!-- Calendar -->
+<div class="cal-wrapper">
+    <div id="banquetCalendar"></div>
+</div>
+
+<!-- Hover Tooltip -->
+<div id="calTooltip">
+    <div class="tt-header" id="ttHeader">
+        <div class="tt-header-title" id="ttTitle"></div>
+        <div class="tt-header-sub"  id="ttSub"></div>
+    </div>
+    <div class="tt-body">
+        <div class="tt-row"><i class="fas fa-hashtag"></i><span>Booking <span class="tt-row-val" id="ttBookingNo"></span></span></div>
+        <div class="tt-row"><i class="fas fa-user"></i><span><span class="tt-row-val" id="ttGuest"></span></span></div>
+        <div class="tt-row"><i class="fas fa-phone"></i><span><span class="tt-row-val" id="ttPhone"></span></span></div>
+        <div class="tt-row"><i class="fas fa-calendar"></i><span><span class="tt-row-val" id="ttDate"></span></span></div>
+        <div class="tt-row"><i class="fas fa-clock"></i><span><span class="tt-row-val" id="ttTime"></span></span></div>
+        <div class="tt-row"><i class="fas fa-users"></i><span><span class="tt-row-val" id="ttPax"></span> pax · <span id="ttMeal"></span></span></div>
+        <div class="tt-divider"></div>
+        <div class="tt-fin-row"><span>Total</span><span id="ttTotal"></span></div>
+        <div class="tt-fin-row tt-paid"><span><i class="fas fa-check-circle me-1"></i>Paid</span><span id="ttPaid"></span></div>
+        <div class="tt-fin-row tt-balance"><span><i class="fas fa-exclamation-circle me-1"></i>Balance Due</span><span id="ttBal"></span></div>
+    </div>
+    <div class="tt-footer">Click to view full booking details</div>
+</div>
+
+<!-- Click Popup -->
+<div id="eventPopup">
+    <div class="popup-header" id="popupHeader">
+        <div>
+            <div class="popup-title" id="popupTitle"></div>
+            <div class="popup-sub"   id="popupSub"></div>
+        </div>
+        <button class="popup-close" onclick="document.getElementById('eventPopup').style.display='none'">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div class="popup-body">
+        <div class="popup-info-grid" id="popupGrid"></div>
+        <div class="popup-fin" id="popupFin"></div>
+        <div class="popup-actions">
+            <a id="popupLink" href="#" class="btn btn-primary btn-sm flex-grow-1">
+                <i class="fas fa-eye me-1"></i> View Full Details
+            </a>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+<script>
+let calendar;
+let allEventsCache = [];
+const fmt = v => '₹' + Number(v||0).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+const statusLabels = {
+    Inquiry:'Inquiry', Tentative:'Tentative', Confirmed:'Confirmed',
+    CheckedIn:'Checked-In', EventComplete:'Event Complete', CheckedOut:'Checked-Out',
+    NoShow:'No-Show', Cancelled:'Cancelled'
+};
+
+document.addEventListener('DOMContentLoaded', function () {
+    const el = document.getElementById('banquetCalendar');
+    calendar = new FullCalendar.Calendar(el, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left:   'prev,next today',
+            center: 'title',
+            right:  'dayGridMonth,timeGridWeek,listWeek'
+        },
+        buttonText: { month:'Month', week:'Week', list:'List' },
+        height: 650,
+        nowIndicator: true,
+        events: fetchEvents,
+
+        // Custom event rendering — compact pill with time
+        eventDidMount: function(info) {
+            const p = info.event.extendedProps;
+            // Hover tooltip
+            info.el.addEventListener('mouseenter', function(e) { showTooltip(e, info.event); });
+            info.el.addEventListener('mouseleave', function()  { hideTooltip(); });
+            info.el.addEventListener('mousemove',  function(e) { positionTooltip(e); });
+        },
+
+        eventClick: function(info) {
+            hideTooltip();
+            showPopup(info);
+        },
+
+        // After events render — update count
+        eventsSet: function(events) {
+            const statusFilter = document.getElementById('statusFilter').value;
+            const shown = statusFilter ? events.filter(e => e.extendedProps.status === statusFilter) : events;
+            const count = shown.length;
+            document.getElementById('calEventCount').innerHTML =
+                `<i class="fas fa-calendar-check me-1"></i><strong>${count}</strong> booking${count !== 1 ? 's' : ''} shown`;
+        }
+    });
+    calendar.render();
+
+    // Close popup on outside click
+    document.addEventListener('click', function(e) {
+        const popup = document.getElementById('eventPopup');
+        if (popup.style.display !== 'none' && !popup.contains(e.target) && !e.target.closest('.fc-event')) {
+            popup.style.display = 'none';
+        }
+    });
+});
+
+// ── Fetch Events ──────────────────────────────────────────────────────────────
+function fetchEvents(info, successCallback, failureCallback) {
+    const from    = info.startStr.substring(0, 10);
+    const to      = info.endStr.substring(0, 10);
+    const venueId = document.getElementById('venueFilter').value;
+    const url     = `/BanquetBooking/GetCalendarEvents?fromDate=${from}&toDate=${to}${venueId ? '&venueId='+venueId : ''}`;
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            // Client-side status filter
+            const statusFilter = document.getElementById('statusFilter').value;
+            const filtered = statusFilter ? data.filter(e => e.extendedProps?.status === statusFilter) : data;
+            successCallback(filtered);
+        })
+        .catch(failureCallback);
+}
+
+function refreshCalendar() {
+    if (calendar) calendar.refetchEvents();
+}
+
+// ── Hover Tooltip ─────────────────────────────────────────────────────────────
+function showTooltip(e, event) {
+    const p = event.extendedProps;
+    const tooltip = document.getElementById('calTooltip');
+
+    document.getElementById('ttHeader').style.setProperty('--tt-color', event.backgroundColor || '#4338ca');
+    document.getElementById('ttHeader').style.background = event.backgroundColor || '#4338ca';
+    document.getElementById('ttTitle').textContent     = event.extendedProps.eventType + ' — ' + event.title.split(' (')[0];
+    document.getElementById('ttSub').textContent       = p.venueName + (p.venueHireType ? ' · ' + p.venueHireType : '');
+    document.getElementById('ttBookingNo').textContent = p.banquetBookingNumber || '—';
+    document.getElementById('ttGuest').textContent     = p.guestName || '—';
+    document.getElementById('ttPhone').textContent     = p.guestPhone || '—';
+
+    let dateStr = p.eventDate || '';
+    if (p.eventEndDate && p.eventEndDate !== p.eventDate) dateStr += ' → ' + p.eventEndDate;
+    document.getElementById('ttDate').textContent = dateStr;
+
+    let timeStr = (p.startTime || '') + (p.endTime ? ' – ' + p.endTime : '');
+    document.getElementById('ttTime').textContent = timeStr || 'Full Day';
+    document.getElementById('ttPax').textContent  = p.attendeeCount || 0;
+    document.getElementById('ttMeal').textContent = p.mealType || '—';
+    document.getElementById('ttTotal').textContent= fmt(p.totalAmount);
+    document.getElementById('ttPaid').textContent = fmt(p.depositAmount);
+    document.getElementById('ttBal').textContent  = fmt(p.balanceAmount);
+
+    tooltip.style.display = 'block';
+    positionTooltip(e);
+}
+
+function positionTooltip(e) {
+    const tooltip = document.getElementById('calTooltip');
+    const tw = tooltip.offsetWidth  || 300;
+    const th = tooltip.offsetHeight || 200;
+    let x = e.clientX + 14;
+    let y = e.clientY - 10;
+    if (x + tw + 10 > window.innerWidth)  x = e.clientX - tw - 14;
+    if (y + th + 10 > window.innerHeight) y = window.innerHeight - th - 10;
+    tooltip.style.left = x + 'px';
+    tooltip.style.top  = y + 'px';
+}
+
+function hideTooltip() {
+    document.getElementById('calTooltip').style.display = 'none';
+}
+
+// ── Click Popup ───────────────────────────────────────────────────────────────
+function showPopup(info) {
+    const p   = info.event.extendedProps;
+    const col = info.event.backgroundColor || '#4338ca';
+    const id  = info.event.id;
+
+    document.getElementById('popupHeader').style.background = col;
+    document.getElementById('popupTitle').textContent = info.event.title.split(' (')[0];
+    document.getElementById('popupSub').textContent   = (statusLabels[p.status] || p.status) + ' · ' + (p.eventType || '');
+
+    document.getElementById('popupGrid').innerHTML = `
+        <div class="popup-info-cell"><div class="popup-info-label">Booking #</div><div class="popup-info-val">${p.banquetBookingNumber||'—'}</div></div>
+        <div class="popup-info-cell"><div class="popup-info-label">Status</div><div class="popup-info-val" style="color:${col}">${statusLabels[p.status]||p.status}</div></div>
+        <div class="popup-info-cell"><div class="popup-info-label">Guest</div><div class="popup-info-val" style="font-size:12px">${p.guestName||'—'}</div></div>
+        <div class="popup-info-cell"><div class="popup-info-label">Phone</div><div class="popup-info-val" style="font-size:12px">${p.guestPhone||'—'}</div></div>
+        <div class="popup-info-cell"><div class="popup-info-label">Date</div><div class="popup-info-val" style="font-size:12px">${p.eventDate||'—'}${p.eventEndDate && p.eventEndDate!==p.eventDate ? '<br>→ '+p.eventEndDate : ''}</div></div>
+        <div class="popup-info-cell"><div class="popup-info-label">Venue / Hire</div><div class="popup-info-val" style="font-size:12px">${p.venueName||'—'}<br>${p.venueHireType||''}</div></div>
+        <div class="popup-info-cell"><div class="popup-info-label">Pax</div><div class="popup-info-val">${p.attendeeCount||0}</div></div>
+        <div class="popup-info-cell"><div class="popup-info-label">Meal</div><div class="popup-info-val">${p.mealType||'—'}</div></div>
+    `;
+
+    const balColor = (p.balanceAmount||0) > 0 ? '#dc2626' : '#16a34a';
+    document.getElementById('popupFin').innerHTML = `
+        <div class="popup-fin-row"><span>Total Amount</span><span style="font-weight:600">${fmt(p.totalAmount)}</span></div>
+        <div class="popup-fin-row paid"><span><i class="fas fa-check-circle me-1"></i>Amount Paid</span><span>${fmt(p.depositAmount)}</span></div>
+        <div class="popup-fin-row bal" style="color:${balColor}"><span><i class="fas fa-clock me-1"></i>Balance Due</span><span>${fmt(p.balanceAmount)}</span></div>
+    `;
+
+    document.getElementById('popupLink').href    = `/BanquetBooking/Details?id=${id}`;
+
+    const popup = document.getElementById('eventPopup');
+    popup.style.display = 'block';
+    // Position near the click
+    const rect = info.el.getBoundingClientRect();
+    let x = rect.right + 8;
+    let y = rect.top;
+    if (x + 350 > window.innerWidth)  x = rect.left - 350;
+    if (y + 500 > window.innerHeight) y = window.innerHeight - 510;
+    if (y < 60) y = 60;
+    popup.style.left = Math.max(8, x) + 'px';
+    popup.style.top  = y + 'px';
+}
+</script>
+}

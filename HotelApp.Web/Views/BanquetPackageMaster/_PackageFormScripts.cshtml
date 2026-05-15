@@ -1,0 +1,183 @@
+@model HotelApp.Web.Models.BanquetPackage
+@{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+<script>
+(function () {
+    const slabPicker   = document.getElementById('gstSlabPicker');
+    const paxRateInput = document.getElementById('PricePerPax');
+    const previewSec   = document.getElementById('gstPreviewSection');
+    const alertBox     = document.getElementById('gstSlabAlert');
+    const alertMsg     = document.getElementById('gstSlabAlertMsg');
+    const gstField     = document.getElementById('gstPctField');
+    const cgstField    = document.getElementById('cgstField');
+    const sgstField    = document.getElementById('sgstField');
+    const igstField    = document.getElementById('igstField');
+
+    let allBands = [];
+
+    function resolveBand(tariff) {
+        if (!tariff || tariff <= 0) return null;
+        return allBands.find(b =>
+            tariff >= b.tariffFrom &&
+            (b.tariffTo == null || b.tariffTo === 0 || tariff <= b.tariffTo)
+        ) || null;
+    }
+
+    function bandHtml(band, rateAmt) {
+        if (band) {
+            const gstAmt = (rateAmt * band.gstPercent / 100).toFixed(2);
+            return `<table style="width:100%;font-size:13px;border-collapse:collapse;">
+                <tr><td style="color:#6b7280;padding:2px 0;">Tariff Band</td>
+                    <td>₹${band.tariffFrom.toLocaleString('en-IN')} – ${band.tariffTo ? '₹' + band.tariffTo.toLocaleString('en-IN') : '∞'}</td></tr>
+                <tr><td style="color:#6b7280;padding:2px 0;">Total GST %</td><td><strong>${band.gstPercent}%</strong></td></tr>
+                <tr><td style="color:#6b7280;padding:2px 0;">CGST %</td><td>${band.cgstPercent}%</td></tr>
+                <tr><td style="color:#6b7280;padding:2px 0;">SGST %</td><td>${band.sgstPercent}%</td></tr>
+                <tr><td style="color:#6b7280;padding:2px 0;">IGST %</td><td>${band.igstPercent}%</td></tr>
+                <tr style="border-top:1px solid #e5e7eb;">
+                    <td style="color:#6b7280;padding:4px 0 2px;">GST per Pax on ₹${rateAmt.toLocaleString('en-IN')}</td>
+                    <td><strong>₹${parseFloat(gstAmt).toLocaleString('en-IN')}</strong></td></tr>
+            </table>`;
+        }
+        return `<span style="color:#ef4444;font-size:13px;"><i class="fas fa-exclamation-triangle"></i>
+                No active tariff band covers ₹${rateAmt.toLocaleString('en-IN')} in the selected slab.</span>`;
+    }
+
+    function setFieldsReadOnly(ro) {
+        [gstField, cgstField, sgstField, igstField].forEach(f => {
+            f.readOnly         = ro;
+            f.style.background = ro ? '#f3f4f6' : '';
+            f.style.cursor     = ro ? 'not-allowed' : '';
+        });
+    }
+
+    function updateDisplay() {
+        const paxRate = parseFloat(paxRateInput.value) || 0;
+        const band    = resolveBand(paxRate);
+
+        document.getElementById('paxRatePreview').innerHTML =
+            paxRate > 0 ? bandHtml(band, paxRate)
+                        : '<span style="color:#9ca3af;font-size:13px;">Enter Price Per Pax to see resolved band.</span>';
+
+        if (band) {
+            gstField.value  = band.gstPercent;
+            cgstField.value = band.cgstPercent;
+            sgstField.value = band.sgstPercent;
+            igstField.value = band.igstPercent;
+            setFieldsReadOnly(true);
+            alertBox.style.display = 'none';
+        } else if (paxRate > 0) {
+            setFieldsReadOnly(false);
+            alertMsg.textContent   = 'No tariff band covers Price Per Pax (₹' + paxRate.toLocaleString('en-IN') + '). Please verify the slab bands or enter rates manually below.';
+            alertBox.style.display = 'block';
+        } else {
+            setFieldsReadOnly(false);
+            alertBox.style.display = 'none';
+        }
+    }
+
+    async function loadBands(slabId) {
+        try {
+            const resp = await fetch(`/BanquetVenueMaster/GetGstSlabBands?slabId=${encodeURIComponent(slabId)}`);
+            if (!resp.ok) { allBands = []; return; }
+            allBands = await resp.json();
+        } catch (e) {
+            allBands = [];
+        }
+    }
+
+    slabPicker.addEventListener('change', async function () {
+        if (!this.value) {
+            allBands = [];
+            previewSec.style.display = 'none';
+            setFieldsReadOnly(false);
+            alertBox.style.display = 'none';
+            return;
+        }
+        await loadBands(this.value);
+        previewSec.style.display = 'block';
+        updateDisplay();
+    });
+
+    paxRateInput.addEventListener('input', function () {
+        if (allBands.length) updateDisplay();
+    });
+
+    // On page load: if slab already selected (edit mode), reload bands and show preview
+    if (slabPicker.value) {
+        loadBands(slabPicker.value).then(() => {
+            previewSec.style.display = 'block';
+            updateDisplay();
+        });
+    }
+})();
+
+// ── Menu Inclusion Cards ──────────────────────────────────────────────────────
+const INCLUSIONS = [
+    { key: 'Starter',    label: 'Starter',      chkId: 'IncludesStarter' },
+    { key: 'MainCourse', label: 'Main Course',   chkId: 'IncludesMainCourse' },
+    { key: 'Dessert',    label: 'Dessert',       chkId: 'IncludesDessert' },
+    { key: 'Beverages',  label: 'Beverages',     chkId: 'IncludesBeverages' },
+    { key: 'Live',       label: 'Live Counter',  chkId: 'IncludesLive' },
+];
+
+function toggleIncl(key) {
+    const chk  = document.getElementById('chk-' + key);
+    const body = document.getElementById('body-' + key);
+    const card = document.getElementById('card-' + key);
+    if (!chk) return;
+    body.classList.toggle('open',   chk.checked);
+    card.classList.toggle('active', chk.checked);
+    buildMenuDesc(); // keep hidden field in sync on every checkbox change
+}
+
+function buildMenuDesc() {
+    const parts = [];
+    INCLUSIONS.forEach(inc => {
+        const chk = document.getElementById('chk-' + inc.key);
+        if (chk && chk.checked) {
+            const desc = (document.getElementById('desc-' + inc.key)?.value || '').trim();
+            parts.push(inc.label + ': ' + desc);
+        }
+    });
+    document.getElementById('menuDescHidden').value = parts.join('||');
+}
+
+
+// On page load: parse existing MenuDescription and populate textareas, then open checked cards
+(function initInclusions() {
+    const existing = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model?.MenuDescription ?? ""));
+    const labelToKey = {
+        'Starter': 'Starter', 'Main Course': 'MainCourse',
+        'Dessert': 'Dessert', 'Beverages': 'Beverages', 'Live Counter': 'Live'
+    };
+    if (existing && existing.includes('||')) {
+        existing.split('||').forEach(part => {
+            const colonIdx = part.indexOf(': ');
+            if (colonIdx < 0) return;
+            const cat  = part.substring(0, colonIdx).trim();
+            const desc = part.substring(colonIdx + 2).trim();
+            const key  = labelToKey[cat];
+            if (key) {
+                const ta = document.getElementById('desc-' + key);
+                if (ta) ta.value = desc;
+            }
+        });
+    }
+    // Open cards for all currently-checked inclusions
+    INCLUSIONS.forEach(inc => {
+        const chk = document.getElementById('chk-' + inc.key);
+        if (chk && chk.checked) {
+            document.getElementById('body-' + inc.key)?.classList.add('open');
+            document.getElementById('card-' + inc.key)?.classList.add('active');
+        }
+    });
+})();
+
+// Sync hidden field whenever a description textarea is edited
+INCLUSIONS.forEach(inc => {
+    const ta = document.getElementById('desc-' + inc.key);
+    if (ta) ta.addEventListener('input', buildMenuDesc);
+});
+
+// Set initial value of hidden field immediately (covers page-load state)
+buildMenuDesc();
+</script>

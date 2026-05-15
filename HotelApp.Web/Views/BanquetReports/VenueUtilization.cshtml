@@ -1,0 +1,78 @@
+@using HotelApp.Web.Repositories
+@model HotelApp.Web.ViewModels.BanquetVenueUtilizationViewModel
+@{
+    ViewData["Title"] = "Venue Utilization Report";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-chart-bar"></i> Venue Utilization Report</h2>
+</div>
+
+<form method="get" class="filter-bar mb-4">
+    <div class="filter-grid">
+        <div class="master-form-group">
+            <label>From Date</label>
+            <input type="date" name="fromDate" class="form-control" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="master-form-group">
+            <label>To Date</label>
+            <input type="date" name="toDate" class="form-control" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="master-form-group" style="align-self:flex-end">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Apply</button>
+        </div>
+    </div>
+</form>
+
+<div class="card">
+    <div class="card-header fw-600"><i class="fas fa-building"></i> Venue Performance (@Model.FromDate.ToString("dd MMM yyyy") — @Model.ToDate.ToString("dd MMM yyyy"))</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table data-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Venue</th><th>Type</th><th>Capacity</th>
+                        <th>Total Bookings</th><th>Completed</th><th>Cancelled</th>
+                        <th>Base Revenue ₹</th><th>GST ₹</th><th>Total Revenue ₹</th><th>Avg Pax</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.Rows)
+                    {
+                        <tr>
+                            <td><strong>@r.VenueName</strong></td>
+                            <td>@r.VenueType</td>
+                            <td>@r.CapacitySeated</td>
+                            <td>@r.TotalBookings</td>
+                            <td class="text-success">@r.CompletedEvents</td>
+                            <td class="text-danger">@r.CancelledEvents</td>
+                            <td>@r.BaseRevenue.ToString("N2")</td>
+                            <td>@r.TotalGST.ToString("N2")</td>
+                            <td class="fw-600">@r.TotalRevenue.ToString("N2")</td>
+                            <td>@r.AvgAttendees.ToString("N0")</td>
+                        </tr>
+                    }
+                    @if (!Model.Rows.Any())
+                    {
+                        <tr><td colspan="10" class="text-center text-muted py-4">No data for this period.</td></tr>
+                    }
+                </tbody>
+                @if (Model.Rows.Any())
+                {
+                    <tfoot class="table-light fw-600">
+                        <tr>
+                            <td colspan="3">Total</td>
+                            <td>@Model.Rows.Sum(r => r.TotalBookings)</td>
+                            <td class="text-success">@Model.Rows.Sum(r => r.CompletedEvents)</td>
+                            <td class="text-danger">@Model.Rows.Sum(r => r.CancelledEvents)</td>
+                            <td>@Model.Rows.Sum(r => r.BaseRevenue).ToString("N2")</td>
+                            <td>@Model.Rows.Sum(r => r.TotalGST).ToString("N2")</td>
+                            <td>@Model.Rows.Sum(r => r.TotalRevenue).ToString("N2")</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                }
+            </table>
+        </div>
+    </div>
+</div>

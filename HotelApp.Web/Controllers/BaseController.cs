@@ -59,10 +59,14 @@ namespace HotelApp.Web.Controllers
             var branchName = HttpContext.Session.GetString("BranchName")
                 ?? HttpContext.User.FindFirstValue("BranchName")
                 ?? "Head Office";
+            var branchCode = HttpContext.Session.GetString("BranchCode")
+                ?? HttpContext.User.FindFirstValue("BranchCode")
+                ?? branchName;
 
             ViewBag.CurrentBranchID = CurrentBranchID;
             ViewBag.CurrentUserId = CurrentUserId;
             ViewBag.CurrentBranchName = branchName;
+            ViewBag.CurrentBranchCode = branchCode;
             ViewBag.CurrentRoleId = currentRoleId;
             ViewBag.SelectedRoleId = currentRoleId;
             ViewBag.SelectedRoleName = currentRoleName;

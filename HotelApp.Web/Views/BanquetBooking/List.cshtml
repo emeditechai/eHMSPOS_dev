@@ -1,0 +1,144 @@
+@using Microsoft.AspNetCore.Html
+@model HotelApp.Web.ViewModels.BanquetBookingListViewModel
+@{
+    ViewData["Title"] = "Event Bookings";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-champagne-glasses"></i> Event Bookings</h2>
+    <a asp-action="Create" class="btn-create"><i class="fas fa-plus"></i> New Booking</a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{ <div class="alert alert-success"><i class="fas fa-check-circle"></i> @TempData["SuccessMessage"]</div> }
+
+<!-- Filters -->
+<form method="get" class="filter-bar mb-3">
+    <div class="filter-grid">
+        <div>
+            <label class="filter-label">Status</label>
+            <select name="status" class="filter-select">
+                <option value="">All Statuses</option>
+                <option value="Inquiry" selected="@(Model.FilterStatus == "Inquiry")">Inquiry</option>
+                <option value="Tentative" selected="@(Model.FilterStatus == "Tentative")">Tentative</option>
+                <option value="Confirmed" selected="@(Model.FilterStatus == "Confirmed")">Confirmed</option>
+                <option value="CheckedIn" selected="@(Model.FilterStatus == "CheckedIn")">Checked In</option>
+                <option value="EventComplete" selected="@(Model.FilterStatus == "EventComplete")">Event Complete</option>
+                <option value="Cancelled" selected="@(Model.FilterStatus == "Cancelled")">Cancelled</option>
+            </select>
+        </div>
+        <div>
+            <label class="filter-label">Venue</label>
+            <select name="venueId" class="filter-select">
+                <option value="">All Venues</option>
+                @foreach (var v in Model.Venues)
+                { <option value="@v.Id" selected="@(Model.FilterVenueId == v.Id)">@v.VenueName</option> }
+            </select>
+        </div>
+        <div>
+            <label class="filter-label">Customer Type</label>
+            <select name="customerType" class="filter-select">
+                <option value="">All</option>
+                <option value="B2C" selected="@(Model.FilterCustomerType == "B2C")">B2C</option>
+                <option value="B2B" selected="@(Model.FilterCustomerType == "B2B")">B2B</option>
+            </select>
+        </div>
+        <div>
+            <label class="filter-label">From Date</label>
+            <input type="date" name="fromDate" value="@Model.FromDate?.ToString("yyyy-MM-dd")" class="filter-input" />
+        </div>
+        <div>
+            <label class="filter-label">To Date</label>
+            <input type="date" name="toDate" value="@Model.ToDate?.ToString("yyyy-MM-dd")" class="filter-input" />
+        </div>
+        <div class="d-flex align-items-end gap-2">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filter</button>
+            <a asp-action="List" class="btn btn-outline-secondary"><i class="fas fa-rotate-left"></i> Reset</a>
+        </div>
+    </div>
+</form>
+
+@if (Model.Bookings.Any())
+{
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Booking #</th>
+                    <th>Event Date</th>
+                    <th>Event Name</th>
+                    <th>Venue</th>
+                    <th>Event Type</th>
+                    <th>Customer</th>
+                    <th>Pax</th>
+                    <th>Total (₹)</th>
+                    <th>Balance (₹)</th>
+                    <th>Status</th>
+                    <th>Pay Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var b in Model.Bookings)
+                {
+                    <tr>
+                        <td><strong>@b.BanquetBookingNumber</strong></td>
+                        <td>@b.EventDate.ToString("dd-MMM-yyyy")</td>
+                        <td>@b.EventName</td>
+                        <td>@b.VenueName</td>
+                        <td>@b.EventTypeName</td>
+                        <td>
+                            @b.GuestName
+                            @if (!string.IsNullOrEmpty(b.CompanyName))
+                            { <br /><small class="text-muted">@b.CompanyName</small> }
+                        </td>
+                        <td>@b.AttendeeCount</td>
+                        <td>@b.TotalAmount.ToString("N0")</td>
+                        <td class="@(b.BalanceAmount > 0 ? "text-danger fw-bold" : "text-success")">@b.BalanceAmount.ToString("N0")</td>
+                        <td>@StatusBadge(b.Status)</td>
+                        <td>@PayBadge(b.PaymentStatus)</td>
+                        <td>
+                            <div class="action-buttons">
+                                <a asp-action="Details" asp-route-id="@b.Id" class="btn-action btn-view" title="View"><i class="fas fa-eye"></i></a>
+                                @if (b.BalanceAmount > 0 && b.Status != "Cancelled")
+                                { <a asp-action="AddPayment" asp-route-id="@b.Id" class="btn-action btn-edit" title="Add Payment"><i class="fas fa-indian-rupee-sign"></i></a> }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="empty-state">
+        <i class="fas fa-champagne-glasses fa-3x"></i>
+        <p>No bookings found for the selected filters.</p>
+        <a asp-action="Create" class="btn btn-primary">Create First Booking</a>
+    </div>
+}
+
+<style>
+    .filter-grid { display: grid; grid-template-columns: repeat(6,1fr); gap: 15px; align-items: end; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .filter-label { display: block; font-size: 13px; font-weight: 500; color: #555; margin-bottom: 6px; }
+    .filter-select, .filter-input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+    @@media(max-width:1400px){ .filter-grid{ grid-template-columns: repeat(3,1fr); } }
+</style>
+
+@functions {
+    Microsoft.AspNetCore.Html.IHtmlContent StatusBadge(string s) => new HtmlString(s switch {
+        "Confirmed"     => "<span class='badge badge-available'>Confirmed</span>",
+        "Tentative"     => "<span class='badge badge-occupied'>Tentative</span>",
+        "Inquiry"       => "<span class='badge badge-info'>Inquiry</span>",
+        "CheckedIn"     => "<span class='badge badge-available'>Checked In</span>",
+        "EventComplete" => "<span class='badge badge-info'>Complete</span>",
+        "Cancelled"     => "<span class='badge badge-maintenance'>Cancelled</span>",
+        _               => $"<span class='badge badge-info'>{s}</span>"
+    });
+    Microsoft.AspNetCore.Html.IHtmlContent PayBadge(string s) => new HtmlString(s switch {
+        "FullPaid"    => "<span class='badge badge-available'>Paid</span>",
+        "PartialPaid" => "<span class='badge badge-occupied'>Partial</span>",
+        _             => "<span class='badge badge-maintenance'>Pending</span>"
+    });
+}

@@ -1,0 +1,192 @@
+@model HotelApp.Web.ViewModels.BanquetCancelViewModel
+@{
+    ViewData["Title"] = "Cancel Booking";
+}
+
+<style>
+/* ── Hero ────────────────────────────────────────────────────── */
+.canc-hero {
+    background: linear-gradient(135deg, #7f1d1d 0%, #b91c1c 60%, #dc2626 100%);
+    border-radius: 16px;
+    padding: 26px 32px;
+    margin-bottom: 24px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    box-shadow: 0 8px 32px rgba(185,28,28,.28);
+}
+.canc-hero-icon { font-size: 38px; opacity: .85; }
+.canc-hero-title { font-size: 22px; font-weight: 800; letter-spacing: .5px; }
+.canc-hero-sub { font-size: 14px; opacity: .78; margin-top: 4px; }
+
+/* ── Cards ───────────────────────────────────────────────────── */
+.canc-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 14px rgba(0,0,0,.07); margin-bottom: 20px; overflow: hidden; }
+.canc-card-header { padding: 14px 22px; font-size: 14px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 9px; }
+.canc-card-header.hd-policy { background: linear-gradient(90deg,#1a2a6c,#2d3fa3); }
+.canc-card-header.hd-form   { background: linear-gradient(90deg,#7f1d1d,#b91c1c); }
+.canc-card-body { padding: 22px; }
+
+/* ── Policy table ────────────────────────────────────────────── */
+.policy-table { width: 100%; border-collapse: collapse; }
+.policy-table tr { border-bottom: 1px solid #f3f4f6; }
+.policy-table tr:last-child { border-bottom: none; }
+.policy-table td { padding: 11px 14px; font-size: 14px; }
+.policy-table td:first-child { color: #6b7280; font-weight: 600; width: 48%; }
+.policy-table td:last-child  { color: #1f2937; font-weight: 600; text-align: right; }
+.policy-table .row-refund td { background: #ecfdf5; }
+.policy-table .row-refund td:first-child { color: #065f46; font-size: 15px; }
+.policy-table .row-refund td:last-child  { color: #059669; font-size: 17px; font-weight: 800; }
+.policy-table .row-deduct td:last-child  { color: #dc2626; }
+.policy-table .row-pct td:last-child { color: #7c3aed; }
+.policy-table .row-policy td:last-child { color: #1a2a6c; }
+
+/* ── Warning banner ──────────────────────────────────────────── */
+.canc-warning {
+    background: #fef2f2;
+    border: 1.5px solid #fca5a5;
+    border-radius: 10px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 20px;
+    font-size: 13.5px;
+    color: #7f1d1d;
+}
+.canc-warning i { font-size: 18px; color: #dc2626; margin-top: 1px; flex-shrink: 0; }
+
+/* ── Form fields ─────────────────────────────────────────────── */
+.canc-field-label { font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 6px; }
+.canc-field-label span.req { color: #dc2626; }
+.canc-flat-deduction { max-width: 220px; }
+.canc-actions { display: flex; gap: 12px; align-items: center; margin-top: 24px; flex-wrap: wrap; }
+</style>
+
+<!-- Hero -->
+<div class="canc-hero">
+    <div class="canc-hero-icon"><i class="fas fa-ban"></i></div>
+    <div>
+        <div class="canc-hero-title">Cancel Booking — @Model.BanquetBookingNumber</div>
+        <div class="canc-hero-sub"><i class="fas fa-calendar-days me-1"></i> @Model.EventName &nbsp;·&nbsp; Event on @Model.EventDate.ToString("dd MMM yyyy")</div>
+    </div>
+</div>
+
+<div class="row justify-content-center g-4">
+    <!-- Policy Summary -->
+    <div class="col-lg-5">
+        <div class="canc-card">
+            <div class="canc-card-header hd-policy">
+                <i class="fas fa-file-contract"></i> Cancellation Policy Summary
+            </div>
+            <div class="canc-card-body p-0">
+                <table class="policy-table">
+                    <tr>
+                        <td><i class="fas fa-calendar-star fa-xs me-1"></i> Event Date</td>
+                        <td>@Model.EventDate.ToString("dd MMM yyyy")</td>
+                    </tr>
+                    <tr>
+                        <td><i class="fas fa-hourglass-half fa-xs me-1"></i> Days Before Event</td>
+                        <td>
+                            @Model.DaysBeforeEvent days
+                            @if (Model.DaysBeforeEvent < 0)
+                            { <span style="color:#dc2626;font-size:12px">(event already passed)</span> }
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><i class="fas fa-calculator fa-xs me-1"></i> Total Booking Value</td>
+                        <td>₹@Model.TotalAmount.ToString("N2")</td>
+                    </tr>
+                    <tr>
+                        <td><i class="fas fa-circle-check fa-xs me-1"></i> Amount Paid</td>
+                        <td>₹@Model.AmountPaid.ToString("N2")</td>
+                    </tr>
+                    <tr class="row-policy">
+                        <td><i class="fas fa-file-shield fa-xs me-1"></i> Policy Applied</td>
+                        <td>@Model.PolicyName</td>
+                    </tr>
+                    <tr class="row-pct">
+                        <td><i class="fas fa-percent fa-xs me-1"></i> Refund %</td>
+                        <td>@Model.RefundPercent %</td>
+                    </tr>
+                    @if (Model.FlatDeduction > 0)
+                    {
+                        <tr>
+                            <td><i class="fas fa-minus-circle fa-xs me-1"></i> Flat Deduction</td>
+                            <td style="color:#b45309">-₹@Model.FlatDeduction.ToString("N2")</td>
+                        </tr>
+                    }
+                    <tr class="row-deduct">
+                        <td><i class="fas fa-scissors fa-xs me-1"></i> Deduction Amount</td>
+                        <td>-₹@Model.DeductionAmount.ToString("N2")</td>
+                    </tr>
+                    <tr class="row-refund">
+                        <td><i class="fas fa-hand-holding-dollar"></i> Estimated Refund</td>
+                        <td>₹@Model.RefundAmount.ToString("N2")</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cancellation Form -->
+    <div class="col-lg-6">
+        <div class="canc-warning">
+            <i class="fas fa-triangle-exclamation"></i>
+            <span>
+                <strong>This action cannot be undone.</strong> Once confirmed, the booking will be permanently cancelled and a refund record will be created for ₹@Model.RefundAmount.ToString("N2"). The refund will need to be processed separately.
+            </span>
+        </div>
+
+        <div class="canc-card">
+            <div class="canc-card-header hd-form">
+                <i class="fas fa-pen-to-square"></i> Confirm Cancellation Details
+            </div>
+            <div class="canc-card-body">
+                <form asp-action="CancelBooking" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="BanquetBookingId" />
+                    <input type="hidden" asp-for="BanquetBookingNumber" />
+                    <input type="hidden" asp-for="EventName" />
+                    <input type="hidden" asp-for="EventDate" />
+                    <input type="hidden" asp-for="TotalAmount" />
+                    <input type="hidden" asp-for="AmountPaid" />
+                    <input type="hidden" asp-for="RefundPercent" />
+                    <input type="hidden" asp-for="FlatDeduction" />
+                    <input type="hidden" asp-for="DeductionAmount" />
+                    <input type="hidden" asp-for="RefundAmount" />
+                    <input type="hidden" asp-for="PolicyName" />
+                    <input type="hidden" asp-for="DaysBeforeEvent" />
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger mb-3"></div>
+
+                    <div class="mb-4">
+                        <div class="canc-field-label">Cancellation Reason <span class="req">*</span></div>
+                        <textarea asp-for="CancellationReason" class="form-control" rows="4"
+                                  placeholder="Describe the reason for cancellation..."></textarea>
+                        <span asp-validation-for="CancellationReason" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="canc-field-label">Additional Flat Deduction (₹)
+                            <small class="text-muted fw-normal">— charged on top of policy deduction</small>
+                        </div>
+                        <input asp-for="AdditionalFlatDeduction" type="number" step="0.01" min="0"
+                               class="form-control canc-flat-deduction" />
+                    </div>
+
+                    <div class="canc-actions">
+                        <a asp-action="Details" asp-route-id="@Model.BanquetBookingId" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Go Back
+                        </a>
+                        <button type="submit" class="btn btn-danger px-4">
+                            <i class="fas fa-ban"></i> Confirm Cancellation
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts { @{await Html.RenderPartialAsync("_ValidationScriptsPartial");} }
+

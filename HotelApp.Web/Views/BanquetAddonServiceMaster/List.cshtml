@@ -1,0 +1,42 @@
+@model IEnumerable<HotelApp.Web.Models.BanquetAddonService>
+@{ ViewData["Title"] = "Addon Services"; }
+
+<div class="page-header">
+    <h2><i class="fas fa-puzzle-piece"></i> Addon Services</h2>
+    <a asp-action="Create" class="btn-create"><i class="fas fa-plus"></i> Add Service</a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{ <div class="alert alert-success"><i class="fas fa-check-circle"></i> @TempData["SuccessMessage"]</div> }
+
+@if (Model.Any())
+{
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr><th>Code</th><th>Service Name</th><th>Type</th><th>Rate</th><th>Rate Type</th><th>GST %</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var s in Model)
+                {
+                    <tr>
+                        <td><strong>@s.ServiceCode</strong></td>
+                        <td>@s.ServiceName</td>
+                        <td>@s.ServiceType</td>
+                        <td>₹@s.Rate.ToString("N2")</td>
+                        <td><span class="badge badge-info">@s.RateType</span></td>
+                        <td>@s.GSTPercent %</td>
+                        <td>@if(s.IsActive){<span class="badge badge-available">Active</span>}else{<span class="badge badge-maintenance">Inactive</span>}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <a asp-action="Edit" asp-route-id="@s.Id" class="btn-action btn-edit"><i class="fas fa-pen"></i><span>Edit</span></a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{ <div class="empty-state"><i class="fas fa-puzzle-piece fa-3x"></i><p>No addon services configured.</p></div> }

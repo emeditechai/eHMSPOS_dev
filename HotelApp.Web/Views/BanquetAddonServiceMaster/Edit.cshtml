@@ -1,0 +1,6 @@
+@model HotelApp.Web.Models.BanquetAddonService
+@{
+    ViewData["Title"] = "Edit Addon Service";
+    var gstSlabs = ViewBag.GstSlabs as IEnumerable<HotelApp.Web.Models.GstSlab> ?? Enumerable.Empty<HotelApp.Web.Models.GstSlab>();
+}
+@Html.Partial("Create", Model)

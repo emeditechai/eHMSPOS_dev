@@ -1,0 +1,136 @@
+@using HotelApp.Web.Repositories
+@model HotelApp.Web.ViewModels.BanquetGSTRegisterViewModel
+@{
+    ViewData["Title"] = "Banquet GST Register";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-file-invoice"></i> Banquet GST Register</h2>
+</div>
+
+<form method="get" class="filter-bar mb-4">
+    <div class="filter-grid">
+        <div class="master-form-group">
+            <label>From Date</label>
+            <input type="date" name="fromDate" class="form-control" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="master-form-group">
+            <label>To Date</label>
+            <input type="date" name="toDate" class="form-control" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="master-form-group" style="align-self:flex-end">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Apply</button>
+        </div>
+    </div>
+</form>
+
+<!-- GST Summary Row -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Taxable Value</div>
+                <div class="h4 fw-bold text-primary">₹@Model.TotalTaxableValue.ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Total CGST</div>
+                <div class="h4 fw-bold">₹@Model.TotalCGST.ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Total SGST</div>
+                <div class="h4 fw-bold">₹@Model.TotalSGST.ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-center border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Total IGST</div>
+                <div class="h4 fw-bold">₹@Model.TotalIGST.ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-1">
+        <div class="card text-center border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Total GST</div>
+                <div class="h4 fw-bold text-success">₹@Model.TotalGST.ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header fw-600 d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-table"></i> GST Details</span>
+        <button onclick="exportGST()" class="btn btn-sm btn-outline-success"><i class="fas fa-file-excel"></i> Export</button>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table data-table mb-0" id="gstTable">
+                <thead>
+                    <tr>
+                        <th>Booking #</th><th>Event Date</th><th>Client</th><th>Type</th>
+                        <th>Supply</th><th>Line</th><th>SAC</th>
+                        <th>Taxable ₹</th><th>CGST ₹</th><th>SGST ₹</th><th>IGST ₹</th><th>Total GST ₹</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.Rows)
+                    {
+                        <tr>
+                            <td><code>@r.BanquetBookingNumber</code></td>
+                            <td>@r.EventDate.ToString("dd MMM yyyy")</td>
+                            <td>@r.ClientName</td>
+                            <td><span class="badge @(r.CustomerType == "B2B" ? "bg-info" : "bg-secondary")">@r.CustomerType</span></td>
+                            <td>@r.SupplyType</td>
+                            <td>@r.LineType</td>
+                            <td class="text-muted">@r.SACCode</td>
+                            <td>@r.TaxableValue.ToString("N2")</td>
+                            <td>@r.CGST.ToString("N2")</td>
+                            <td>@r.SGST.ToString("N2")</td>
+                            <td>@r.IGST.ToString("N2")</td>
+                            <td class="fw-600">@r.TotalGST.ToString("N2")</td>
+                        </tr>
+                    }
+                    @if (!Model.Rows.Any())
+                    {
+                        <tr><td colspan="12" class="text-center text-muted py-4">No data for this period.</td></tr>
+                    }
+                </tbody>
+                <tfoot class="table-light fw-600">
+                    <tr>
+                        <td colspan="7">Total</td>
+                        <td>@Model.TotalTaxableValue.ToString("N2")</td>
+                        <td>@Model.TotalCGST.ToString("N2")</td>
+                        <td>@Model.TotalSGST.ToString("N2")</td>
+                        <td>@Model.TotalIGST.ToString("N2")</td>
+                        <td>@Model.TotalGST.ToString("N2")</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function exportGST() {
+    let html = document.getElementById('gstTable').outerHTML;
+    let blob = new Blob([html], {type:'application/vnd.ms-excel'});
+    let url  = URL.createObjectURL(blob);
+    let a    = document.createElement('a');
+    a.href = url;
+    a.download = 'banquet-gst-@Model.FromDate.ToString("yyyyMMdd")-to-@Model.ToDate.ToString("yyyyMMdd")' + '.xls';
+    a.click();
+}
+</script>
+}

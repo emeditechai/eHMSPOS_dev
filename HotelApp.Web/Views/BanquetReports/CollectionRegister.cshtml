@@ -1,0 +1,143 @@
+@using HotelApp.Web.Repositories
+@model HotelApp.Web.ViewModels.BanquetCollectionRegisterViewModel
+@{
+    ViewData["Title"] = "Banquet Collection Register";
+}
+
+<div class="page-header">
+    <h2><i class="fas fa-money-bill-wave"></i> Banquet Collection Register</h2>
+</div>
+
+<form method="get" class="filter-bar mb-4">
+    <div class="filter-grid">
+        <div class="master-form-group">
+            <label>From Date</label>
+            <input type="date" name="fromDate" class="form-control" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="master-form-group">
+            <label>To Date</label>
+            <input type="date" name="toDate" class="form-control" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="master-form-group" style="align-self:flex-end">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Apply</button>
+        </div>
+    </div>
+</form>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Total Receipts</div>
+                <div class="h4 fw-bold text-primary">@Model.Summary.TotalReceipts</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Total Collected</div>
+                <div class="h4 fw-bold text-success">₹@Model.Summary.TotalCollected.ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Total Refunded</div>
+                <div class="h4 fw-bold text-danger">₹@Model.Summary.TotalRefunded.ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Total Discount</div>
+                <div class="h4 fw-bold text-warning">₹@Model.Summary.TotalDiscount.ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Daily Summary -->
+@if (Model.DailyTotals.Any())
+{
+    <div class="card mb-4">
+        <div class="card-header fw-600"><i class="fas fa-calendar-day"></i> Daily Summary</div>
+        <div class="card-body p-0">
+            <table class="table data-table mb-0">
+                <thead><tr><th>Date</th><th>Receipts</th><th>Collected</th><th>Refunded</th></tr></thead>
+                <tbody>
+                    @foreach (var d in Model.DailyTotals)
+                    {
+                        <tr>
+                            <td>@d.CollectionDate.ToString("dd MMM yyyy")</td>
+                            <td>@d.ReceiptCount</td>
+                            <td>₹@d.CollectedAmount.ToString("N2")</td>
+                            <td class="text-danger">₹@d.RefundedAmount.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- Transaction Details -->
+<div class="card">
+    <div class="card-header fw-600 d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-list"></i> Transaction Details</span>
+        <button onclick="exportTable()" class="btn btn-sm btn-outline-success"><i class="fas fa-file-excel"></i> Export</button>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table data-table mb-0" id="detailTable">
+                <thead>
+                    <tr>
+                        <th>Date</th><th>Receipt #</th><th>Booking #</th><th>Billed To</th>
+                        <th>Venue</th><th>Event Date</th><th>Event Type</th>
+                        <th>Method</th><th>Amount</th><th>Discount</th><th>Type</th><th>Collected By</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.Details)
+                    {
+                        <tr class="@(r.IsRefund ? "table-danger" : "")">
+                            <td>@r.CollectionDate.ToString("dd MMM yyyy")</td>
+                            <td><code>@r.ReceiptNumber</code></td>
+                            <td><code>@r.BanquetBookingNumber</code></td>
+                            <td>@r.BilledTo</td>
+                            <td>@r.VenueName</td>
+                            <td>@r.EventDate.ToString("dd MMM yyyy")</td>
+                            <td>@r.EventTypeName</td>
+                            <td>@r.PaymentMethod</td>
+                            <td>₹@r.Amount.ToString("N2")</td>
+                            <td>₹@r.DiscountAmount.ToString("N2")</td>
+                            <td>@(r.IsRefund ? "Refund" : r.IsAdvancePayment ? "Advance" : "Payment")</td>
+                            <td>@r.CollectedBy</td>
+                        </tr>
+                    }
+                    @if (!Model.Details.Any())
+                    {
+                        <tr><td colspan="12" class="text-center text-muted py-4">No collections in this period.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function exportTable() {
+    let html = document.getElementById('detailTable').outerHTML;
+    let blob = new Blob([html], {type:'application/vnd.ms-excel'});
+    let url  = URL.createObjectURL(blob);
+    let a    = document.createElement('a');
+    a.href = url;
+    a.download = 'banquet-collection-@Model.FromDate.ToString("yyyyMMdd")-to-@Model.ToDate.ToString("yyyyMMdd")' + '.xls';
+    a.click();
+}
+</script>
+}

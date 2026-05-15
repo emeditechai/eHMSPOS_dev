@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Banquet Management – User Action Flow Manual</title>
+  <style>
+    :root {
+      --brand:    #6a3de8;
+      --brand-lt: #ede9ff;
+      --accent:   #e67e22;
+      --success:  #27ae60;
+      --info:     #2980b9;
+      --warn:     #f39c12;
+      --danger:   #e74c3c;
+      --dark:     #1a1a2e;
+      --text:     #2d2d2d;
+      --muted:    #6b7280;
+      --border:   #e2e8f0;
+      --bg:       #f8f9fc;
+      --card:     #ffffff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    /* ─── Hero ─────────────────────────────────────────────── */
+    .hero {
+      background: linear-gradient(135deg, #1a1a2e 0%, #4a1fa8 60%, #6a3de8 100%);
+      color: #fff;
+      padding: 60px 48px 48px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      right: -80px; bottom: -80px;
+      width: 400px; height: 400px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 50%;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 20px;
+      padding: 4px 16px;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .hero h1 { font-size: 2.6rem; font-weight: 700; margin-bottom: 12px; }
+    .hero p  { font-size: 1.1rem; opacity: 0.85; max-width: 640px; }
+    .hero-meta {
+      margin-top: 24px;
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      opacity: 0.75;
+    }
+    .hero-meta span::before { content: '• '; }
+
+    /* ─── Layout ────────────────────────────────────────────── */
+    .page-wrap { display: flex; max-width: 1320px; margin: 0 auto; padding: 32px 24px; gap: 32px; }
+
+    /* ─── Sidebar TOC ───────────────────────────────────────── */
+    .sidebar {
+      width: 260px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 24px;
+      align-self: flex-start;
+    }
+    .toc-card {
+      background: var(--card);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .toc-card h3 {
+      font-size: 11px;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+    .toc-card a {
+      display: block;
+      font-size: 13px;
+      color: var(--text);
+      text-decoration: none;
+      padding: 5px 8px;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+    .toc-card a:hover { background: var(--brand-lt); color: var(--brand); }
+    .toc-card .toc-section { font-weight: 600; margin-top: 10px; }
+    .toc-card .toc-child { padding-left: 18px; color: var(--muted); }
+
+    /* ─── Main Content ──────────────────────────────────────── */
+    .main { flex: 1; min-width: 0; }
+
+    /* ─── Section ───────────────────────────────────────────── */
+    section { margin-bottom: 48px; }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--brand-lt);
+    }
+    .section-icon {
+      width: 44px; height: 44px;
+      border-radius: 10px;
+      background: var(--brand-lt);
+      color: var(--brand);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .section-header h2 { font-size: 1.4rem; color: var(--dark); }
+    .section-header .section-num {
+      font-size: 11px;
+      background: var(--brand);
+      color: #fff;
+      border-radius: 4px;
+      padding: 2px 8px;
+    }
+
+    /* ─── Cards / Steps ─────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+    .card h3 { font-size: 1rem; color: var(--dark); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+
+    /* ─── Step List ─────────────────────────────────────────── */
+    .steps { list-style: none; counter-reset: step; }
+    .steps li {
+      counter-increment: step;
+      position: relative;
+      padding: 14px 16px 14px 56px;
+      margin-bottom: 10px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .steps li::before {
+      content: counter(step);
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--brand);
+      color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .steps li strong { color: var(--dark); }
+    .steps li .path {
+      font-size: 12px;
+      background: var(--brand-lt);
+      color: var(--brand);
+      border-radius: 4px;
+      padding: 1px 7px;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* ─── Status Flow ───────────────────────────────────────── */
+    .status-flow {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0;
+      margin: 16px 0;
+    }
+    .status-pill {
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .status-arrow {
+      font-size: 18px;
+      color: var(--muted);
+      padding: 0 4px;
+    }
+    .s-inquiry    { background: #f3f4f6; color: #374151; }
+    .s-tentative  { background: #fff7ed; color: #b45309; }
+    .s-confirmed  { background: #eff6ff; color: #1d4ed8; }
+    .s-checkedin  { background: #f0fdf4; color: #15803d; }
+    .s-complete   { background: #f0fdfa; color: #0f766e; }
+    .s-cancelled  { background: #fef2f2; color: #b91c1c; }
+    .s-noshow     { background: #fdf4ff; color: #7e22ce; }
+
+    /* ─── Info boxes ────────────────────────────────────────── */
+    .info-box {
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 14px;
+      border-left: 4px solid;
+      font-size: 14px;
+    }
+    .info-box.tip    { background: #f0fdf4; border-color: var(--success); color: #14532d; }
+    .info-box.note   { background: #eff6ff; border-color: var(--info);    color: #1e3a5f; }
+    .info-box.warn   { background: #fff7ed; border-color: var(--warn);    color: #78350f; }
+    .info-box.danger { background: #fef2f2; border-color: var(--danger);  color: #7f1d1d; }
+
+    /* ─── Field Grid ────────────────────────────────────────── */
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .field-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+    .field-item .field-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+    .field-item .field-desc  { font-size: 13px; font-weight: 500; }
+    .field-item.required .field-label::after { content: ' *'; color: var(--danger); }
+
+    /* ─── Master Setup Grid ─────────────────────────────────── */
+    .master-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .master-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+    .master-card .mc-icon {
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+    .master-card h4 { font-size: 15px; color: var(--dark); margin-bottom: 6px; }
+    .master-card .mc-path {
+      font-size: 11px;
+      font-family: 'Courier New', monospace;
+      color: var(--brand);
+      background: var(--brand-lt);
+      border-radius: 4px;
+      padding: 2px 8px;
+      display: inline-block;
+      margin-bottom: 10px;
+    }
+    .master-card ul { padding-left: 18px; font-size: 13px; color: var(--muted); }
+    .master-card ul li { margin-bottom: 3px; }
+
+    /* ─── Reports Grid ──────────────────────────────────────── */
+    .reports-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .report-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+    .report-card h4 { font-size: 14px; font-weight: 600; color: var(--dark); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .report-card p  { font-size: 13px; color: var(--muted); }
+    .report-card .filters { margin-top: 10px; font-size: 12px; }
+    .filter-tag {
+      display: inline-block;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2px 10px;
+      margin: 2px;
+      color: var(--muted);
+    }
+
+    /* ─── GST Table ─────────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: var(--dark); color: #fff; padding: 10px 14px; text-align: left; font-size: 12px; }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+    tr:nth-child(even) td { background: var(--bg); }
+    tr:last-child td { border-bottom: none; }
+
+    /* ─── Payment Methods ───────────────────────────────────── */
+    .payment-methods { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+    .pm-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1.5px solid;
+    }
+    .pm-cash    { border-color: #27ae60; color: #27ae60; background: #f0fdf4; }
+    .pm-card    { border-color: #2980b9; color: #2980b9; background: #eff6ff; }
+    .pm-upi     { border-color: #6a3de8; color: #6a3de8; background: var(--brand-lt); }
+    .pm-cheque  { border-color: #e67e22; color: #e67e22; background: #fff7ed; }
+    .pm-bank    { border-color: #16a085; color: #16a085; background: #f0fdfa; }
+
+    /* ─── Timeline ──────────────────────────────────────────── */
+    .timeline { position: relative; padding-left: 32px; }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 10px; top: 0; bottom: 0;
+      width: 2px;
+      background: var(--border);
+    }
+    .tl-item {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    .tl-item::before {
+      content: '';
+      position: absolute;
+      left: -26px; top: 6px;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: var(--brand);
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 2px var(--brand);
+    }
+    .tl-item h4 { font-size: 14px; color: var(--dark); margin-bottom: 4px; }
+    .tl-item p  { font-size: 13px; color: var(--muted); }
+
+    /* ─── Dashboard KPI ─────────────────────────────────────── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .kpi-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+    .kpi-card .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi-card .kpi-value { font-size: 1.8rem; font-weight: 700; color: var(--dark); margin: 4px 0; }
+    .kpi-card .kpi-sub   { font-size: 12px; color: var(--muted); }
+
+    /* ─── Footer ────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 32px;
+      color: var(--muted);
+      font-size: 13px;
+      border-top: 1px solid var(--border);
+      margin-top: 32px;
+    }
+
+    /* ─── Print ─────────────────────────────────────────────── */
+    @media print {
+      .sidebar { display: none; }
+      .hero { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    }
+
+    @media (max-width: 900px) {
+      .page-wrap { flex-direction: column; }
+      .sidebar { width: 100%; position: static; }
+      .hero h1 { font-size: 1.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════ HERO -->
+<header class="hero">
+  <div class="hero-badge">User Action Flow Manual</div>
+  <h1>🏛️ Banquet Management</h1>
+  <p>Complete step-by-step guide for managing banquet and event bookings — from initial inquiry through payment, status tracking, and financial reporting.</p>
+  <div class="hero-meta">
+    <span>HotelApp v2026</span>
+    <span>All Roles</span>
+    <span>Booking Number Format: BNQ-YYYY-XXXXXX</span>
+    <span>Last Updated: May 2026</span>
+  </div>
+</header>
+
+<div class="page-wrap">
+
+  <!-- ═══════════════════════════════════════════════ SIDEBAR TOC -->
+  <aside class="sidebar">
+    <div class="toc-card">
+      <h3>Table of Contents</h3>
+
+      <a class="toc-section" href="#overview">📋 Overview</a>
+
+      <a class="toc-section" href="#phase1">⚙️ Phase 1 – Master Setup</a>
+      <a class="toc-child" href="#venue-master">Venue Master</a>
+      <a class="toc-child" href="#event-type-master">Event Type Master</a>
+      <a class="toc-child" href="#package-master">Menu Package Master</a>
+      <a class="toc-child" href="#addon-master">Addon Services Master</a>
+
+      <a class="toc-section" href="#phase2">📅 Phase 2 – Create Booking</a>
+      <a class="toc-child" href="#step-customer">Step 1 – Customer Info</a>
+      <a class="toc-child" href="#step-event">Step 2 – Venue & Event</a>
+      <a class="toc-child" href="#step-package">Step 3 – Menu Package</a>
+      <a class="toc-child" href="#step-addons">Step 4 – Addon Services</a>
+      <a class="toc-child" href="#step-financial">Step 5 – Financials</a>
+      <a class="toc-child" href="#step-advance">Step 6 – Advance Payment</a>
+
+      <a class="toc-section" href="#phase3">🔄 Phase 3 – Manage Booking</a>
+      <a class="toc-child" href="#status-flow">Status Progression</a>
+      <a class="toc-child" href="#add-payment">Add Payment</a>
+      <a class="toc-child" href="#cancellation">Cancel Booking</a>
+
+      <a class="toc-section" href="#phase4">📊 Phase 4 – Reports</a>
+      <a class="toc-child" href="#reports">All Reports</a>
+
+      <a class="toc-section" href="#gst">🧾 GST Reference</a>
+      <a class="toc-section" href="#dashboard">🏠 Dashboard</a>
+      <a class="toc-section" href="#calendar">📆 Availability Calendar</a>
+      <a class="toc-section" href="#quickref">⚡ Quick Reference</a>
+    </div>
+  </aside>
+
+  <!-- ══════════════════════════════════════════════ MAIN CONTENT -->
+  <main class="main">
+
+    <!-- ═══ OVERVIEW ═══════════════════════════════════════════ -->
+    <section id="overview">
+      <div class="section-header">
+        <div class="section-icon">📋</div>
+        <h2>Overview</h2>
+        <span class="section-num">INTRO</span>
+      </div>
+
+      <div class="card">
+        <p>The <strong>Banquet Management</strong> module handles all non-room event bookings — wedding receptions, corporate conferences, birthday parties, social gatherings, and more. It operates as a self-contained system alongside the hotel's room booking module, with its own booking numbers, payment tracking, and reports.</p>
+      </div>
+
+      <div class="info-box note">
+        <strong>Booking Number Format:</strong> Every banquet booking is auto-assigned a unique number in the format <code>BNQ-YYYY-XXXXXX</code> (e.g., <code>BNQ-2026-000001</code>). The counter resets each calendar year per branch.
+      </div>
+
+      <div class="card">
+        <h3>🗂️ Module Components</h3>
+        <div class="field-grid">
+          <div class="field-item">
+            <div class="field-label">Master Setup</div>
+            <div class="field-desc">Venues, Event Types, Menu Packages, Addon Services</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">Bookings</div>
+            <div class="field-desc">Create, View, Filter, Track all event bookings</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">Customer Types</div>
+            <div class="field-desc">B2C (Walk-in / Guest) and B2B (Corporate Client)</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">GST</div>
+            <div class="field-desc">Intra-state (CGST + SGST) or Inter-state (IGST), fully configurable</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">Payments</div>
+            <div class="field-desc">Cash, Card, UPI, Cheque, Bank Transfer with receipt numbers</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">Reports</div>
+            <div class="field-desc">Collection, GST, Venue Utilization, Event Performance, Outstanding</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">Calendar View</div>
+            <div class="field-desc">Interactive color-coded availability calendar per venue</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">Linked Bookings</div>
+            <div class="field-desc">Optionally link to an existing hotel room booking</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ PHASE 1 – MASTER SETUP ════════════════════════════ -->
+    <section id="phase1">
+      <div class="section-header">
+        <div class="section-icon">⚙️</div>
+        <h2>Phase 1 – Master Setup</h2>
+        <span class="section-num">ONE-TIME</span>
+      </div>
+
+      <div class="info-box tip">
+        <strong>Complete masters before creating any booking.</strong> All pricing, GST rates, venue capacity, and menu details are sourced from masters — nothing is hard-coded. Incorrect master data will directly affect billing.
+      </div>
+
+      <div class="master-grid">
+
+        <!-- Venue Master -->
+        <div class="master-card" id="venue-master">
+          <div class="mc-icon">🏟️</div>
+          <h4>1A — Banquet Venue Master</h4>
+          <div class="mc-path">Banquet → Venue Master</div>
+          <p style="font-size:13px; color:var(--muted); margin-bottom:10px;">Define each physical space available for events.</p>
+          <ul>
+            <li><strong>Venue Code</strong> (unique per branch)</li>
+            <li><strong>Venue Name</strong> &amp; <strong>Type</strong> (Banquet / Conference / Lawn / Rooftop / BoardRoom / Exhibition / Other)</li>
+            <li><strong>Capacities</strong>: Seated, Buffet, Theater, Cocktail</li>
+            <li><strong>Area</strong> (Sq. Ft) &amp; <strong>Floor</strong></li>
+            <li><strong>Rate Per Day</strong> &amp; <strong>Rate Per Half Day</strong></li>
+            <li><strong>GST Rates</strong>: CGST %, SGST %, IGST %, SAC Code</li>
+            <li><strong>Amenities</strong>: AC, Stage, Projector/LED, Sound System, Parking, In-House Catering, Wi-Fi</li>
+          </ul>
+        </div>
+
+        <!-- Event Type Master -->
+        <div class="master-card" id="event-type-master">
+          <div class="mc-icon">🎭</div>
+          <h4>1B — Event Type Master</h4>
+          <div class="mc-path">Banquet → Event Types</div>
+          <p style="font-size:13px; color:var(--muted); margin-bottom:10px;">Classify the nature of each event for reporting.</p>
+          <ul>
+            <li><strong>Event Type Code</strong> (unique)</li>
+            <li><strong>Event Type Name</strong> (e.g., Wedding, Corporate, Birthday)</li>
+            <li><strong>Description</strong> (optional)</li>
+            <li><strong>Icon Class</strong> (FontAwesome class for UI display)</li>
+          </ul>
+          <div class="info-box note" style="margin-top:10px; font-size:12px;">
+            Examples: WEDDING, CONFERENCE, BIRTHDAY, ANNIVERSARY, SEMINAR, EXHIBITION
+          </div>
+        </div>
+
+        <!-- Package Master -->
+        <div class="master-card" id="package-master">
+          <div class="mc-icon">🍽️</div>
+          <h4>1C — Menu Package Master</h4>
+          <div class="mc-path">Banquet → Menu Packages</div>
+          <p style="font-size:13px; color:var(--muted); margin-bottom:10px;">Define catering menu packages priced per person.</p>
+          <ul>
+            <li><strong>Package Code</strong> &amp; <strong>Name</strong></li>
+            <li><strong>Package Type</strong>: VegMenu / NonVegMenu / MixedMenu / SpecialMenu / JainMenu</li>
+            <li><strong>Price Per Pax (₹)</strong></li>
+            <li><strong>Minimum Guarantee Pax</strong></li>
+            <li><strong>GST Rates</strong>: CGST %, SGST %, IGST %, SAC Code</li>
+            <li><strong>Includes</strong>: Starters, Main Course, Dessert, Beverages, Live Counter</li>
+            <li><strong>Menu Description</strong> (printed on documents)</li>
+          </ul>
+        </div>
+
+        <!-- Addon Services Master -->
+        <div class="master-card" id="addon-master">
+          <div class="mc-icon">🎤</div>
+          <h4>1D — Addon Services Master</h4>
+          <div class="mc-path">Banquet → Addon Services</div>
+          <p style="font-size:13px; color:var(--muted); margin-bottom:10px;">Define chargeable add-on services per event.</p>
+          <ul>
+            <li><strong>Service Code</strong> &amp; <strong>Name</strong></li>
+            <li><strong>Service Type</strong>: AV Equipment, Decoration, Photography, Videography, Entertainment, Parking, Transportation, Floral, Stationery, Gifts, Security, Other</li>
+            <li><strong>Rate</strong> &amp; <strong>Rate Type</strong>: PerEvent / PerHour / PerPax / PerItem</li>
+            <li><strong>GST Rates</strong>: CGST %, SGST %, IGST %, SAC Code</li>
+          </ul>
+        </div>
+
+      </div><!-- /master-grid -->
+
+      <div class="info-box warn" style="margin-top:16px;">
+        <strong>GST Setup Note:</strong> For each master, enter CGST % and SGST % for intra-state supplies, and IGST % for inter-state supplies. The system applies IGST automatically when the booking is marked as "Inter-State Supply". Rates from masters are stored in the booking at time of creation and never change if the master is later updated.
+      </div>
+    </section>
+
+    <!-- ═══ PHASE 2 – CREATE BOOKING ════════════════════════ -->
+    <section id="phase2">
+      <div class="section-header">
+        <div class="section-icon">📅</div>
+        <h2>Phase 2 – Create Booking</h2>
+        <span class="section-num">BOOKING</span>
+      </div>
+
+      <div class="card">
+        <h3>📍 Navigation</h3>
+        <p>Go to <strong>Banquet → Event Bookings → + New Booking</strong></p>
+        <br/>
+        <p>The booking form is organized into <strong>6 logical sections</strong>. Fill them in order — each section feeds into the final financial calculation.</p>
+      </div>
+
+      <!-- Step 1 – Customer -->
+      <div class="card" id="step-customer">
+        <h3>🧑 Step 1 — Customer Information</h3>
+        <p style="margin-bottom:12px; color:var(--muted); font-size:14px;">First, select the customer type. The form fields change based on your selection.</p>
+
+        <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
+          <div style="flex:1; min-width:240px; border:2px solid var(--info); border-radius:10px; padding:16px;">
+            <div style="font-weight:600; color:var(--info); margin-bottom:8px;">B2C – Individual / Walk-in</div>
+            <div class="field-grid" style="grid-template-columns:1fr;">
+              <div class="field-item required"><div class="field-label">Contact Name</div><div class="field-desc">Full name of the person booking</div></div>
+              <div class="field-item required"><div class="field-label">Phone</div><div class="field-desc">Primary mobile number</div></div>
+              <div class="field-item"><div class="field-label">Email</div><div class="field-desc">Optional – for communications</div></div>
+              <div class="field-item"><div class="field-label">Address</div><div class="field-desc">Optional – billing address</div></div>
+              <div class="field-item"><div class="field-label">GSTIN</div><div class="field-desc">Optional – if guest has own GST</div></div>
+            </div>
+          </div>
+          <div style="flex:1; min-width:240px; border:2px solid var(--brand); border-radius:10px; padding:16px;">
+            <div style="font-weight:600; color:var(--brand); margin-bottom:8px;">B2B – Corporate / Company</div>
+            <div class="field-grid" style="grid-template-columns:1fr;">
+              <div class="field-item required"><div class="field-label">B2B Client</div><div class="field-desc">Select from B2B Client Master</div></div>
+              <div class="field-item"><div class="field-label">Agreement</div><div class="field-desc">Select linked agreement (loads credit days &amp; billing type)</div></div>
+              <div class="field-item required"><div class="field-label">Company Name</div><div class="field-desc">Auto-filled from client</div></div>
+              <div class="field-item"><div class="field-label">Company GSTIN / PAN</div><div class="field-desc">For GST invoice</div></div>
+              <div class="field-item"><div class="field-label">Billing Address</div><div class="field-desc">Company billing address</div></div>
+              <div class="field-item"><div class="field-label">Bill To</div><div class="field-desc">Guest or Company</div></div>
+              <div class="field-item"><div class="field-label">Credit Days</div><div class="field-desc">From agreement</div></div>
+              <div class="field-item"><div class="field-label">Inter-State Supply</div><div class="field-desc">Toggle → applies IGST instead of CGST+SGST</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="info-box note">
+          <strong>B2B Tip:</strong> Booking approval status defaults to <strong>"Draft"</strong> for B2B customers and requires explicit confirmation. B2C bookings are auto-approved upon creation.
+        </div>
+      </div>
+
+      <!-- Step 2 – Venue & Event -->
+      <div class="card" id="step-event">
+        <h3>🏟️ Step 2 — Venue &amp; Event Details</h3>
+        <div class="field-grid">
+          <div class="field-item required"><div class="field-label">Venue</div><div class="field-desc">Select from active venues. Availability is checked in real time.</div></div>
+          <div class="field-item required"><div class="field-label">Event Date</div><div class="field-desc">Date the event takes place (future date only)</div></div>
+          <div class="field-item"><div class="field-label">Event End Date</div><div class="field-desc">For multi-day events</div></div>
+          <div class="field-item"><div class="field-label">Start Time / End Time</div><div class="field-desc">Specific time slots. Conflict check is performed on save.</div></div>
+          <div class="field-item"><div class="field-label">Setup Time</div><div class="field-desc">Time venue staff can start preparing</div></div>
+          <div class="field-item"><div class="field-label">Teardown Time</div><div class="field-desc">Time venue must be cleared</div></div>
+          <div class="field-item required"><div class="field-label">Event Type</div><div class="field-desc">Wedding, Conference, Birthday, etc.</div></div>
+          <div class="field-item required"><div class="field-label">Event Name</div><div class="field-desc">E.g., "Mr. &amp; Mrs. Sharma Wedding Reception"</div></div>
+          <div class="field-item required"><div class="field-label">Expected Attendees</div><div class="field-desc">Total head count expected</div></div>
+          <div class="field-item"><div class="field-label">Guarantee Pax</div><div class="field-desc">Minimum confirmed pax (used for package billing)</div></div>
+          <div class="field-item"><div class="field-label">Children</div><div class="field-desc">Count of children attending</div></div>
+          <div class="field-item"><div class="field-label">Meal Type</div><div class="field-desc">Veg / Non-Veg / Mixed / Jain</div></div>
+          <div class="field-item required"><div class="field-label">Venue Hire Type</div><div class="field-desc">Full Day, Half Day, or Custom</div></div>
+        </div>
+
+        <div class="info-box danger" style="margin-top:14px;">
+          <strong>Venue Conflict Check:</strong> If the selected venue is already booked on the same date/time, the system will show an error and prevent saving. Choose a different venue, date, or time slot.
+        </div>
+      </div>
+
+      <!-- Step 3 – Package -->
+      <div class="card" id="step-package">
+        <h3>🍽️ Step 3 — Menu Package (Optional)</h3>
+        <p style="margin-bottom:12px; color:var(--muted); font-size:14px;">Select a catering package if food is included. Pricing is automatically calculated per pax.</p>
+
+        <div class="field-grid">
+          <div class="field-item"><div class="field-label">Package</div><div class="field-desc">Choose from active menu packages</div></div>
+          <div class="field-item"><div class="field-label">Package Pax</div><div class="field-desc">Number of persons to charge (defaults to Guarantee Pax)</div></div>
+        </div>
+
+        <div class="info-box tip" style="margin-top:12px;">
+          When a package is selected, the system fetches the <strong>price per pax</strong>, multiplies by the pax count, and computes GST (CGST+SGST or IGST) automatically from master rates. The line breakdown is stored in <code>BanquetBookingPackageLines</code>.
+        </div>
+
+        <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:14px; margin-top:12px; font-size:13px;">
+          <strong>Formula:</strong><br/>
+          Package Base = Price Per Pax × Package Pax<br/>
+          Package GST = Package Base × (CGST % + SGST %) <em>[or IGST % if inter-state]</em><br/>
+          Package Total = Package Base + Package GST
+        </div>
+      </div>
+
+      <!-- Step 4 – Addons -->
+      <div class="card" id="step-addons">
+        <h3>🎤 Step 4 — Addon Services (Optional)</h3>
+        <p style="margin-bottom:12px; color:var(--muted); font-size:14px;">Add any extra services: decoration, AV equipment, photography, etc.</p>
+
+        <ol class="steps">
+          <li>Click <strong>"+ Add Service"</strong> to open the addon selector</li>
+          <li>Choose an addon service from the dropdown — rate and type are auto-filled</li>
+          <li>Enter the <strong>Quantity</strong> (units, hours, or pax depending on rate type)</li>
+          <li>Add optional <strong>Notes</strong> for that service</li>
+          <li>The line total (base + GST) is computed instantly and added to the grand total</li>
+          <li>Repeat for multiple addon services. Each line is stored separately.</li>
+        </ol>
+
+        <div class="info-box note" style="margin-top:12px;">
+          <strong>Rate Types:</strong> PerEvent (flat fee), PerHour (qty = hours), PerPax (qty = persons), PerItem (qty = items). The system uses the addon's configured rate type to determine billing.
+        </div>
+      </div>
+
+      <!-- Step 5 – Financials -->
+      <div class="card" id="step-financial">
+        <h3>💰 Step 5 — Financial Summary &amp; Overrides</h3>
+        <p style="margin-bottom:12px; color:var(--muted); font-size:14px;">Review the auto-calculated totals and apply any overrides.</p>
+
+        <div class="field-grid">
+          <div class="field-item"><div class="field-label">Venue Amount</div><div class="field-desc">Auto-calculated from venue rates + GST</div></div>
+          <div class="field-item"><div class="field-label">Package Amount</div><div class="field-desc">Auto-calculated from package × pax + GST</div></div>
+          <div class="field-item"><div class="field-label">Addon Amount</div><div class="field-desc">Sum of all addon lines + GST</div></div>
+          <div class="field-item"><div class="field-label">Service Charge</div><div class="field-desc">Manual override — additional service charge (₹)</div></div>
+          <div class="field-item"><div class="field-label">Discount</div><div class="field-desc">Manual discount amount (₹)</div></div>
+          <div class="field-item"><div class="field-label">Round Off</div><div class="field-desc">Toggle to auto-round to nearest rupee</div></div>
+        </div>
+
+        <div style="background:var(--dark); color:#fff; border-radius:8px; padding:16px; margin-top:14px; font-size:13px; font-family:monospace;">
+          Total = (Venue Base + Package Base + Addon Base)<br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ Service Charge<br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Discount<br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ (Venue GST + Package GST + Addon GST)<br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ Round Off
+        </div>
+
+        <div class="info-box tip" style="margin-top:12px;">
+          All tax amounts (CGST, SGST, IGST) are broken out individually and stored against the booking. SAC codes from masters are also stored for GST compliance.
+        </div>
+      </div>
+
+      <!-- Step 6 – Advance Payment -->
+      <div class="card" id="step-advance">
+        <h3>💳 Step 6 — Advance Payment (Optional)</h3>
+        <p style="margin-bottom:12px; color:var(--muted); font-size:14px;">Collect an advance/deposit at the time of booking creation.</p>
+
+        <div class="field-grid">
+          <div class="field-item"><div class="field-label">Advance Amount (₹)</div><div class="field-desc">Amount collected upfront</div></div>
+          <div class="field-item"><div class="field-label">Payment Method</div><div class="field-desc">Cash / Card / UPI / Cheque / Bank Transfer</div></div>
+          <div class="field-item"><div class="field-label">Reference / Transaction ID</div><div class="field-desc">UPI ref, card auth, cheque no., etc.</div></div>
+          <div class="field-item"><div class="field-label">Bank</div><div class="field-desc">For cheque/bank transfer payments</div></div>
+        </div>
+
+        <div class="info-box note" style="margin-top:12px;">
+          <strong>Effect on Booking:</strong><br/>
+          • Advance &gt; 0 → <code>DepositAmount</code> = advance amount<br/>
+          • <code>BalanceAmount</code> = Total − Advance<br/>
+          • If advance = total → <code>PaymentStatus</code> = <strong>FullPaid</strong><br/>
+          • If advance &lt; total → <code>PaymentStatus</code> = <strong>PartialPaid</strong><br/>
+          • A receipt is auto-generated with a unique receipt number
+        </div>
+
+        <div class="info-box tip" style="margin-top:8px;">
+          <strong>Save the Booking</strong> by clicking <strong>"Create Booking"</strong>. You will be redirected to the Booking Details page showing the booking number and full summary.
+        </div>
+      </div>
+
+      <!-- Miscellaneous -->
+      <div class="card">
+        <h3>📎 Additional Fields</h3>
+        <div class="field-grid">
+          <div class="field-item"><div class="field-label">Cancellation Policy</div><div class="field-desc">Select the applicable cancellation rule (determines refund on cancellation)</div></div>
+          <div class="field-item"><div class="field-label">Special Requests</div><div class="field-desc">Guest-visible notes (dietary, seating, etc.)</div></div>
+          <div class="field-item"><div class="field-label">Internal Notes</div><div class="field-desc">Staff-only notes (not shown on documents)</div></div>
+          <div class="field-item"><div class="field-label">Link Hotel Booking</div><div class="field-desc">Optionally link to a room booking for the same guest</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ PHASE 3 – MANAGE BOOKING ════════════════════════ -->
+    <section id="phase3">
+      <div class="section-header">
+        <div class="section-icon">🔄</div>
+        <h2>Phase 3 – Manage Booking</h2>
+        <span class="section-num">OPERATIONS</span>
+      </div>
+
+      <!-- Status Flow -->
+      <div class="card" id="status-flow">
+        <h3>📊 Booking Status Lifecycle</h3>
+        <p style="margin-bottom:16px; color:var(--muted); font-size:14px;">Every booking moves through a defined lifecycle. Each transition is logged in the audit trail.</p>
+
+        <div class="status-flow">
+          <span class="status-pill s-inquiry">Inquiry</span>
+          <span class="status-arrow">→</span>
+          <span class="status-pill s-tentative">Tentative</span>
+          <span class="status-arrow">→</span>
+          <span class="status-pill s-confirmed">Confirmed</span>
+          <span class="status-arrow">→</span>
+          <span class="status-pill s-checkedin">Checked In</span>
+          <span class="status-arrow">→</span>
+          <span class="status-pill s-complete">Event Complete</span>
+        </div>
+        <div class="status-flow" style="margin-top:8px;">
+          <span style="font-size:13px; color:var(--muted);">Can be cancelled at any point →</span>
+          <span class="status-pill s-cancelled" style="margin-left:8px;">Cancelled</span>
+          <span style="margin-left:12px; font-size:13px; color:var(--muted);">or marked as →</span>
+          <span class="status-pill s-noshow" style="margin-left:8px;">No Show</span>
+        </div>
+
+        <div style="margin-top:20px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Meaning</th>
+                <th>Action Button</th>
+                <th>When to Use</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="status-pill s-inquiry" style="font-size:12px;">Inquiry</span></td>
+                <td>Initial booking created — client is enquiring</td>
+                <td><em>Default on creation</em></td>
+                <td>When a prospect contacts you but hasn't committed</td>
+              </tr>
+              <tr>
+                <td><span class="status-pill s-tentative" style="font-size:12px;">Tentative</span></td>
+                <td>Venue held for client, not yet fully confirmed</td>
+                <td>Mark Tentative</td>
+                <td>When venue is reserved but details are being finalised</td>
+              </tr>
+              <tr>
+                <td><span class="status-pill s-confirmed" style="font-size:12px;">Confirmed</span></td>
+                <td>Booking fully confirmed, advance received</td>
+                <td><strong>Confirm</strong></td>
+                <td>After advance payment and final agreement</td>
+              </tr>
+              <tr>
+                <td><span class="status-pill s-checkedin" style="font-size:12px;">Checked In</span></td>
+                <td>Event has started / venue has been handed over</td>
+                <td><strong>Mark Checked In</strong></td>
+                <td>On the day of event, when client arrives and venue is ready</td>
+              </tr>
+              <tr>
+                <td><span class="status-pill s-complete" style="font-size:12px;">Event Complete</span></td>
+                <td>Event has concluded successfully</td>
+                <td><strong>Mark Event Complete</strong></td>
+                <td>After event ends, before final billing/settlement</td>
+              </tr>
+              <tr>
+                <td><span class="status-pill s-cancelled" style="font-size:12px;">Cancelled</span></td>
+                <td>Booking is cancelled; refund process initiated</td>
+                <td><strong>Cancel Booking</strong></td>
+                <td>When client cancels or booking cannot proceed</td>
+              </tr>
+              <tr>
+                <td><span class="status-pill s-noshow" style="font-size:12px;">No Show</span></td>
+                <td>Client did not show up on the event day</td>
+                <td>Mark No Show</td>
+                <td>When event date passes with no client arrival</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Add Payment -->
+      <div class="card" id="add-payment">
+        <h3>💳 Add Payment</h3>
+        <p style="margin-bottom:14px; color:var(--muted); font-size:14px;">Collect additional payments after booking is created. Go to the <strong>Booking Details</strong> page and click <strong>"Add Payment"</strong>.</p>
+
+        <ol class="steps">
+          <li>Open the booking from <strong>Banquet → Event Bookings → [Booking Number]</strong></li>
+          <li>Click the <strong>"Add Payment"</strong> button on the Details page</li>
+          <li>Enter the <strong>Amount</strong> (defaults to outstanding balance)</li>
+          <li>Select <strong>Payment Method</strong></li>
+          <li>
+            Enter method-specific details:
+            <ul style="margin-top:6px; padding-left:18px; font-size:13px; color:var(--muted);">
+              <li><strong>Card:</strong> Card Type, Last 4 digits</li>
+              <li><strong>Cheque:</strong> Cheque date</li>
+              <li><strong>UPI / Bank Transfer:</strong> Reference / Transaction ID</li>
+              <li><strong>Bank:</strong> Select bank from list</li>
+            </ul>
+          </li>
+          <li>Optionally enter <strong>Discount Amount</strong> or <strong>Round Off Amount</strong></li>
+          <li>Add <strong>Remarks</strong> if needed</li>
+          <li>Click <strong>"Save Payment"</strong> — a receipt number is auto-assigned</li>
+        </ol>
+
+        <div style="margin-top:16px;">
+          <h4 style="margin-bottom:10px; font-size:14px;">Supported Payment Methods</h4>
+          <div class="payment-methods">
+            <span class="pm-pill pm-cash">💵 Cash</span>
+            <span class="pm-pill pm-card">💳 Card (Debit/Credit)</span>
+            <span class="pm-pill pm-upi">📱 UPI</span>
+            <span class="pm-pill pm-cheque">📜 Cheque</span>
+            <span class="pm-pill pm-bank">🏦 Bank Transfer</span>
+          </div>
+        </div>
+
+        <div class="info-box tip" style="margin-top:12px;">
+          After full payment, <code>PaymentStatus</code> automatically updates to <strong>FullPaid</strong>. The balance amount shown on the details page is always current.
+        </div>
+      </div>
+
+      <!-- Cancellation -->
+      <div class="card" id="cancellation">
+        <h3>❌ Cancel Booking</h3>
+        <p style="margin-bottom:14px; color:var(--muted); font-size:14px;">Cancellations are governed by the <strong>Cancellation Policy</strong> attached to the booking. The refund amount is computed from the policy rules.</p>
+
+        <ol class="steps">
+          <li>Open the booking and click <strong>"Cancel Booking"</strong></li>
+          <li>System displays a <strong>Cancellation Preview</strong>:
+            <ul style="margin-top:6px; padding-left:18px; font-size:13px; color:var(--muted);">
+              <li>Days before event</li>
+              <li>Amount paid so far</li>
+              <li>Refund % (from cancellation policy)</li>
+              <li>Flat deduction (from cancellation policy)</li>
+              <li>Calculated deduction amount</li>
+              <li>Net refund amount</li>
+              <li>Policy name applied</li>
+            </ul>
+          </li>
+          <li>Enter a <strong>Cancellation Reason</strong> (required)</li>
+          <li>Optionally enter an <strong>Additional Flat Deduction</strong> (for penalty overrides)</li>
+          <li>Click <strong>"Confirm Cancellation"</strong></li>
+          <li>Booking status changes to <strong>Cancelled</strong> and the refund process is initiated</li>
+        </ol>
+
+        <div class="info-box warn">
+          <strong>Important:</strong> If no cancellation policy was assigned to the booking, the system will cancel without any refund deduction — the full amount paid is eligible for refund. Always assign a policy at booking time.
+        </div>
+      </div>
+
+      <!-- Booking Details Page -->
+      <div class="card">
+        <h3>📄 Booking Details Page — What You Can See</h3>
+        <div class="field-grid">
+          <div class="field-item"><div class="field-label">Booking Header</div><div class="field-desc">Number, status badges, event date &amp; venue</div></div>
+          <div class="field-item"><div class="field-label">Customer Info</div><div class="field-desc">Guest/company contact details &amp; billing info</div></div>
+          <div class="field-item"><div class="field-label">Financial Summary</div><div class="field-desc">Venue, package, addons breakdown with GST</div></div>
+          <div class="field-item"><div class="field-label">Payment History</div><div class="field-desc">All payments with receipt numbers &amp; methods</div></div>
+          <div class="field-item"><div class="field-label">Package Lines</div><div class="field-desc">Package selected, pax count, per-line GST</div></div>
+          <div class="field-item"><div class="field-label">Addon Lines</div><div class="field-desc">Each addon service with qty, rate, and GST</div></div>
+          <div class="field-item"><div class="field-label">Audit Log</div><div class="field-desc">Full history of all status changes and actions</div></div>
+          <div class="field-item"><div class="field-label">Action Buttons</div><div class="field-desc">Confirm, Check In, Complete, Add Payment, Cancel</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ PHASE 4 – REPORTS ════════════════════════════════ -->
+    <section id="phase4">
+      <div class="section-header">
+        <div class="section-icon">📊</div>
+        <h2>Phase 4 – Reports</h2>
+        <span class="section-num">REPORTING</span>
+      </div>
+
+      <p style="margin-bottom:20px; color:var(--muted); font-size:14px;">Navigate to <strong>Banquet → Reports</strong> to access all five standard reports.</p>
+
+      <div class="reports-grid" id="reports">
+
+        <div class="report-card">
+          <h4>📥 Collection Register</h4>
+          <p>Daily payment collection summary. Shows all payments received for banquet bookings — grouped by day with totals per payment method.</p>
+          <div class="filters">
+            <strong>Filters:</strong>
+            <span class="filter-tag">From Date</span>
+            <span class="filter-tag">To Date</span>
+          </div>
+          <div class="info-box tip" style="margin-top:10px; font-size:12px;">
+            Includes: Daily totals, payment method split, booking-level detail, receipt numbers.
+          </div>
+        </div>
+
+        <div class="report-card">
+          <h4>🧾 GST Register</h4>
+          <p>Tax ledger for all banquet bookings. Lists each booking with base amount, CGST, SGST, IGST, and total tax per event.</p>
+          <div class="filters">
+            <strong>Filters:</strong>
+            <span class="filter-tag">From Date</span>
+            <span class="filter-tag">To Date</span>
+          </div>
+          <div class="info-box note" style="margin-top:10px; font-size:12px;">
+            Default range: 1st of current month to today. Use for monthly GST filing.
+          </div>
+        </div>
+
+        <div class="report-card">
+          <h4>🏟️ Venue Utilization</h4>
+          <p>How each venue is being used. Shows booking count, total revenue, and utilization days per venue for the selected period.</p>
+          <div class="filters">
+            <strong>Filters:</strong>
+            <span class="filter-tag">From Date</span>
+            <span class="filter-tag">To Date</span>
+          </div>
+          <div class="info-box tip" style="margin-top:10px; font-size:12px;">
+            Use this to identify peak venues and plan capacity management.
+          </div>
+        </div>
+
+        <div class="report-card">
+          <h4>🎭 Event Type Performance</h4>
+          <p>Revenue and booking count breakdown by event type (Wedding, Conference, Birthday, etc.) for the selected year.</p>
+          <div class="filters">
+            <strong>Filters:</strong>
+            <span class="filter-tag">From Date</span>
+            <span class="filter-tag">To Date</span>
+          </div>
+          <div class="info-box note" style="margin-top:10px; font-size:12px;">
+            Default range: 1st January of the current year to today.
+          </div>
+        </div>
+
+        <div class="report-card">
+          <h4>⚖️ Outstanding Balance</h4>
+          <p>All bookings with an unpaid balance. Shows booking number, event details, total amount, amount paid, and balance due.</p>
+          <div class="filters">
+            <strong>Filters:</strong>
+            <span class="filter-tag">No date filter – all time</span>
+          </div>
+          <div class="info-box warn" style="margin-top:10px; font-size:12px;">
+            Review this daily to follow up on pending collections, especially for B2B credit bookings.
+          </div>
+        </div>
+
+      </div><!-- /reports-grid -->
+    </section>
+
+    <!-- ═══ GST REFERENCE ════════════════════════════════════ -->
+    <section id="gst">
+      <div class="section-header">
+        <div class="section-icon">🧾</div>
+        <h2>GST Reference</h2>
+        <span class="section-num">TAX</span>
+      </div>
+
+      <div class="card">
+        <h3>How GST is Applied</h3>
+        <p style="margin-bottom:14px; color:var(--muted); font-size:14px;">GST rates are sourced entirely from master data. The system never uses hardcoded rates.</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Component</th>
+              <th>Rate Source</th>
+              <th>Intra-State</th>
+              <th>Inter-State</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Venue Hire</td>
+              <td>BanquetVenue Master</td>
+              <td>CGST % + SGST %</td>
+              <td>IGST %</td>
+            </tr>
+            <tr>
+              <td>Menu Package</td>
+              <td>BanquetPackage Master</td>
+              <td>CGST % + SGST %</td>
+              <td>IGST %</td>
+            </tr>
+            <tr>
+              <td>Addon Services</td>
+              <td>BanquetAddonService Master</td>
+              <td>CGST % + SGST %</td>
+              <td>IGST %</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="info-box note" style="margin-top:14px;">
+          <strong>Inter-State Toggle:</strong> On the booking form (B2B section), toggling <strong>"Inter-State Supply"</strong> switches all GST calculations to IGST. The IGST amount = CGST + SGST combined. Relevant SAC codes are stored per line for compliance.
+        </div>
+
+        <div class="info-box tip">
+          <strong>GST Snapshot:</strong> All GST rates are captured and stored in the booking at the time of creation. If a master GST rate changes later, it does NOT affect existing bookings. This ensures audit compliance.
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ DASHBOARD ════════════════════════════════════════ -->
+    <section id="dashboard">
+      <div class="section-header">
+        <div class="section-icon">🏠</div>
+        <h2>Banquet Dashboard</h2>
+        <span class="section-num">HOME</span>
+      </div>
+
+      <p style="margin-bottom:16px; color:var(--muted); font-size:14px;">Navigate to <strong>Banquet → Dashboard</strong> for a real-time overview of operations.</p>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Today's Events</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-sub">Events scheduled for today</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Upcoming (7 Days)</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-sub">Events in next 7 days</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Pending Confirmations</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-sub">Bookings still in Inquiry/Tentative</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">This Month Revenue</div>
+          <div class="kpi-value">₹ —</div>
+          <div class="kpi-sub">Collected in current month</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Outstanding Balance</div>
+          <div class="kpi-value">₹ —</div>
+          <div class="kpi-sub">Total unpaid across all bookings</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>📋 Dashboard Lists</h3>
+        <div class="field-grid">
+          <div class="field-item">
+            <div class="field-label">Today's Event List</div>
+            <div class="field-desc">All events happening today with venue, status, and attendee count</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">Recent Bookings</div>
+            <div class="field-desc">Latest bookings created across the branch</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ AVAILABILITY CALENDAR ═══════════════════════════ -->
+    <section id="calendar">
+      <div class="section-header">
+        <div class="section-icon">📆</div>
+        <h2>Availability Calendar</h2>
+        <span class="section-num">CALENDAR</span>
+      </div>
+
+      <div class="card">
+        <p style="margin-bottom:14px; color:var(--muted); font-size:14px;">Navigate to <strong>Banquet → Availability Calendar</strong> to see a visual month/week view of all event bookings.</p>
+
+        <ol class="steps">
+          <li>Select a <strong>Venue</strong> from the filter at the top</li>
+          <li>Navigate to the desired <strong>Month / Week</strong> using calendar controls</li>
+          <li>Bookings appear as <strong>color-coded blocks</strong> — hover for details</li>
+          <li>Click a booking block to go directly to the <strong>Booking Details</strong> page</li>
+        </ol>
+
+        <div style="margin-top:16px;">
+          <h4 style="font-size:14px; margin-bottom:10px;">Color Legend</h4>
+          <div style="display:flex; flex-wrap:wrap; gap:10px;">
+            <span style="padding:6px 14px; border-radius:4px; background:#9E9E9E; color:#fff; font-size:13px;">Inquiry</span>
+            <span style="padding:6px 14px; border-radius:4px; background:#FF9800; color:#fff; font-size:13px;">Tentative</span>
+            <span style="padding:6px 14px; border-radius:4px; background:#2196F3; color:#fff; font-size:13px;">Confirmed</span>
+            <span style="padding:6px 14px; border-radius:4px; background:#4CAF50; color:#fff; font-size:13px;">Checked In</span>
+            <span style="padding:6px 14px; border-radius:4px; background:#009688; color:#fff; font-size:13px;">Event Complete</span>
+            <span style="padding:6px 14px; border-radius:4px; background:#F44336; color:#fff; font-size:13px;">Cancelled</span>
+            <span style="padding:6px 14px; border-radius:4px; background:#795548; color:#fff; font-size:13px;">No Show</span>
+          </div>
+        </div>
+
+        <div class="info-box tip" style="margin-top:14px;">
+          The calendar makes it easy to identify free slots for new bookings. Use it before creating a booking to visually confirm venue availability.
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ QUICK REFERENCE ══════════════════════════════════ -->
+    <section id="quickref">
+      <div class="section-header">
+        <div class="section-icon">⚡</div>
+        <h2>Quick Reference</h2>
+        <span class="section-num">CHEAT SHEET</span>
+      </div>
+
+      <!-- Complete Action Flow -->
+      <div class="card">
+        <h3>🗺️ End-to-End Action Flow</h3>
+        <div class="timeline">
+
+          <div class="tl-item">
+            <h4>1. Setup Masters (One-Time)</h4>
+            <p>Create Venues → Event Types → Menu Packages → Addon Services with correct GST rates</p>
+          </div>
+
+          <div class="tl-item">
+            <h4>2. Check Availability Calendar</h4>
+            <p>Confirm the venue is free on the requested date before taking the booking</p>
+          </div>
+
+          <div class="tl-item">
+            <h4>3. Create Booking</h4>
+            <p>Banquet → New Booking → Fill all 6 steps → Click Create → Booking gets BNQ number</p>
+          </div>
+
+          <div class="tl-item">
+            <h4>4. Collect Advance</h4>
+            <p>Either at creation (Step 6) or via Add Payment on Details page</p>
+          </div>
+
+          <div class="tl-item">
+            <h4>5. Confirm Booking</h4>
+            <p>Click "Confirm" button → Status: Inquiry → Confirmed</p>
+          </div>
+
+          <div class="tl-item">
+            <h4>6. Day of Event — Check In</h4>
+            <p>Click "Mark Checked In" → Status: Confirmed → CheckedIn</p>
+          </div>
+
+          <div class="tl-item">
+            <h4>7. Collect Balance Payment</h4>
+            <p>Add Payment → collect outstanding balance before/after event</p>
+          </div>
+
+          <div class="tl-item">
+            <h4>8. Complete Event</h4>
+            <p>Click "Mark Event Complete" → Status: CheckedIn → EventComplete</p>
+          </div>
+
+          <div class="tl-item">
+            <h4>9. Verify Reports</h4>
+            <p>Review Collection Register and GST Register for the day's settlements</p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Common Scenarios -->
+      <div class="card">
+        <h3>🔧 Common Scenarios &amp; Solutions</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Scenario</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Venue already booked on that date</td>
+              <td>System blocks save → Choose another venue, time slot, or date</td>
+            </tr>
+            <tr>
+              <td>Client wants to change venue</td>
+              <td>Edit booking → Update venue → System recalculates venue cost &amp; checks availability</td>
+            </tr>
+            <tr>
+              <td>Client cancels day before event</td>
+              <td>Cancel Booking → Preview shows policy-based deduction → Confirm cancellation</td>
+            </tr>
+            <tr>
+              <td>Additional decoration added last minute</td>
+              <td>Edit booking → Add Addon Service (Decoration) → Save → New total calculated</td>
+            </tr>
+            <tr>
+              <td>Client pays in installments</td>
+              <td>Create booking with initial advance → Add Payment multiple times as received</td>
+            </tr>
+            <tr>
+              <td>Corporate client needs GST invoice</td>
+              <td>Set CustomerType = B2B → Enter Company GSTIN → Mark inter-state if applicable</td>
+            </tr>
+            <tr>
+              <td>Need to check which venues are free next Saturday</td>
+              <td>Open Availability Calendar → Navigate to next Saturday → Check unblocked venues</td>
+            </tr>
+            <tr>
+              <td>Monthly GST filing</td>
+              <td>Reports → GST Register → Set date range to full month → Export / Print</td>
+            </tr>
+            <tr>
+              <td>Follow up on unpaid bookings</td>
+              <td>Reports → Outstanding Balance → Shows all bookings with pending amounts</td>
+            </tr>
+            <tr>
+              <td>Guest registered but didn't attend</td>
+              <td>Mark No Show on the booking details page</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Field Validations -->
+      <div class="card">
+        <h3>✅ Required Fields at a Glance</h3>
+        <div class="field-grid">
+          <div class="field-item required"><div class="field-label">Customer Type</div><div class="field-desc">B2C or B2B</div></div>
+          <div class="field-item required"><div class="field-label">Contact Name</div><div class="field-desc">Guest/Company contact person</div></div>
+          <div class="field-item required"><div class="field-label">Phone</div><div class="field-desc">Primary mobile number</div></div>
+          <div class="field-item required"><div class="field-label">Venue</div><div class="field-desc">Must be active and available on the date</div></div>
+          <div class="field-item required"><div class="field-label">Event Date</div><div class="field-desc">Date of the event</div></div>
+          <div class="field-item required"><div class="field-label">Event Type</div><div class="field-desc">From Event Type master</div></div>
+          <div class="field-item required"><div class="field-label">Event Name</div><div class="field-desc">Descriptive name of the event</div></div>
+          <div class="field-item required"><div class="field-label">Expected Attendees</div><div class="field-desc">Minimum 1</div></div>
+          <div class="field-item required"><div class="field-label">Venue Hire Type</div><div class="field-desc">Full Day / Half Day / Custom</div></div>
+        </div>
+      </div>
+
+      <!-- Navigation Paths -->
+      <div class="card">
+        <h3>🧭 Navigation Paths</h3>
+        <table>
+          <thead>
+            <tr><th>Task</th><th>Menu Path</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Banquet Dashboard</td><td><span class="path">Banquet → Dashboard</span></td></tr>
+            <tr><td>All Bookings List</td><td><span class="path">Banquet → Event Bookings</span></td></tr>
+            <tr><td>Create New Booking</td><td><span class="path">Banquet → Event Bookings → + New Booking</span></td></tr>
+            <tr><td>Availability Calendar</td><td><span class="path">Banquet → Availability Calendar</span></td></tr>
+            <tr><td>Venue Master</td><td><span class="path">Banquet → Venue Master</span></td></tr>
+            <tr><td>Event Type Master</td><td><span class="path">Banquet → Event Types</span></td></tr>
+            <tr><td>Menu Packages Master</td><td><span class="path">Banquet → Menu Packages</span></td></tr>
+            <tr><td>Addon Services Master</td><td><span class="path">Banquet → Addon Services</span></td></tr>
+            <tr><td>Collection Register</td><td><span class="path">Banquet → Reports → Collection Register</span></td></tr>
+            <tr><td>GST Register</td><td><span class="path">Banquet → Reports → GST Register</span></td></tr>
+            <tr><td>Venue Utilization</td><td><span class="path">Banquet → Reports → Venue Utilization</span></td></tr>
+            <tr><td>Event Type Performance</td><td><span class="path">Banquet → Reports → Event Type Performance</span></td></tr>
+            <tr><td>Outstanding Balance</td><td><span class="path">Banquet → Reports → Outstanding Balance</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </section>
+
+  </main><!-- /main -->
+</div><!-- /page-wrap -->
+
+<footer>
+  <p>HotelApp – Banquet Management User Manual &nbsp;|&nbsp; Generated May 2026 &nbsp;|&nbsp; Internal Use Only</p>
+  <p style="margin-top:6px;">For technical support, contact your system administrator.</p>
+</footer>
+
+</body>
+</html>

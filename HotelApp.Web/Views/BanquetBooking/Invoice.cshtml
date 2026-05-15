@@ -1,0 +1,616 @@
+@model HotelApp.Web.Models.BanquetBooking
+@{
+    Layout = null;
+    var hs = ViewBag.HotelSettings as HotelApp.Web.Models.HotelSettings;
+    var isB2B = string.Equals(Model.CustomerType, "B2B", StringComparison.OrdinalIgnoreCase);
+    var billToName    = isB2B && !string.IsNullOrWhiteSpace(Model.CompanyName) ? Model.CompanyName : Model.GuestName;
+    var billToGSTIN   = isB2B ? Model.CompanyGSTIN : Model.GuestGSTIN;
+    var billToAddress = isB2B ? Model.CompanyAddress : Model.GuestAddress;
+    var invoiceDate   = DateTime.Today;
+
+    // Totals from payment records
+    var payments     = Model.Payments.Where(p => p.Status is "Captured" or "Success").ToList();
+    var totalPaid    = payments.Where(p => !p.IsRefund).Sum(p => p.Amount + p.DiscountAmount)
+                     - payments.Where(p =>  p.IsRefund).Sum(p => p.Amount);
+    var balanceDue   = Math.Max(0m, Model.TotalAmount - totalPaid);
+    var isCheckedOut = Model.Status == "CheckedOut";
+    var isInterState = Model.IsInterState;
+
+    // Line-item GST totals
+    var pkgCGST  = Model.PackageLines.Sum(l => l.CGSTAmount);
+    var pkgSGST  = Model.PackageLines.Sum(l => l.SGSTAmount);
+    var pkgIGST  = Model.PackageLines.Sum(l => l.IGSTAmount);
+    var adnCGST  = Model.AddonLines.Sum(l => l.CGSTAmount);
+    var adnSGST  = Model.AddonLines.Sum(l => l.SGSTAmount);
+    var adnIGST  = Model.AddonLines.Sum(l => l.IGSTAmount);
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Invoice — @(Model.InvoiceNumber ?? Model.BanquetBookingNumber)</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1e293b; background: #f0f2f5; }
+
+/* ── Print setup ─────────────────────────────────────────────────────────── */
+@@page { size: A4 portrait; margin: 10mm 12mm; }
+@@media print {
+    html, body { background: white; }
+    .no-print { display: none !important; }
+    .invoice-wrapper { box-shadow: none; margin: 0; max-width: 100%; border-radius: 0; }
+
+    /* repeat header on every page */
+    .rpt-table thead { display: table-header-group; }
+    .rpt-table tbody { display: table-row-group; }
+    .rpt-table tfoot { display: table-footer-group; }
+
+    .bill-block, .event-meta, .totals-wrap, .inv-footer { page-break-inside: avoid; break-inside: avoid; }
+    table.line-table { page-break-inside: auto; }
+    table.line-table tr { page-break-inside: avoid; break-inside: avoid; }
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+
+/* ── Wrapper ─────────────────────────────────────────────────────────────── */
+.invoice-wrapper {
+    max-width: 860px;
+    margin: 20px auto;
+    background: #fff;
+    border-radius: 6px;
+    box-shadow: 0 4px 24px rgba(0,0,0,.10);
+    overflow: hidden;
+}
+
+/* ── Header band ─────────────────────────────────────────────────────────── */
+.inv-header {
+    background: linear-gradient(135deg, #1a237e 0%, #283593 55%, #3949ab 100%);
+    color: #fff;
+    padding: 20px 28px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+}
+.hotel-block { flex: 1; }
+.hotel-block .hotel-name { font-size: 20px; font-weight: 800; letter-spacing: .3px; line-height: 1.2; }
+.hotel-block .hotel-meta { font-size: 10px; opacity: .88; margin-top: 4px; line-height: 1.7; }
+.doc-block { text-align: right; flex-shrink: 0; }
+.doc-block .doc-title { font-size: 24px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #fff; }
+.doc-block .doc-sub  { font-size: 11px; opacity: .88; margin-top: 3px; line-height: 1.7; }
+.doc-block .final-stamp {
+    display: inline-block; margin-top: 6px;
+    padding: 2px 10px; border: 2px solid #a5f3a5; border-radius: 4px;
+    color: #a5f3a5; font-size: 10px; font-weight: 800; letter-spacing: .1em;
+    text-transform: uppercase;
+}
+.doc-block .proforma-stamp {
+    display: inline-block; margin-top: 6px;
+    padding: 2px 10px; border: 2px solid #fcd34d; border-radius: 4px;
+    color: #fcd34d; font-size: 10px; font-weight: 800; letter-spacing: .1em;
+    text-transform: uppercase;
+}
+
+/* ── Bill To / Event Info ─────────────────────────────────────────────────── */
+.bill-event-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+.bill-block {
+    padding: 16px 28px;
+}
+.bill-block:first-child { border-right: 1px solid #e2e8f0; }
+.bill-block .blk-title {
+    font-size: 10px; font-weight: 700; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px;
+}
+.bill-block .blk-name { font-size: 15px; font-weight: 700; color: #1e293b; margin-bottom: 3px; }
+.bill-block .blk-line { font-size: 11.5px; color: #475569; line-height: 1.65; }
+
+/* ── Event Meta strip ─────────────────────────────────────────────────────── */
+.event-meta {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+.meta-cell {
+    padding: 10px 16px;
+    border-right: 1px solid #e8edf3;
+}
+.meta-cell:last-child { border-right: none; }
+.meta-cell .mc-label { font-size: 9.5px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; }
+.meta-cell .mc-val   { font-size: 12px; font-weight: 700; color: #1e293b; margin-top: 2px; }
+
+/* ── Body ────────────────────────────────────────────────────────────────── */
+.inv-body { padding: 18px 28px; }
+.sec-title {
+    font-size: 11px; font-weight: 700; color: #475569;
+    text-transform: uppercase; letter-spacing: .06em;
+    margin: 14px 0 8px; padding-bottom: 5px;
+    border-bottom: 2px solid #e2e8f0;
+}
+.sec-title:first-child { margin-top: 0; }
+
+/* ── Line-item table ─────────────────────────────────────────────────────── */
+table.line-table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+table.line-table th {
+    background: #f1f5f9; font-size: 10px; font-weight: 700; color: #64748b;
+    text-transform: uppercase; letter-spacing: .06em;
+    padding: 7px 10px; text-align: left; border-bottom: 2px solid #e2e8f0;
+}
+table.line-table td {
+    padding: 9px 10px; font-size: 12px;
+    border-bottom: 1px solid #f1f5f9; vertical-align: middle;
+}
+table.line-table tr:last-child td { border-bottom: none; }
+table.line-table .tr { text-align: right !important; }
+table.line-table .tc { text-align: center !important; }
+.text-muted-sm { color: #94a3b8; font-size: 10px; }
+.mono { font-family: 'Courier New', monospace; }
+
+/* ── Venue row (single, non-table) ──────────────────────────────────────── */
+.venue-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 10px; font-size: 12px;
+    background: #fafbfc; border-radius: 4px; margin-bottom: 4px;
+}
+.venue-row .vr-name { font-weight: 600; color: #1e293b; }
+.venue-row .vr-sub  { font-size: 10.5px; color: #64748b; }
+.venue-row .vr-amounts { display: flex; gap: 40px; text-align: right; }
+.venue-row .vr-col .vc-label { font-size: 9.5px; color: #94a3b8; }
+.venue-row .vr-col .vc-val   { font-size: 12px; font-weight: 600; color: #1e293b; }
+
+/* ── GST Summary ─────────────────────────────────────────────────────────── */
+.gst-box {
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;
+    padding: 10px 14px; margin-bottom: 12px;
+}
+.gst-box table { width: 100%; border-collapse: collapse; }
+.gst-box table th { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; padding: 4px 8px; text-align: left; }
+.gst-box table td { font-size: 11.5px; padding: 4px 8px; color: #475569; }
+.gst-box table td.tr { text-align: right; }
+
+/* ── Totals ──────────────────────────────────────────────────────────────── */
+.totals-wrap { display: flex; justify-content: flex-end; margin-bottom: 16px; }
+.totals-box {
+    width: 320px; border: 1.5px solid #e2e8f0; border-radius: 8px; overflow: hidden;
+}
+.t-row {
+    display: flex; justify-content: space-between;
+    padding: 8px 14px; font-size: 12.5px; border-bottom: 1px solid #f1f5f9;
+}
+.t-row:last-child { border-bottom: none; }
+.t-row.grand {
+    background: #1e293b; color: #fff; font-size: 15px; font-weight: 800;
+    padding: 12px 14px; border-bottom: none;
+}
+.t-row.paid-row  { color: #16a34a; font-weight: 600; }
+.t-row.bal-row   { color: #dc2626; font-weight: 700; font-size: 13.5px; background: #fef2f2; }
+.t-row.bal-zero  { color: #16a34a; font-weight: 700; font-size: 13.5px; background: #f0fdf4; }
+
+/* ── Payment history ─────────────────────────────────────────────────────── */
+table.pay-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+table.pay-table th { background: #f1f5f9; font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; padding: 6px 10px; text-align: left; }
+table.pay-table td { padding: 7px 10px; border-bottom: 1px solid #f1f5f9; color: #475569; }
+table.pay-table td.tr { text-align: right; }
+table.pay-table tr.refund-row { background: #fff7ed; }
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+.inv-footer {
+    padding: 14px 28px 18px;
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+    display: flex; justify-content: space-between; align-items: flex-end;
+}
+.footer-note { font-size: 10.5px; color: #94a3b8; max-width: 380px; line-height: 1.6; }
+.sig-block { text-align: center; font-size: 10.5px; color: #64748b; }
+.sig-line  { width: 150px; border-bottom: 1px solid #94a3b8; margin: 0 auto 4px; height: 32px; }
+
+/* ── Print button bar ────────────────────────────────────────────────────── */
+.print-bar { text-align: center; padding: 14px; }
+.btn-print {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 24px; background: #3949ab; color: white;
+    border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.btn-print:hover { background: #283593; }
+.btn-back {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 18px; background: white; color: #475569;
+    border: 1.5px solid #e2e8f0; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    text-decoration: none; margin-left: 10px;
+}
+.btn-back:hover { border-color: #3949ab; color: #3949ab; }
+</style>
+</head>
+<body>
+
+<!-- Print controls (hidden on print) -->
+<div class="print-bar no-print">
+    <button class="btn-print" onclick="window.print()">
+        <i class="fas fa-print"></i> Print / Save PDF
+    </button>
+    <a href="@Url.Action("Details", "BanquetBooking", new { id = Model.Id })" class="btn-back">
+        <i class="fas fa-arrow-left"></i> Back to Booking
+    </a>
+</div>
+
+<div class="invoice-wrapper">
+
+    <!-- ── Header ──────────────────────────────────────────────────────── -->
+    <div class="inv-header">
+        <div class="hotel-block">
+            <div class="hotel-name">@(hs?.HotelName ?? "Hotel")</div>
+            <div class="hotel-meta">
+                @if (!string.IsNullOrWhiteSpace(hs?.Address)) { @hs.Address <text><br /></text> }
+                @if (!string.IsNullOrWhiteSpace(hs?.ContactNumber1)) { <text>Tel: @hs.ContactNumber1</text> <text>&nbsp;|&nbsp;</text> }
+                @if (!string.IsNullOrWhiteSpace(hs?.EmailAddress)) { @hs.EmailAddress <text><br /></text> }
+                @if (!string.IsNullOrWhiteSpace(hs?.GSTCode)) { <text>GSTIN: @hs.GSTCode</text> }
+            </div>
+        </div>
+        <div class="doc-block">
+            <div class="doc-title">@(isCheckedOut ? "Tax Invoice" : "Proforma Invoice")</div>
+            <div class="doc-sub">
+                Invoice No: <strong>@(isCheckedOut ? Model.InvoiceNumber : "—")</strong><br />
+                Date: @invoiceDate.ToString("dd MMM yyyy")<br />
+                Booking: @Model.BanquetBookingNumber
+            </div>
+            @if (isCheckedOut)
+            {
+                <div class="final-stamp">&#10003; Final Bill</div>
+            }
+            else
+            {
+                <div class="proforma-stamp">&#9888; Proforma / Not Final</div>
+            }
+        </div>
+    </div>
+
+    <!-- ── Bill To / Booking Info ───────────────────────────────────────── -->
+    <div class="bill-event-row">
+        <div class="bill-block">
+            <div class="blk-title">Bill To</div>
+            <div class="blk-name">@billToName</div>
+            @if (!string.IsNullOrWhiteSpace(Model.GuestPhone))
+            { <div class="blk-line">Phone: @Model.GuestPhone</div> }
+            @if (!string.IsNullOrWhiteSpace(Model.GuestEmail))
+            { <div class="blk-line">Email: @Model.GuestEmail</div> }
+            @if (!string.IsNullOrWhiteSpace(billToAddress))
+            { <div class="blk-line">@billToAddress</div> }
+            @if (!string.IsNullOrWhiteSpace(billToGSTIN))
+            { <div class="blk-line">GSTIN: @billToGSTIN</div> }
+            @if (isB2B && !string.IsNullOrWhiteSpace(Model.CompanyPAN))
+            { <div class="blk-line">PAN: @Model.CompanyPAN</div> }
+        </div>
+        <div class="bill-block">
+            <div class="blk-title">Event Details</div>
+            <div class="blk-name">@Model.EventName</div>
+            <div class="blk-line">Event Type: @(Model.EventTypeName ?? "—")</div>
+            <div class="blk-line">Venue: @(Model.VenueName ?? "—") @(string.IsNullOrWhiteSpace(Model.VenueType) ? "" : $"({Model.VenueType})")</div>
+            <div class="blk-line">Hire Type: @Model.VenueHireType &nbsp;|&nbsp; Meal: @Model.MealType</div>
+            <div class="blk-line">GST Type: @(Model.IsInterState ? "Inter-State (IGST)" : "Intra-State (CGST+SGST)")</div>
+        </div>
+    </div>
+
+    <!-- ── Event Meta strip ─────────────────────────────────────────────── -->
+    <div class="event-meta">
+        <div class="meta-cell">
+            <div class="mc-label">Event Date</div>
+            <div class="mc-val">@Model.EventDate.ToString("dd MMM yyyy")</div>
+        </div>
+        <div class="meta-cell">
+            <div class="mc-label">End Date</div>
+            <div class="mc-val">@(Model.EventEndDate.HasValue ? Model.EventEndDate.Value.ToString("dd MMM yyyy") : "—")</div>
+        </div>
+        <div class="meta-cell">
+            <div class="mc-label">Time</div>
+            <div class="mc-val">
+                @(Model.EventStartTime.HasValue ? Model.EventStartTime.Value.ToString("hh\\:mm") : "—")
+                –
+                @(Model.EventEndTime.HasValue ? Model.EventEndTime.Value.ToString("hh\\:mm") : "—")
+            </div>
+        </div>
+        <div class="meta-cell">
+            <div class="mc-label">Expected Pax</div>
+            <div class="mc-val">@Model.AttendeeCount</div>
+        </div>
+        <div class="meta-cell">
+            <div class="mc-label">Guarantee Pax</div>
+            <div class="mc-val">@Model.GuaranteePax</div>
+        </div>
+        <div class="meta-cell">
+            <div class="mc-label">Customer Type</div>
+            <div class="mc-val">@Model.CustomerType</div>
+        </div>
+    </div>
+
+    <!-- ── Invoice Body ──────────────────────────────────────────────────── -->
+    <div class="inv-body">
+
+        <!-- Venue Charge -->
+        <div class="sec-title">Venue Charges</div>
+        <div class="venue-row">
+            <div>
+                <div class="vr-name">@(Model.VenueName ?? "Venue") — @Model.VenueHireType</div>
+                <div class="vr-sub">@(Model.VenueType ?? "")</div>
+            </div>
+            <div class="vr-amounts">
+                <div class="vr-col">
+                    <div class="vc-label">Base</div>
+                    <div class="vc-val mono">₹@Model.VenueBaseAmount.ToString("N2")</div>
+                </div>
+                @if (!Model.IsInterState && Model.VenueCGSTAmount > 0)
+                {
+                    <div class="vr-col">
+                        <div class="vc-label">CGST</div>
+                        <div class="vc-val mono">₹@Model.VenueCGSTAmount.ToString("N2")</div>
+                    </div>
+                    <div class="vr-col">
+                        <div class="vc-label">SGST</div>
+                        <div class="vc-val mono">₹@Model.VenueSGSTAmount.ToString("N2")</div>
+                    </div>
+                }
+                @if (Model.IsInterState && Model.VenueIGSTAmount > 0)
+                {
+                    <div class="vr-col">
+                        <div class="vc-label">IGST</div>
+                        <div class="vc-val mono">₹@Model.VenueIGSTAmount.ToString("N2")</div>
+                    </div>
+                }
+                <div class="vr-col">
+                    <div class="vc-label">Total</div>
+                    <div class="vc-val mono" style="font-weight:700">₹@((Model.VenueBaseAmount + Model.VenueGSTAmount).ToString("N2"))</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Package Lines -->
+        @if (Model.PackageLines.Any())
+        {
+            <div class="sec-title">Package Charges</div>
+            <table class="line-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Package</th>
+                        <th>Type</th>
+                        <th class="tc">Pax</th>
+                        <th class="tr">Rate/Pax</th>
+                        <th class="tr">Base Amt</th>
+                        @if (!Model.IsInterState) {
+                            <th class="tr">CGST</th>
+                            <th class="tr">SGST</th>
+                        } else {
+                            <th class="tr">IGST</th>
+                        }
+                        <th class="tr">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ var idx = 1; }
+                    @foreach (var pl in Model.PackageLines)
+                    {
+                        <tr>
+                            <td>@(idx++)</td>
+                            <td>
+                                <span style="font-weight:600">@pl.PackageName</span>
+                                @if (!string.IsNullOrWhiteSpace(pl.SACCode))
+                                { <span class="text-muted-sm"> &nbsp;SAC: @pl.SACCode</span> }
+                            </td>
+                            <td>@pl.PackageType &nbsp;<span class="text-muted-sm">(@pl.MealType)</span></td>
+                            <td class="tc mono">@pl.Pax</td>
+                            <td class="tr mono">₹@pl.PricePerPax.ToString("N2")</td>
+                            <td class="tr mono">₹@pl.BaseAmount.ToString("N2")</td>
+                            @if (!Model.IsInterState) {
+                                <td class="tr mono">₹@pl.CGSTAmount.ToString("N2") <span class="text-muted-sm">(@pl.CGSTPercent%)</span></td>
+                                <td class="tr mono">₹@pl.SGSTAmount.ToString("N2") <span class="text-muted-sm">(@pl.SGSTPercent%)</span></td>
+                            } else {
+                                <td class="tr mono">₹@pl.IGSTAmount.ToString("N2") <span class="text-muted-sm">(@pl.IGSTPercent%)</span></td>
+                            }
+                            <td class="tr mono" style="font-weight:700">₹@pl.TotalAmount.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <!-- Addon Services -->
+        @if (Model.AddonLines.Any())
+        {
+            <div class="sec-title">Addon Services</div>
+            <table class="line-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Service</th>
+                        <th>Type</th>
+                        <th class="tc">Qty</th>
+                        <th class="tr">Rate</th>
+                        <th class="tr">Base Amt</th>
+                        @if (!Model.IsInterState) {
+                            <th class="tr">CGST</th>
+                            <th class="tr">SGST</th>
+                        } else {
+                            <th class="tr">IGST</th>
+                        }
+                        <th class="tr">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ var adnIdx = 1; }
+                    @foreach (var al in Model.AddonLines)
+                    {
+                        <tr>
+                            <td>@(adnIdx++)</td>
+                            <td>
+                                <span style="font-weight:600">@al.ServiceName</span>
+                                @if (!string.IsNullOrWhiteSpace(al.SACCode))
+                                { <span class="text-muted-sm"> &nbsp;SAC: @al.SACCode</span> }
+                                @if (!string.IsNullOrWhiteSpace(al.Notes))
+                                { <div class="text-muted-sm">@al.Notes</div> }
+                            </td>
+                            <td>@al.ServiceType</td>
+                            <td class="tc mono">@al.Qty.ToString("N0") <span class="text-muted-sm">(@al.RateType)</span></td>
+                            <td class="tr mono">₹@al.Rate.ToString("N2")</td>
+                            <td class="tr mono">₹@al.BaseAmount.ToString("N2")</td>
+                            @if (!Model.IsInterState) {
+                                <td class="tr mono">₹@al.CGSTAmount.ToString("N2") <span class="text-muted-sm">(@al.CGSTPercent%)</span></td>
+                                <td class="tr mono">₹@al.SGSTAmount.ToString("N2") <span class="text-muted-sm">(@al.SGSTPercent%)</span></td>
+                            } else {
+                                <td class="tr mono">₹@al.IGSTAmount.ToString("N2") <span class="text-muted-sm">(@al.IGSTPercent%)</span></td>
+                            }
+                            <td class="tr mono" style="font-weight:700">₹@al.TotalAmount.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <!-- GST Summary -->
+        @{
+            var hasCGST = !Model.IsInterState && Model.TotalCGSTAmount > 0;
+            var hasSGST = !Model.IsInterState && Model.TotalSGSTAmount > 0;
+            var hasIGST =  Model.IsInterState && Model.TotalIGSTAmount > 0;
+        }
+        @if (hasCGST || hasSGST || hasIGST)
+        {
+            <div class="sec-title">GST Summary</div>
+            <div class="gst-box">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th class="tr">Venue</th>
+                            @if (Model.PackageLines.Any()) { <th class="tr">Package</th> }
+                            @if (Model.AddonLines.Any())  { <th class="tr">Addons</th>  }
+                            <th class="tr">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (hasCGST)
+                        {
+                            <tr>
+                                <td>CGST</td>
+                                <td class="tr">₹@Model.VenueCGSTAmount.ToString("N2")</td>
+                                @if (Model.PackageLines.Any()) { <td class="tr">₹@pkgCGST.ToString("N2")</td> }
+                                @if (Model.AddonLines.Any())  { <td class="tr">₹@adnCGST.ToString("N2")</td> }
+                                <td class="tr" style="font-weight:700">₹@Model.TotalCGSTAmount.ToString("N2")</td>
+                            </tr>
+                        }
+                        @if (hasSGST)
+                        {
+                            <tr>
+                                <td>SGST</td>
+                                <td class="tr">₹@Model.VenueSGSTAmount.ToString("N2")</td>
+                                @if (Model.PackageLines.Any()) { <td class="tr">₹@pkgSGST.ToString("N2")</td> }
+                                @if (Model.AddonLines.Any())  { <td class="tr">₹@adnSGST.ToString("N2")</td> }
+                                <td class="tr" style="font-weight:700">₹@Model.TotalSGSTAmount.ToString("N2")</td>
+                            </tr>
+                        }
+                        @if (hasIGST)
+                        {
+                            <tr>
+                                <td>IGST</td>
+                                <td class="tr">₹@Model.VenueIGSTAmount.ToString("N2")</td>
+                                @if (Model.PackageLines.Any()) { <td class="tr">₹@pkgIGST.ToString("N2")</td> }
+                                @if (Model.AddonLines.Any())  { <td class="tr">₹@adnIGST.ToString("N2")</td> }
+                                <td class="tr" style="font-weight:700">₹@Model.TotalIGSTAmount.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <!-- Totals -->
+        <div class="totals-wrap">
+            <div class="totals-box">
+                <div class="t-row"><span>Venue Charges (Base)</span><span class="mono">₹@Model.VenueBaseAmount.ToString("N2")</span></div>
+                @if (Model.PackageBaseAmount > 0)
+                { <div class="t-row"><span>Package Charges (Base)</span><span class="mono">₹@Model.PackageBaseAmount.ToString("N2")</span></div> }
+                @if (Model.AddonBaseAmount > 0)
+                { <div class="t-row"><span>Addon Services (Base)</span><span class="mono">₹@Model.AddonBaseAmount.ToString("N2")</span></div> }
+                <div class="t-row" style="color:#64748b;font-size:11.5px"><span>Sub-Total (Base)</span><span class="mono">₹@Model.TotalBaseAmount.ToString("N2")</span></div>
+                @if (hasCGST)
+                {
+                    <div class="t-row" style="color:#64748b;font-size:11.5px"><span>CGST</span><span class="mono">₹@Model.TotalCGSTAmount.ToString("N2")</span></div>
+                    <div class="t-row" style="color:#64748b;font-size:11.5px"><span>SGST</span><span class="mono">₹@Model.TotalSGSTAmount.ToString("N2")</span></div>
+                }
+                @if (hasIGST)
+                { <div class="t-row" style="color:#64748b;font-size:11.5px"><span>IGST</span><span class="mono">₹@Model.TotalIGSTAmount.ToString("N2")</span></div> }
+                @if (Model.ServiceChargeAmount > 0)
+                { <div class="t-row"><span>Service Charge</span><span class="mono">₹@Model.ServiceChargeAmount.ToString("N2")</span></div> }
+                @if (Model.DiscountAmount > 0)
+                { <div class="t-row" style="color:#16a34a"><span>Discount</span><span class="mono">-₹@Model.DiscountAmount.ToString("N2")</span></div> }
+                @if (Model.RoundOffAmount != 0)
+                { <div class="t-row" style="color:#64748b;font-size:11.5px"><span>Round-Off</span><span class="mono">₹@Model.RoundOffAmount.ToString("N2")</span></div> }
+                <div class="t-row grand"><span>Grand Total</span><span class="mono">₹@Model.TotalAmount.ToString("N2")</span></div>
+                <div class="t-row paid-row"><span>Amount Received</span><span class="mono">₹@totalPaid.ToString("N2")</span></div>
+                @if (balanceDue > 0)
+                { <div class="t-row bal-row"><span>Balance Due</span><span class="mono">₹@balanceDue.ToString("N2")</span></div> }
+                else
+                { <div class="t-row bal-zero"><span>Balance Due</span><span class="mono">₹0.00</span></div> }
+            </div>
+        </div>
+
+        <!-- Payment History -->
+        @if (payments.Any())
+        {
+            <div class="sec-title">Payment History</div>
+            <table class="pay-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Receipt No.</th>
+                        <th>Date</th>
+                        <th>Method</th>
+                        <th>Reference</th>
+                        <th class="tr">Amount</th>
+                        <th>Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ var pi = 1; }
+                    @foreach (var p in payments.OrderBy(x => x.PaidOn))
+                    {
+                        <tr class="@(p.IsRefund ? "refund-row" : "")">
+                            <td>@(pi++)</td>
+                            <td>@p.ReceiptNumber</td>
+                            <td>@p.PaidOn.ToString("dd MMM yyyy")</td>
+                            <td>@p.PaymentMethod @(string.IsNullOrWhiteSpace(p.CardType) ? "" : $"({p.CardType})")</td>
+                            <td>@(p.PaymentReference ?? "—")</td>
+                            <td class="tr mono @(p.IsRefund ? "text-danger" : "")">
+                                @(p.IsRefund ? "-" : "")₹@p.Amount.ToString("N2")
+                            </td>
+                            <td>@(p.Remarks ?? (p.IsAdvancePayment ? "Advance" : p.IsRefund ? "Refund" : "—"))</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+    </div><!-- /inv-body -->
+
+    <!-- ── Footer ──────────────────────────────────────────────────────── -->
+    <div class="inv-footer">
+        <div class="footer-note">
+            <strong>Thank you for choosing @(hs?.HotelName ?? "us")!</strong><br />
+            This is a computer-generated invoice and does not require a physical signature.<br />
+            For queries, contact us at @(hs?.ContactNumber1 ?? "") or @(hs?.EmailAddress ?? "").
+        </div>
+        <div class="sig-block">
+            <div class="sig-line"></div>
+            <div>Authorised Signatory</div>
+            <div style="font-weight:700;margin-top:2px">@(hs?.HotelName ?? "Hotel")</div>
+        </div>
+    </div>
+
+</div><!-- /invoice-wrapper -->
+
+</body>
+</html>

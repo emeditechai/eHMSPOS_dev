@@ -1,0 +1,875 @@
+@using Microsoft.AspNetCore.Html
+@model HotelApp.Web.Models.BanquetBooking
+@{
+    ViewData["Title"] = $"Booking — {Model.BanquetBookingNumber}";
+}
+
+<style>
+/* ── Layout ───────────────────────────────────────────────────── */
+.bnq-hero {
+    background: linear-gradient(135deg, #1a2a6c 0%, #2d3fa3 60%, #4f46e5 100%);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    color: #fff;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    box-shadow: 0 8px 32px rgba(26,42,108,.22);
+}
+.bnq-hero-left .bnq-num {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.bnq-hero-left .bnq-num i { color: #fdbb2d; font-size: 22px; }
+.bnq-hero-left .bnq-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.bnq-status-pill {
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    background: rgba(255,255,255,.18);
+    border: 1.5px solid rgba(255,255,255,.35);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.bnq-status-pill.st-confirmed  { background: rgba(16,185,129,.3);  border-color:#10b981; }
+.bnq-status-pill.st-tentative  { background: rgba(245,158,11,.3);  border-color:#f59e0b; }
+.bnq-status-pill.st-checkedin  { background: rgba(59,130,246,.3);  border-color:#3b82f6; }
+.bnq-status-pill.st-complete   { background: rgba(99,102,241,.3);  border-color:#6366f1; }
+.bnq-status-pill.st-checkout   { background: rgba(16,185,129,.3);  border-color:#10b981; }
+.bnq-status-pill.st-cancelled  { background: rgba(239,68,68,.3);   border-color:#ef4444; }
+.bnq-status-pill.st-inquiry    { background: rgba(255,255,255,.15);border-color:rgba(255,255,255,.4); }
+.bnq-status-pill.pay-full      { background: rgba(16,185,129,.35); border-color:#10b981; }
+.bnq-status-pill.pay-partial   { background: rgba(251,191,36,.35); border-color:#fbbf24; color:#fff9c4; }
+.bnq-status-pill.pay-unpaid    { background: rgba(239,68,68,.35);  border-color:#ef4444; }
+.bnq-status-pill.b2b-badge     { background: rgba(99,102,241,.35); border-color:#6366f1; }
+.bnq-hero-right { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; justify-content: flex-end; }
+.bnq-hero-right .btn { font-size: 13px; padding: 8px 16px; border-radius: 8px; font-weight: 600; }
+
+/* ── Cards ───────────────────────────────────────────────────── */
+.bk-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 14px rgba(0,0,0,.07);
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+.bk-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: .3px;
+}
+.bk-card-header.hd-customer   { background: linear-gradient(90deg,#1a2a6c,#2d3fa3); }
+.bk-card-header.hd-event      { background: linear-gradient(90deg,#0f766e,#14b8a6); }
+.bk-card-header.hd-package    { background: linear-gradient(90deg,#6d28d9,#8b5cf6); }
+.bk-card-header.hd-addon      { background: linear-gradient(90deg,#b45309,#d97706); }
+.bk-card-header.hd-payments   { background: linear-gradient(90deg,#065f46,#10b981); }
+.bk-card-header.hd-audit      { background: linear-gradient(90deg,#374151,#6b7280); }
+.bk-card-body { padding: 20px; }
+
+/* ── Field Grid ──────────────────────────────────────────────── */
+.bk-field-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; }
+@@media(max-width:768px) { .bk-field-grid { grid-template-columns: repeat(2,1fr); } }
+.bk-field { display: flex; flex-direction: column; gap: 3px; }
+.bk-field-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: #9ca3af;
+}
+.bk-field-value {
+    font-size: 14.5px;
+    font-weight: 500;
+    color: #1f2937;
+    line-height: 1.4;
+}
+.bk-field-value.accent { color: #1a2a6c; font-weight: 700; }
+
+/* ── Table ───────────────────────────────────────────────────── */
+.bk-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.bk-table thead tr { background: #f3f4f6; }
+.bk-table thead th { padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
+.bk-table tbody td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: middle; }
+.bk-table tbody tr:last-child td { border-bottom: none; }
+.bk-table tbody tr:hover { background: #f9fafb; }
+.bk-table .num { text-align: right; font-weight: 600; }
+.bk-table .refund-row td { background: #fffbeb; }
+
+/* ── Financial sidebar ───────────────────────────────────────── */
+.fin-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 14px rgba(0,0,0,.07);
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+.fin-card-header {
+    background: linear-gradient(135deg,#1a2a6c,#2d3fa3);
+    color: #fff;
+    padding: 16px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.fin-card-body { padding: 18px 20px; }
+.fin-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; font-size: 13.5px; border-bottom: 1px solid #f3f4f6; }
+.fin-row:last-child { border-bottom: none; }
+.fin-row .fin-label { color: #6b7280; }
+.fin-row .fin-val   { font-weight: 600; color: #1f2937; }
+.fin-row.fin-sub    { background: #f9fafb; margin: 0 -20px; padding: 7px 20px; font-size: 12.5px; }
+.fin-row.fin-sub .fin-label { color: #9ca3af; }
+.fin-row.fin-sub .fin-val   { color: #6b7280; }
+.fin-grand {
+    background: linear-gradient(90deg,#1a2a6c,#2d3fa3);
+    margin: 14px -20px -18px;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #fff;
+}
+.fin-grand .fg-label { font-size: 14px; font-weight: 700; }
+.fin-grand .fg-val   { font-size: 22px; font-weight: 800; letter-spacing: .5px; }
+.fin-collected { padding: 14px 20px 0; }
+.fin-col-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13.5px; }
+.fin-col-row.success { color: #059669; font-weight: 700; }
+.fin-col-row.danger  { color: #dc2626; font-weight: 700; }
+.fin-col-row.muted   { color: #6b7280; font-size: 12.5px; }
+.fin-inv-badge { background:#eff6ff; border-radius:8px; padding:10px 14px; margin-top:14px; display:flex; align-items:center; gap:10px; font-size:13px; color:#1d4ed8; font-weight:600; }
+.fin-inv-badge i { font-size:16px; }
+
+/* ── Info card (notes) ───────────────────────────────────────── */
+.bk-note-card { background:#fff; border-radius:12px; box-shadow:0 2px 14px rgba(0,0,0,.07); margin-bottom:20px; overflow:hidden; }
+.bk-note-header { padding:12px 18px; font-size:13px; font-weight:700; display:flex; align-items:center; gap:8px; }
+.bk-note-header.nc-special { background:#fffbeb; color:#b45309; border-bottom:1.5px solid #fde68a; }
+.bk-note-header.nc-internal { background:#eff6ff; color:#1d4ed8; border-bottom:1.5px solid #bfdbfe; }
+.bk-note-body { padding:14px 18px; font-size:13.5px; color:#374151; line-height:1.65; white-space:pre-wrap; }
+
+/* ── Timeline ────────────────────────────────────────────────── */
+.bk-timeline { padding: 4px 0; }
+.bk-tl-item { display: flex; gap: 14px; margin-bottom: 16px; }
+.bk-tl-dot-wrap { display: flex; flex-direction: column; align-items: center; }
+.bk-tl-dot { width: 10px; height: 10px; border-radius: 50%; background: #4f46e5; flex-shrink: 0; margin-top: 4px; }
+.bk-tl-line { width: 2px; flex: 1; background: #e5e7eb; margin-top: 4px; }
+.bk-tl-item:last-child .bk-tl-line { display: none; }
+.bk-tl-content { flex: 1; padding-bottom: 4px; }
+.bk-tl-action { font-size: 13.5px; font-weight: 700; color: #1f2937; }
+.bk-tl-desc   { font-size: 13px; color: #6b7280; margin-top: 2px; }
+.bk-tl-meta   { font-size: 11.5px; color: #9ca3af; margin-top: 4px; display:flex; align-items:center; gap:6px; }
+.bk-tl-meta i { font-size: 10px; }
+</style>
+
+@{
+    /* Compute cashCollected / payDisc early so hero can use them */
+    var cashCollected = Model.Payments.Where(p => !p.IsRefund).Sum(p => p.Amount)
+                      - Model.Payments.Where(p =>  p.IsRefund).Sum(p => p.Amount);
+    var totalPayDisc  = Model.Payments.Where(p => !p.IsRefund).Sum(p => p.DiscountAmount);
+
+    string StatusPillClass(string s) => s switch {
+        "Confirmed"     => "st-confirmed",
+        "Tentative"     => "st-tentative",
+        "CheckedIn"     => "st-checkedin",
+        "EventComplete" => "st-complete",
+        "CheckedOut"    => "st-checkout",
+        "Cancelled"     => "st-cancelled",
+        _               => "st-inquiry"
+    };
+    string StatusIcon(string s) => s switch {
+        "Confirmed"     => "fa-check-circle",
+        "Tentative"     => "fa-clock",
+        "CheckedIn"     => "fa-door-open",
+        "EventComplete" => "fa-flag-checkered",
+        "CheckedOut"    => "fa-sign-out-alt",
+        "Cancelled"     => "fa-ban",
+        _               => "fa-question-circle"
+    };
+    string PayPillClass(string s) => s switch {
+        "FullPaid"    => "pay-full",
+        "PartialPaid" => "pay-partial",
+        _             => "pay-unpaid"
+    };
+    string PayIcon(string s) => s switch {
+        "FullPaid"    => "fa-check-double",
+        "PartialPaid" => "fa-hourglass-half",
+        _             => "fa-exclamation-circle"
+    };
+}
+
+<!-- ── HERO HEADER ─────────────────────────────────────────────────────────── -->
+<div class="bnq-hero">
+    <div class="bnq-hero-left">
+        <div class="bnq-num">
+            <i class="fas fa-champagne-glasses"></i>
+            @Model.BanquetBookingNumber
+        </div>
+        <div class="bnq-badges">
+            <span class="bnq-status-pill @StatusPillClass(Model.Status)">
+                <i class="fas @StatusIcon(Model.Status)"></i> @Model.Status
+            </span>
+            <span class="bnq-status-pill @PayPillClass(Model.PaymentStatus)">
+                <i class="fas @PayIcon(Model.PaymentStatus)"></i> @Model.PaymentStatus
+            </span>
+            @if (Model.CustomerType == "B2B")
+            {
+                <span class="bnq-status-pill b2b-badge"><i class="fas fa-building"></i> B2B</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.InvoiceNumber))
+            {
+                <span class="bnq-status-pill" style="background:rgba(253,187,45,.25);border-color:#fdbb2d;color:#fef9c3">
+                    <i class="fas fa-file-invoice"></i> @Model.InvoiceNumber
+                </span>
+            }
+        </div>
+    </div>
+    <div class="bnq-hero-right">
+        @if (Model.BalanceAmount > 0 && Model.Status != "Cancelled")
+        {
+            <a asp-action="AddPayment" asp-route-id="@Model.Id" class="btn btn-success">
+                <i class="fas fa-indian-rupee-sign"></i> Add Payment
+            </a>
+        }
+        @if (Model.Status is "Inquiry" or "Tentative")
+        {
+            <form asp-action="Confirm" asp-route-id="@Model.Id" method="post" style="display:inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-light" style="color:#1a2a6c;font-weight:700">
+                    <i class="fas fa-check"></i> Confirm
+                </button>
+            </form>
+        }
+        @if (Model.Status == "Confirmed")
+        {
+            <form asp-action="MarkCheckedIn" asp-route-id="@Model.Id" method="post" style="display:inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-info text-white">
+                    <i class="fas fa-door-open"></i> Mark Checked In
+                </button>
+            </form>
+        }
+        @if (Model.Status is "CheckedIn" or "Confirmed")
+        {
+            <form asp-action="MarkEventComplete" asp-route-id="@Model.Id" method="post" style="display:inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn text-white" style="background:#009688">
+                    <i class="fas fa-flag-checkered"></i> Mark Complete
+                </button>
+            </form>
+        }
+        @if (Model.Status == "EventComplete")
+        {
+            <form id="checkOutForm" asp-action="CheckOut" asp-route-id="@Model.Id" method="post" style="display:inline">
+                @Html.AntiForgeryToken()
+                <button type="button" id="checkOutBtn" class="btn btn-light" style="color:#3F51B5;font-weight:700">
+                    <i class="fas fa-door-closed"></i> Check Out
+                </button>
+            </form>
+        }
+        @if (Model.Status != "Cancelled" && Model.Status != "EventComplete" && Model.Status != "CheckedOut")
+        {
+            <a asp-action="CancelBooking" asp-route-id="@Model.Id" class="btn btn-outline-danger" style="background:rgba(239,68,68,.12);color:#fca5a5;border-color:#ef4444">
+                <i class="fas fa-ban"></i> Cancel
+            </a>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.InvoiceNumber))
+        {
+            <a asp-action="Invoice" asp-route-id="@Model.Id" target="_blank" class="btn btn-outline-light">
+                <i class="fas fa-file-invoice"></i> Print Invoice
+            </a>
+        }
+        else if (Model.Status != "Cancelled")
+        {
+            <a asp-action="Invoice" asp-route-id="@Model.Id" target="_blank" class="btn btn-outline-light">
+                <i class="fas fa-print"></i> Print Receipt
+            </a>
+        }
+        <a asp-action="List" class="btn btn-outline-light"><i class="fas fa-arrow-left"></i> Back</a>
+    </div>
+</div>
+
+@{
+    var cancellation = ViewBag.Cancellation as HotelApp.Web.Models.BanquetCancellation;
+}
+@if (cancellation != null)
+{
+    <div class="mb-4" style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.09);">
+        <!-- Header bar -->
+        <div style="background:linear-gradient(90deg,#7f1d1d,#b91c1c);color:#fff;padding:14px 24px;display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;">
+            <i class="fas fa-ban"></i> Cancellation & Refund
+            @if (cancellation.IsRefunded)
+            {
+                <span style="margin-left:10px;background:rgba(16,185,129,.35);border:1.5px solid #10b981;padding:3px 12px;border-radius:20px;font-size:12px">
+                    <i class="fas fa-check-circle"></i> Refund Processed
+                </span>
+            }
+            else
+            {
+                <span style="margin-left:10px;background:rgba(251,191,36,.3);border:1.5px solid #fbbf24;padding:3px 12px;border-radius:20px;font-size:12px;color:#fef9c4">
+                    <i class="fas fa-hourglass-half"></i> Refund Pending
+                </span>
+            }
+        </div>
+        <!-- Body -->
+        <div class="row g-0">
+            <!-- Cancellation details -->
+            <div class="col-lg-5" style="padding:20px 24px;border-right:1px solid #f3f4f6">
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#9ca3af;margin-bottom:12px">Cancellation Details</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                    <div>
+                        <div style="font-size:10.5px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Amount Paid</div>
+                        <div style="font-size:15px;font-weight:600;color:#1f2937">₹@cancellation.AmountPaid.ToString("N2")</div>
+                    </div>
+                    <div>
+                        <div style="font-size:10.5px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Refund %</div>
+                        <div style="font-size:15px;font-weight:600;color:#7c3aed">@cancellation.RefundPercent %</div>
+                    </div>
+                    <div>
+                        <div style="font-size:10.5px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Deduction</div>
+                        <div style="font-size:15px;font-weight:600;color:#dc2626">-₹@cancellation.DeductionAmount.ToString("N2")</div>
+                    </div>
+                    <div>
+                        <div style="font-size:10.5px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Refund Amount</div>
+                        <div style="font-size:18px;font-weight:800;color:#059669">₹@cancellation.RefundAmount.ToString("N2")</div>
+                    </div>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(cancellation.CancellationReason))
+                {
+                    <div style="margin-top:14px;padding:10px 14px;background:#fef2f2;border-radius:8px;font-size:13px;color:#7f1d1d;border-left:3px solid #dc2626">
+                        <strong>Reason:</strong> @cancellation.CancellationReason
+                    </div>
+                }
+                <div style="margin-top:12px;font-size:12px;color:#9ca3af">
+                    <i class="fas fa-clock fa-xs me-1"></i> Cancelled on @cancellation.CancelledOn.ToString("dd MMM yyyy HH:mm")
+                </div>
+            </div>
+            <!-- Refund action / status -->
+            <div class="col-lg-7" style="padding:20px 24px">
+                @if (cancellation.IsRefunded)
+                {
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#9ca3af;margin-bottom:12px">Refund Completed</div>
+                    <div style="background:#ecfdf5;border-radius:10px;padding:18px 20px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                        @if (!string.IsNullOrWhiteSpace(cancellation.RefundNumber))
+                        {
+                            <div style="grid-column:1/-1">
+                                <div style="font-size:10.5px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Refund Number</div>
+                                <div style="font-size:16px;font-weight:800;color:#047857;font-family:monospace">@cancellation.RefundNumber</div>
+                            </div>
+                        }
+                        <div>
+                            <div style="font-size:10.5px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Amount Refunded</div>
+                            <div style="font-size:20px;font-weight:800;color:#059669">₹@cancellation.RefundAmount.ToString("N2")</div>
+                        </div>
+                        <div>
+                            <div style="font-size:10.5px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Payment Method</div>
+                            <div style="font-size:15px;font-weight:600;color:#1f2937">@cancellation.RefundPaymentMethod</div>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(cancellation.RefundReference))
+                        {
+                            <div>
+                                <div style="font-size:10.5px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Reference</div>
+                                <div style="font-size:14px;font-weight:600;color:#1f2937">@cancellation.RefundReference</div>
+                            </div>
+                        }
+                        @if (cancellation.RefundedOn.HasValue)
+                        {
+                            <div>
+                                <div style="font-size:10.5px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Refunded On</div>
+                                <div style="font-size:14px;font-weight:600;color:#1f2937">@cancellation.RefundedOn.Value.ToString("dd MMM yyyy HH:mm")</div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#9ca3af;margin-bottom:12px">Process Refund — ₹@cancellation.RefundAmount.ToString("N2")</div>
+                    @if (cancellation.RefundAmount <= 0)
+                    {
+                        <div style="background:#f3f4f6;border-radius:8px;padding:16px 18px;font-size:14px;color:#6b7280;text-align:center">
+                            <i class="fas fa-circle-info me-2"></i> No refund applicable for this cancellation.
+                        </div>
+                    }
+                    else
+                    {
+                        <form asp-action="ProcessRefund" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="cancellationId" value="@cancellation.Id" />
+                            <input type="hidden" name="bookingId" value="@Model.Id" />
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+                                <div>
+                                    <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:5px">
+                                        Payment Method <span style="color:#dc2626">*</span>
+                                    </label>
+                                    <select name="paymentMethod" class="form-control" required>
+                                        <option value="">-- Select --</option>
+                                        <option value="Cash">Cash</option>
+                                        <option value="Bank Transfer">Bank Transfer</option>
+                                        <option value="NEFT">NEFT</option>
+                                        <option value="RTGS">RTGS</option>
+                                        <option value="UPI">UPI</option>
+                                        <option value="Cheque">Cheque</option>
+                                        <option value="Online">Online</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:5px">Reference / Transaction ID</label>
+                                    <input type="text" name="reference" class="form-control" placeholder="UTR, cheque no., etc." />
+                                </div>
+                            </div>
+                            <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#92400e;display:flex;align-items:center;gap:10px">
+                                <i class="fas fa-triangle-exclamation"></i>
+                                Confirm refund of <strong>₹@cancellation.RefundAmount.ToString("N2")</strong> to the customer. This cannot be undone.
+                            </div>
+                            <button type="submit" class="btn btn-success px-4">
+                                <i class="fas fa-hand-holding-dollar"></i> Process Refund ₹@cancellation.RefundAmount.ToString("N2")
+                            </button>
+                        </form>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            Swal.fire({ icon: 'success', title: 'Success', text: '@Html.Raw(TempData["SuccessMessage"])', timer: 3000, timerProgressBar: true, showConfirmButton: false, toast: true, position: 'top-end' });
+        });
+    </script>
+}
+@if (TempData["WarningMessage"] != null)
+{
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            Swal.fire({ icon: 'warning', title: 'Action Required', text: '@Html.Raw(TempData["WarningMessage"])', confirmButtonColor: '#3F51B5', confirmButtonText: 'OK' });
+        });
+    </script>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            Swal.fire({ icon: 'error', title: 'Not Allowed', text: '@Html.Raw(TempData["ErrorMessage"])', confirmButtonColor: '#d33' });
+        });
+    </script>
+}
+
+<!-- ── MAIN CONTENT ───────────────────────────────────────────────────────── -->
+<div class="row g-4">
+
+    <!-- ── LEFT COLUMN ──────────────────────────────────────────────────── -->
+    <div class="col-lg-8">
+
+        <!-- Customer -->
+        <div class="bk-card">
+            <div class="bk-card-header hd-customer"><i class="fas fa-user-circle"></i> Customer Information</div>
+            <div class="bk-card-body">
+                <div class="bk-field-grid">
+                    <div class="bk-field">
+                        <span class="bk-field-label">Name</span>
+                        <span class="bk-field-value accent">@Model.GuestName</span>
+                    </div>
+                    <div class="bk-field">
+                        <span class="bk-field-label">Phone</span>
+                        <span class="bk-field-value"><i class="fas fa-phone fa-xs me-1 text-muted"></i>@Model.GuestPhone</span>
+                    </div>
+                    <div class="bk-field">
+                        <span class="bk-field-label">Email</span>
+                        <span class="bk-field-value" style="word-break:break-all">@(string.IsNullOrWhiteSpace(Model.GuestEmail) ? "—" : Model.GuestEmail)</span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.GuestGSTIN))
+                    {
+                        <div class="bk-field">
+                            <span class="bk-field-label">GSTIN</span>
+                            <span class="bk-field-value">@Model.GuestGSTIN</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.CompanyName))
+                    {
+                        <div class="bk-field">
+                            <span class="bk-field-label">Company</span>
+                            <span class="bk-field-value">@Model.CompanyName</span>
+                        </div>
+                        <div class="bk-field">
+                            <span class="bk-field-label">Company GSTIN</span>
+                            <span class="bk-field-value">@Model.CompanyGSTIN</span>
+                        </div>
+                        <div class="bk-field">
+                            <span class="bk-field-label">Billing To</span>
+                            <span class="bk-field-value">@Model.BillingTo</span>
+                        </div>
+                        <div class="bk-field">
+                            <span class="bk-field-label">Credit Days</span>
+                            <span class="bk-field-value">@Model.CreditDays days</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Event Details -->
+        <div class="bk-card">
+            <div class="bk-card-header hd-event"><i class="fas fa-calendar-star"></i> Event Details</div>
+            <div class="bk-card-body">
+                <!-- Row 1: Event name full-width -->
+                <div class="mb-3 pb-3" style="border-bottom:1px solid #f3f4f6">
+                    <span class="bk-field-label">Event Name</span>
+                    <div style="font-size:18px;font-weight:800;color:#0f766e;margin-top:4px">@Model.EventName</div>
+                </div>
+                <div class="bk-field-grid">
+                    <div class="bk-field">
+                        <span class="bk-field-label">Event Type</span>
+                        <span class="bk-field-value">@Model.EventTypeName</span>
+                    </div>
+                    <div class="bk-field">
+                        <span class="bk-field-label">Venue</span>
+                        <span class="bk-field-value"><i class="fas fa-location-dot fa-xs me-1 text-muted"></i>@Model.VenueName</span>
+                    </div>
+                    <div class="bk-field">
+                        <span class="bk-field-label">Event Date</span>
+                        <span class="bk-field-value accent">@Model.EventDate.ToString("dd MMM yyyy")</span>
+                    </div>
+                    @if (Model.EventEndDate.HasValue && Model.EventEndDate != Model.EventDate)
+                    {
+                        <div class="bk-field">
+                            <span class="bk-field-label">End Date</span>
+                            <span class="bk-field-value">@Model.EventEndDate?.ToString("dd MMM yyyy")</span>
+                        </div>
+                    }
+                    <div class="bk-field">
+                        <span class="bk-field-label">Time</span>
+                        <span class="bk-field-value">
+                            <i class="fas fa-clock fa-xs me-1 text-muted"></i>
+                            @Model.EventStartTime?.ToString(@"hh\:mm") — @Model.EventEndTime?.ToString(@"hh\:mm")
+                        </span>
+                    </div>
+                    <div class="bk-field">
+                        <span class="bk-field-label">Expected Pax</span>
+                        <span class="bk-field-value"><i class="fas fa-users fa-xs me-1 text-muted"></i>@Model.AttendeeCount</span>
+                    </div>
+                    <div class="bk-field">
+                        <span class="bk-field-label">Guarantee Pax</span>
+                        <span class="bk-field-value">@Model.GuaranteePax</span>
+                    </div>
+                    <div class="bk-field">
+                        <span class="bk-field-label">Meal Type</span>
+                        <span class="bk-field-value">@Model.MealType</span>
+                    </div>
+                    <div class="bk-field">
+                        <span class="bk-field-label">Venue Hire</span>
+                        <span class="bk-field-value">@Model.VenueHireType</span>
+                    </div>
+                    <div class="bk-field">
+                        <span class="bk-field-label">GST Type</span>
+                        <span class="bk-field-value">@(Model.IsInterState ? "Inter-State (IGST)" : "Intra-State (CGST+SGST)")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Package Lines -->
+        @if (Model.PackageLines.Any())
+        {
+            <div class="bk-card">
+                <div class="bk-card-header hd-package"><i class="fas fa-utensils"></i> Package</div>
+                <div style="overflow-x:auto">
+                    <table class="bk-table">
+                        <thead>
+                            <tr>
+                                <th>Package</th><th>Type</th><th>Pax</th>
+                                <th class="num">Rate/Pax</th><th class="num">Base</th>
+                                <th class="num">GST</th><th class="num">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in Model.PackageLines)
+                            {
+                                <tr>
+                                    <td style="font-weight:600">@p.PackageName</td>
+                                    <td><span style="background:#ede9fe;color:#5b21b6;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600">@p.PackageType</span></td>
+                                    <td>@p.Pax</td>
+                                    <td class="num">₹@p.PricePerPax.ToString("N2")</td>
+                                    <td class="num">₹@p.BaseAmount.ToString("N2")</td>
+                                    <td class="num" style="color:#6b7280">₹@p.GSTAmount.ToString("N2") <span style="font-size:11px">(@p.GSTPercent%)</span></td>
+                                    <td class="num" style="color:#6d28d9;font-weight:700">₹@p.TotalAmount.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        <!-- Addon Lines -->
+        @if (Model.AddonLines.Any())
+        {
+            <div class="bk-card">
+                <div class="bk-card-header hd-addon"><i class="fas fa-puzzle-piece"></i> Addon Services</div>
+                <div style="overflow-x:auto">
+                    <table class="bk-table">
+                        <thead>
+                            <tr>
+                                <th>Service</th><th>Type</th><th>Rate</th><th>Qty</th>
+                                <th class="num">Base</th><th class="num">GST</th><th class="num">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var a in Model.AddonLines)
+                            {
+                                <tr>
+                                    <td style="font-weight:600">@a.ServiceName</td>
+                                    <td><span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600">@a.ServiceType</span></td>
+                                    <td>₹@a.Rate.ToString("N2") / @a.RateType</td>
+                                    <td>@a.Qty</td>
+                                    <td class="num">₹@a.BaseAmount.ToString("N2")</td>
+                                    <td class="num" style="color:#6b7280">₹@a.GSTAmount.ToString("N2") <span style="font-size:11px">(@a.GSTPercent%)</span></td>
+                                    <td class="num" style="color:#b45309;font-weight:700">₹@a.TotalAmount.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        <!-- Payments -->
+        @if (Model.Payments.Any())
+        {
+            <div class="bk-card">
+                <div class="bk-card-header hd-payments"><i class="fas fa-money-bill-wave"></i> Payment History</div>
+                <div style="overflow-x:auto">
+                    <table class="bk-table">
+                        <thead>
+                            <tr>
+                                <th>Receipt #</th><th>Date</th><th class="num">Amount</th>
+                                <th class="num">Discount</th><th>Method</th><th>Reference</th><th>Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in Model.Payments)
+                            {
+                                <tr class="@(p.IsRefund ? "refund-row" : "")">
+                                    <td style="font-weight:600;font-size:12px">@p.ReceiptNumber</td>
+                                    <td style="font-size:12.5px;color:#6b7280">@p.PaidOn.ToString("dd-MMM-yyyy HH:mm")</td>
+                                    <td class="num @(p.IsRefund ? "" : "")">
+                                        <span style="color:@(p.IsRefund ? "#f59e0b" : "#059669");font-weight:700">
+                                            @(p.IsRefund ? "-" : "")₹@p.Amount.ToString("N2")
+                                        </span>
+                                    </td>
+                                    <td class="num">
+                                        @if (p.DiscountAmount > 0)
+                                        { <span style="color:#059669;font-weight:600">-₹@p.DiscountAmount.ToString("N2")</span> }
+                                        else { <span style="color:#d1d5db">—</span> }
+                                    </td>
+                                    <td>@p.PaymentMethod</td>
+                                    <td style="color:#6b7280;font-size:12.5px">@p.PaymentReference</td>
+                                    <td>
+                                        @{
+                                            var typeLabel = p.IsAdvancePayment ? "Advance" : p.IsRefund ? "Refund" : "Payment";
+                                            var typeCss   = p.IsRefund ? "background:#fef3c7;color:#92400e" : p.IsAdvancePayment ? "background:#eff6ff;color:#1d4ed8" : "background:#ecfdf5;color:#065f46";
+                                        }
+                                        <span style="@typeCss;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600">@typeLabel</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        <!-- Audit Log -->
+        @if (Model.AuditLogs.Any())
+        {
+            <div class="bk-card">
+                <div class="bk-card-header hd-audit"><i class="fas fa-history"></i> Audit Trail</div>
+                <div class="bk-card-body">
+                    <div class="bk-timeline">
+                        @foreach (var l in Model.AuditLogs.OrderByDescending(x => x.PerformedAt))
+                        {
+                            <div class="bk-tl-item">
+                                <div class="bk-tl-dot-wrap">
+                                    <div class="bk-tl-dot"></div>
+                                    <div class="bk-tl-line"></div>
+                                </div>
+                                <div class="bk-tl-content">
+                                    <div class="bk-tl-action">@l.ActionType</div>
+                                    <div class="bk-tl-desc">@l.ActionDescription</div>
+                                    <div class="bk-tl-meta">
+                                        <i class="fas fa-clock"></i> @l.PerformedAt.ToString("dd MMM yyyy HH:mm")
+                                        &nbsp;·&nbsp;
+                                        <i class="fas fa-user-circle"></i> @l.PerformedByName
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- ── RIGHT COLUMN ─────────────────────────────────────────────────── -->
+    <div class="col-lg-4">
+
+        <!-- Financial Summary -->
+        <div class="fin-card">
+            <div class="fin-card-header"><i class="fas fa-file-invoice-dollar"></i> Financial Summary</div>
+            <div class="fin-card-body">
+                <div class="fin-row">
+                    <span class="fin-label"><i class="fas fa-building-columns fa-xs me-1"></i> Venue Charges</span>
+                    <span class="fin-val">₹@Model.VenueBaseAmount.ToString("N2")</span>
+                </div>
+                <div class="fin-row">
+                    <span class="fin-label"><i class="fas fa-utensils fa-xs me-1"></i> Package Charges</span>
+                    <span class="fin-val">₹@Model.PackageBaseAmount.ToString("N2")</span>
+                </div>
+                <div class="fin-row">
+                    <span class="fin-label"><i class="fas fa-puzzle-piece fa-xs me-1"></i> Addon Services</span>
+                    <span class="fin-val">₹@Model.AddonBaseAmount.ToString("N2")</span>
+                </div>
+                <div class="fin-row fin-sub">
+                    <span class="fin-label">Sub-total (Base)</span>
+                    <span class="fin-val">₹@Model.TotalBaseAmount.ToString("N2")</span>
+                </div>
+                @if (Model.TotalCGSTAmount > 0)
+                {
+                    <div class="fin-row fin-sub">
+                        <span class="fin-label">CGST</span>
+                        <span class="fin-val">₹@Model.TotalCGSTAmount.ToString("N2")</span>
+                    </div>
+                }
+                @if (Model.TotalSGSTAmount > 0)
+                {
+                    <div class="fin-row fin-sub">
+                        <span class="fin-label">SGST</span>
+                        <span class="fin-val">₹@Model.TotalSGSTAmount.ToString("N2")</span>
+                    </div>
+                }
+                @if (Model.TotalIGSTAmount > 0)
+                {
+                    <div class="fin-row fin-sub">
+                        <span class="fin-label">IGST</span>
+                        <span class="fin-val">₹@Model.TotalIGSTAmount.ToString("N2")</span>
+                    </div>
+                }
+                @if (Model.ServiceChargeAmount > 0)
+                {
+                    <div class="fin-row">
+                        <span class="fin-label">Service Charge</span>
+                        <span class="fin-val">₹@Model.ServiceChargeAmount.ToString("N2")</span>
+                    </div>
+                }
+                @if (Model.DiscountAmount > 0)
+                {
+                    <div class="fin-row">
+                        <span class="fin-label" style="color:#059669">Discount</span>
+                        <span class="fin-val" style="color:#059669">-₹@Model.DiscountAmount.ToString("N2")</span>
+                    </div>
+                }
+                @if (Model.RoundOffAmount != 0)
+                {
+                    <div class="fin-row fin-sub">
+                        <span class="fin-label">Round-Off</span>
+                        <span class="fin-val">₹@Model.RoundOffAmount.ToString("N2")</span>
+                    </div>
+                }
+                <div class="fin-grand">
+                    <span class="fg-label"><i class="fas fa-calculator me-2"></i>Grand Total</span>
+                    <span class="fg-val">₹@Model.TotalAmount.ToString("N2")</span>
+                </div>
+            </div>
+            <div class="fin-collected">
+                <div class="fin-col-row success">
+                    <span><i class="fas fa-circle-check me-1"></i> Cash Collected</span>
+                    <span>₹@cashCollected.ToString("N2")</span>
+                </div>
+                @if (totalPayDisc > 0)
+                {
+                    <div class="fin-col-row muted">
+                        <span><i class="fas fa-tag me-1"></i> Payment Discount</span>
+                        <span>-₹@totalPayDisc.ToString("N2")</span>
+                    </div>
+                    <div class="fin-col-row success" style="border-top:1px dashed #d1fae5;padding-top:8px;margin-top:4px">
+                        <span>Total Settled</span>
+                        <span>₹@Model.DepositAmount.ToString("N2")</span>
+                    </div>
+                }
+                <div class="fin-col-row @(Model.BalanceAmount > 0 ? "danger" : "success")" style="border-top:1.5px solid #f3f4f6;margin-top:4px;padding-top:8px">
+                    <span>@(Model.BalanceAmount > 0 ? "Balance Due" : "Fully Paid")</span>
+                    <span>₹@Model.BalanceAmount.ToString("N2")</span>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(Model.InvoiceNumber))
+                {
+                    <div class="fin-inv-badge">
+                        <i class="fas fa-file-invoice"></i>
+                        <span>Invoice: @Model.InvoiceNumber</span>
+                    </div>
+                }
+                <div style="height:14px"></div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.SpecialRequests))
+        {
+            <div class="bk-note-card">
+                <div class="bk-note-header nc-special">
+                    <i class="fas fa-star"></i> Special Requests
+                </div>
+                <div class="bk-note-body">@Model.SpecialRequests</div>
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.InternalNotes))
+        {
+            <div class="bk-note-card">
+                <div class="bk-note-header nc-internal">
+                    <i class="fas fa-lock"></i> Internal Notes
+                </div>
+                <div class="bk-note-body">@Model.InternalNotes</div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const checkOutBtn = document.getElementById('checkOutBtn');
+    if (checkOutBtn) {
+        checkOutBtn.addEventListener('click', function () {
+            Swal.fire({
+                title: 'Check Out?',
+                text: 'This will finalise the event and close the booking.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3F51B5',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fas fa-door-closed"></i> Yes, Check Out',
+                cancelButtonText: 'Cancel'
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    document.getElementById('checkOutForm').submit();
+                }
+            });
+        });
+    }
+</script>
+}

@@ -1,0 +1,439 @@
+@using Microsoft.AspNetCore.Html
+@model HotelApp.Web.ViewModels.BanquetDashboardViewModel
+@{
+    ViewData["Title"] = "Banquet Dashboard";
+    var today = DateTime.Today;
+    string FormatAmount(decimal v) => v >= 100000 ? $"₹{(v / 100000m):0.0}L" : v >= 1000 ? $"₹{(v / 1000m):0.0}K" : $"₹{v:N0}";
+}
+
+<style>
+/* ── KPI Grid ───────────────────────────────────────────────────────────── */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+}
+.kpi-card {
+    background: white;
+    border-radius: 14px;
+    padding: 20px 18px;
+    box-shadow: 0 2px 14px rgba(0,0,0,.06);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-left: 5px solid #e2e8f0;
+    transition: transform .15s, box-shadow .15s;
+    position: relative;
+    overflow: hidden;
+}
+.kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(0,0,0,.10); }
+.kpi-card::after {
+    content: '';
+    position: absolute;
+    right: -12px; top: -12px;
+    width: 70px; height: 70px;
+    border-radius: 50%;
+    opacity: .06;
+    background: currentColor;
+}
+.kpi-card .kpi-icon { font-size: 22px; margin-bottom: 2px; }
+.kpi-card .kpi-value { font-size: 26px; font-weight: 800; line-height: 1.1; }
+.kpi-card .kpi-label { font-size: 12px; color: #64748b; font-weight: 500; }
+.kpi-card .kpi-sub   { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+.kpi-card.k-green  { border-left-color: #16a34a; }
+.kpi-card.k-green  .kpi-icon, .kpi-card.k-green  .kpi-value { color: #16a34a; }
+.kpi-card.k-blue   { border-left-color: #2563eb; }
+.kpi-card.k-blue   .kpi-icon, .kpi-card.k-blue   .kpi-value { color: #1d4ed8; }
+.kpi-card.k-orange { border-left-color: #ea580c; }
+.kpi-card.k-orange .kpi-icon, .kpi-card.k-orange .kpi-value { color: #c2410c; }
+.kpi-card.k-teal   { border-left-color: #0d9488; }
+.kpi-card.k-teal   .kpi-icon, .kpi-card.k-teal   .kpi-value { color: #0f766e; }
+.kpi-card.k-red    { border-left-color: #dc2626; }
+.kpi-card.k-red    .kpi-icon, .kpi-card.k-red    .kpi-value { color: #b91c1c; }
+.kpi-card.k-purple { border-left-color: #7c3aed; }
+.kpi-card.k-purple .kpi-icon, .kpi-card.k-purple .kpi-value { color: #6d28d9; }
+
+/* ── Dashboard panels ───────────────────────────────────────────────────── */
+.dash-panel {
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 2px 14px rgba(0,0,0,.06);
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+.dash-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid #f1f5f9;
+}
+.dash-panel-header .ph-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.dash-panel-header .ph-title i { color: var(--primary); font-size: 14px; }
+.dash-panel-header .ph-badge {
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+}
+
+/* ── Event cards (today's events) ───────────────────────────────────────── */
+.event-card-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+.event-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    transition: border-color .15s, box-shadow .15s;
+}
+.event-card:hover { border-color: var(--primary); box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.event-card .ec-time {
+    background: #f1f5f9;
+    border-radius: 8px;
+    padding: 8px 12px;
+    text-align: center;
+    min-width: 68px;
+    flex-shrink: 0;
+}
+.event-card .ec-time .et-start { font-size: 15px; font-weight: 700; color: #1e293b; }
+.event-card .ec-time .et-end   { font-size: 10px; color: #94a3b8; margin-top: 1px; }
+.event-card .ec-info { flex: 1; }
+.event-card .ec-info .ei-name  { font-size: 14px; font-weight: 700; color: #1e293b; }
+.event-card .ec-info .ei-meta  { font-size: 12px; color: #64748b; margin-top: 3px; display: flex; flex-wrap: wrap; gap: 10px; }
+.event-card .ec-info .ei-meta span { display: flex; align-items: center; gap: 4px; }
+.event-card .ec-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.ec-view-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px;
+    border-radius: 8px; background: #f1f5f9; color: #475569;
+    text-decoration: none; transition: background .15s;
+}
+.ec-view-btn:hover { background: var(--primary); color: white; }
+
+/* ── Bookings table ─────────────────────────────────────────────────────── */
+.rb-table { width: 100%; border-collapse: collapse; }
+.rb-table th {
+    background: #f8fafc;
+    font-size: 11px; font-weight: 700; color: #64748b;
+    text-transform: uppercase; letter-spacing: .05em;
+    padding: 10px 16px;
+    text-align: left;
+    border-bottom: 2px solid #f1f5f9;
+}
+.rb-table td { padding: 11px 16px; font-size: 13px; border-bottom: 1px solid #f8fafc; vertical-align: middle; }
+.rb-table tr:last-child td { border-bottom: none; }
+.rb-table tr:hover td { background: #fafbfc; }
+.rb-num { font-weight: 700; color: var(--primary); text-decoration: none; font-size: 13px; }
+.rb-num:hover { text-decoration: underline; }
+.rb-amt { font-family: 'Courier New', monospace; font-weight: 600; color: #1e293b; }
+.rb-guest { font-size: 12px; color: #64748b; margin-top: 1px; }
+
+/* ── Status badges ──────────────────────────────────────────────────────── */
+.sb { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.sb-confirmed    { background: #dcfce7; color: #166534; }
+.sb-checkedin    { background: #d1fae5; color: #065f46; }
+.sb-checkedout   { background: #dbeafe; color: #1e40af; }
+.sb-complete     { background: #e0f2fe; color: #0369a1; }
+.sb-tentative    { background: #fef9c3; color: #854d0e; }
+.sb-inquiry      { background: #f1f5f9; color: #475569; }
+.sb-cancelled    { background: #fee2e2; color: #991b1b; }
+.sb-default      { background: #f1f5f9; color: #475569; }
+
+/* ── Quick actions ──────────────────────────────────────────────────────── */
+.quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 16px; }
+.qa-btn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px; border-radius: 10px;
+    background: #f8fafc; border: 1px solid #e2e8f0;
+    color: #1e293b; text-decoration: none;
+    font-size: 13px; font-weight: 600;
+    transition: background .15s, border-color .15s;
+}
+.qa-btn i { width: 20px; text-align: center; color: var(--primary); }
+.qa-btn:hover { background: #eff6ff; border-color: var(--primary); color: var(--primary); }
+
+/* ── Empty state ────────────────────────────────────────────────────────── */
+.dash-empty {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 36px 20px; color: #94a3b8; gap: 8px;
+}
+.dash-empty i { font-size: 32px; }
+.dash-empty p { font-size: 13px; margin: 0; }
+
+@@media (max-width: 1400px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@@media (max-width: 900px)  { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+@@media (max-width: 576px)  { .kpi-grid { grid-template-columns: 1fr 1fr; } }
+</style>
+
+<div class="page-header">
+    <h2><i class="fas fa-champagne-glasses"></i> Banquet &amp; Events Dashboard</h2>
+    <a asp-controller="BanquetBooking" asp-action="Create" class="btn-create">
+        <i class="fas fa-plus"></i> New Booking
+    </a>
+</div>
+
+<!-- ── KPI Cards ──────────────────────────────────────────────────────────── -->
+<div class="kpi-grid">
+    <div class="kpi-card k-green">
+        <div class="kpi-icon"><i class="fas fa-calendar-check"></i></div>
+        <div class="kpi-value">@Model.TodaysEvents</div>
+        <div class="kpi-label">Today's Events</div>
+        <div class="kpi-sub">@today.ToString("dd MMM yyyy")</div>
+    </div>
+    <div class="kpi-card k-blue">
+        <div class="kpi-icon"><i class="fas fa-calendar-days"></i></div>
+        <div class="kpi-value">@Model.UpcomingEvents7Days</div>
+        <div class="kpi-label">Next 7 Days</div>
+        <div class="kpi-sub">Upcoming events</div>
+    </div>
+    <div class="kpi-card k-orange">
+        <div class="kpi-icon"><i class="fas fa-clock"></i></div>
+        <div class="kpi-value">@Model.PendingConfirmations</div>
+        <div class="kpi-label">Pending Confirmation</div>
+        <div class="kpi-sub">Inquiry &amp; Tentative</div>
+    </div>
+    <div class="kpi-card k-purple">
+        <div class="kpi-icon"><i class="fas fa-champagne-glasses"></i></div>
+        <div class="kpi-value">@Model.ThisMonthBookings</div>
+        <div class="kpi-label">This Month Events</div>
+        <div class="kpi-sub">@today.ToString("MMMM yyyy")</div>
+    </div>
+    <div class="kpi-card k-teal">
+        <div class="kpi-icon"><i class="fas fa-indian-rupee-sign"></i></div>
+        <div class="kpi-value">@FormatAmount(Model.ThisMonthRevenue)</div>
+        <div class="kpi-label">This Month Revenue</div>
+        <div class="kpi-sub">Payments received</div>
+    </div>
+    <div class="kpi-card k-red">
+        <div class="kpi-icon"><i class="fas fa-hourglass-half"></i></div>
+        <div class="kpi-value">@FormatAmount(Model.OutstandingBalance)</div>
+        <div class="kpi-label">Outstanding Balance</div>
+        <div class="kpi-sub">Across all active bookings</div>
+    </div>
+</div>
+
+<!-- ── Main content row ───────────────────────────────────────────────────── -->
+<div class="row g-4">
+
+    <!-- Left: Today's Events + Recent Bookings -->
+    <div class="col-lg-8">
+
+        <!-- Today's Events -->
+        <div class="dash-panel">
+            <div class="dash-panel-header">
+                <div class="ph-title"><i class="fas fa-calendar-day"></i> Today's Events</div>
+                <span class="ph-badge">@today.ToString("ddd, dd MMM")</span>
+            </div>
+            @if (Model.TodaysEventList.Any())
+            {
+                <div class="event-card-list">
+                    @foreach (var b in Model.TodaysEventList)
+                    {
+                        <div class="event-card">
+                            <div class="ec-time">
+                                <div class="et-start">@(b.EventStartTime.HasValue ? b.EventStartTime.Value.ToString(@"hh\:mm") : "—")</div>
+                                <div class="et-end">to @(b.EventEndTime.HasValue ? b.EventEndTime.Value.ToString(@"hh\:mm") : "—")</div>
+                            </div>
+                            <div class="ec-info">
+                                <div class="ei-name">@b.EventName</div>
+                                <div class="ei-meta">
+                                    <span><i class="fas fa-location-dot"></i> @(b.VenueName ?? "—")</span>
+                                    <span><i class="fas fa-users"></i> @b.AttendeeCount pax</span>
+                                    <span><i class="fas fa-tag"></i> @(b.EventTypeName ?? "—")</span>
+                                    <span><i class="fas fa-hashtag"></i> @b.BanquetBookingNumber</span>
+                                </div>
+                            </div>
+                            <div class="ec-actions">
+                                @StatusBadge(b.Status)
+                                <a asp-controller="BanquetBooking" asp-action="Details" asp-route-id="@b.Id" class="ec-view-btn" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="dash-empty">
+                    <i class="fas fa-calendar-xmark"></i>
+                    <p>No events scheduled for today.</p>
+                </div>
+            }
+        </div>
+
+        <!-- Recent Bookings -->
+        <div class="dash-panel">
+            <div class="dash-panel-header">
+                <div class="ph-title"><i class="fas fa-clock-rotate-left"></i> Recent Bookings</div>
+                <a asp-controller="BanquetBooking" asp-action="List" style="font-size:12px;color:var(--primary);text-decoration:none;font-weight:600">
+                    View All <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+            @if (Model.RecentBookings.Any())
+            {
+                <table class="rb-table">
+                    <thead>
+                        <tr>
+                            <th>Booking #</th>
+                            <th>Event</th>
+                            <th>Venue</th>
+                            <th>Event Date</th>
+                            <th>Guest</th>
+                            <th style="text-align:right">Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var b in Model.RecentBookings)
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-controller="BanquetBooking" asp-action="Details" asp-route-id="@b.Id" class="rb-num">
+                                        @b.BanquetBookingNumber
+                                    </a>
+                                </td>
+                                <td>
+                                    <div style="font-weight:600;color:#1e293b">@b.EventName</div>
+                                    <div style="font-size:11px;color:#94a3b8">@(b.EventTypeName ?? "")</div>
+                                </td>
+                                <td style="color:#475569">@(b.VenueName ?? "—")</td>
+                                <td style="color:#475569;white-space:nowrap">@b.EventDate.ToString("dd MMM yyyy")</td>
+                                <td>
+                                    <div style="font-size:13px;color:#1e293b">@b.GuestName</div>
+                                    <div style="font-size:11px;color:#94a3b8">@b.CustomerType</div>
+                                </td>
+                                <td style="text-align:right">
+                                    <span class="rb-amt">₹@b.TotalAmount.ToString("N0")</span>
+                                    @if (b.BalanceAmount > 0)
+                                    {
+                                        <div style="font-size:10px;color:#dc2626">Due: ₹@b.BalanceAmount.ToString("N0")</div>
+                                    }
+                                </td>
+                                <td>@StatusBadge(b.Status)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="dash-empty">
+                    <i class="fas fa-inbox"></i>
+                    <p>No bookings found.</p>
+                </div>
+            }
+        </div>
+
+    </div>
+
+    <!-- Right: Quick Actions + Calendar link -->
+    <div class="col-lg-4">
+
+        <!-- Quick Actions -->
+        <div class="dash-panel mb-4">
+            <div class="dash-panel-header">
+                <div class="ph-title"><i class="fas fa-bolt"></i> Quick Actions</div>
+            </div>
+            <div class="quick-actions">
+                <a asp-controller="BanquetBooking" asp-action="Create" class="qa-btn">
+                    <i class="fas fa-plus-circle"></i> New Booking
+                </a>
+                <a asp-controller="BanquetBooking" asp-action="List" class="qa-btn">
+                    <i class="fas fa-list-ul"></i> All Bookings
+                </a>
+                <a asp-controller="BanquetBooking" asp-action="AvailabilityCalendar" class="qa-btn">
+                    <i class="fas fa-calendar-alt"></i> Calendar
+                </a>
+                <a asp-controller="BanquetBooking" asp-action="List" asp-route-status="Inquiry" class="qa-btn">
+                    <i class="fas fa-inbox"></i> Inquiries
+                </a>
+                <a asp-controller="BanquetBooking" asp-action="List" asp-route-status="Confirmed" class="qa-btn">
+                    <i class="fas fa-check-circle"></i> Confirmed
+                </a>
+                <a asp-controller="BanquetBooking" asp-action="List" asp-route-status="EventComplete" class="qa-btn">
+                    <i class="fas fa-flag-checkered"></i> Completed
+                </a>
+            </div>
+        </div>
+
+        <!-- Status Summary -->
+        <div class="dash-panel">
+            <div class="dash-panel-header">
+                <div class="ph-title"><i class="fas fa-chart-pie"></i> Booking Status</div>
+            </div>
+            <div style="padding: 12px 16px; display:flex; flex-direction:column; gap:8px;">
+                @{
+                    var statusGroups = Model.RecentBookings
+                        .GroupBy(b => b.Status)
+                        .OrderByDescending(g => g.Count())
+                        .ToList();
+                    var total = Model.RecentBookings.Count;
+                }
+                @if (total > 0)
+                {
+                    @foreach (var g in statusGroups)
+                    {
+                        var pct = total > 0 ? (int)((g.Count() * 100.0) / total) : 0;
+                        var barColor = g.Key switch {
+                            "Confirmed"     => "#16a34a",
+                            "CheckedIn"     => "#0d9488",
+                            "CheckedOut"    => "#2563eb",
+                            "EventComplete" => "#0284c7",
+                            "Tentative"     => "#ca8a04",
+                            "Inquiry"       => "#64748b",
+                            "Cancelled"     => "#dc2626",
+                            _               => "#94a3b8"
+                        };
+                        <div>
+                            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+                                <span style="font-weight:600;color:#1e293b">@g.Key</span>
+                                <span style="color:#64748b">@g.Count() / @total</span>
+                            </div>
+                            <div style="height:6px;background:#f1f5f9;border-radius:4px;overflow:hidden">
+                                <div style="height:100%;width:@(pct)%;background:@barColor;border-radius:4px;transition:width .5s"></div>
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <p style="font-size:13px;color:#94a3b8;text-align:center;padding:12px 0">No data available</p>
+                }
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@functions {
+    Microsoft.AspNetCore.Html.IHtmlContent StatusBadge(string status)
+    {
+        var (cls, icon, label) = status switch
+        {
+            "Confirmed"     => ("sb-confirmed",  "fa-circle-check",    "Confirmed"),
+            "Tentative"     => ("sb-tentative",  "fa-circle-half-stroke","Tentative"),
+            "Inquiry"       => ("sb-inquiry",    "fa-circle-question", "Inquiry"),
+            "CheckedIn"     => ("sb-checkedin",  "fa-right-to-bracket","Checked In"),
+            "EventComplete" => ("sb-complete",   "fa-flag-checkered",  "Completed"),
+            "CheckedOut"    => ("sb-checkedout", "fa-door-open",       "Checked Out"),
+            "Cancelled"     => ("sb-cancelled",  "fa-circle-xmark",   "Cancelled"),
+            _               => ("sb-default",    "fa-circle",          status)
+        };
+        return new HtmlString($"<span class='sb {cls}'><i class='fas {icon}'></i>{label}</span>");
+    }
+}
+

@@ -1,0 +1,214 @@
+@model HotelApp.Web.Models.BanquetPackage
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? "Edit Package" : "Add Menu Package";
+    var gstSlabs = ViewBag.GstSlabs as IEnumerable<HotelApp.Web.Models.GstSlab> ?? Enumerable.Empty<HotelApp.Web.Models.GstSlab>();
+}
+
+<style>
+    .master-create-container { background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.08); padding: 30px 50px; max-width: 95%; margin: 0 auto; }
+    .master-form-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 20px 25px; }
+    .master-form-group { display: flex; flex-direction: column; }
+    .master-form-group label { font-weight: 500; margin-bottom: 8px; color: #333; font-size: 14px; }
+    .master-form-group input, .master-form-group select, .master-form-group textarea { padding: 12px 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+    .col-span-2 { grid-column: span 2; }
+    .col-span-4 { grid-column: span 4; }
+    .section-title { font-size: 16px; font-weight: 600; color: #333; margin: 20px 0 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+    .master-form-actions { display: flex; gap: 15px; justify-content: flex-end; padding-top: 25px; border-top: 2px solid #f0f0f0; margin-top: 20px; }
+    @@media(max-width:1200px){ .master-form-grid{ grid-template-columns: repeat(2,1fr); } }
+    /* ── Inclusion Cards ─── */
+    .inclusion-detail-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 14px; margin-bottom: 20px; }
+    @@media(max-width:1200px){ .inclusion-detail-grid{ grid-template-columns: repeat(3,1fr); } }
+    @@media(max-width:768px) { .inclusion-detail-grid{ grid-template-columns: repeat(2,1fr); } }
+    .incl-card { border: 1.5px solid #e5e7eb; border-radius: 10px; overflow: hidden; transition: border-color .2s, box-shadow .2s; }
+    .incl-card.active { border-color: #4338ca; box-shadow: 0 0 0 3px rgba(67,56,202,.08); }
+    .incl-card-header { display: flex; align-items: center; gap: 9px; padding: 11px 14px; cursor: pointer; background: #f9fafb; user-select: none; font-weight: 600; font-size: 13.5px; color: #374151; }
+    .incl-card-header:hover { background: #f0f0ff; }
+    .incl-card-header input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: #4338ca; flex-shrink: 0; }
+    .incl-card-body { display: none; padding: 10px 12px 12px; border-top: 1px solid #e5e7eb; background: #fff; }
+    .incl-card-body.open { display: block; }
+    .incl-card-body label { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 5px; display: block; }
+    .incl-card-body textarea { width: 100%; border: 1px solid #d1d5db; border-radius: 7px; padding: 7px 10px; font-size: 12px; color: #1f2937; resize: vertical; outline: none; min-height: 56px; }
+    .incl-card-body textarea:focus { border-color: #4338ca; box-shadow: 0 0 0 2px rgba(67,56,202,.1); }
+</style>
+
+<div class="page-header"><h2><i class="fas fa-utensils"></i> @ViewData["Title"]</h2></div>
+
+<div class="master-create-container">
+    <form asp-action="@(isEdit ? "Edit" : "Create")" method="post">
+        @Html.AntiForgeryToken()
+        @if (isEdit) { <input type="hidden" asp-for="Id" /> }
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+        <div class="section-title"><i class="fas fa-info-circle"></i> Package Details</div>
+        <div class="master-form-grid">
+            <div class="master-form-group">
+                <label asp-for="PackageCode">Package Code</label>
+                <input asp-for="PackageCode" readonly="@isEdit" />
+                <span asp-validation-for="PackageCode" class="text-danger"></span>
+            </div>
+            <div class="master-form-group col-span-2">
+                <label asp-for="PackageName">Package Name</label>
+                <input asp-for="PackageName" />
+                <span asp-validation-for="PackageName" class="text-danger"></span>
+            </div>
+            <div class="master-form-group">
+                <label asp-for="PackageType">Package Type</label>
+                <select asp-for="PackageType">
+                    <option value="VegMenu">Veg Menu</option>
+                    <option value="NonVegMenu">Non-Veg Menu</option>
+                    <option value="MixedMenu">Mixed Menu</option>
+                    <option value="JainMenu">Jain Menu</option>
+                    <option value="SpecialMenu">Special Menu</option>
+                </select>
+            </div>
+            <div class="master-form-group">
+                <label asp-for="PricePerPax">Price Per Pax (₹)</label>
+                <input asp-for="PricePerPax" type="number" step="0.01" min="0" />
+                <span asp-validation-for="PricePerPax" class="text-danger"></span>
+            </div>
+            <div class="master-form-group">
+                <label asp-for="MinimumGuaranteePax">Minimum Guarantee Pax</label>
+                <input asp-for="MinimumGuaranteePax" type="number" min="0" />
+            </div>
+        </div>
+
+        <div class="section-title"><i class="fas fa-percent"></i> GST Configuration</div>
+
+        @* GST Slab Picker *@
+        <div class="master-form-grid" style="margin-bottom:12px;">
+            <div class="master-form-group col-span-3">
+                <label for="gstSlabPicker">GST Slab</label>
+                <select id="gstSlabPicker" name="GstSlabId" class="form-control" style="padding:12px 15px;border:1px solid #ddd;border-radius:8px;font-size:14px;">
+                    <option value="">-- Select GST Slab (rates will resolve automatically) --</option>
+                    @foreach (var s in gstSlabs)
+                    {
+                        <option value="@s.Id"
+                                selected="@(Model.GstSlabId == s.Id ? "selected" : null)">
+                            @s.SlabCode — @s.SlabName
+                            @if (s.MinimumTariffFrom.HasValue || s.MaximumTariffTo.HasValue)
+                            {
+                                <text>(₹@s.MinimumTariffFrom – ₹@s.MaximumTariffTo)</text>
+                            }
+                        </option>
+                    }
+                </select>
+                <small class="text-muted">Select a slab to auto-resolve GST rates from the tariff band that matches Price Per Pax.</small>
+            </div>
+            <div class="master-form-group">
+                <label asp-for="SACCode">SAC Code</label>
+                <input asp-for="SACCode" placeholder="e.g. 996334" />
+            </div>
+        </div>
+
+        @* GST Preview Card *@
+        <div id="gstPreviewSection" style="display:none; margin-bottom:16px;">
+            <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:14px; max-width:500px;">
+                <div style="font-weight:600; color:#15803d; margin-bottom:8px;"><i class="fas fa-indian-rupee-sign"></i> Price Per Pax — Resolved GST Band</div>
+                <div id="paxRatePreview">—</div>
+            </div>
+            <div id="gstSlabAlert" class="alert alert-warning" style="display:none; margin-top:10px; padding:8px 14px;">
+                <i class="fas fa-exclamation-triangle"></i> <span id="gstSlabAlertMsg"></span>
+            </div>
+        </div>
+
+        @* GST Rate Fields *@
+        <div class="master-form-grid" id="gstRateFields">
+            <div class="master-form-group">
+                <label asp-for="GSTPercent">Total GST %</label>
+                <input asp-for="GSTPercent" id="gstPctField" type="number" step="0.01" min="0" max="100" placeholder="e.g. 18" />
+            </div>
+            <div class="master-form-group">
+                <label asp-for="CGSTPercent">CGST %</label>
+                <input asp-for="CGSTPercent" id="cgstField" type="number" step="0.01" min="0" max="100" placeholder="e.g. 9" />
+            </div>
+            <div class="master-form-group">
+                <label asp-for="SGSTPercent">SGST %</label>
+                <input asp-for="SGSTPercent" id="sgstField" type="number" step="0.01" min="0" max="100" placeholder="e.g. 9" />
+            </div>
+            <div class="master-form-group">
+                <label asp-for="IGSTPercent">IGST % (Inter-State)</label>
+                <input asp-for="IGSTPercent" id="igstField" type="number" step="0.01" min="0" max="100" placeholder="e.g. 18" />
+            </div>
+        </div>
+
+        <div class="section-title"><i class="fas fa-list-check"></i> Menu Inclusions & Items</div>
+        <p style="font-size:12px;color:#6b7280;margin:-8px 0 14px;">Check each course included in this package. For each checked course, enter the specific dishes/items below it.</p>
+        <div class="inclusion-detail-grid">
+
+            <div class="incl-card" id="card-Starter">
+                <label class="incl-card-header">
+                    <input asp-for="IncludesStarter" type="checkbox" id="chk-Starter" onchange="toggleIncl('Starter')" />
+                    <i class="fas fa-bowl-food text-success"></i> Starter
+                </label>
+                <div class="incl-card-body" id="body-Starter">
+                    <label>Starter Items</label>
+                    <textarea id="desc-Starter" rows="3" placeholder="e.g. Paneer Tikka, Corn Chaat, Mushroom…"></textarea>
+                </div>
+            </div>
+
+            <div class="incl-card" id="card-MainCourse">
+                <label class="incl-card-header">
+                    <input asp-for="IncludesMainCourse" type="checkbox" id="chk-MainCourse" onchange="toggleIncl('MainCourse')" />
+                    <i class="fas fa-utensils text-primary"></i> Main Course
+                </label>
+                <div class="incl-card-body" id="body-MainCourse">
+                    <label>Main Course Items</label>
+                    <textarea id="desc-MainCourse" rows="3" placeholder="e.g. Dal Makhani, Paneer Butter Masala, Naan…"></textarea>
+                </div>
+            </div>
+
+            <div class="incl-card" id="card-Dessert">
+                <label class="incl-card-header">
+                    <input asp-for="IncludesDessert" type="checkbox" id="chk-Dessert" onchange="toggleIncl('Dessert')" />
+                    <i class="fas fa-ice-cream text-warning"></i> Dessert
+                </label>
+                <div class="incl-card-body" id="body-Dessert">
+                    <label>Dessert Items</label>
+                    <textarea id="desc-Dessert" rows="3" placeholder="e.g. Gulab Jamun, Ice Cream, Kheer…"></textarea>
+                </div>
+            </div>
+
+            <div class="incl-card" id="card-Beverages">
+                <label class="incl-card-header">
+                    <input asp-for="IncludesBeverages" type="checkbox" id="chk-Beverages" onchange="toggleIncl('Beverages')" />
+                    <i class="fas fa-glass-water text-info"></i> Beverages
+                </label>
+                <div class="incl-card-body" id="body-Beverages">
+                    <label>Beverage Items</label>
+                    <textarea id="desc-Beverages" rows="3" placeholder="e.g. Soft Drinks, Lassi, Fresh Juice…"></textarea>
+                </div>
+            </div>
+
+            <div class="incl-card" id="card-Live">
+                <label class="incl-card-header">
+                    <input asp-for="IncludesLive" type="checkbox" id="chk-Live" onchange="toggleIncl('Live')" />
+                    <i class="fas fa-fire text-danger"></i> Live Counter
+                </label>
+                <div class="incl-card-body" id="body-Live">
+                    <label>Live Counter Items</label>
+                    <textarea id="desc-Live" rows="3" placeholder="e.g. Dosa Counter, Chaat Station, Pav Bhaji…"></textarea>
+                </div>
+            </div>
+
+        </div>
+        <input asp-for="MenuDescription" type="hidden" id="menuDescHidden" />
+
+        <div class="master-form-grid">
+            <div class="master-form-group">
+                <label class="d-flex align-items-center gap-2">
+                    <input asp-for="IsActive" type="checkbox" /> Active
+                </label>
+            </div>
+        </div>
+
+        <div class="master-form-actions">
+            <a asp-action="List" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> @(isEdit ? "Update Package" : "Create Package")</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_PackageFormScripts", Model);}
+}

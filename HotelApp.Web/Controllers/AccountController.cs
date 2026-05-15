@@ -189,6 +189,7 @@ public class AccountController : Controller
             new Claim("fullName", fullName),
             new Claim("BranchID", model.BranchID.ToString()),
             new Claim("BranchName", selectedBranch.BranchName),
+            new Claim("BranchCode", selectedBranch.BranchCode),
             new Claim("SelectedRoleId", selectedRoleId.ToString()),
             new Claim("SelectedRoleName", selectedRoleName),
             new Claim("ProfilePicturePath", profilePicturePath)
@@ -206,6 +207,7 @@ public class AccountController : Controller
         HttpContext.Session.SetInt32("BranchID", model.BranchID);
         HttpContext.Session.SetInt32("UserId", userId);
         HttpContext.Session.SetString("BranchName", selectedBranch.BranchName);
+        HttpContext.Session.SetString("BranchCode", selectedBranch.BranchCode);
         HttpContext.Session.SetInt32("SelectedRoleId", selectedRoleId);
         HttpContext.Session.SetString("SelectedRoleName", selectedRoleName);
         HttpContext.Session.SetString("IsHOBranch", selectedBranch.IsHOBranch ? "1" : "0");

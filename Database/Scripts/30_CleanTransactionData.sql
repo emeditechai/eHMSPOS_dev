@@ -1,8 +1,11 @@
 -- =============================================
 -- Hotel Management System - Transaction Data Cleaner
 -- Created: 2025-12-07
--- Description: Removes all transaction data (Bookings, Payments, Guests, B2B Booking Lines) while preserving Master Data
+-- Description: Removes all transaction data (Bookings, Payments, Guests, B2B Booking Lines,
+--              Banquet Bookings, Payments, Refunds, Package/Addon Lines, Cancellations)
+--              while preserving Master Data.
 --              B2B Master Data PRESERVED: B2BClients, B2BAgreements, B2BAgreementRoomRates, Terms & Conditions
+--              Banquet Master Data PRESERVED: BanquetVenues, BanquetEventTypes, BanquetPackages, BanquetAddonServices
 -- WARNING: This script will DELETE all booking, payment, and guest records permanently!
 -- =============================================
 
@@ -33,6 +36,19 @@ IF OBJECT_ID(N'dbo.B2BBookingRoomLines', N'U') IS NOT NULL
 IF OBJECT_ID(N'dbo.BookingCancellations', N'U') IS NOT NULL
     ALTER TABLE BookingCancellations NOCHECK CONSTRAINT ALL;
 ALTER TABLE Bookings NOCHECK CONSTRAINT ALL;
+-- Banquet transaction tables
+IF OBJECT_ID(N'dbo.BanquetBookingAuditLog', N'U') IS NOT NULL
+    ALTER TABLE BanquetBookingAuditLog NOCHECK CONSTRAINT ALL;
+IF OBJECT_ID(N'dbo.BanquetBookingPayments', N'U') IS NOT NULL
+    ALTER TABLE BanquetBookingPayments NOCHECK CONSTRAINT ALL;
+IF OBJECT_ID(N'dbo.BanquetCancellations', N'U') IS NOT NULL
+    ALTER TABLE BanquetCancellations NOCHECK CONSTRAINT ALL;
+IF OBJECT_ID(N'dbo.BanquetBookingPackageLines', N'U') IS NOT NULL
+    ALTER TABLE BanquetBookingPackageLines NOCHECK CONSTRAINT ALL;
+IF OBJECT_ID(N'dbo.BanquetBookingAddonLines', N'U') IS NOT NULL
+    ALTER TABLE BanquetBookingAddonLines NOCHECK CONSTRAINT ALL;
+IF OBJECT_ID(N'dbo.BanquetBookings', N'U') IS NOT NULL
+    ALTER TABLE BanquetBookings NOCHECK CONSTRAINT ALL;
 PRINT '✓ Foreign key constraints disabled';
 PRINT '';
 
@@ -53,6 +69,13 @@ DECLARE @B2BBookingRoomLinesCount INT;
 DECLARE @BookingCancellationsCount INT;
 DECLARE @BookingsCount INT;
 DECLARE @GuestsCount INT;
+-- Banquet
+DECLARE @BanquetBookingsCount INT;
+DECLARE @BanquetPaymentsCount INT;
+DECLARE @BanquetCancellationsCount INT;
+DECLARE @BanquetPackageLinesCount INT;
+DECLARE @BanquetAddonLinesCount INT;
+DECLARE @BanquetAuditLogCount INT;
 
 IF OBJECT_ID(N'dbo.RoomServices', N'U') IS NOT NULL
     SELECT @RoomServicesCount = COUNT(*) FROM RoomServices;
@@ -80,6 +103,37 @@ ELSE
 SELECT @BookingsCount = COUNT(*) FROM Bookings;
 SELECT @GuestsCount = COUNT(*) FROM Guests;
 
+-- Banquet counts
+IF OBJECT_ID(N'dbo.BanquetBookings', N'U') IS NOT NULL
+    SELECT @BanquetBookingsCount = COUNT(*) FROM BanquetBookings;
+ELSE
+    SET @BanquetBookingsCount = 0;
+
+IF OBJECT_ID(N'dbo.BanquetBookingPayments', N'U') IS NOT NULL
+    SELECT @BanquetPaymentsCount = COUNT(*) FROM BanquetBookingPayments;
+ELSE
+    SET @BanquetPaymentsCount = 0;
+
+IF OBJECT_ID(N'dbo.BanquetCancellations', N'U') IS NOT NULL
+    SELECT @BanquetCancellationsCount = COUNT(*) FROM BanquetCancellations;
+ELSE
+    SET @BanquetCancellationsCount = 0;
+
+IF OBJECT_ID(N'dbo.BanquetBookingPackageLines', N'U') IS NOT NULL
+    SELECT @BanquetPackageLinesCount = COUNT(*) FROM BanquetBookingPackageLines;
+ELSE
+    SET @BanquetPackageLinesCount = 0;
+
+IF OBJECT_ID(N'dbo.BanquetBookingAddonLines', N'U') IS NOT NULL
+    SELECT @BanquetAddonLinesCount = COUNT(*) FROM BanquetBookingAddonLines;
+ELSE
+    SET @BanquetAddonLinesCount = 0;
+
+IF OBJECT_ID(N'dbo.BanquetBookingAuditLog', N'U') IS NOT NULL
+    SELECT @BanquetAuditLogCount = COUNT(*) FROM BanquetBookingAuditLog;
+ELSE
+    SET @BanquetAuditLogCount = 0;
+
 PRINT '  - RoomServices: ' + CAST(@RoomServicesCount AS VARCHAR(10)) + ' records';
 PRINT '  - BookingRooms: ' + CAST(@BookingRoomsCount AS VARCHAR(10)) + ' records';
 PRINT '  - BookingAuditLog: ' + CAST(@BookingAuditLogCount AS VARCHAR(10)) + ' records';
@@ -92,6 +146,13 @@ PRINT '  - B2BBookingRoomLines: ' + CAST(@B2BBookingRoomLinesCount AS VARCHAR(10
 PRINT '  - BookingCancellations: ' + CAST(@BookingCancellationsCount AS VARCHAR(10)) + ' records';
 PRINT '  - Bookings: ' + CAST(@BookingsCount AS VARCHAR(10)) + ' records';
 PRINT '  - Guests: ' + CAST(@GuestsCount AS VARCHAR(10)) + ' records';
+PRINT '  --- Banquet ---';
+PRINT '  - BanquetBookingAuditLog: ' + CAST(@BanquetAuditLogCount AS VARCHAR(10)) + ' records';
+PRINT '  - BanquetBookingPayments (incl. Refunds): ' + CAST(@BanquetPaymentsCount AS VARCHAR(10)) + ' records';
+PRINT '  - BanquetCancellations: ' + CAST(@BanquetCancellationsCount AS VARCHAR(10)) + ' records';
+PRINT '  - BanquetBookingPackageLines: ' + CAST(@BanquetPackageLinesCount AS VARCHAR(10)) + ' records';
+PRINT '  - BanquetBookingAddonLines: ' + CAST(@BanquetAddonLinesCount AS VARCHAR(10)) + ' records';
+PRINT '  - BanquetBookings: ' + CAST(@BanquetBookingsCount AS VARCHAR(10)) + ' records';
 PRINT '';
 
 -- =============================================
@@ -155,6 +216,52 @@ PRINT '  ✓ Deleted ' + CAST(@BookingsCount AS VARCHAR(10)) + ' Bookings record
 -- Delete Guests (all guest records)
 DELETE FROM Guests;
 PRINT '  ✓ Deleted ' + CAST(@GuestsCount AS VARCHAR(10)) + ' Guests records';
+
+-- ── Banquet Transaction Tables ─────────────────────────────────
+-- Delete in dependency order: audit/payments/cancellations/lines first, then bookings
+
+IF OBJECT_ID(N'dbo.BanquetBookingAuditLog', N'U') IS NOT NULL
+BEGIN
+    DELETE FROM BanquetBookingAuditLog;
+    PRINT '  ✓ Deleted ' + CAST(@BanquetAuditLogCount AS VARCHAR(10)) + ' BanquetBookingAuditLog records';
+END
+
+IF OBJECT_ID(N'dbo.BanquetBookingPayments', N'U') IS NOT NULL
+BEGIN
+    DELETE FROM BanquetBookingPayments;
+    PRINT '  ✓ Deleted ' + CAST(@BanquetPaymentsCount AS VARCHAR(10)) + ' BanquetBookingPayments records (incl. Refunds)';
+END
+
+IF OBJECT_ID(N'dbo.BanquetCancellations', N'U') IS NOT NULL
+BEGIN
+    DELETE FROM BanquetCancellations;
+    PRINT '  ✓ Deleted ' + CAST(@BanquetCancellationsCount AS VARCHAR(10)) + ' BanquetCancellations records';
+END
+
+IF OBJECT_ID(N'dbo.BanquetBookingPackageLines', N'U') IS NOT NULL
+BEGIN
+    DELETE FROM BanquetBookingPackageLines;
+    PRINT '  ✓ Deleted ' + CAST(@BanquetPackageLinesCount AS VARCHAR(10)) + ' BanquetBookingPackageLines records';
+END
+
+IF OBJECT_ID(N'dbo.BanquetBookingAddonLines', N'U') IS NOT NULL
+BEGIN
+    DELETE FROM BanquetBookingAddonLines;
+    PRINT '  ✓ Deleted ' + CAST(@BanquetAddonLinesCount AS VARCHAR(10)) + ' BanquetBookingAddonLines records';
+END
+
+IF OBJECT_ID(N'dbo.BanquetBookings', N'U') IS NOT NULL
+BEGIN
+    DELETE FROM BanquetBookings;
+    PRINT '  ✓ Deleted ' + CAST(@BanquetBookingsCount AS VARCHAR(10)) + ' BanquetBookings records';
+END
+
+-- Reset receipt counter so new numbers start fresh
+IF OBJECT_ID(N'dbo.BanquetReceiptCounter', N'U') IS NOT NULL
+BEGIN
+    UPDATE BanquetReceiptCounter SET LastNumber = 0;
+    PRINT '  ✓ Reset BanquetReceiptCounter to 0 for all branches';
+END
 PRINT '';
 
 -- =============================================
@@ -190,6 +297,19 @@ IF OBJECT_ID(N'dbo.B2BBookingRoomLines', N'U') IS NOT NULL
 IF OBJECT_ID(N'dbo.BookingCancellations', N'U') IS NOT NULL
     ALTER TABLE BookingCancellations CHECK CONSTRAINT ALL;
 ALTER TABLE Bookings CHECK CONSTRAINT ALL;
+-- Banquet transaction tables
+IF OBJECT_ID(N'dbo.BanquetBookingAuditLog', N'U') IS NOT NULL
+    ALTER TABLE BanquetBookingAuditLog CHECK CONSTRAINT ALL;
+IF OBJECT_ID(N'dbo.BanquetBookingPayments', N'U') IS NOT NULL
+    ALTER TABLE BanquetBookingPayments CHECK CONSTRAINT ALL;
+IF OBJECT_ID(N'dbo.BanquetCancellations', N'U') IS NOT NULL
+    ALTER TABLE BanquetCancellations CHECK CONSTRAINT ALL;
+IF OBJECT_ID(N'dbo.BanquetBookingPackageLines', N'U') IS NOT NULL
+    ALTER TABLE BanquetBookingPackageLines CHECK CONSTRAINT ALL;
+IF OBJECT_ID(N'dbo.BanquetBookingAddonLines', N'U') IS NOT NULL
+    ALTER TABLE BanquetBookingAddonLines CHECK CONSTRAINT ALL;
+IF OBJECT_ID(N'dbo.BanquetBookings', N'U') IS NOT NULL
+    ALTER TABLE BanquetBookings CHECK CONSTRAINT ALL;
 PRINT '✓ Foreign key constraints re-enabled';
 PRINT '';
 
@@ -213,6 +333,19 @@ IF OBJECT_ID(N'dbo.BookingCancellations', N'U') IS NOT NULL
     DBCC CHECKIDENT ('BookingCancellations', RESEED, 0);
 DBCC CHECKIDENT ('Bookings', RESEED, 0);
 DBCC CHECKIDENT ('Guests', RESEED, 0);
+-- Banquet tables
+IF OBJECT_ID(N'dbo.BanquetBookingAuditLog', N'U') IS NOT NULL
+    DBCC CHECKIDENT ('BanquetBookingAuditLog', RESEED, 0);
+IF OBJECT_ID(N'dbo.BanquetBookingPayments', N'U') IS NOT NULL
+    DBCC CHECKIDENT ('BanquetBookingPayments', RESEED, 0);
+IF OBJECT_ID(N'dbo.BanquetCancellations', N'U') IS NOT NULL
+    DBCC CHECKIDENT ('BanquetCancellations', RESEED, 0);
+IF OBJECT_ID(N'dbo.BanquetBookingPackageLines', N'U') IS NOT NULL
+    DBCC CHECKIDENT ('BanquetBookingPackageLines', RESEED, 0);
+IF OBJECT_ID(N'dbo.BanquetBookingAddonLines', N'U') IS NOT NULL
+    DBCC CHECKIDENT ('BanquetBookingAddonLines', RESEED, 0);
+IF OBJECT_ID(N'dbo.BanquetBookings', N'U') IS NOT NULL
+    DBCC CHECKIDENT ('BanquetBookings', RESEED, 0);
 
 PRINT '  ✓ Identity seeds reset for all transaction tables';
 PRINT '';
@@ -262,6 +395,7 @@ PRINT '';
 PRINT 'Step 8: Final verification...';
 
 DECLARE @RemainingBookings INT, @RemainingPayments INT, @RemainingRooms INT, @RemainingRoomServices INT, @RemainingB2BLines INT, @RemainingCancellations INT;
+DECLARE @RemainingBanquetBookings INT, @RemainingBanquetPayments INT;
 
 SELECT @RemainingBookings = COUNT(*) FROM Bookings;
 SELECT @RemainingPayments = COUNT(*) FROM BookingPayments;
@@ -278,8 +412,17 @@ IF OBJECT_ID(N'dbo.BookingCancellations', N'U') IS NOT NULL
     SELECT @RemainingCancellations = COUNT(*) FROM BookingCancellations;
 ELSE
     SET @RemainingCancellations = 0;
+IF OBJECT_ID(N'dbo.BanquetBookings', N'U') IS NOT NULL
+    SELECT @RemainingBanquetBookings = COUNT(*) FROM BanquetBookings;
+ELSE
+    SET @RemainingBanquetBookings = 0;
+IF OBJECT_ID(N'dbo.BanquetBookingPayments', N'U') IS NOT NULL
+    SELECT @RemainingBanquetPayments = COUNT(*) FROM BanquetBookingPayments;
+ELSE
+    SET @RemainingBanquetPayments = 0;
 
 IF @RemainingBookings = 0 AND @RemainingPayments = 0 AND @RemainingRooms = 0 AND @RemainingRoomServices = 0 AND @RemainingB2BLines = 0 AND @RemainingCancellations = 0
+   AND @RemainingBanquetBookings = 0 AND @RemainingBanquetPayments = 0
 BEGIN
     PRINT '  ✓ All transaction data successfully removed';
     PRINT '  ✓ System is clean and ready for new bookings';
@@ -293,6 +436,8 @@ BEGIN
     PRINT '    - Remaining RoomServices: ' + CAST(@RemainingRoomServices AS VARCHAR(10));
     PRINT '    - Remaining B2BBookingRoomLines: ' + CAST(@RemainingB2BLines AS VARCHAR(10));
     PRINT '    - Remaining BookingCancellations: ' + CAST(@RemainingCancellations AS VARCHAR(10));
+    PRINT '    - Remaining BanquetBookings: ' + CAST(@RemainingBanquetBookings AS VARCHAR(10));
+    PRINT '    - Remaining BanquetBookingPayments: ' + CAST(@RemainingBanquetPayments AS VARCHAR(10));
 END
 
 PRINT '';
@@ -302,9 +447,9 @@ PRINT 'Finished at: ' + CONVERT(VARCHAR(50), GETDATE(), 121);
 PRINT '========================================';
 PRINT '';
 PRINT 'SUMMARY:';
-PRINT '  Total Records Deleted: ' + CAST(@RoomServicesCount + @BookingsCount + @BookingPaymentsCount + @BookingOtherChargesCount + @BookingGuestsCount + @BookingRoomNightsCount + @ReservationRoomNightsCount + @B2BBookingRoomLinesCount + @BookingCancellationsCount + @BookingAuditLogCount + @BookingRoomsCount + @GuestsCount AS VARCHAR(10));
+PRINT '  Total Records Deleted: ' + CAST(@RoomServicesCount + @BookingsCount + @BookingPaymentsCount + @BookingOtherChargesCount + @BookingGuestsCount + @BookingRoomNightsCount + @ReservationRoomNightsCount + @B2BBookingRoomLinesCount + @BookingCancellationsCount + @BookingAuditLogCount + @BookingRoomsCount + @GuestsCount + @BanquetBookingsCount + @BanquetPaymentsCount + @BanquetCancellationsCount + @BanquetPackageLinesCount + @BanquetAddonLinesCount + @BanquetAuditLogCount AS VARCHAR(10));
 PRINT '  Rooms Reset: ' + CAST(@RoomsUpdated AS VARCHAR(10));
-PRINT '  Master Data: PRESERVED';
+PRINT '  Master Data: PRESERVED (Banquet Venues, Event Types, Packages, Addon Services)';
 PRINT '';
 PRINT '✓ System is ready for fresh transaction data';
 GO

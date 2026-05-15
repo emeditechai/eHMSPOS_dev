@@ -31,7 +31,7 @@
         <nav class="top-navbar">
             <div class="navbar-container">
                 <a asp-controller="Dashboard" asp-action="Index" class="navbar-brand">
-                    <img src="~/logo/eLuxStay_logo.png" alt="eLUX Stay" style="height:52px;width:auto;object-fit:contain;" />
+                    <img src="~/logo/eLuxStay_logo.png" alt="eLUX Stay" style="height:42px;width:auto;object-fit:contain;" />
                 </a>
                 <button type="button" class="navbar-toggle" id="navbarToggle" aria-label="Toggle navigation" aria-expanded="false">
                     <i class="fas fa-bars"></i>
@@ -56,8 +56,8 @@
                             <div id="notificationsList" class="notifications-list"></div>
                         </div>
                     </div>
-                    <span class="navbar-pill">
-                        <i class="fas fa-building"></i> @ViewBag.CurrentBranchName
+                    <span class="navbar-pill" title="@ViewBag.CurrentBranchName">
+                        <i class="fas fa-building"></i> @ViewBag.CurrentBranchCode
                     </span>
                     @await Component.InvokeAsync("UserProfileMenu")
                 </div>
