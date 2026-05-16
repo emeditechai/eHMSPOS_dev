@@ -327,28 +327,15 @@ namespace HotelApp.Web.Controllers
             booking.TotalAmount    = preTax + booking.RoundOffAmount;
             booking.BalanceAmount  = booking.TotalAmount;
 
-            // Advance payment
-            BanquetBookingPayment? advance = null;
+            var bookingId = await _bookingRepo.CreateAsync(booking, packageLines, addonLines, null);
+
+            // If advance amount was entered, redirect to head-wise payment allocation
             if (vm.AdvancePaymentAmount > 0)
             {
-                var receiptNum = await _bookingRepo.GenerateNextReceiptNumberAsync(CurrentBranchID);
-                advance = new BanquetBookingPayment
-                {
-                    ReceiptNumber    = receiptNum,
-                    Amount           = vm.AdvancePaymentAmount,
-                    PaymentMethod    = vm.AdvancePaymentMethod,
-                    PaymentReference = vm.AdvancePaymentReference,
-                    BankId           = vm.AdvanceBankId,
-                    Status           = "Captured",
-                    IsAdvancePayment = true,
-                    CreatedBy        = CurrentUserId
-                };
-                booking.DepositAmount = vm.AdvancePaymentAmount;
-                booking.BalanceAmount = booking.TotalAmount - vm.AdvancePaymentAmount;
-                booking.PaymentStatus = vm.AdvancePaymentAmount >= booking.TotalAmount ? "FullPaid" : "PartialPaid";
+                TempData["InfoMessage"] = $"Booking {bookingNumber} created. Please allocate the advance payment of ₹{vm.AdvancePaymentAmount:N2} across the billing heads below.";
+                return RedirectToAction(nameof(AddPayment), new { id = bookingId, initialAmount = vm.AdvancePaymentAmount });
             }
 
-            var bookingId = await _bookingRepo.CreateAsync(booking, packageLines, addonLines, advance);
             TempData["SuccessMessage"] = $"Banquet booking {bookingNumber} created successfully!";
             return RedirectToAction(nameof(Details), new { id = bookingId });
         }
@@ -374,7 +361,7 @@ namespace HotelApp.Web.Controllers
 
         // ── Add Payment ───────────────────────────────────────────────────────
 
-        public async Task<IActionResult> AddPayment(int id)
+        public async Task<IActionResult> AddPayment(int id, decimal? initialAmount = null)
         {
             var booking = await _bookingRepo.GetByIdAsync(id);
             if (booking == null) return NotFound();
@@ -396,6 +383,10 @@ namespace HotelApp.Web.Controllers
                 AddonTotal           = due.AddonTotal,
                 AddonDue             = due.AddonDue,
             };
+
+            if (initialAmount.HasValue && initialAmount.Value > 0)
+                ViewBag.InitialAmount = initialAmount.Value;
+
             ViewBag.Banks = await _bankRepo.GetAllActiveAsync();
             return View(vm);
         }
@@ -497,14 +488,10 @@ namespace HotelApp.Web.Controllers
 
                 var netShare = headGross - discShare + roShare;
 
-                var receiptNum = i == 0
-                    ? receiptGroupNum
-                    : await _bookingRepo.GenerateNextReceiptNumberAsync(CurrentBranchID);
-
                 var payment = new BanquetBookingPayment
                 {
                     BanquetBookingId   = vm.BanquetBookingId,
-                    ReceiptNumber      = receiptNum,
+                    ReceiptNumber      = receiptGroupNum,   // all heads share ONE receipt number
                     ReceiptGroupNumber = receiptGroupNum,
                     Amount             = Math.Round(netShare, 2, MidpointRounding.AwayFromZero),
                     PaymentMethod      = vm.PaymentMethod,
@@ -577,7 +564,7 @@ namespace HotelApp.Web.Controllers
             if (booking.BalanceAmount > 0)
             {
                 TempData["WarningMessage"] = $"Balance of ₹{booking.BalanceAmount:N2} is due. Please collect full payment before check-out.";
-                return RedirectToAction(nameof(AddPayment), new { id });
+                return RedirectToAction(nameof(Details), new { id });
             }
 
             // Generate and persist invoice number (idempotent — only if not already set)

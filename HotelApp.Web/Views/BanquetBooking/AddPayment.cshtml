@@ -1,6 +1,7 @@
 @model HotelApp.Web.ViewModels.BanquetAddPaymentViewModel
 @{
-    ViewData["Title"] = "Add Payment";
+    var initAdvance = ViewBag.InitialAmount != null ? (decimal)ViewBag.InitialAmount : 0m;
+    ViewData["Title"] = initAdvance > 0 ? "Record Advance Payment" : "Add Payment";
     var banks        = ViewBag.Banks as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
     var hasVenue     = Model.VenueTotal   > 0;
     var hasPackage   = Model.PackageTotal > 0;
@@ -197,6 +198,16 @@
     text-decoration:none; transition:all .18s;
 }
 .btn-cancel-link:hover { background:#f9fafb; border-color:#9ca3af; }
+
+/* ── Advance Banner ──────────────────────────────── */
+.advance-banner {
+    display:flex; align-items:center; gap:10px;
+    background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:10px;
+    padding:.8rem 1.2rem; margin:1rem 1.5rem 0;
+    font-size:.88rem; font-weight:600; color:#1e40af;
+}
+.advance-banner i { font-size:1.05rem; color:#3b82f6; flex-shrink:0; }
+.advance-banner strong { color:#1d4ed8; }
 </style>
 }
 
@@ -205,7 +216,7 @@
     <div class="pay-page-title">
         <div class="pay-page-icon"><i class="fas fa-indian-rupee-sign"></i></div>
         <div>
-            <h2>Add Payment</h2>
+            <h2>@(initAdvance > 0 ? "Record Advance Payment" : "Add Payment")</h2>
             <span>@Model.BanquetBookingNumber &mdash; @Model.EventName</span>
         </div>
     </div>
@@ -215,6 +226,16 @@
 </div>
 
 <div class="pay-form-card">
+    @if (initAdvance > 0)
+    {
+    <div class="advance-banner">
+        <i class="fas fa-info-circle"></i>
+        Booking created! Advance payment of <strong>&#x20B9;@initAdvance.ToString("N2")</strong> entered.
+        Allocate it across the billing heads below and click <strong>Record Payment</strong>.
+    </div>
+    }
+    @if (TempData["InfoMessage"] != null) { /* consumed */ }
+
     <form asp-action="AddPayment" method="post" id="payForm" onsubmit="return prepareSubmit()">
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="BanquetBookingId" />
@@ -625,6 +646,36 @@
 
     /* ── Init ────────────────────────────────────── */
     document.getElementById('discTypeInput').value = 'None';
+
+    /* ── Distribute initial advance proportionally ── */
+    const initAdvance = @initAdvance.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+    if (initAdvance > 0) {
+        const dues = {
+            V: @Model.VenueDue.ToString("F2", System.Globalization.CultureInfo.InvariantCulture),
+            P: @Model.PackageDue.ToString("F2", System.Globalization.CultureInfo.InvariantCulture),
+            A: @Model.AddonDue.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)
+        };
+        const payable = ['V','P','A'].filter(c => {
+            const inp = document.getElementById('amt-' + c);
+            return inp && !inp.disabled && dues[c] > 0;
+        });
+        const totalDue = payable.reduce((s, c) => s + dues[c], 0);
+        if (totalDue > 0) {
+            const toDistribute = Math.min(initAdvance, totalDue);
+            let remaining = toDistribute;
+            payable.forEach((c, i) => {
+                let amt;
+                if (i === payable.length - 1) {
+                    amt = Math.min(Math.round(remaining * 100) / 100, dues[c]);
+                } else {
+                    amt = Math.min(Math.round(toDistribute * dues[c] / totalDue * 100) / 100, dues[c]);
+                }
+                remaining = Math.round((remaining - amt) * 100) / 100;
+                document.getElementById('amt-' + c).value = amt.toFixed(2);
+            });
+        }
+    }
+
     recalc();
 })();
 </script>

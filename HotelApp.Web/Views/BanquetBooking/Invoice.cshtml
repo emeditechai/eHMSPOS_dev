@@ -16,6 +16,25 @@
     var totalPaid     = cashCollected + totalPayDisc;
     var balanceDue    = Math.Max(0m, Model.TotalAmount - totalPaid);
     var hasPayDisc    = totalPayDisc > 0;
+
+    // Group head-wise rows into single receipt-level rows for the payment history table
+    // Use ReceiptGroupNumber when available (head-wise payments share one), else ReceiptNumber
+    var paymentRows = payments
+        .GroupBy(p => p.ReceiptGroupNumber ?? p.ReceiptNumber)
+        .Select(g => new {
+            ReceiptNumber    = g.Key,
+            PaidOn           = g.Min(p => p.PaidOn),
+            PaymentMethod    = g.First().PaymentMethod,
+            CardType         = g.First().CardType,
+            PaymentReference = g.First().PaymentReference,
+            IsAdvancePayment = g.Any(p => p.IsAdvancePayment),
+            IsRefund         = g.All(p => p.IsRefund),
+            Amount           = g.Sum(p => p.IsRefund ? -p.Amount : p.Amount),
+            DiscountAmount   = g.Sum(p => p.DiscountAmount),
+            Remarks          = g.First().Remarks
+        })
+        .OrderBy(g => g.PaidOn)
+        .ToList();
     var isCheckedOut = Model.Status == "CheckedOut";
     var isInterState = Model.IsInterState;
 
@@ -585,7 +604,7 @@ table.pay-table tr.refund-row { background: #fff7ed; }
                 </thead>
                 <tbody>
                     @{ var pi = 1; }
-                    @foreach (var p in payments.OrderBy(x => x.PaidOn))
+                    @foreach (var p in paymentRows)
                     {
                         <tr class="@(p.IsRefund ? "refund-row" : "")">
                             <td>@(pi++)</td>
@@ -593,8 +612,8 @@ table.pay-table tr.refund-row { background: #fff7ed; }
                             <td>@p.PaidOn.ToString("dd MMM yyyy")</td>
                             <td>@p.PaymentMethod @(string.IsNullOrWhiteSpace(p.CardType) ? "" : $"({p.CardType})")</td>
                             <td>@(p.PaymentReference ?? "—")</td>
-                            <td class="tr mono @(p.IsRefund ? "text-danger" : "")">
-                                @(p.IsRefund ? "-" : "")₹@p.Amount.ToString("N2")
+                            <td class="tr mono @(p.Amount < 0 ? "text-danger" : "")">
+                                @(p.Amount < 0 ? "-" : "")₹@Math.Abs(p.Amount).ToString("N2")
                             </td>
                             @if (hasPayDisc)
                             {
