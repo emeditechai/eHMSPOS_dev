@@ -70,8 +70,8 @@
             <div class="booking-section-title"><i class="fas fa-user"></i> Step 1 — Customer Details</div>
 
             <div class="customer-tabs">
-                <button type="button" class="customer-tab-btn active" onclick="switchCustomerType('B2C')">B2C (Walk-in / Guest)</button>
-                <button type="button" class="customer-tab-btn" onclick="switchCustomerType('B2B')">B2B (Corporate / Agent)</button>
+                <button type="button" class="customer-tab-btn active" onclick="switchCustomerType('B2C', this)">B2C (Walk-in / Guest)</button>
+                <button type="button" class="customer-tab-btn" onclick="switchCustomerType('B2B', this)">B2B (Corporate / Agent)</button>
             </div>
             <input type="hidden" asp-for="CustomerType" id="customerTypeHidden" />
 
@@ -800,12 +800,38 @@ async function checkAvailability() {
 }
 
 // ── Customer type toggle ──────────────────────────────────────────────────────
-function switchCustomerType(type) {
+function switchCustomerType(type, triggerBtn) {
     document.getElementById('customerTypeHidden').value = type;
+
+    // Update active tab button
     document.querySelectorAll('.customer-tab-btn').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
-    document.getElementById('b2cFields').style.display = type === 'B2C' ? 'grid' : 'none';
-    document.getElementById('b2bFields').style.display = type === 'B2B' ? 'grid' : 'none';
+    if (triggerBtn) {
+        triggerBtn.classList.add('active');
+    } else {
+        // Called programmatically (e.g. page restore) — find the matching button
+        document.querySelectorAll('.customer-tab-btn').forEach(b => {
+            if ((type === 'B2C' && b.textContent.includes('B2C')) ||
+                (type === 'B2B' && b.textContent.includes('B2B'))) {
+                b.classList.add('active');
+            }
+        });
+    }
+
+    const b2cDiv = document.getElementById('b2cFields');
+    const b2bDiv = document.getElementById('b2bFields');
+
+    // Show/hide panels
+    b2cDiv.style.display = type === 'B2C' ? 'grid' : 'none';
+    b2bDiv.style.display = type === 'B2B' ? 'grid' : 'none';
+
+    // Disable inputs in the hidden panel so they don't submit and don't
+    // conflict with the required-field validation of the visible panel.
+    b2cDiv.querySelectorAll('input, select, textarea').forEach(el => {
+        el.disabled = (type !== 'B2C');
+    });
+    b2bDiv.querySelectorAll('input, select, textarea').forEach(el => {
+        el.disabled = (type !== 'B2B');
+    });
 }
 
 async function onB2BClientChange() {
@@ -890,5 +916,15 @@ document.getElementById('isInterStateCheck').addEventListener('change', function
     if (endEl   && !endEl.value)   endEl.value   = '23:59';
 })();
 recalcTotal();
+
+// ── Restore correct tab on page load (handles validation failure re-render) ──
+(function restoreCustomerTab() {
+    const savedType = document.getElementById('customerTypeHidden').value || 'B2C';
+    if (savedType === 'B2B') {
+        switchCustomerType('B2B');
+    } else {
+        switchCustomerType('B2C');
+    }
+})();
 </script>
 }

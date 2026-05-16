@@ -48,6 +48,14 @@ namespace HotelApp.Web.Repositories
         Task<bool> UpdateStatusAsync(int id, string status, int updatedBy);
         Task<bool> UpdateFinancialsAsync(int id);
         Task<bool> RecalculateBalanceAsync(int id);
+        /// <summary>Replaces all package lines for a booking, then recalculates all booking totals.</summary>
+        Task<bool> UpdatePackageAsync(int bookingId, int? packageId, BanquetBookingPackageLine? packageLine, int updatedBy, string oldSummary);
+        /// <summary>Appends a single addon line and recalculates booking totals.</summary>
+        Task<bool> AddAddonLineAsync(int bookingId, BanquetBookingAddonLine addonLine, int updatedBy);
+        /// <summary>Removes one addon line and recalculates booking totals.</summary>
+        Task<bool> RemoveAddonLineAsync(int bookingId, int addonLineId, int updatedBy);
+        /// <summary>Full recalculation of all booking amounts from child lines + payments.</summary>
+        Task<bool> RecalcTotalsAsync(int bookingId, int updatedBy);
         Task AddAuditLogAsync(BanquetBookingAuditLog log);
         Task<IEnumerable<BanquetBookingPayment>> GetPaymentsAsync(int bookingId);
         Task<int> AddPaymentAsync(BanquetBookingPayment payment);
@@ -62,6 +70,7 @@ namespace HotelApp.Web.Repositories
         // Invoice number (global INV/{FY}/{seq} series shared with hotel bookings)
         Task<string> GenerateInvoiceNumberAsync();
         Task SetInvoiceNumberAsync(int id, string invoiceNumber);
+        Task<BanquetHeadWiseDue> GetHeadWiseDueAsync(int bookingId);
     }
 
     public interface IBanquetCancellationRepository

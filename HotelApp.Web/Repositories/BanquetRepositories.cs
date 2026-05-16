@@ -419,6 +419,219 @@ namespace HotelApp.Web.Repositories
             return await _db.ExecuteAsync(sql, new { Id = id }) > 0;
         }
 
+        // ── Full recalculation from child lines + payments ────────────────────
+        public async Task<bool> RecalcTotalsAsync(int bookingId, int updatedBy)
+        {
+            var sql = @"
+                UPDATE bb SET
+                    PackageId         = ISNULL(pkg.PackageId,    bb.PackageId),
+                    PackageBaseAmount  = ISNULL(pkg.BaseAmt,  0),
+                    PackageGSTAmount   = ISNULL(pkg.GSTAmt,   0),
+                    PackageCGSTAmount  = ISNULL(pkg.CGSTAmt,  0),
+                    PackageSGSTAmount  = ISNULL(pkg.SGSTAmt,  0),
+                    PackageIGSTAmount  = ISNULL(pkg.IGSTAmt,  0),
+                    PackagePricePerPax = ISNULL(pkg.PricePerPax, 0),
+                    PackageTotalPax    = ISNULL(pkg.Pax, 0),
+                    AddonBaseAmount    = ISNULL(adn.BaseAmt,  0),
+                    AddonGSTAmount     = ISNULL(adn.GSTAmt,   0),
+                    AddonCGSTAmount    = ISNULL(adn.CGSTAmt,  0),
+                    AddonSGSTAmount    = ISNULL(adn.SGSTAmt,  0),
+                    AddonIGSTAmount    = ISNULL(adn.IGSTAmt,  0),
+                    TotalBaseAmount    = bb.VenueBaseAmount + ISNULL(pkg.BaseAmt, 0) + ISNULL(adn.BaseAmt, 0),
+                    TotalGSTAmount     = bb.VenueGSTAmount  + ISNULL(pkg.GSTAmt,  0) + ISNULL(adn.GSTAmt,  0),
+                    TotalCGSTAmount    = bb.VenueCGSTAmount + ISNULL(pkg.CGSTAmt, 0) + ISNULL(adn.CGSTAmt, 0),
+                    TotalSGSTAmount    = bb.VenueSGSTAmount + ISNULL(pkg.SGSTAmt, 0) + ISNULL(adn.SGSTAmt, 0),
+                    TotalIGSTAmount    = bb.VenueIGSTAmount + ISNULL(pkg.IGSTAmt, 0) + ISNULL(adn.IGSTAmt, 0),
+                    TotalAmount        = bb.VenueBaseAmount + ISNULL(pkg.BaseAmt, 0) + ISNULL(adn.BaseAmt, 0)
+                                       + bb.VenueGSTAmount + ISNULL(pkg.GSTAmt,  0) + ISNULL(adn.GSTAmt,  0)
+                                       + bb.ServiceChargeAmount - bb.DiscountAmount + bb.RoundOffAmount,
+                    DepositAmount      = ISNULL(paid.TotalPaid, 0),
+                    BalanceAmount      = (bb.VenueBaseAmount + ISNULL(pkg.BaseAmt, 0) + ISNULL(adn.BaseAmt, 0)
+                                       + bb.VenueGSTAmount + ISNULL(pkg.GSTAmt,  0) + ISNULL(adn.GSTAmt,  0)
+                                       + bb.ServiceChargeAmount - bb.DiscountAmount + bb.RoundOffAmount)
+                                       - ISNULL(paid.TotalPaid, 0),
+                    PaymentStatus      = CASE
+                                           WHEN ISNULL(paid.TotalPaid,0) = 0 THEN 'Pending'
+                                           WHEN ISNULL(paid.TotalPaid,0) >= (bb.VenueBaseAmount + ISNULL(pkg.BaseAmt, 0) + ISNULL(adn.BaseAmt, 0)
+                                               + bb.VenueGSTAmount + ISNULL(pkg.GSTAmt, 0) + ISNULL(adn.GSTAmt, 0)
+                                               + bb.ServiceChargeAmount - bb.DiscountAmount + bb.RoundOffAmount) THEN 'FullPaid'
+                                           ELSE 'PartialPaid'
+                                         END,
+                    LastModifiedDate   = SYSUTCDATETIME(),
+                    LastModifiedBy     = @UpdatedBy
+                FROM BanquetBookings bb
+                LEFT JOIN (
+                    SELECT BanquetBookingId,
+                           MIN(PackageId)    AS PackageId,
+                           MIN(PricePerPax)  AS PricePerPax,
+                           SUM(Pax)          AS Pax,
+                           SUM(BaseAmount)   AS BaseAmt,
+                           SUM(GSTAmount)    AS GSTAmt,
+                           SUM(CGSTAmount)   AS CGSTAmt,
+                           SUM(SGSTAmount)   AS SGSTAmt,
+                           SUM(IGSTAmount)   AS IGSTAmt
+                    FROM BanquetBookingPackageLines
+                    WHERE BanquetBookingId = @Id
+                    GROUP BY BanquetBookingId
+                ) pkg ON pkg.BanquetBookingId = bb.Id
+                LEFT JOIN (
+                    SELECT BanquetBookingId,
+                           SUM(BaseAmount) AS BaseAmt,
+                           SUM(GSTAmount)  AS GSTAmt,
+                           SUM(CGSTAmount) AS CGSTAmt,
+                           SUM(SGSTAmount) AS SGSTAmt,
+                           SUM(IGSTAmount) AS IGSTAmt
+                    FROM BanquetBookingAddonLines
+                    WHERE BanquetBookingId = @Id
+                    GROUP BY BanquetBookingId
+                ) adn ON adn.BanquetBookingId = bb.Id
+                LEFT JOIN (
+                    SELECT BanquetBookingId,
+                           SUM(CASE WHEN IsRefund=0 THEN Amount + DiscountAmount ELSE -Amount END) AS TotalPaid
+                    FROM BanquetBookingPayments
+                    WHERE [Status] IN ('Captured','Success')
+                    GROUP BY BanquetBookingId
+                ) paid ON paid.BanquetBookingId = bb.Id
+                WHERE bb.Id = @Id";
+            return await _db.ExecuteAsync(sql, new { Id = bookingId, UpdatedBy = updatedBy }) > 0;
+        }
+
+        // ── Edit Package ──────────────────────────────────────────────────────
+        public async Task<bool> UpdatePackageAsync(int bookingId, int? packageId, BanquetBookingPackageLine? packageLine, int updatedBy, string oldSummary)
+        {
+            var booking = await _db.QueryFirstOrDefaultAsync<BanquetBooking>(
+                "SELECT Id, BanquetBookingNumber FROM BanquetBookings WHERE Id=@Id", new { Id = bookingId });
+            if (booking == null) return false;
+
+            if (_db.State != ConnectionState.Open) _db.Open();
+            using var tx = _db.BeginTransaction();
+            try
+            {
+                // Remove existing package lines
+                await _db.ExecuteAsync("DELETE FROM BanquetBookingPackageLines WHERE BanquetBookingId=@Id", new { Id = bookingId }, tx);
+
+                // If no package selected, clear PackageId on header
+                if (packageLine == null || packageId == null)
+                {
+                    await _db.ExecuteAsync(
+                        "UPDATE BanquetBookings SET PackageId=NULL,PackagePricePerPax=0,PackageTotalPax=0 WHERE Id=@Id",
+                        new { Id = bookingId }, tx);
+                }
+                else
+                {
+                    packageLine.BanquetBookingId = bookingId;
+                    await _db.ExecuteAsync(@"
+                        INSERT INTO BanquetBookingPackageLines
+                        (BanquetBookingId,PackageId,PackageName,PackageType,MealType,PricePerPax,Pax,BaseAmount,
+                         GSTPercent,CGSTPercent,SGSTPercent,IGSTPercent,GSTAmount,CGSTAmount,SGSTAmount,IGSTAmount,TotalAmount,MenuDescription,SACCode)
+                        VALUES(@BanquetBookingId,@PackageId,@PackageName,@PackageType,@MealType,@PricePerPax,@Pax,@BaseAmount,
+                               @GSTPercent,@CGSTPercent,@SGSTPercent,@IGSTPercent,@GSTAmount,@CGSTAmount,@SGSTAmount,@IGSTAmount,@TotalAmount,@MenuDescription,@SACCode)",
+                        packageLine, tx);
+                }
+
+                tx.Commit();
+            }
+            catch { tx.Rollback(); throw; }
+
+            // Recalculate totals (outside transaction so we get fresh reads)
+            await RecalcTotalsAsync(bookingId, updatedBy);
+
+            // Refresh header values for the audit description
+            var updated = await _db.QueryFirstOrDefaultAsync<BanquetBooking>(
+                "SELECT TotalAmount FROM BanquetBookings WHERE Id=@Id", new { Id = bookingId });
+
+            var newSummary = packageLine == null
+                ? "Package removed"
+                : $"{packageLine.PackageName} × {packageLine.Pax} pax @ ₹{packageLine.PricePerPax:0.00}/pax = ₹{packageLine.TotalAmount:0.00}";
+
+            await AddAuditLogAsync(new BanquetBookingAuditLog
+            {
+                BanquetBookingId     = bookingId,
+                BanquetBookingNumber = booking.BanquetBookingNumber,
+                ActionType           = "PackageUpdated",
+                ActionDescription    = $"Package changed. New total: ₹{updated?.TotalAmount:0.00}",
+                OldValue             = oldSummary,
+                NewValue             = newSummary,
+                PerformedBy          = updatedBy
+            });
+
+            return true;
+        }
+
+        // ── Add Addon Line ────────────────────────────────────────────────────
+        public async Task<bool> AddAddonLineAsync(int bookingId, BanquetBookingAddonLine addonLine, int updatedBy)
+        {
+            var booking = await _db.QueryFirstOrDefaultAsync<BanquetBooking>(
+                "SELECT Id, BanquetBookingNumber FROM BanquetBookings WHERE Id=@Id", new { Id = bookingId });
+            if (booking == null) return false;
+
+            if (_db.State != ConnectionState.Open) _db.Open();
+            using var tx = _db.BeginTransaction();
+            try
+            {
+                addonLine.BanquetBookingId = bookingId;
+                await _db.ExecuteAsync(@"
+                    INSERT INTO BanquetBookingAddonLines
+                    (BanquetBookingId,AddonServiceId,ServiceName,ServiceType,Rate,RateType,Qty,BaseAmount,
+                     GSTPercent,CGSTPercent,SGSTPercent,IGSTPercent,GSTAmount,CGSTAmount,SGSTAmount,IGSTAmount,TotalAmount,Notes,SACCode)
+                    VALUES(@BanquetBookingId,@AddonServiceId,@ServiceName,@ServiceType,@Rate,@RateType,@Qty,@BaseAmount,
+                           @GSTPercent,@CGSTPercent,@SGSTPercent,@IGSTPercent,@GSTAmount,@CGSTAmount,@SGSTAmount,@IGSTAmount,@TotalAmount,@Notes,@SACCode)",
+                    addonLine, tx);
+                tx.Commit();
+            }
+            catch { tx.Rollback(); throw; }
+
+            await RecalcTotalsAsync(bookingId, updatedBy);
+
+            var updated = await _db.QueryFirstOrDefaultAsync<BanquetBooking>(
+                "SELECT TotalAmount FROM BanquetBookings WHERE Id=@Id", new { Id = bookingId });
+
+            await AddAuditLogAsync(new BanquetBookingAuditLog
+            {
+                BanquetBookingId     = bookingId,
+                BanquetBookingNumber = booking.BanquetBookingNumber,
+                ActionType           = "AddonAdded",
+                ActionDescription    = $"Addon '{addonLine.ServiceName}' added. New total: ₹{updated?.TotalAmount:0.00}",
+                OldValue             = null,
+                NewValue             = $"{addonLine.ServiceName} × {addonLine.Qty} @ ₹{addonLine.Rate:0.00} = ₹{addonLine.TotalAmount:0.00}",
+                PerformedBy          = updatedBy
+            });
+
+            return true;
+        }
+
+        // ── Remove Addon Line ─────────────────────────────────────────────────
+        public async Task<bool> RemoveAddonLineAsync(int bookingId, int addonLineId, int updatedBy)
+        {
+            var booking = await _db.QueryFirstOrDefaultAsync<BanquetBooking>(
+                "SELECT Id, BanquetBookingNumber FROM BanquetBookings WHERE Id=@Id", new { Id = bookingId });
+            if (booking == null) return false;
+
+            var line = await _db.QueryFirstOrDefaultAsync<BanquetBookingAddonLine>(
+                "SELECT * FROM BanquetBookingAddonLines WHERE Id=@Id AND BanquetBookingId=@BId",
+                new { Id = addonLineId, BId = bookingId });
+            if (line == null) return false;
+
+            await _db.ExecuteAsync("DELETE FROM BanquetBookingAddonLines WHERE Id=@Id", new { Id = addonLineId });
+            await RecalcTotalsAsync(bookingId, updatedBy);
+
+            var updated = await _db.QueryFirstOrDefaultAsync<BanquetBooking>(
+                "SELECT TotalAmount FROM BanquetBookings WHERE Id=@Id", new { Id = bookingId });
+
+            await AddAuditLogAsync(new BanquetBookingAuditLog
+            {
+                BanquetBookingId     = bookingId,
+                BanquetBookingNumber = booking.BanquetBookingNumber,
+                ActionType           = "AddonRemoved",
+                ActionDescription    = $"Addon '{line.ServiceName}' removed. New total: ₹{updated?.TotalAmount:0.00}",
+                OldValue             = $"{line.ServiceName} × {line.Qty} @ ₹{line.Rate:0.00} = ₹{line.TotalAmount:0.00}",
+                NewValue             = null,
+                PerformedBy          = updatedBy
+            });
+
+            return true;
+        }
+
         public async Task AddAuditLogAsync(BanquetBookingAuditLog log)
         {
             await _db.ExecuteAsync(@"
@@ -448,9 +661,9 @@ namespace HotelApp.Web.Repositories
                 var id = await _db.ExecuteScalarAsync<int>(@"
                     INSERT INTO BanquetBookingPayments
                     (BanquetBookingId,ReceiptNumber,Amount,PaymentMethod,PaymentReference,[Status],PaidOn,
-                     BankId,CardType,CardLastFourDigits,ChequeDate,IsAdvancePayment,IsRefund,DiscountAmount,RoundOffAmount,Remarks,CreatedBy)
+                     BankId,CardType,CardLastFourDigits,ChequeDate,IsAdvancePayment,IsRefund,DiscountAmount,RoundOffAmount,Remarks,CreatedBy,BillingHead,ReceiptGroupNumber)
                     VALUES(@BanquetBookingId,@ReceiptNumber,@Amount,@PaymentMethod,@PaymentReference,@Status,SYSUTCDATETIME(),
-                           @BankId,@CardType,@CardLastFourDigits,@ChequeDate,@IsAdvancePayment,@IsRefund,@DiscountAmount,@RoundOffAmount,@Remarks,@CreatedBy);
+                           @BankId,@CardType,@CardLastFourDigits,@ChequeDate,@IsAdvancePayment,@IsRefund,@DiscountAmount,@RoundOffAmount,@Remarks,@CreatedBy,@BillingHead,@ReceiptGroupNumber);
                     SELECT CAST(SCOPE_IDENTITY() AS INT);", p, tx);
 
                 // Recalculate balance
@@ -623,6 +836,60 @@ namespace HotelApp.Web.Repositories
                                  SET InvoiceNumber = @InvoiceNumber
                                  WHERE Id = @Id AND (InvoiceNumber IS NULL OR InvoiceNumber = '')";
             await _db.ExecuteAsync(sql, new { Id = id, InvoiceNumber = invoiceNumber });
+        }
+
+        public async Task<BanquetHeadWiseDue> GetHeadWiseDueAsync(int bookingId)
+        {
+            // Fetch booking head totals using original column names
+            var booking = await _db.QueryFirstOrDefaultAsync(
+                @"SELECT VenueBaseAmount, VenueGSTAmount,
+                         PackageBaseAmount, PackageGSTAmount,
+                         AddonBaseAmount, AddonGSTAmount
+                  FROM BanquetBookings WHERE Id=@Id", new { Id = bookingId });
+            if (booking == null) return new BanquetHeadWiseDue();
+
+            var venueTotal   = (decimal)(booking.VenueBaseAmount   ?? 0m) + (decimal)(booking.VenueGSTAmount   ?? 0m);
+            var packageTotal = (decimal)(booking.PackageBaseAmount  ?? 0m) + (decimal)(booking.PackageGSTAmount ?? 0m);
+            var addonTotal   = (decimal)(booking.AddonBaseAmount    ?? 0m) + (decimal)(booking.AddonGSTAmount   ?? 0m);
+
+            // Fetch all effective payments (non-refund, captured)
+            var payments = (await _db.QueryAsync<BanquetBookingPayment>(
+                @"SELECT Amount, DiscountAmount, BillingHead, ReceiptGroupNumber
+                  FROM BanquetBookingPayments
+                  WHERE BanquetBookingId=@Id AND IsRefund=0 AND [Status] IN ('Captured','Success')",
+                new { Id = bookingId })).ToList();
+
+            decimal paidV = 0m, paidP = 0m, paidA = 0m, unassigned = 0m;
+            foreach (var p in payments)
+            {
+                var applied = p.Amount + p.DiscountAmount;
+                if (applied <= 0) continue;
+                switch ((p.BillingHead ?? string.Empty).ToUpperInvariant())
+                {
+                    case "V": paidV += applied; break;
+                    case "P": paidP += applied; break;
+                    case "A": paidA += applied; break;
+                    default:  unassigned += applied; break;
+                }
+            }
+
+            // Distribute unassigned in order V → P → A
+            if (unassigned > 0) { var a = Math.Min(unassigned, Math.Max(0, venueTotal - paidV));   paidV += a; unassigned -= a; }
+            if (unassigned > 0) { var a = Math.Min(unassigned, Math.Max(0, packageTotal - paidP)); paidP += a; unassigned -= a; }
+            if (unassigned > 0) { var a = Math.Min(unassigned, Math.Max(0, addonTotal - paidA));   paidA += a; }
+
+            static decimal Due(decimal total, decimal paid) => Math.Max(0m, Math.Round(total - paid, 2, MidpointRounding.AwayFromZero));
+
+            return new BanquetHeadWiseDue
+            {
+                VenueTotal   = venueTotal,
+                VenueDue     = Due(venueTotal,   paidV),
+                PackageTotal = packageTotal,
+                PackageDue   = Due(packageTotal, paidP),
+                AddonTotal   = addonTotal,
+                AddonDue     = Due(addonTotal,   paidA),
+                TotalDue     = Due(venueTotal + packageTotal + addonTotal, paidV + paidP + paidA)
+            };
         }
     }
 

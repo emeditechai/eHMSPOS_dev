@@ -11,11 +11,11 @@
 <form method="get" class="filter-bar mb-4">
     <div class="filter-grid">
         <div class="master-form-group">
-            <label>From Date</label>
+            <label>Payment Received From</label>
             <input type="date" name="fromDate" class="form-control" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
         </div>
         <div class="master-form-group">
-            <label>To Date</label>
+            <label>Payment Received To</label>
             <input type="date" name="toDate" class="form-control" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
         </div>
         <div class="master-form-group" style="align-self:flex-end">
@@ -25,46 +25,26 @@
 </form>
 
 <!-- GST Summary Row -->
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card text-center border-0 shadow-sm">
-            <div class="card-body">
-                <div class="text-muted small">Taxable Value</div>
-                <div class="h4 fw-bold text-primary">₹@Model.TotalTaxableValue.ToString("N2")</div>
-            </div>
-        </div>
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px">
+    <div style="background:#fff;border-radius:12px;padding:18px 20px;border-left:4px solid #4f46e5;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Taxable Value</div>
+        <div style="font-size:22px;font-weight:800;color:#4f46e5">₹@Model.TotalTaxableValue.ToString("N2")</div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center border-0 shadow-sm">
-            <div class="card-body">
-                <div class="text-muted small">Total CGST</div>
-                <div class="h4 fw-bold">₹@Model.TotalCGST.ToString("N2")</div>
-            </div>
-        </div>
+    <div style="background:#fff;border-radius:12px;padding:18px 20px;border-left:4px solid #0891b2;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Total CGST</div>
+        <div style="font-size:22px;font-weight:800;color:#0891b2">₹@Model.TotalCGST.ToString("N2")</div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center border-0 shadow-sm">
-            <div class="card-body">
-                <div class="text-muted small">Total SGST</div>
-                <div class="h4 fw-bold">₹@Model.TotalSGST.ToString("N2")</div>
-            </div>
-        </div>
+    <div style="background:#fff;border-radius:12px;padding:18px 20px;border-left:4px solid #0891b2;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Total SGST</div>
+        <div style="font-size:22px;font-weight:800;color:#0891b2">₹@Model.TotalSGST.ToString("N2")</div>
     </div>
-    <div class="col-md-2">
-        <div class="card text-center border-0 shadow-sm">
-            <div class="card-body">
-                <div class="text-muted small">Total IGST</div>
-                <div class="h4 fw-bold">₹@Model.TotalIGST.ToString("N2")</div>
-            </div>
-        </div>
+    <div style="background:#fff;border-radius:12px;padding:18px 20px;border-left:4px solid #d97706;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Total IGST</div>
+        <div style="font-size:22px;font-weight:800;color:#d97706">₹@Model.TotalIGST.ToString("N2")</div>
     </div>
-    <div class="col-md-1">
-        <div class="card text-center border-0 shadow-sm">
-            <div class="card-body">
-                <div class="text-muted small">Total GST</div>
-                <div class="h4 fw-bold text-success">₹@Model.TotalGST.ToString("N2")</div>
-            </div>
-        </div>
+    <div style="background:#fff;border-radius:12px;padding:18px 20px;border-left:4px solid #059669;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Total GST</div>
+        <div style="font-size:22px;font-weight:800;color:#059669">₹@Model.TotalGST.ToString("N2")</div>
     </div>
 </div>
 
@@ -78,7 +58,7 @@
             <table class="table data-table mb-0" id="gstTable">
                 <thead>
                     <tr>
-                        <th>Booking #</th><th>Event Date</th><th>Client</th><th>Type</th>
+                        <th>Booking #</th><th>Payment Date</th><th>Event Date</th><th>Client</th><th>Type</th>
                         <th>Supply</th><th>Line</th><th>SAC</th>
                         <th>Taxable ₹</th><th>CGST ₹</th><th>SGST ₹</th><th>IGST ₹</th><th>Total GST ₹</th>
                     </tr>
@@ -88,6 +68,7 @@
                     {
                         <tr>
                             <td><code>@r.BanquetBookingNumber</code></td>
+                            <td>@(r.PaymentDate.HasValue ? r.PaymentDate.Value.ToString("dd MMM yyyy") : "—")</td>
                             <td>@r.EventDate.ToString("dd MMM yyyy")</td>
                             <td>@r.ClientName</td>
                             <td><span class="badge @(r.CustomerType == "B2B" ? "bg-info" : "bg-secondary")">@r.CustomerType</span></td>
@@ -103,12 +84,12 @@
                     }
                     @if (!Model.Rows.Any())
                     {
-                        <tr><td colspan="12" class="text-center text-muted py-4">No data for this period.</td></tr>
+                        <tr><td colspan="13" class="text-center text-muted py-4">No payments received in this period.</td></tr>
                     }
                 </tbody>
                 <tfoot class="table-light fw-600">
                     <tr>
-                        <td colspan="7">Total</td>
+                        <td colspan="8">Total</td>
                         <td>@Model.TotalTaxableValue.ToString("N2")</td>
                         <td>@Model.TotalCGST.ToString("N2")</td>
                         <td>@Model.TotalSGST.ToString("N2")</td>

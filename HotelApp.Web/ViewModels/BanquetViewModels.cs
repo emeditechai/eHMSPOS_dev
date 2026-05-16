@@ -151,6 +151,17 @@ namespace HotelApp.Web.ViewModels
         public decimal RoundOffAmount { get; set; }
         public bool IsRefund { get; set; }
         public string? Remarks { get; set; }
+
+        // ── Head-wise due amounts (passed from controller GET) ─────────────
+        public decimal VenueTotal { get; set; }
+        public decimal VenueDue { get; set; }
+        public decimal PackageTotal { get; set; }
+        public decimal PackageDue { get; set; }
+        public decimal AddonTotal { get; set; }
+        public decimal AddonDue { get; set; }
+
+        // ── Head-wise allocation (posted from form as JSON) ───────────────
+        public string? HeadAllocations { get; set; }
     }
 
     // ── Cancel ────────────────────────────────────────────────────────────────

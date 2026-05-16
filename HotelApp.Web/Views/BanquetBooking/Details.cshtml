@@ -471,7 +471,11 @@
         });
     </script>
 }
-
+@{
+    var packages = ViewBag.Packages as IEnumerable<HotelApp.Web.Models.BanquetPackage> ?? Enumerable.Empty<HotelApp.Web.Models.BanquetPackage>();
+    var allAddons = ViewBag.Addons as IEnumerable<HotelApp.Web.Models.BanquetAddonService> ?? Enumerable.Empty<HotelApp.Web.Models.BanquetAddonService>();
+    bool canEdit = Model.Status is not ("EventComplete" or "CheckedOut" or "Cancelled");
+}
 <!-- ── MAIN CONTENT ───────────────────────────────────────────────────────── -->
 <div class="row g-4">
 
@@ -586,18 +590,28 @@
         </div>
 
         <!-- Package Lines -->
-        @if (Model.PackageLines.Any())
+        @if (Model.PackageLines.Any() || canEdit)
         {
             <div class="bk-card">
-                <div class="bk-card-header hd-package"><i class="fas fa-utensils"></i> Package</div>
-                <div style="overflow-x:auto">
-                    <table class="bk-table">
-                        <thead>
-                            <tr>
-                                <th>Package</th><th>Type</th><th>Pax</th>
-                                <th class="num">Rate/Pax</th><th class="num">Base</th>
-                                <th class="num">GST</th><th class="num">Total</th>
-                            </tr>
+                <div class="bk-card-header hd-package" style="justify-content:space-between">
+                    <span><i class="fas fa-utensils"></i> Package</span>
+                    @if (canEdit)
+                    {
+                        <button type="button" onclick="openEditPackageModal()" style="background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.5);color:#fff;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer">
+                            <i class="fas fa-pen"></i> Edit Package
+                        </button>
+                    }
+                </div>
+                @if (Model.PackageLines.Any())
+                {
+                    <div style="overflow-x:auto">
+                        <table class="bk-table">
+                            <thead>
+                                <tr>
+                                    <th>Package</th><th>Type</th><th>Pax</th>
+                                    <th class="num">Rate/Pax</th><th class="num">Base</th>
+                                    <th class="num">GST</th><th class="num">Total</th>
+                                </tr>
                         </thead>
                         <tbody>
                             @foreach (var p in Model.PackageLines)
@@ -615,38 +629,78 @@
                         </tbody>
                     </table>
                 </div>
+                }
+                else
+                {
+                    <div style="padding:20px;color:#9ca3af;font-size:13.5px;text-align:center">
+                        <i class="fas fa-utensils me-2"></i> No package selected.
+                        @if (canEdit) { <span>Use <strong>Edit Package</strong> to add one.</span> }
+                    </div>
+                }
             </div>
         }
 
         <!-- Addon Lines -->
-        @if (Model.AddonLines.Any())
+        @if (Model.AddonLines.Any() || canEdit)
         {
             <div class="bk-card">
-                <div class="bk-card-header hd-addon"><i class="fas fa-puzzle-piece"></i> Addon Services</div>
-                <div style="overflow-x:auto">
-                    <table class="bk-table">
-                        <thead>
-                            <tr>
-                                <th>Service</th><th>Type</th><th>Rate</th><th>Qty</th>
-                                <th class="num">Base</th><th class="num">GST</th><th class="num">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var a in Model.AddonLines)
-                            {
-                                <tr>
-                                    <td style="font-weight:600">@a.ServiceName</td>
-                                    <td><span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600">@a.ServiceType</span></td>
-                                    <td>₹@a.Rate.ToString("N2") / @a.RateType</td>
-                                    <td>@a.Qty</td>
-                                    <td class="num">₹@a.BaseAmount.ToString("N2")</td>
-                                    <td class="num" style="color:#6b7280">₹@a.GSTAmount.ToString("N2") <span style="font-size:11px">(@a.GSTPercent%)</span></td>
-                                    <td class="num" style="color:#b45309;font-weight:700">₹@a.TotalAmount.ToString("N2")</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                <div class="bk-card-header hd-addon" style="justify-content:space-between">
+                    <span><i class="fas fa-puzzle-piece"></i> Addon Services</span>
+                    @if (canEdit)
+                    {
+                        <button type="button" onclick="openAddAddonModal()" style="background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.5);color:#fff;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer">
+                            <i class="fas fa-plus"></i> Add Addon
+                        </button>
+                    }
                 </div>
+                @if (Model.AddonLines.Any())
+                {
+                    <div style="overflow-x:auto">
+                        <table class="bk-table">
+                            <thead>
+                                <tr>
+                                    <th>Service</th><th>Type</th><th>Rate</th><th>Qty</th>
+                                    <th class="num">Base</th><th class="num">GST</th><th class="num">Total</th>
+                                    @if (canEdit) { <th style="width:48px"></th> }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var a in Model.AddonLines)
+                                {
+                                    <tr>
+                                        <td style="font-weight:600">@a.ServiceName</td>
+                                        <td><span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600">@a.ServiceType</span></td>
+                                        <td>₹@a.Rate.ToString("N2") / @a.RateType</td>
+                                        <td>@a.Qty</td>
+                                        <td class="num">₹@a.BaseAmount.ToString("N2")</td>
+                                        <td class="num" style="color:#6b7280">₹@a.GSTAmount.ToString("N2") <span style="font-size:11px">(@a.GSTPercent%)</span></td>
+                                        <td class="num" style="color:#b45309;font-weight:700">₹@a.TotalAmount.ToString("N2")</td>
+                                        @if (canEdit)
+                                        {
+                                            <td>
+                                                <form asp-action="RemoveAddon" method="post" class="d-inline remove-addon-form" data-name="@a.ServiceName">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="bookingId" value="@Model.Id" />
+                                                    <input type="hidden" name="addonLineId" value="@a.Id" />
+                                                    <button type="button" class="btn-remove-addon" title="Remove @a.ServiceName" style="background:none;border:none;color:#dc2626;font-size:15px;cursor:pointer;padding:2px 6px" onclick="confirmRemoveAddon(this)">
+                                                        <i class="fas fa-trash-can"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div style="padding:20px;color:#9ca3af;font-size:13.5px;text-align:center">
+                        <i class="fas fa-puzzle-piece me-2"></i> No addon services selected.
+                        @if (canEdit) { <span>Use <strong>Add Addon</strong> to include additional services.</span> }
+                    </div>
+                }
             </div>
         }
 
@@ -659,7 +713,7 @@
                     <table class="bk-table">
                         <thead>
                             <tr>
-                                <th>Receipt #</th><th>Date</th><th class="num">Amount</th>
+                                <th>Receipt #</th><th>Date</th><th>Head</th><th class="num">Amount</th>
                                 <th class="num">Discount</th><th>Method</th><th>Reference</th><th>Type</th>
                             </tr>
                         </thead>
@@ -669,7 +723,22 @@
                                 <tr class="@(p.IsRefund ? "refund-row" : "")">
                                     <td style="font-weight:600;font-size:12px">@p.ReceiptNumber</td>
                                     <td style="font-size:12.5px;color:#6b7280">@p.PaidOn.ToString("dd-MMM-yyyy HH:mm")</td>
-                                    <td class="num @(p.IsRefund ? "" : "")">
+                                    <td>
+                                        @{
+                                            var headLabel = (p.BillingHead ?? "").ToUpperInvariant() switch {
+                                                "V" => ("Venue",   "#4338ca","#ede9fe"),
+                                                "P" => ("Package", "#0891b2","#e0f2fe"),
+                                                "A" => ("Addon",   "#d97706","#fef3c7"),
+                                                _   => ("",        "",       "")
+                                            };
+                                        }
+                                        @if (!string.IsNullOrEmpty(headLabel.Item1))
+                                        {
+                                            <span style="background:@headLabel.Item3;color:@headLabel.Item2;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">@headLabel.Item1</span>
+                                        }
+                                        else { <span style="color:#d1d5db">—</span> }
+                                    </td>
+                                    <td class="num">
                                         <span style="color:@(p.IsRefund ? "#f59e0b" : "#059669");font-weight:700">
                                             @(p.IsRefund ? "-" : "")₹@p.Amount.ToString("N2")
                                         </span>
@@ -851,7 +920,140 @@
 </div>
 
 @section Scripts {
+
+@if (canEdit)
+{
+<!-- ══════════════════════════════════════════════════════════
+     EDIT PACKAGE MODAL
+═══════════════════════════════════════════════════════════ -->
+<div id="editPackageModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:14px;width:100%;max-width:600px;box-shadow:0 12px 48px rgba(0,0,0,.22);overflow:hidden">
+        <div style="background:linear-gradient(90deg,#6d28d9,#8b5cf6);color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:15px;font-weight:700"><i class="fas fa-utensils me-2"></i> Edit Package</span>
+            <button type="button" onclick="closeEditPackageModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer">&times;</button>
+        </div>
+        <form asp-action="EditPackage" method="post" id="editPackageForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="bookingId" value="@Model.Id" />
+            <div style="padding:24px">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+                    <div style="grid-column:1/-1">
+                        <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:6px">Package</label>
+                        <select name="packageId" id="epPackageSelect" onchange="onPackageSelectChange()" style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px">
+                            <option value="">-- No Package --</option>
+                            @foreach (var p in packages)
+                            {
+                                bool isSelected = Model.PackageLines.Any(pl => pl.PackageId == p.Id);
+                                if (isSelected)
+                                {
+                                    <option value="@p.Id" data-price="@p.PricePerPax" data-name="@p.PackageName" selected>@p.PackageName — ₹@p.PricePerPax.ToString("N2")/pax (@p.PackageType)</option>
+                                }
+                                else
+                                {
+                                    <option value="@p.Id" data-price="@p.PricePerPax" data-name="@p.PackageName">@p.PackageName — ₹@p.PricePerPax.ToString("N2")/pax (@p.PackageType)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:6px">Pax (Guest Count) <span style="color:#dc2626">*</span></label>
+                        <input type="number" name="pax" id="epPaxInput" min="1" step="1"
+                               value="@(Model.PackageLines.Any() ? Model.PackageLines[0].Pax : Model.AttendeeCount)"
+                               oninput="onPackageSelectChange()"
+                               style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px" />
+                    </div>
+                    <div>
+                        <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:6px">Rate / Pax</label>
+                        <input type="text" id="epRateDisplay" readonly style="width:100%;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;background:#f9fafb;color:#6b7280" placeholder="—" />
+                    </div>
+                </div>
+                <!-- Quote preview -->
+                <div id="epQuotePanel" style="display:none;background:#f5f3ff;border:1.5px solid #ddd6fe;border-radius:10px;padding:14px 18px;margin-bottom:16px">
+                    <div style="font-size:12px;font-weight:700;color:#5b21b6;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Quote Preview</div>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:13px">
+                        <div><div style="color:#9ca3af;font-size:11px">Base Amount</div><div id="epBase" style="font-weight:600;color:#1f2937">—</div></div>
+                        <div><div style="color:#9ca3af;font-size:11px">GST</div><div id="epGST" style="font-weight:600;color:#6b7280">—</div></div>
+                        <div><div style="color:#9ca3af;font-size:11px">Total</div><div id="epTotal" style="font-weight:700;color:#5b21b6;font-size:16px">—</div></div>
+                    </div>
+                </div>
+                <div style="display:flex;justify-content:flex-end;gap:12px;padding-top:8px;border-top:1px solid #f3f4f6">
+                    <button type="button" onclick="closeEditPackageModal()" style="padding:10px 22px;border:1.5px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;font-weight:600;cursor:pointer">Cancel</button>
+                    <button type="submit" style="padding:10px 22px;background:linear-gradient(90deg,#6d28d9,#8b5cf6);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">
+                        <i class="fas fa-save me-1"></i> Save Package
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     ADD ADDON MODAL
+═══════════════════════════════════════════════════════════ -->
+<div id="addAddonModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:14px;width:100%;max-width:580px;box-shadow:0 12px 48px rgba(0,0,0,.22);overflow:hidden">
+        <div style="background:linear-gradient(90deg,#b45309,#d97706);color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:15px;font-weight:700"><i class="fas fa-plus-circle me-2"></i> Add Addon Service</span>
+            <button type="button" onclick="closeAddAddonModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer">&times;</button>
+        </div>
+        <form asp-action="AddAddon" method="post" id="addAddonForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="bookingId" value="@Model.Id" />
+            <div style="padding:24px">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+                    <div style="grid-column:1/-1">
+                        <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:6px">Addon Service <span style="color:#dc2626">*</span></label>
+                        <select name="addonServiceId" id="aaServiceSelect" onchange="onAddonSelectChange()" required style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px">
+                            <option value="">-- Select Service --</option>
+                            @foreach (var a in allAddons)
+                            {
+                                bool alreadyAdded = Model.AddonLines.Any(x => x.AddonServiceId == a.Id);
+                                if (alreadyAdded)
+                                {
+                                    <option value="@a.Id" data-rate="@a.Rate" data-ratetype="@a.RateType" data-name="@a.ServiceName" disabled>@a.ServiceName — ₹@a.Rate.ToString("N2")/@a.RateType (already added)</option>
+                                }
+                                else
+                                {
+                                    <option value="@a.Id" data-rate="@a.Rate" data-ratetype="@a.RateType" data-name="@a.ServiceName">@a.ServiceName — ₹@a.Rate.ToString("N2")/@a.RateType</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:6px">Quantity</label>
+                        <input type="number" name="qty" id="aaQtyInput" min="0.01" step="0.01" value="1"
+                               oninput="onAddonSelectChange()"
+                               style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px" />
+                    </div>
+                    <div>
+                        <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:6px">Notes</label>
+                        <input type="text" name="notes" id="aaNotesInput" maxlength="200" placeholder="Optional"
+                               style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px" />
+                    </div>
+                </div>
+                <!-- Quote preview -->
+                <div id="aaQuotePanel" style="display:none;background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:14px 18px;margin-bottom:16px">
+                    <div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Quote Preview</div>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:13px">
+                        <div><div style="color:#9ca3af;font-size:11px">Base Amount</div><div id="aaBase" style="font-weight:600;color:#1f2937">—</div></div>
+                        <div><div style="color:#9ca3af;font-size:11px">GST</div><div id="aaGST" style="font-weight:600;color:#6b7280">—</div></div>
+                        <div><div style="color:#9ca3af;font-size:11px">Total</div><div id="aaTotal" style="font-weight:700;color:#b45309;font-size:16px">—</div></div>
+                    </div>
+                </div>
+                <div style="display:flex;justify-content:flex-end;gap:12px;padding-top:8px;border-top:1px solid #f3f4f6">
+                    <button type="button" onclick="closeAddAddonModal()" style="padding:10px 22px;border:1.5px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;font-weight:600;cursor:pointer">Cancel</button>
+                    <button type="submit" style="padding:10px 22px;background:linear-gradient(90deg,#b45309,#d97706);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">
+                        <i class="fas fa-plus me-1"></i> Add Service
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+}
+
 <script>
+    // ── CheckOut confirmation ────────────────────────────────────────────────
     const checkOutBtn = document.getElementById('checkOutBtn');
     if (checkOutBtn) {
         checkOutBtn.addEventListener('click', function () {
@@ -871,5 +1073,104 @@
             });
         });
     }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function fmtINR(n) { return '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+    // ── Edit Package Modal ───────────────────────────────────────────────────
+    function openEditPackageModal() {
+        document.getElementById('editPackageModal').style.display = 'flex';
+        onPackageSelectChange();
+    }
+    function closeEditPackageModal() {
+        document.getElementById('editPackageModal').style.display = 'none';
+    }
+
+    let epDebounce = null;
+    function onPackageSelectChange() {
+        clearTimeout(epDebounce);
+        const sel = document.getElementById('epPackageSelect');
+        const pax = parseInt(document.getElementById('epPaxInput').value) || 0;
+        const pkgId = sel.value;
+
+        if (!pkgId || pax < 1) {
+            document.getElementById('epRateDisplay').value = '';
+            document.getElementById('epQuotePanel').style.display = 'none';
+            return;
+        }
+
+        const opt = sel.options[sel.selectedIndex];
+        const price = parseFloat(opt.dataset.price) || 0;
+        document.getElementById('epRateDisplay').value = fmtINR(price);
+
+        epDebounce = setTimeout(async () => {
+            try {
+                const isInterState = @(Model.IsInterState ? "true" : "false");
+                const res  = await fetch(`/BanquetBooking/GetPackageQuote?packageId=${pkgId}&pax=${pax}&isInterState=${isInterState}`);
+                const data = await res.json();
+                document.getElementById('epBase').textContent  = fmtINR(data.baseAmount);
+                document.getElementById('epGST').textContent   = fmtINR(data.gstAmount) + ' (' + data.gstPercent + '%)';
+                document.getElementById('epTotal').textContent = fmtINR(data.totalAmount);
+                document.getElementById('epQuotePanel').style.display = 'block';
+            } catch(e) {
+                document.getElementById('epQuotePanel').style.display = 'none';
+            }
+        }, 400);
+    }
+
+    // ── Add Addon Modal ──────────────────────────────────────────────────────
+    function openAddAddonModal() {
+        document.getElementById('addAddonModal').style.display = 'flex';
+        document.getElementById('aaServiceSelect').value = '';
+        document.getElementById('aaQtyInput').value = '1';
+        document.getElementById('aaNotesInput').value = '';
+        document.getElementById('aaQuotePanel').style.display = 'none';
+    }
+    function closeAddAddonModal() {
+        document.getElementById('addAddonModal').style.display = 'none';
+    }
+
+    let aaDebounce = null;
+    function onAddonSelectChange() {
+        clearTimeout(aaDebounce);
+        const sel    = document.getElementById('aaServiceSelect');
+        const addonId = sel.value;
+        const qty    = parseFloat(document.getElementById('aaQtyInput').value) || 0;
+        if (!addonId || qty <= 0) { document.getElementById('aaQuotePanel').style.display = 'none'; return; }
+
+        aaDebounce = setTimeout(async () => {
+            try {
+                const isInterState = @(Model.IsInterState ? "true" : "false");
+                const res  = await fetch(`/BanquetBooking/GetAddonQuote?addonId=${addonId}&qty=${qty}&isInterState=${isInterState}`);
+                const data = await res.json();
+                document.getElementById('aaBase').textContent  = fmtINR(data.baseAmount);
+                document.getElementById('aaGST').textContent   = fmtINR(data.gstAmount) + ' (' + data.gstPercent + '%)';
+                document.getElementById('aaTotal').textContent = fmtINR(data.totalAmount);
+                document.getElementById('aaQuotePanel').style.display = 'block';
+            } catch(e) {
+                document.getElementById('aaQuotePanel').style.display = 'none';
+            }
+        }, 400);
+    }
+
+    // ── Remove Addon confirmation ─────────────────────────────────────────────
+    function confirmRemoveAddon(btn) {
+        const form = btn.closest('.remove-addon-form');
+        const name = form.dataset.name || 'this addon';
+        Swal.fire({
+            title: 'Remove ' + name + '?',
+            text: 'This will remove the addon and recalculate the booking total.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-trash-can"></i> Remove',
+            cancelButtonText: 'Keep'
+        }).then(result => { if (result.isConfirmed) form.submit(); });
+    }
+
+    // Close modals on backdrop click
+    document.getElementById('editPackageModal')?.addEventListener('click', function(e) { if (e.target === this) closeEditPackageModal(); });
+    document.getElementById('addAddonModal')?.addEventListener('click', function(e) { if (e.target === this) closeAddAddonModal(); });
 </script>
 }

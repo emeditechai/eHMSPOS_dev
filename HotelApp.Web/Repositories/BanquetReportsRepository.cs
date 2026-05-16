@@ -61,6 +61,7 @@ namespace HotelApp.Web.Repositories
     {
         public string BanquetBookingNumber { get; set; } = string.Empty;
         public DateTime EventDate { get; set; }
+        public DateTime? PaymentDate { get; set; }
         public string ClientName { get; set; } = string.Empty;
         public string CustomerType { get; set; } = string.Empty;
         public string SupplyType { get; set; } = string.Empty;

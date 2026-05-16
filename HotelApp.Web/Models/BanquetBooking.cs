@@ -285,6 +285,10 @@ namespace HotelApp.Web.Models
         public decimal DiscountAmount { get; set; }
         public decimal RoundOffAmount { get; set; }
         public string? Remarks { get; set; }
+        /// <summary>V = Venue Hire, P = Package, A = Addon Services. Null = unallocated.</summary>
+        public string? BillingHead { get; set; }
+        /// <summary>Groups multiple head-split rows into one logical receipt.</summary>
+        public string? ReceiptGroupNumber { get; set; }
         public DateTime CreatedDate { get; set; }
         public int? CreatedBy { get; set; }
         public string? CreatedByName { get; set; }
@@ -327,5 +331,18 @@ namespace HotelApp.Web.Models
         public string? CancellationReason { get; set; }
         public DateTime CancelledOn { get; set; }
         public int? CancelledBy { get; set; }
+    }
+
+    // ── BanquetHeadWiseDue ────────────────────────────────────────────────────
+
+    public class BanquetHeadWiseDue
+    {
+        public decimal VenueTotal { get; set; }
+        public decimal VenueDue { get; set; }
+        public decimal PackageTotal { get; set; }
+        public decimal PackageDue { get; set; }
+        public decimal AddonTotal { get; set; }
+        public decimal AddonDue { get; set; }
+        public decimal TotalDue { get; set; }
     }
 }
