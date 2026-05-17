@@ -35,6 +35,10 @@ IF OBJECT_ID(N'dbo.B2BBookingRoomLines', N'U') IS NOT NULL
     ALTER TABLE B2BBookingRoomLines NOCHECK CONSTRAINT ALL;
 IF OBJECT_ID(N'dbo.BookingCancellations', N'U') IS NOT NULL
     ALTER TABLE BookingCancellations NOCHECK CONSTRAINT ALL;
+IF OBJECT_ID(N'dbo.B2BEInvoiceJsonLogs', N'U') IS NOT NULL
+    ALTER TABLE B2BEInvoiceJsonLogs NOCHECK CONSTRAINT ALL;
+IF OBJECT_ID(N'dbo.CreditNotes', N'U') IS NOT NULL
+    ALTER TABLE CreditNotes NOCHECK CONSTRAINT ALL;
 ALTER TABLE Bookings NOCHECK CONSTRAINT ALL;
 -- Banquet transaction tables
 IF OBJECT_ID(N'dbo.BanquetBookingAuditLog', N'U') IS NOT NULL
@@ -67,6 +71,8 @@ DECLARE @BookingRoomNightsCount INT;
 DECLARE @ReservationRoomNightsCount INT;
 DECLARE @B2BBookingRoomLinesCount INT;
 DECLARE @BookingCancellationsCount INT;
+DECLARE @B2BEInvoiceJsonLogsCount INT;
+DECLARE @CreditNotesCount INT;
 DECLARE @BookingsCount INT;
 DECLARE @GuestsCount INT;
 -- Banquet
@@ -99,6 +105,16 @@ IF OBJECT_ID(N'dbo.BookingCancellations', N'U') IS NOT NULL
     SELECT @BookingCancellationsCount = COUNT(*) FROM BookingCancellations;
 ELSE
     SET @BookingCancellationsCount = 0;
+
+IF OBJECT_ID(N'dbo.B2BEInvoiceJsonLogs', N'U') IS NOT NULL
+    SELECT @B2BEInvoiceJsonLogsCount = COUNT(*) FROM B2BEInvoiceJsonLogs;
+ELSE
+    SET @B2BEInvoiceJsonLogsCount = 0;
+
+IF OBJECT_ID(N'dbo.CreditNotes', N'U') IS NOT NULL
+    SELECT @CreditNotesCount = COUNT(*) FROM CreditNotes;
+ELSE
+    SET @CreditNotesCount = 0;
 
 SELECT @BookingsCount = COUNT(*) FROM Bookings;
 SELECT @GuestsCount = COUNT(*) FROM Guests;
@@ -144,6 +160,8 @@ PRINT '  - BookingRoomNights: ' + CAST(@BookingRoomNightsCount AS VARCHAR(10)) +
 PRINT '  - ReservationRoomNights: ' + CAST(@ReservationRoomNightsCount AS VARCHAR(10)) + ' records';
 PRINT '  - B2BBookingRoomLines: ' + CAST(@B2BBookingRoomLinesCount AS VARCHAR(10)) + ' records';
 PRINT '  - BookingCancellations: ' + CAST(@BookingCancellationsCount AS VARCHAR(10)) + ' records';
+PRINT '  - B2BEInvoiceJsonLogs: ' + CAST(@B2BEInvoiceJsonLogsCount AS VARCHAR(10)) + ' records';
+PRINT '  - CreditNotes: ' + CAST(@CreditNotesCount AS VARCHAR(10)) + ' records';
 PRINT '  - Bookings: ' + CAST(@BookingsCount AS VARCHAR(10)) + ' records';
 PRINT '  - Guests: ' + CAST(@GuestsCount AS VARCHAR(10)) + ' records';
 PRINT '  --- Banquet ---';
@@ -207,6 +225,20 @@ IF OBJECT_ID(N'dbo.BookingCancellations', N'U') IS NOT NULL
 BEGIN
     DELETE FROM BookingCancellations;
     PRINT '  ✓ Deleted ' + CAST(@BookingCancellationsCount AS VARCHAR(10)) + ' BookingCancellations records';
+END
+
+-- Delete B2BEInvoiceJsonLogs (FK → Bookings; must precede Bookings delete)
+IF OBJECT_ID(N'dbo.B2BEInvoiceJsonLogs', N'U') IS NOT NULL
+BEGIN
+    DELETE FROM B2BEInvoiceJsonLogs;
+    PRINT '  ✓ Deleted ' + CAST(@B2BEInvoiceJsonLogsCount AS VARCHAR(10)) + ' B2BEInvoiceJsonLogs records';
+END
+
+-- Delete CreditNotes (FK → Bookings; must precede Bookings delete)
+IF OBJECT_ID(N'dbo.CreditNotes', N'U') IS NOT NULL
+BEGIN
+    DELETE FROM CreditNotes;
+    PRINT '  ✓ Deleted ' + CAST(@CreditNotesCount AS VARCHAR(10)) + ' CreditNotes records';
 END
 
 -- Delete Bookings (main booking records)
@@ -296,6 +328,10 @@ IF OBJECT_ID(N'dbo.B2BBookingRoomLines', N'U') IS NOT NULL
     ALTER TABLE B2BBookingRoomLines CHECK CONSTRAINT ALL;
 IF OBJECT_ID(N'dbo.BookingCancellations', N'U') IS NOT NULL
     ALTER TABLE BookingCancellations CHECK CONSTRAINT ALL;
+IF OBJECT_ID(N'dbo.B2BEInvoiceJsonLogs', N'U') IS NOT NULL
+    ALTER TABLE B2BEInvoiceJsonLogs CHECK CONSTRAINT ALL;
+IF OBJECT_ID(N'dbo.CreditNotes', N'U') IS NOT NULL
+    ALTER TABLE CreditNotes CHECK CONSTRAINT ALL;
 ALTER TABLE Bookings CHECK CONSTRAINT ALL;
 -- Banquet transaction tables
 IF OBJECT_ID(N'dbo.BanquetBookingAuditLog', N'U') IS NOT NULL
@@ -331,6 +367,10 @@ IF OBJECT_ID(N'dbo.B2BBookingRoomLines', N'U') IS NOT NULL
     DBCC CHECKIDENT ('B2BBookingRoomLines', RESEED, 0);
 IF OBJECT_ID(N'dbo.BookingCancellations', N'U') IS NOT NULL
     DBCC CHECKIDENT ('BookingCancellations', RESEED, 0);
+IF OBJECT_ID(N'dbo.B2BEInvoiceJsonLogs', N'U') IS NOT NULL
+    DBCC CHECKIDENT ('B2BEInvoiceJsonLogs', RESEED, 0);
+IF OBJECT_ID(N'dbo.CreditNotes', N'U') IS NOT NULL
+    DBCC CHECKIDENT ('CreditNotes', RESEED, 0);
 DBCC CHECKIDENT ('Bookings', RESEED, 0);
 DBCC CHECKIDENT ('Guests', RESEED, 0);
 -- Banquet tables
@@ -447,7 +487,7 @@ PRINT 'Finished at: ' + CONVERT(VARCHAR(50), GETDATE(), 121);
 PRINT '========================================';
 PRINT '';
 PRINT 'SUMMARY:';
-PRINT '  Total Records Deleted: ' + CAST(@RoomServicesCount + @BookingsCount + @BookingPaymentsCount + @BookingOtherChargesCount + @BookingGuestsCount + @BookingRoomNightsCount + @ReservationRoomNightsCount + @B2BBookingRoomLinesCount + @BookingCancellationsCount + @BookingAuditLogCount + @BookingRoomsCount + @GuestsCount + @BanquetBookingsCount + @BanquetPaymentsCount + @BanquetCancellationsCount + @BanquetPackageLinesCount + @BanquetAddonLinesCount + @BanquetAuditLogCount AS VARCHAR(10));
+PRINT '  Total Records Deleted: ' + CAST(@RoomServicesCount + @BookingsCount + @BookingPaymentsCount + @BookingOtherChargesCount + @BookingGuestsCount + @BookingRoomNightsCount + @ReservationRoomNightsCount + @B2BBookingRoomLinesCount + @BookingCancellationsCount + @BookingAuditLogCount + @BookingRoomsCount + @GuestsCount + @B2BEInvoiceJsonLogsCount + @CreditNotesCount + @BanquetBookingsCount + @BanquetPaymentsCount + @BanquetCancellationsCount + @BanquetPackageLinesCount + @BanquetAddonLinesCount + @BanquetAuditLogCount AS VARCHAR(10));
 PRINT '  Rooms Reset: ' + CAST(@RoomsUpdated AS VARCHAR(10));
 PRINT '  Master Data: PRESERVED (Banquet Venues, Event Types, Packages, Addon Services)';
 PRINT '';

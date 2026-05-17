@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>eLuxStay &#8212; Complete User Manual</title>
+<style>
+
+:root {
+  --primary: #1e3a5f;
+  --accent:  #c8a85a;
+  --accent2: #2a6496;
+  --bg:      #f0f2f5;
+  --white:   #ffffff;
+  --border:  #dce3ec;
+  --text:    #2c3e50;
+  --muted:   #6c7a89;
+  --warn-bg: #fff8e1;
+  --warn-br: #f0a500;
+  --info-bg: #e8f4fd;
+  --info-br: #2a6496;
+  --tip-bg:  #e8f8f2;
+  --tip-br:  #27ae60;
+  --danger-bg: #fdf0f0;
+  --danger-br: #c0392b;
+  --sidebar-w: 290px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+/* ===== SIDEBAR ===== */
+#sidebar {
+  width: var(--sidebar-w);
+  background: var(--primary);
+  position: fixed; top: 0; left: 0; bottom: 0;
+  overflow-y: auto; z-index: 100;
+  display: flex; flex-direction: column;
+}
+#sidebar-header {
+  background: #122540;
+  padding: 18px 16px;
+  color: var(--accent);
+  font-size: 1rem; font-weight: 700;
+  border-bottom: 1px solid #2a4a72;
+  flex-shrink: 0;
+}
+#sidebar-header small { display: block; color: #8fafc9; font-size: 0.72rem; font-weight: 400; margin-top: 3px; }
+#sidebar nav { flex: 1; padding: 8px 0; }
+.nav-group { margin-bottom: 4px; }
+.nav-group-title {
+  display: block; padding: 7px 16px;
+  font-size: 0.7rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.2px;
+  color: var(--accent); opacity: 0.85;
+  margin-top: 6px;
+}
+#sidebar nav a {
+  display: block; padding: 7px 16px 7px 28px;
+  color: #c5d8ec; font-size: 0.82rem; text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  border-left: 3px solid transparent;
+}
+#sidebar nav a:hover { background: #2a4a72; color: #fff; border-left-color: var(--accent); }
+#sidebar nav a.active { background: #1a3f6f; color: #fff; border-left-color: var(--accent); font-weight: 600; }
+
+/* ===== MAIN ===== */
+#main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  display: flex; flex-direction: column;
+}
+#top-bar {
+  background: var(--primary); color: white;
+  padding: 14px 32px; font-size: 1.1rem; font-weight: 600;
+  border-bottom: 3px solid var(--accent);
+  display: flex; align-items: center; gap: 12px;
+  position: sticky; top: 0; z-index: 50;
+}
+#top-bar span { font-size: 0.78rem; color: #8fafc9; margin-left: auto; }
+#pdf-btn {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--accent); color: #1a2a38;
+  border: none; border-radius: 6px; padding: 8px 16px;
+  font-size: 0.82rem; font-weight: 700; cursor: pointer;
+  letter-spacing: 0.4px; white-space: nowrap; flex-shrink: 0;
+  transition: background 0.15s, transform 0.1s;
+}
+#pdf-btn:hover { background: #d9b96a; transform: translateY(-1px); }
+#pdf-btn:active { transform: translateY(0); }
+
+@media print {
+  #sidebar, #top-bar, #pdf-btn { display: none !important; }
+  #main { margin-left: 0 !important; }
+  #content {
+    padding: 10mm 14mm !important;
+    max-width: 100% !important;
+  }
+  body { background: white !important; }
+  .section-block {
+    break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+    page-break-inside: avoid;
+  }
+  .intro-card {
+    background: #1e3a5f !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  table.field-table th {
+    background: #1e3a5f !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .step-num {
+    background: #c8a85a !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .dep-pill {
+    background: #1e3a5f !important;
+    color: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .dep-pill.current { background: #c8a85a !important; color: #1a2a38 !important; }
+  h2.section-title { border-bottom: 2px solid #c8a85a !important; }
+  hr.section-sep { page-break-after: always; border: none !important; }
+  a { color: inherit !important; text-decoration: none !important; }
+}
+#content { padding: 32px 40px; max-width: 1100px; }
+
+/* ===== TYPOGRAPHY ===== */
+.chapter-label {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.4px; color: var(--accent); margin-bottom: 6px;
+}
+h2.section-title {
+  font-size: 1.85rem; color: var(--primary);
+  border-bottom: 3px solid var(--accent);
+  padding-bottom: 8px; margin-bottom: 20px;
+}
+h3.sub-title {
+  font-size: 1.2rem; color: var(--accent2);
+  margin: 28px 0 10px 0; padding-left: 10px;
+  border-left: 4px solid var(--accent2);
+}
+h4.step-heading { font-size: 1rem; color: var(--primary); margin: 18px 0 6px; }
+p { line-height: 1.7; color: #3d4f61; margin-bottom: 10px; }
+ul, ol { padding-left: 22px; margin-bottom: 12px; }
+li { margin-bottom: 5px; line-height: 1.6; color: #3d4f61; }
+
+/* ===== PATH BADGE ===== */
+.page-path {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #e8edf3; border: 1px solid var(--border);
+  border-radius: 20px; padding: 4px 14px;
+  font-size: 0.78rem; color: var(--primary); font-weight: 600;
+  margin-bottom: 14px;
+}
+.page-path .arrow { color: var(--accent); }
+
+/* ===== CALLOUTS ===== */
+.callout {
+  border-radius: 6px; padding: 13px 16px;
+  margin: 14px 0; display: flex; gap: 12px; align-items: flex-start;
+  font-size: 0.88rem; line-height: 1.6;
+}
+.callout-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 2px; }
+.callout strong { display: block; margin-bottom: 3px; }
+.callout.warn  { background: var(--warn-bg); border-left: 4px solid var(--warn-br); }
+.callout.info  { background: var(--info-bg); border-left: 4px solid var(--info-br); }
+.callout.tip   { background: var(--tip-bg);  border-left: 4px solid var(--tip-br);  }
+.callout.danger{ background: var(--danger-bg);border-left: 4px solid var(--danger-br);}
+
+/* ===== DEPENDENCY CHAIN ===== */
+.dep-chain {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  background: #f5f7fa; border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px 16px; margin: 14px 0;
+}
+.dep-chain .dep-label { font-size: 0.72rem; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-right: 4px; }
+.dep-pill {
+  background: var(--primary); color: white;
+  border-radius: 4px; padding: 3px 10px; font-size: 0.78rem; font-weight: 600;
+}
+.dep-pill.current { background: var(--accent); color: #1a2a38; }
+.dep-arrow { color: var(--accent); font-weight: 700; font-size: 0.95rem; }
+
+/* ===== STEP BOXES ===== */
+.steps { margin: 14px 0; }
+.step {
+  display: flex; gap: 14px; margin-bottom: 16px; align-items: flex-start;
+}
+.step-num {
+  background: var(--accent); color: #1a2a38;
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 0.85rem; flex-shrink: 0; margin-top: 2px;
+}
+.step-body h5 { font-size: 0.95rem; color: var(--primary); margin-bottom: 4px; }
+.step-body p  { margin: 0; font-size: 0.88rem; }
+.step-body ul { margin: 4px 0 0; }
+
+/* ===== FIELD TABLE ===== */
+table.field-table {
+  width: 100%; border-collapse: collapse; margin: 12px 0;
+  font-size: 0.85rem;
+}
+table.field-table th {
+  background: var(--primary); color: white;
+  padding: 9px 12px; text-align: left; font-weight: 600;
+}
+table.field-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+table.field-table tr:nth-child(even) td { background: #f8f9fb; }
+table.field-table .req { color: #c0392b; font-weight: 700; }
+
+/* ===== SECTION DIVIDER ===== */
+.section-block {
+  background: var(--white); border-radius: 10px;
+  border: 1px solid var(--border); padding: 24px 28px;
+  margin-bottom: 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.flow-box {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0;
+  margin: 16px 0; background: #f5f7fa; padding: 14px 16px;
+  border-radius: 8px; border: 1px solid var(--border);
+}
+.flow-step {
+  background: var(--primary); color: white;
+  padding: 6px 14px; border-radius: 4px; font-size: 0.8rem; font-weight: 600;
+}
+.flow-arrow { padding: 0 8px; color: var(--accent); font-size: 1.2rem; }
+.flow-step.done { background: #27ae60; }
+.flow-step.current { background: var(--accent); color: #1a2a38; }
+.flow-step.optional { background: #7f8c8d; }
+
+/* ===== INTRO CARD ===== */
+.intro-card {
+  background: linear-gradient(135deg, var(--primary) 0%, #2a5a9f 100%);
+  color: white; border-radius: 12px; padding: 32px 36px;
+  margin-bottom: 36px;
+}
+.intro-card h1 { font-size: 2rem; color: white; margin-bottom: 8px; }
+.intro-card p { color: #c5d8ec; line-height: 1.7; font-size: 0.95rem; }
+.intro-card .badges { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.intro-card .badge {
+  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 20px; padding: 4px 14px; font-size: 0.78rem; color: white;
+}
+
+/* ===== TOC CARD ===== */
+.toc-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr));
+  gap: 12px; margin: 16px 0;
+}
+.toc-item {
+  background: white; border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px 14px;
+  text-decoration: none; color: var(--primary);
+  font-size: 0.85rem; font-weight: 600;
+  transition: 0.2s; border-left: 4px solid var(--accent);
+}
+.toc-item:hover { background: #f0f5ff; transform: translateY(-1px); }
+.toc-item small { display: block; color: var(--muted); font-weight: 400; font-size: 0.75rem; margin-top: 2px; }
+
+hr.section-sep { border: none; border-top: 2px solid var(--border); margin: 40px 0; }
+
+</style>
+</head>
+<body>
+<div id="sidebar">
+
+<div id="sidebar-header">
+  <div>&#127970; eLuxStay</div>
+  <small>Complete User Manual</small>
+</div>
+<nav>
+
+  <span class="nav-group-title">&#128196; Introduction</span>
+  <a href="#welcome">Welcome & Overview</a>
+  <a href="#setup-order">&#9888; Setup Order (Read First!)</a>
+
+  <span class="nav-group-title">&#9881; Chapter 1 — Initial Setup</span>
+  <a href="#branch-master">Branch Master</a>
+  <a href="#hotel-settings">Hotel Settings</a>
+  <a href="#gst-slab">GST Slab Master</a>
+  <a href="#cancellation-policy">Cancellation Policies</a>
+  <a href="#upi-settings">UPI Settings</a>
+  <a href="#mail-config">Mail Configuration</a>
+  <a href="#other-charges">Other Charges Master</a>
+  <a href="#receipt-template">Booking Receipt Template</a>
+
+  <span class="nav-group-title">&#128101; Chapter 2 — Users & Roles</span>
+  <a href="#user-management">User Management</a>
+  <a href="#role-menu-mapping">Role Menu Mapping</a>
+  <a href="#role-dashboard-config">Role Dashboard Config</a>
+  <a href="#auth-matrix">Authorization Matrix</a>
+
+  <span class="nav-group-title">&#128716; Chapter 3 — Room Setup</span>
+  <a href="#floor-master">Floor Master</a>
+  <a href="#room-type-master">Room Type Master</a>
+  <a href="#amenities-master">Amenities Master</a>
+  <a href="#room-master">Room Master</a>
+  <a href="#rate-master">Rate Master</a>
+
+  <span class="nav-group-title">&#128101; Chapter 4 — Guests & Clients</span>
+  <a href="#guest-master">Guest Master</a>
+  <a href="#b2b-client-master">B2B Client Master</a>
+  <a href="#agreement-master">Agreement Master</a>
+  <a href="#terms-conditions">Terms &amp; Conditions Master</a>
+
+  <span class="nav-group-title">&#128197; Chapter 5 — Room Bookings (B2C)</span>
+  <a href="#room-availability">Room Availability Calendar</a>
+  <a href="#room-dashboard">Room Dashboard</a>
+  <a href="#create-booking">Creating a Booking</a>
+  <a href="#manage-bookings">Managing Bookings (List)</a>
+  <a href="#payment-dashboard">Payment Dashboard</a>
+  <a href="#einvoice-logs">E-Invoice Logs</a>
+  <a href="#guest-feedback">Guest Feedback</a>
+
+  <span class="nav-group-title">&#128200; Chapter 6 — Cancellations &amp; Refunds</span>
+  <a href="#cancellation-flow">Cancellation Flow</a>
+  <a href="#refunds">Refunds</a>
+
+  <span class="nav-group-title">&#129309; Chapter 7 — B2B Bookings</span>
+  <a href="#b2b-booking">B2B Booking</a>
+
+  <span class="nav-group-title">&#128230; Chapter 8 — Asset Management</span>
+  <a href="#asset-overview">Asset Overview</a>
+  <a href="#asset-setup">Item Master Setup</a>
+  <a href="#consumable-standards">Consumable Standards</a>
+  <a href="#stock-movement">Stock Movement</a>
+  <a href="#movement-audit">Movement Audit</a>
+  <a href="#damage-loss">Damage / Loss</a>
+  <a href="#stock-report">Stock Report</a>
+
+  <span class="nav-group-title">&#127870; Chapter 9 — Banquet &amp; Events</span>
+  <a href="#banquet-dashboard">Banquet Dashboard</a>
+  <a href="#banquet-masters">Venue, Event Types, Packages</a>
+  <a href="#banquet-availability">Availability Calendar</a>
+  <a href="#banquet-new-booking">New Event Booking</a>
+  <a href="#banquet-bookings-list">Event Bookings List</a>
+  <a href="#banquet-collections">Banquet Collections</a>
+  <a href="#banquet-reports">Banquet Reports</a>
+
+  <span class="nav-group-title">&#128202; Chapter 10 — Reports</span>
+  <a href="#report-occupancy">Occupancy &amp; Revenue</a>
+  <a href="#report-monthly">Monthly Report</a>
+  <a href="#report-due-alerts">Due Amount Alerts</a>
+  <a href="#report-business">Business Analytics</a>
+  <a href="#report-room-type">Room Type Performance</a>
+  <a href="#report-outstanding">Outstanding Balances</a>
+  <a href="#report-channel">Channel/Source Performance</a>
+  <a href="#report-guest-details">Guest Details</a>
+  <a href="#report-booking-details">Booking Details Report</a>
+  <a href="#report-room-price">Room Price Details</a>
+  <a href="#report-daily-collection">Daily Collection Register</a>
+  <a href="#report-gst">GST Report</a>
+  <a href="#report-cancellation">Cancellation Register</a>
+  <a href="#report-cancellation-refund">Cancellation &amp; Refund Register</a>
+  <a href="#report-police">Police/Guest Register</a>
+
+  <span class="nav-group-title">&#128200; Chapter 11 — Dashboard</span>
+  <a href="#dashboard">Main Dashboard</a>
+
+</nav>
+
+</div>
+<div id="main">
+<div id="top-bar">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+  eLuxStay &#8212; Complete User Manual
+  <span>Hotel Management System &#8212; End-to-End Operating Guide</span>
+  <button id="pdf-btn" onclick="window.print()">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+    Download PDF
+  </button>
+</div>
+<div id="content">
+
+<!-- ============================================================ WELCOME -->
+<div id="welcome" class="intro-card">
+  <h1>eLuxStay — Complete User Manual</h1>
+  <p>This is the end-to-end operational guide for the eHMS Hotel Management System. Every page, every button, and every action is documented here with full dependency chains. A new user can follow this manual from Chapter 1 onward and operate the entire system without any prior training.</p>
+  <div class="badges">
+    <span class="badge">Version: HMS POS v2.0</span>
+    <span class="badge">May 2026</span>
+    <span class="badge">Audience: Front Desk, Cashier, Manager, Admin</span>
+  </div>
+</div>
+
+<!-- Setup Order -->
+<div id="setup-order" class="section-block">
+  <div class="chapter-label">Critical — Read Before Anything Else</div>
+  <h2 class="section-title">&#9888; Mandatory Setup Order</h2>
+  <div class="callout danger">
+    <span class="callout-icon">&#128683;</span>
+    <div><strong>Do NOT skip this!</strong> The system has strict parent-child relationships. If you try to create a Booking before setting up Rooms, or create Rooms before creating Floors — the system will show empty dropdowns and errors.</div>
+  </div>
+  <p>Always follow this exact sequence when setting up for the first time:</p>
+  <div class="flow-box">
+    <span class="flow-step">1. Branch</span>
+    <span class="flow-arrow">&#8594;</span>
+    <span class="flow-step">2. Hotel Settings</span>
+    <span class="flow-arrow">&#8594;</span>
+    <span class="flow-step">3. Users &amp; Roles</span>
+    <span class="flow-arrow">&#8594;</span>
+    <span class="flow-step">4. GST Slabs</span>
+    <span class="flow-arrow">&#8594;</span>
+    <span class="flow-step">5. Floors</span>
+    <span class="flow-arrow">&#8594;</span>
+    <span class="flow-step">6. Room Types</span>
+    <span class="flow-arrow">&#8594;</span>
+    <span class="flow-step">7. Rooms</span>
+    <span class="flow-arrow">&#8594;</span>
+    <span class="flow-step">8. Rate Master</span>
+    <span class="flow-arrow">&#8594;</span>
+    <span class="flow-step">9. Guests</span>
+    <span class="flow-arrow">&#8594;</span>
+    <span class="flow-step">10. Bookings</span>
+  </div>
+  <div class="callout info">
+    <span class="callout-icon">&#128161;</span>
+    <div><strong>For Banquet:</strong> Set up Venue Master, Event Types, and Packages BEFORE creating any Banquet Booking.</div>
+  </div>
+</div>
+
+<hr class="section-sep">
+
+<!-- ============================================================ CHAPTER 1: INITIAL SETUP -->
+<div class="chapter-label">Chapter 1</div>
+<h2 class="section-title">&#9881; Initial System Setup</h2>
+
+<!-- Branch Master -->
+<div id="branch-master" class="section-block">
+  <h3 class="sub-title">Branch Master</h3>
+  <div class="page-path"><span>Settings</span><span class="arrow">&#8250;</span><span>Branch Master</span></div>
+  <p>A <strong>Branch</strong> represents a physical hotel property. Every piece of data in the system (bookings, payments, reports) is tied to a Branch. This is the very first record you must create.</p>
+  <div class="callout warn">
+    <span class="callout-icon">&#9888;</span>
+    <div><strong>Must be done first.</strong> Without a Branch, you cannot configure Hotel Settings, create Rooms, or create Bookings.</div>
+  </div>
+  <h4 class="step-heading">How to Create a Branch</h4>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h5>Navigate</h5><p>Go to <strong>Settings &rarr; Branch Master</strong> from the sidebar.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h5>Click "Add New Branch"</h5><p>A form will open with the following fields.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h5>Fill in Branch Details</h5>
+      <table class="field-table">
+        <tr><th>Field</th><th>Description</th><th>Required</th></tr>
+        <tr><td>Branch Name</td><td>Official hotel name (e.g., "Hotel Sunrise Main")</td><td class="req">Yes</td></tr>
+        <tr><td>Branch Code</td><td>Short code (e.g., "HSM01"). Used in Invoice numbering.</td><td class="req">Yes</td></tr>
+        <tr><td>Address</td><td>Full property address</td><td class="req">Yes</td></tr>
+        <tr><td>GST Number</td><td>Hotel's GSTIN for tax invoices</td><td class="req">Yes</td></tr>
+        <tr><td>Phone / Email</td><td>Contact info printed on receipts</td><td>No</td></tr>
+        <tr><td>Is Active</td><td>Keep checked to make this branch operational</td><td class="req">Yes</td></tr>
+      </table>
+    </div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><h5>Save</h5><p>Click <strong>Save</strong>. The branch now appears in the list. All future logins by staff will be associated with a branch.</p></div></div>
+  </div>
+</div>
+
+<!-- Hotel Settings -->
+<div id="hotel-settings" class="section-block">
+  <h3 class="sub-title">Hotel Settings</h3>
+  <div class="page-path"><span>Settings</span><span class="arrow">&#8250;</span><span>Hotel Settings</span></div>
+  <div class="dep-chain"><span class="dep-label">Requires</span><span class="dep-pill">Branch Master</span></div>
+  <p>Defines global operating rules for your hotel. These settings control check-in/check-out times, invoice branding, E-Invoice configuration, and receipt layout behavior.</p>
+  <h4 class="step-heading">Key Settings to Configure</h4>
+  <table class="field-table">
+    <tr><th>Setting</th><th>What it Does</th></tr>
+    <tr><td>Default Check-In Time</td><td>Time shown on booking confirmations (e.g., 2:00 PM)</td></tr>
+    <tr><td>Default Check-Out Time</td><td>Time shown on checkout (e.g., 11:00 AM)</td></tr>
+    <tr><td>Hotel Logo</td><td>Appears on all printed receipts and invoices</td></tr>
+    <tr><td>E-Invoice Enabled</td><td>Toggle ON if hotel is registered for Govt E-Invoice portal</td></tr>
+    <tr><td>E-Invoice API Key / Secret</td><td>Credentials from the Government E-Invoice portal</td></tr>
+    <tr><td>Invoice Prefix</td><td>Prefix for invoice numbers (e.g., "INV-2026-")</td></tr>
+  </table>
+  <div class="callout tip"><span class="callout-icon">&#9989;</span><div>After saving, refresh your browser. Logo and invoice settings take effect immediately on all new transactions.</div></div>
+</div>
+
+<!-- GST Slab -->
+<div id="gst-slab" class="section-block">
+  <h3 class="sub-title">GST Slab Master</h3>
+  <div class="page-path"><span>Settings</span><span class="arrow">&#8250;</span><span>GST Slab Master</span></div>
+  <p>Defines the tax percentage brackets based on room tariff amount. Indian GST rules mandate 12% for rooms below &#8377;7,500/night and 18% for above. These slabs auto-apply to bookings.</p>
+  <div class="callout warn"><span class="callout-icon">&#9888;</span><div><strong>Must be set before Rate Master or Bookings.</strong> If no GST slab exists, the system cannot calculate tax on invoices.</div></div>
+  <h4 class="step-heading">How to Add a GST Slab</h4>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h5>Navigate to Settings &rarr; GST Slab Master</h5></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h5>Click "Add"</h5><p>Enter: Min Amount, Max Amount, GST %. Example: Min=0, Max=7499, GST=12%.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h5>Repeat for each bracket</h5><p>Add a second row for 7500+ at 18%. Slabs must cover all price ranges without gaps.</p></div></div>
+  </div>
+</div>
+
+<!-- Cancellation Policy -->
+<div id="cancellation-policy" class="section-block">
+  <h3 class="sub-title">Cancellation Policies</h3>
+  <div class="page-path"><span>Settings</span><span class="arrow">&#8250;</span><span>Cancellation Policies</span></div>
+  <p>Policies define how much the hotel retains when a guest cancels a booking. The system uses this automatically when staff initiates a cancellation — calculating the penalty and computing the refundable amount.</p>
+  <table class="field-table">
+    <tr><th>Field</th><th>Description</th></tr>
+    <tr><td>Policy Name</td><td>Descriptive name, e.g., "24-Hour Free Cancellation"</td></tr>
+    <tr><td>Hours Before Check-In</td><td>Window in which this rule applies</td></tr>
+    <tr><td>Deduction Type</td><td>Percentage or Fixed Amount</td></tr>
+    <tr><td>Deduction Value</td><td>e.g., 50 (means 50% retention if cancelled within 24 hrs)</td></tr>
+  </table>
+  <div class="callout info"><span class="callout-icon">&#128161;</span><div>Multiple policies can be created. The system applies the most appropriate policy based on when cancellation is initiated relative to check-in.</div></div>
+</div>
+
+<!-- UPI Settings -->
+<div id="upi-settings" class="section-block">
+  <h3 class="sub-title">UPI Settings</h3>
+  <div class="page-path"><span>Utility</span><span class="arrow">&#8250;</span><span>UPI Settings</span></div>
+  <p>Stores the hotel's UPI ID and QR code for displaying on payment receipts. Guests can scan the QR code to pay directly via UPI.</p>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h5>Navigate to Utility &rarr; UPI Settings</h5></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h5>Enter UPI ID</h5><p>E.g., <code>hotelname@upi</code>. The system will generate a QR code automatically.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h5>Save &amp; Test</h5><p>Click Save. Open any receipt preview — the QR code will appear at the bottom.</p></div></div>
+  </div>
+</div>
+
+<!-- Mail Configuration -->
+<div id="mail-config" class="section-block">
+  <h3 class="sub-title">Mail Configuration</h3>
+  <div class="page-path"><span>Settings</span><span class="arrow">&#8250;</span><span>Mail Configuration</span></div>
+  <p>Configures the outgoing email (SMTP) server used to send booking confirmations, invoices, and receipts to guests automatically.</p>
+  <table class="field-table">
+    <tr><th>Field</th><th>Example</th></tr>
+    <tr><td>SMTP Host</td><td>smtp.gmail.com</td></tr>
+    <tr><td>SMTP Port</td><td>587</td></tr>
+    <tr><td>Sender Email</td><td>reception@yourhotel.com</td></tr>
+    <tr><td>Sender Name</td><td>Hotel Sunrise Reception</td></tr>
+    <tr><td>Username / Password</td><td>App-specific password from Gmail/Outlook</td></tr>
+    <tr><td>Enable SSL</td><td>Yes (recommended)</td></tr>
+  </table>
+  <div class="callout tip"><span class="callout-icon">&#9989;</span><div>For Gmail, generate an <strong>App Password</strong> (not your account password) from Google Account &rarr; Security &rarr; 2-Step Verification &rarr; App Passwords.</div></div>
+</div>
+
+<!-- Other Charges -->
+<div id="other-charges" class="section-block">
+  <h3 class="sub-title">Other Charges Master</h3>
+  <div class="page-path"><span>Utility</span><span class="arrow">&#8250;</span><span>Other Charges Master</span></div>
+  <p>Defines ad-hoc charges that can be added to a Room Booking invoice outside of the room tariff. Examples: Extra Bed, Laundry, Minibar, Airport Transfer.</p>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h5>Go to Utility &rarr; Other Charges Master</h5></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h5>Click "Add New"</h5><p>Enter: Charge Name, Default Amount, GST Rate applicable. Mark Active.</p></div></div>
+  </div>
+  <p>Once saved, these charge types will appear in the booking form under "Add Extra Charges".</p>
+</div>
+
+<!-- Receipt Template -->
+<div id="receipt-template" class="section-block">
+  <h3 class="sub-title">Booking Receipt Template Configuration</h3>
+  <div class="page-path"><span>Utility</span><span class="arrow">&#8250;</span><span>Booking Receipt Template</span></div>
+  <p>Controls the layout and content of printed receipts. You can enable/disable sections such as: Terms and Conditions, Bank Details, QR Code, Signature block, and Hotel Logo placement.</p>
+  <div class="callout info"><span class="callout-icon">&#128161;</span><div>Changes here affect all future receipts but do not alter already-generated documents.</div></div>
+</div>
+
+<hr class="section-sep">
+
+<!-- ============================================================ CHAPTER 2: USERS & ROLES -->
+<div class="chapter-label">Chapter 2</div>
+<h2 class="section-title">&#128101; Users, Roles &amp; Permissions</h2>
+
+<div id="user-management" class="section-block">
+  <h3 class="sub-title">User Management</h3>
+  <div class="page-path"><span>Settings</span><span class="arrow">&#8250;</span><span>User Management</span></div>
+  <div class="dep-chain"><span class="dep-label">Requires</span><span class="dep-pill">Branch Master</span></div>
+  <p>Creates staff logins for the system. Each user is assigned to a Branch and given a Role that controls what menus and actions they can access.</p>
+  <h4 class="step-heading">Adding a New User</h4>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h5>Go to Settings &rarr; User Management &rarr; Add User</h5></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h5>Fill User Details</h5>
+      <table class="field-table">
+        <tr><th>Field</th><th>Description</th></tr>
+        <tr><td>Full Name</td><td>Staff member's name</td></tr>
+        <tr><td>Username</td><td>Login ID (cannot be changed later)</td></tr>
+        <tr><td>Password</td><td>Set initial password. User can change after first login.</td></tr>
+        <tr><td>Branch</td><td>Assign to a specific hotel branch</td></tr>
+        <tr><td>Role</td><td>Select role (e.g., "Front Desk", "Manager"). Controls menu access.</td></tr>
+        <tr><td>Is Active</td><td>Must be checked for user to login</td></tr>
+      </table>
+    </div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h5>Save</h5><p>The user can now log in. They will only see menu items allowed by their assigned Role.</p></div></div>
+  </div>
+</div>
+
+<div id="role-menu-mapping" class="section-block">
+  <h3 class="sub-title">Role Menu Mapping</h3>
+  <div class="page-path"><span>Settings</span><span class="arrow">&#8250;</span><span>Role Menu Mapping</span></div>
+  <p>Controls which navigation menu items each role can see. Example: "Cashier" role may only see Bookings and Payments, not Settings or Reports.</p>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h5>Select a Role</h5><p>Choose from the role dropdown at the top (e.g., "Front Desk").</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h5>Check/Uncheck Menu Items</h5><p>A list of all menu items appears. Check the ones this role should access. Uncheck to hide.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h5>Save</h5><p>Users with this role will see the updated menu on their next login or page refresh.</p></div></div>
+  </div>
+</div>
+
+<div id="role-dashboard-config" class="section-block">
+  <h3 class="sub-title">Role Dashboard Config</h3>
+  <div class="page-path"><span>Settings</span><span class="arrow">&#8250;</span><span>Role Dashboard Config</span></div>
+  <p>Controls which dashboard widgets (stat cards, charts, quick-links) are visible to each role after they log in. For example, the "Manager" dashboard may show Revenue Analytics while "Housekeeping" only sees Room Status.</p>
+</div>
+
+<div id="auth-matrix" class="section-block">
+  <h3 class="sub-title">Authorization Matrix</h3>
+  <div class="page-path"><span>Settings</span><span class="arrow">&#8250;</span><span>Authorization Matrix</span></div>
+  <p>Fine-grained permission control beyond menu visibility. Defines which specific <strong>actions</strong> (e.g., Approve Refund, Waive Charges, Override Rate) require additional approval from a Manager/Admin.</p>
+  <div class="callout info"><span class="callout-icon">&#128161;</span><div>When a Front Desk user tries to perform an action that requires authorization, the system prompts for a manager's approval code instead of blocking the action entirely.</div></div>
+</div>
+
+<hr class="section-sep">
+
+<!-- ============================================================ CHAPTER 3: ROOM SETUP -->
+<div class="chapter-label">Chapter 3</div>
+<h2 class="section-title">&#128716; Room Setup</h2>
+<div class="callout warn"><span class="callout-icon">&#9888;</span><div>Always follow this order: <strong>Floor &rarr; Room Type &rarr; Amenities &rarr; Room Master &rarr; Rate Master</strong>. Skipping any step will cause empty dropdowns in the next.</div></div>
+
+<div id="floor-master" class="section-block">
+  <h3 class="sub-title">Floor Master</h3>
+  <div class="page-path"><span>Rooms</span><span class="arrow">&#8250;</span><span>Floor Master</span></div>
+  <div class="dep-chain"><span class="dep-label">Requires</span><span class="dep-pill">Branch Master</span></div>
+  <p>Defines the physical floors of your hotel property. Rooms are later assigned to floors.</p>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h5>Go to Rooms &rarr; Floor Master</h5></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h5>Click "Add Floor"</h5><p>Enter Floor Name (e.g., "Ground Floor", "1st Floor", "Rooftop"). Assign to Branch. Set Sort Order for display sequence.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h5>Save</h5><p>Repeat for all floors. These will appear in the Room Master dropdown.</p></div></div>
+  </div>
+</div>
+
+<div id="room-type-master" class="section-block">
+  <h3 class="sub-title">Room Type Master</h3>
+  <div class="page-path"><span>Rooms</span><span class="arrow">&#8250;</span><span>Room Type Master</span></div>
+  <div class="dep-chain"><span class="dep-label">Requires</span><span class="dep-pill">Branch Master</span></div>
+  <p>Defines categories of rooms (e.g., Standard, Deluxe, Suite, Presidential). Room pricing in Rate Master is based on Room Type.</p>
+  <table class="field-table">
+    <tr><th>Field</th><th>Description</th></tr>
+    <tr><td>Type Name</td><td>e.g., "Deluxe Double"</td></tr>
+    <tr><td>Short Code</td><td>Used in reports (e.g., "DLX")</td></tr>
+    <tr><td>Max Occupancy</td><td>Max adults allowed in this room type</td></tr>
+    <tr><td>Description</td><td>Shown in booking confirmation emails</td></tr>
+  </table>
+</div>
+
+<div id="amenities-master" class="section-block">
+  <h3 class="sub-title">Amenities Master</h3>
+  <div class="page-path"><span>Rooms</span><span class="arrow">&#8250;</span><span>Amenities Master</span></div>
+  <p>Defines features that can be tagged to rooms (e.g., AC, Sea View, WiFi, Mini Bar, Bathtub). These appear on booking confirmations and can be used as filters on the availability calendar.</p>
+</div>
+
+<div id="room-master" class="section-block">
+  <h3 class="sub-title">Room Master</h3>
+  <div class="page-path"><span>Rooms</span><span class="arrow">&#8250;</span><span>Room Master</span></div>
+  <div class="dep-chain">
+    <span class="dep-label">Requires</span>
+    <span class="dep-pill">Floor Master</span><span class="dep-arrow">&#8594;</span>
+    <span class="dep-pill">Room Type Master</span><span class="dep-arrow">&#8594;</span>
+    <span class="dep-pill current">Room Master</span>
+  </div>
+  <p>Creates the actual physical rooms. Each room number is a unique entity in the system and appears on the Availability Calendar and Booking forms.</p>
+  <h4 class="step-heading">How to Add a Room</h4>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h5>Go to Rooms &rarr; Room Master &rarr; Add Room</h5></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h5>Fill Room Details</h5>
+      <table class="field-table">
+        <tr><th>Field</th><th>Description</th></tr>
+        <tr><td>Room Number</td><td>E.g., "101", "201A". Must be unique per Branch.</td></tr>
+        <tr><td>Floor</td><td>Select from Floor Master</td></tr>
+        <tr><td>Room Type</td><td>Select from Room Type Master</td></tr>
+        <tr><td>Amenities</td><td>Check all applicable amenities for this room</td></tr>
+        <tr><td>Status</td><td>Active = available for booking. Inactive = under maintenance.</td></tr>
+      </table>
+    </div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h5>Save</h5><p>The room now appears on the Availability Calendar.</p></div></div>
+  </div>
+  <div class="callout tip"><span class="callout-icon">&#9989;</span><div>Use the bulk-add option if available to create multiple rooms with the same type on one floor at once.</div></div>
+</div>
+
+<div id="rate-master" class="section-block">
+  <h3 class="sub-title">Rate Master</h3>
+  <div class="page-path"><span>Rooms</span><span class="arrow">&#8250;</span><span>Rate Master</span></div>
+  <div class="dep-chain">
+    <span class="dep-label">Requires</span>
+    <span class="dep-pill">Room Type Master</span><span class="dep-arrow">&#8594;</span>
+    <span class="dep-pill">GST Slab Master</span><span class="dep-arrow">&#8594;</span>
+    <span class="dep-pill current">Rate Master</span>
+  </div>
+  <p>Defines tariffs for each Room Type. When a booking is created, the system looks up the applicable rate from here and applies GST automatically based on the GST Slab.</p>
+  <table class="field-table">
+    <tr><th>Field</th><th>Description</th></tr>
+    <tr><td>Room Type</td><td>Which room type this rate applies to</td></tr>
+    <tr><td>Rate Name</td><td>E.g., "Weekend Rate", "Corporate Rate"</td></tr>
+    <tr><td>Base Rate (per night)</td><td>Tariff before GST. GST is auto-added based on amount.</td></tr>
+    <tr><td>Effective From / To</td><td>Date range for seasonal pricing</td></tr>
+    <tr><td>Is Default</td><td>Mark one rate as default. Used when no specific rate is selected.</td></tr>
+  </table>
+  <div class="callout danger"><span class="callout-icon">&#128683;</span><div>If no Rate Master exists for a Room Type, the system cannot compute invoice amounts. The booking will either fail or show &#8377;0.</div></div>
+</div>
+
+<hr class="section-sep">
+
+<!-- ============================================================ CHAPTER 4: GUESTS & CLIENTS -->
+<div class="chapter-label">Chapter 4</div>
+<h2 class="section-title">&#128101; Guests &amp; Clients</h2>
+
+<div id="guest-master" class="section-block">
+  <h3 class="sub-title">Guest Master</h3>
+  <div class="page-path"><span>Bookings</span><span class="arrow">&#8250;</span><span>Guests</span></div>
+  <p>Stores the identity and contact details of all individual guests who have stayed at or booked the hotel. A Guest record is mandatory before creating any Room Booking.</p>
+  <h4 class="step-heading">How to Register a New Guest</h4>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h5>Go to Bookings &rarr; Guests &rarr; Add Guest</h5><p>Or use the quick-add button "+" inside the Booking form.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h5>Fill Guest Details</h5>
+      <table class="field-table">
+        <tr><th>Field</th><th>Description</th></tr>
+        <tr><td>Full Name</td><td>Guest's full legal name</td></tr>
+        <tr><td>Mobile Number</td><td>Primary contact. Used to search for returning guests.</td></tr>
+        <tr><td>Email</td><td>For confirmation emails</td></tr>
+        <tr><td>ID Proof Type</td><td>Aadhaar, Passport, PAN, Voter ID, etc.</td></tr>
+        <tr><td>ID Proof Number</td><td>Document number (mandatory for police register)</td></tr>
+        <tr><td>Nationality</td><td>Required for police/foreign guest compliance</td></tr>
+        <tr><td>Gender</td><td>Male / Female / Other</td></tr>
+        <tr><td>Address</td><td>Permanent address of guest</td></tr>
+      </table>
+    </div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h5>Save</h5><p>The guest is saved and can be searched by name or phone in the booking form.</p></div></div>
+  </div>
+  <div class="callout info"><span class="callout-icon">&#128161;</span><div>For repeat guests, search by mobile number first. Updating an existing guest record is better than creating duplicates.</div></div>
+</div>
+
+<div id="b2b-client-master" class="section-block">
+  <h3 class="sub-title">B2B Client Master</h3>
+  <div class="page-path"><span>Settings</span><span class="arrow">&#8250;</span><span>B2B Client Master</span></div>
+  <p>Stores corporate clients, travel agencies, and OTAs that send bulk bookings. B2B Clients have special negotiated rates and billing cycles different from individual guests.</p>
+  <table class="field-table">
+    <tr><th>Field</th><th>Description</th></tr>
+    <tr><td>Company Name</td><td>Legal company name of the client</td></tr>
+    <tr><td>GST Number</td><td>Client's GSTIN for B2B invoicing</td></tr>
+    <tr><td>Contact Person</td><td>Primary point of contact</td></tr>
+    <tr><td>Credit Limit</td><td>Maximum outstanding balance allowed before payment required</td></tr>
+    <tr><td>Payment Terms</td><td>E.g., 30 days from invoice</td></tr>
+    <tr><td>Agreement</td><td>Link to their Rate Agreement (set up in Agreement Master)</td></tr>
+  </table>
+</div>
+
+<div id="agreement-master" class="section-block">
+  <h3 class="sub-title">Agreement Master</h3>
+  <div class="page-path"><span>Settings</span><span class="arrow">&#8250;</span><span>Agreement Master</span></div>
+  <div class="dep-chain">
+    <span class="dep-label">Requires</span>
+    <span class="dep-pill">B2B Client Master</span><span class="dep-arrow">&#8594;</span>
+    <span class="dep-pill">Terms &amp; Conditions Master</span><span class="dep-arrow">&#8594;</span>
+    <span class="dep-pill current">Agreement Master</span>
+  </div>
+  <p>Defines negotiated rate agreements for B2B clients. Specifies the contracted room rates per room type that override the standard Rate Master when a B2B booking is created.</p>
+  <table class="field-table">
+    <tr><th>Field</th><th>Description</th></tr>
+    <tr><td>Agreement Name</td><td>E.g., "MakeMyTrip 2026 Contract"</td></tr>
+    <tr><td>Client</td><td>Select from B2B Client Master</td></tr>
+    <tr><td>Terms &amp; Conditions</td><td>Select from Terms &amp; Conditions Master</td></tr>
+    <tr><td>Valid From / To</td><td>Agreement validity dates</td></tr>
+    <tr><td>Room Type Rates</td><td>Negotiated &#8377; per night for each room type</td></tr>
+  </table>
+</div>
+
+<div id="terms-conditions" class="section-block">
+  <h3 class="sub-title">Terms &amp; Conditions Master</h3>
+  <div class="page-path"><span>Settings</span><span class="arrow">&#8250;</span><span>Terms &amp; Conditions Master</span></div>
+  <p>Stores legal text templates (Terms &amp; Conditions) that can be attached to B2B Agreements. Multiple T&amp;C templates can exist (e.g., one for domestic OTAs, one for international travel agents).</p>
+</div>
+
+<hr class="section-sep">
+
+<!-- ============================================================ CHAPTER 5: ROOM BOOKINGS -->
+<div class="chapter-label">Chapter 5</div>
+<h2 class="section-title">&#128197; Room Bookings (B2C)</h2>
+
+<div id="room-availability" class="section-block">
+  <h3 class="sub-title">Room Availability Calendar</h3>
+  <div class="page-path"><span>Bookings</span><span class="arrow">&#8250;</span><span>Room Availability</span></div>
+  <div class="dep-chain">
+    <span class="dep-label">Data from</span>
+    <span class="dep-pill">Room Master</span><span class="dep-arrow">&#8594;</span>
+    <span class="dep-pill">Confirmed Bookings</span><span class="dep-arrow">&#8594;</span>
+    <span class="dep-pill current">Calendar View</span>
+  </div>
+  <p>The primary front-desk tool for visualizing room status across dates. Rooms are shown as rows; dates as columns.</p>
+  <table class="field-table">
+    <tr><th>Color / Status</th><th>Meaning</th></tr>
+    <tr><td style="color:#27ae60; font-weight:600;">&#9646; Green (Empty)</td><td>Room is available for this date</td></tr>
+    <tr><td style="color:#c0392b; font-weight:600;">&#9646; Red / Filled</td><td>Room is booked / occupied</td></tr>
+    <tr><td style="color:#f39c12; font-weight:600;">&#9646; Yellow</td><td>Room under maintenance / blocked</td></tr>
+  </table>
+  <h4 class="step-heading">How to Use the Calendar</h4>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h5>Select Date Range</h5><p>Use the date pickers at the top to choose the window you want to view.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h5>Filter by Room Type</h5><p>Use the "Room Type" filter dropdown to narrow to Deluxe, Suite, etc.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h5>Click an Available Cell to Book</h5><p>Click on a green cell (or drag across multiple dates). The system pre-fills the booking form with the room and date range selected.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><h5>Click an Occupied Cell to View Booking</h5><p>Opens the booking folio directly for that booking — useful for check-in/out or payment actions.</p></div></div>
+  </div>
+</div>
+
+<div id="room-dashboard" class="section-block">
+  <h3 class="sub-title">Room Dashboard</h3>
+  <div class="page-path"><span>Rooms</span><span class="arrow">&#8250;</span><span>Room Dashboard</span></div>
+  <p>A summarized status view of all rooms at the current moment — how many are Occupied, Available, Under Maintenance, and Due for Checkout today. Used by the housekeeping manager to plan room assignments.</p>
+</div>
+
+<div id="create-booking" class="section-block">
+  <h3 class="sub-title">Creating a Booking</h3>
+  <div class="page-path"><span>Bookings</span><span class="arrow">&#8250;</span><span>Bookings &rarr; New Booking</span></div>
+  <div class="dep-chain">
+    <span class="dep-label">Requires</span>
+    <span class="dep-pill">Guest Master</span>
+    <span class="dep-arrow">+</span>
+    <span class="dep-pill">Room Master</span>
+    <span class="dep-arrow">+</span>
+    <span class="dep-pill">Rate Master</span>
+    <span class="dep-arrow">+</span>
+    <span class="dep-pill">GST Slabs</span>
+    <span class="dep-arrow">&#8594;</span>
+    <span class="dep-pill current">New Booking</span>
+  </div>
+  <div class="callout info"><span class="callout-icon">&#128161;</span><div>This is the most important workflow in the system. Follow every step carefully to ensure accurate invoicing.</div></div>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h5>Click "New Booking"</h5><p>From Bookings &rarr; Bookings list, click the <strong>New Booking</strong> button (top right).</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h5>Search for Guest</h5><p>Type the guest's mobile number or name. If found, details auto-fill. If new, click the <strong>+ Add Guest</strong> icon to register them.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h5>Set Check-In and Check-Out Dates</h5><p>Select the arrival and departure dates. The number of nights auto-calculates.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><h5>Select Room</h5><p>Choose Room Type first, then the specific Room Number from the dropdown. Only available rooms for the date range are shown.</p></div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-body"><h5>Verify Rate</h5><p>The system auto-fills the rate from Rate Master. You can override if authorized. GST is computed automatically below the rate field.</p></div></div>
+    <div class="step"><div class="step-num">6</div><div class="step-body"><h5>Add Extra Charges (Optional)</h5><p>Click "Add Other Charge" to include Laundry, Extra Bed, etc. from Other Charges Master.</p></div></div>
+    <div class="step"><div class="step-num">7</div><div class="step-body"><h5>Record Advance Payment (Optional)</h5><p>If the guest pays at the time of booking, enter the advance amount and select the payment mode (Cash / Card / UPI). This amount is deducted from the final balance.</p></div></div>
+    <div class="step"><div class="step-num">8</div><div class="step-body"><h5>Select Booking Source</h5><p>Choose Channel (Walk-in, Phone, OTA, B2B). This data flows into Channel Performance reports.</p></div></div>
+    <div class="step"><div class="step-num">9</div><div class="step-body"><h5>Save Booking</h5><p>Click <strong>Confirm Booking</strong>. A Booking Number is generated (e.g., BK-2026-00123). The booking now appears on the Availability Calendar and in the Bookings list.</p></div></div>
+  </div>
+  <div class="callout tip"><span class="callout-icon">&#9989;</span><div>After saving, the system can email the booking confirmation to the guest automatically if Mail Configuration is set up.</div></div>
+</div>
+
+<div id="manage-bookings" class="section-block">
+  <h3 class="sub-title">Managing Bookings (Bookings List)</h3>
+  <div class="page-path"><span>Bookings</span><span class="arrow">&#8250;</span><span>Bookings</span></div>
+  <p>The central list of all bookings. Use filters to narrow down by status, date range, guest, or room.</p>
+  <h4 class="step-heading">Actions Available on a Booking</h4>
+  <table class="field-table">
+    <tr><th>Action</th><th>When to Use</th></tr>
+    <tr><td>View / Edit</td><td>Modify room assignment, add extra charges, update guest count</td></tr>
+    <tr><td>Check-In</td><td>Click on booking day of arrival. Marks room as Occupied. Guest's ID is verified at this point.</td></tr>
+    <tr><td>Check-Out</td><td>On departure day. System calculates final balance. Triggers Invoice generation and E-Invoice submission.</td></tr>
+    <tr><td>Add Payment</td><td>Record partial/full payment at any time before check-out</td></tr>
+    <tr><td>Print Receipt</td><td>Generate a printable receipt for any payment recorded</td></tr>
+    <tr><td>Cancel Booking</td><td>Initiates cancellation flow — applies policy and computes refund</td></tr>
+    <tr><td>Send Confirmation</td><td>Re-sends the booking confirmation email to the guest</td></tr>
+  </table>
+</div>
+
+<div id="payment-dashboard" class="section-block">
+  <h3 class="sub-title">Payment Dashboard</h3>
+  <div class="page-path"><span>Bookings</span><span class="arrow">&#8250;</span><span>Payment Dashboard</span></div>
+  <div class="dep-chain">
+    <span class="dep-label">Data from</span>
+    <span class="dep-pill">Confirmed Bookings</span><span class="dep-arrow">&#8594;</span>
+    <span class="dep-pill current">Payment Dashboard</span>
+  </div>
+  <div class="callout warn"><span class="callout-icon">&#9888;</span><div>This page will show <strong>NO records</strong> if there are no confirmed bookings. Data appears here automatically once bookings are saved.</div></div>
+  <p>A financial overview of all bookings showing: Total Charge, Amount Paid, Balance Due, and Payment Mode breakdown. Used by the cashier and accounts team daily.</p>
+  <h4 class="step-heading">How to Process a Payment</h4>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h5>Locate the Booking</h5><p>Search by guest name or booking number. Use the "Balance Due" filter to see only outstanding bookings.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h5>Click "Add Payment"</h5><p>Enter: Amount, Payment Mode (Cash / Card / UPI / Bank Transfer), Transaction Reference (for card/UPI).</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h5>Save Payment</h5><p>The balance due updates immediately. A receipt can be printed from here.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><h5>Full Settlement at Check-Out</h5><p>When the entire balance is cleared, click <strong>Settle &amp; Check-Out</strong>. This generates the Final Tax Invoice and submits to the E-Invoice portal (if enabled).</p></div></div>
+  </div>
+</div>
+
+<div id="einvoice-logs" class="section-block">
+  <h3 class="sub-title">E-Invoice Logs</h3>
+  <div class="page-path"><span>Bookings</span><span class="arrow">&#8250;</span><span>E-Invoice Logs</span></div>
+  <div class="dep-chain">
+    <span class="dep-label">Data from</span>
+    <span class="dep-pill">Hotel Settings (E-Invoice ON)</span><span class="dep-arrow">&#8594;</span>
+    <span class="dep-pill">Booking Check-Out</span><span class="dep-arrow">&#8594;</span>
+    <span class="dep-pill current">E-Invoice Logs</span>
+  </div>
+  <p>After every checkout, the system sends the invoice data to the Government E-Invoice portal via API. This page logs every submission attempt — whether it succeeded or failed.</p>
+  <table class="field-table">
+    <tr><th>Status</th><th>Meaning</th><th>Action</th></tr>
+    <tr><td style="color:#27ae60; font-weight:600;">Success</td><td>IRN generated and acknowledged by portal</td><td>No action needed</td></tr>
+    <tr><td style="color:#c0392b; font-weight:600;">Failed</td><td>API error or data issue</td><td>Click "Retry" to resubmit. Check error message for details.</td></tr>
+    <tr><td style="color:#f39c12; font-weight:600;">Pending</td><td>Awaiting portal response</td><td>Wait a few minutes and refresh the page</td></tr>
+  </table>
+  <div class="callout info"><span class="callout-icon">&#128161;</span><div>Common failure reasons: Invalid GSTIN on booking, portal downtime, duplicate IRN attempt. The error message column always shows the exact reason.</div></div>
+</div>
+
+<div id="guest-feedback" class="section-block">
+  <h3 class="sub-title">Guest Feedback</h3>
+  <div class="page-path"><span>Bookings</span><span class="arrow">&#8250;</span><span>Guest Feedback</span></div>
+  <div class="dep-chain"><span class="dep-label">Data from</span><span class="dep-pill">Checked-Out Bookings</span><span class="dep-arrow">&#8594;</span><span class="dep-pill current">Guest Feedback</span></div>
+  <p>Captures guest ratings and comments after their stay. Feedback can be entered by staff (verbal feedback) or submitted by guests via a feedback link sent in the post-stay email.</p>
+</div>
+
+<hr class="section-sep">
+
+<!-- ============================================================ CHAPTER 6: CANCELLATIONS & REFUNDS -->
+<div class="chapter-label">Chapter 6</div>
+<h2 class="section-title">&#128200; Cancellations &amp; Refunds</h2>
+
+<div id="cancellation-flow" class="section-block">
+  <h3 class="sub-title">Cancellation Flow</h3>
+  <div class="callout danger"><span class="callout-icon">&#128683;</span><div><strong>Refunds cannot be created manually.</strong> The system generates a refund automatically only after a booking is cancelled and the system determines the refundable amount exceeds zero based on the Cancellation Policy.</div></div>
+  <div class="flow-box">
+    <span class="flow-step done">Booking Confirmed</span><span class="flow-arrow">&#8594;</span>
+    <span class="flow-step done">Advance Paid</span><span class="flow-arrow">&#8594;</span>
+    <span class="flow-step current">Cancel Booking</span><span class="flow-arrow">&#8594;</span>
+    <span class="flow-step">Policy Applies</span><span class="flow-arrow">&#8594;</span>
+    <span class="flow-step">Credit Note Generated</span><span class="flow-arrow">&#8594;</span>
+    <span class="flow-step">Refund Queue</span><span class="flow-arrow">&#8594;</span>
+    <span class="flow-step">Refund Processed</span>
+  </div>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h5>Open the Booking</h5><p>Go to Bookings &rarr; Bookings list. Find the booking. Click "View".</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h5>Click "Cancel Booking"</h5><p>A confirmation dialog shows the applicable Cancellation Policy, the retention amount, and the refundable amount.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h5>Confirm Cancellation</h5><p>If the refundable amount &gt; 0, the system automatically generates a <strong>Credit Note</strong> and adds the booking to the <strong>Refunds</strong> queue.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><h5>The booking status changes to "Cancelled"</h5><p>The room is freed up on the Availability Calendar immediately.</p></div></div>
+  </div>
+</div>
+
+<div id="refunds" class="section-block">
+  <h3 class="sub-title">Refunds</h3>
+  <div class="page-path"><span>Bookings</span><span class="arrow">&#8250;</span><span>Refunds</span></div>
+  <div class="dep-chain">
+    <span class="dep-label">Data from</span>
+    <span class="dep-pill">Cancelled Booking</span><span class="dep-arrow">&#8594;</span>
+    <span class="dep-pill">Credit Note (auto-generated)</span><span class="dep-arrow">&#8594;</span>
+    <span class="dep-pill current">Refunds Page</span>
+  </div>
+  <div class="callout warn"><span class="callout-icon">&#9888;</span><div>This page will only show records if a Booking was cancelled AND the policy allowed a refund. If advance paid was less than or equal to the cancellation penalty, no refund record appears.</div></div>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h5>Go to Bookings &rarr; Refunds</h5><p>You will see pending refund records from cancelled bookings.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h5>Click "Process Refund"</h5><p>Select the outbound payment method (Cash / Bank Transfer / Cheque). Enter the transaction reference number.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h5>Mark as Completed</h5><p>After the actual money is returned to the guest, click <strong>Mark Completed</strong>. The status changes to "Refunded" and the record appears in the Cancellation &amp; Refund Register report.</p></div></div>
+  </div>
+</div>
+
+<hr class="section-sep">
+
+<!-- ============================================================ CHAPTER 7: B2B BOOKINGS -->
+<div class="chapter-label">Chapter 7</div>
+<h2 class="section-title">&#129309; B2B Bookings</h2>
+
+<div id="b2b-booking" class="section-block">
+  <h3 class="sub-title">B2B Booking</h3>
+  <div class="page-path"><span>Bookings</span><span class="arrow">&#8250;</span><span>B2B Booking</span></div>
+  <div class="dep-chain">
+    <span class="dep-label">Requires</span>
+    <span class="dep-pill">B2B Client Master</span><span class="dep-arrow">&#8594;</span>
+    <span class="dep-pill">Agreement Master</span><span class="dep-arrow">&#8594;</span>
+    <span class="dep-pill">Guest Master</span><span class="dep-arrow">&#8594;</span>
+    <span class="dep-pill current">B2B Booking</span>
+  </div>
+  <p>Used when a corporate client or travel agent books rooms on behalf of their guests. The billing goes to the company, not the individual guest. Rates are pulled from the B2B Agreement, not the standard Rate Master.</p>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h5>Select B2B Client</h5><p>Search for the company (e.g., "ABC Travel Agency"). Their agreement auto-loads with negotiated rates.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h5>Add Guest(s)</h5><p>Enter the individual traveler details. Multiple guests can be added to one B2B booking.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h5>Select Room, Dates, Rate</h5><p>The rate automatically applies from the Agreement. Manual override requires Manager authorization.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><h5>Save</h5><p>Invoice is raised against the B2B Client's account, not the guest. The client pays per their credit terms.</p></div></div>
+  </div>
+</div>
+
+<hr class="section-sep">
+
+<!-- ============================================================ CHAPTER 8: ASSET MANAGEMENT -->
+<div class="chapter-label">Chapter 8</div>
+<h2 class="section-title">&#128230; Asset Management</h2>
+<div class="callout warn"><span class="callout-icon">&#9888;</span><div>Setup Order: <strong>Units &rarr; Makers &rarr; Departments &rarr; Item Master</strong> &rarr; then Stock Movement, Damage/Loss, and Reports.</div></div>
+
+<div id="asset-overview" class="section-block">
+  <h3 class="sub-title">Asset Overview</h3>
+  <div class="page-path"><span>Asset Management</span><span class="arrow">&#8250;</span><span>Overview</span></div>
+  <p>A summary dashboard showing total stock value, items running low, recent movements, and department-wise consumption. Provides a quick health check of the entire inventory.</p>
+</div>
+
+<div id="asset-setup" class="section-block">
+  <h3 class="sub-title">Item Master Setup (Units, Makers, Departments, Items)</h3>
+  <h4 class="step-heading">Step 1 — Units</h4>
+  <div class="page-path"><span>Asset Management</span><span class="arrow">&#8250;</span><span>Units</span></div>
+  <p>Define measurement units for items. Examples: Pcs (pieces), Box, Liters, Kg, Roll.</p>
+  <h4 class="step-heading">Step 2 — Makers</h4>
+  <div class="page-path"><span>Asset Management</span><span class="arrow">&#8250;</span><span>Makers</span></div>
+  <p>Brand/manufacturer names for items. E.g., "Godrej", "HP", "Samsung". Helps track assets by brand for warranty purposes.</p>
+  <h4 class="step-heading">Step 3 — Departments</h4>
+  <div class="page-path"><span>Asset Management</span><span class="arrow">&#8250;</span><span>Departments</span></div>
+  <p>Department names to which stock is issued. E.g., "Housekeeping", "F&amp;B Kitchen", "Front Office", "Maintenance".</p>
+  <h4 class="step-heading">Step 4 — Item Master</h4>
+  <div class="page-path"><span>Asset Management</span><span class="arrow">&#8250;</span><span>Item Master</span></div>
+  <div class="dep-chain">
+    <span class="dep-label">Requires</span>
+    <span class="dep-pill">Units</span>
+    <span class="dep-arrow">+</span>
+    <span class="dep-pill">Makers</span>
+    <span class="dep-arrow">&#8594;</span>
+    <span class="dep-pill current">Item Master</span>
+  </div>
+  <p>The master catalog of all inventory items managed by the hotel.</p>
+  <table class="field-table">
+    <tr><th>Field</th><th>Description</th></tr>
+    <tr><td>Item Name</td><td>E.g., "Hand Towel 500GSM", "Water Bottle 1L"</td></tr>
+    <tr><td>Item Code / SKU</td><td>Unique identifier for the item</td></tr>
+    <tr><td>Unit</td><td>Select from Units (e.g., Pcs)</td></tr>
+    <tr><td>Maker / Brand</td><td>Select from Makers</td></tr>
+    <tr><td>Category</td><td>Consumable (used up) or Fixed Asset (permanent)</td></tr>
+    <tr><td>Reorder Level</td><td>Minimum stock threshold — triggers low-stock alerts</td></tr>
+    <tr><td>Cost Price</td><td>Procurement cost per unit (used in valuations)</td></tr>
+  </table>
+</div>
+
+<div id="consumable-standards" class="section-block">
+  <h3 class="sub-title">Consumable Standards</h3>
+  <div class="page-path"><span>Asset Management</span><span class="arrow">&#8250;</span><span>Consumable Standards</span></div>
+  <p>Defines the standard daily consumption norms per room type. E.g., "A Deluxe room should receive: 2 Hand Towels, 1 Bath Towel, 2 Soap bars per night." Used to auto-calculate required stock for housekeeping issuances.</p>
+</div>
+
+<div id="stock-movement" class="section-block">
+  <h3 class="sub-title">Stock Movement</h3>
+  <div class="page-path"><span>Asset Management</span><span class="arrow">&#8250;</span><span>Stock Movement</span></div>
+  <div class="dep-chain"><span class="dep-label">Requires</span><span class="dep-pill">Item Master</span><span class="dep-arrow">+</span><span class="dep-pill">Departments</span><span class="dep-arrow">&#8594;</span><span class="dep-pill current">Stock Movement</span></div>
+  <p>Records every inbound (Purchase) and outbound (Issue to Department) movement of inventory items.</p>
+  <h4 class="step-heading">Types of Movements</h4>
+  <table class="field-table">
+    <tr><th>Movement Type</th><th>Effect on Stock</th><th>Example</th></tr>
+    <tr><td>Purchase In</td><td>&#8593; Increases central stock</td><td>Received 100 towels from supplier</td></tr>
+    <tr><td>Issue to Department</td><td>&#8595; Decreases central stock, adds to dept</td><td>Issued 20 soaps to Housekeeping</td></tr>
+    <tr><td>Return from Department</td><td>&#8593; Returns to central stock</td><td>Housekeeping returned unused items</td></tr>
+    <tr><td>Transfer</td><td>Moves from dept to dept</td><td>Kitchen transferred items to F&amp;B</td></tr>
+  </table>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h5>Click "New Movement"</h5></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h5>Select Movement Type</h5></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h5>Add Line Items</h5><p>Select Item, enter Quantity, and for issuances — select the destination Department.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><h5>Submit</h5><p>Stock levels update in real-time. The movement is logged in Movement Audit.</p></div></div>
+  </div>
+</div>
+
+<div id="movement-audit" class="section-block">
+  <h3 class="sub-title">Movement Audit</h3>
+  <div class="page-path"><span>Asset Management</span><span class="arrow">&#8250;</span><span>Movement Audit</span></div>
+  <div class="dep-chain"><span class="dep-label">Data from</span><span class="dep-pill">All Stock Movements</span><span class="dep-arrow">&#8594;</span><span class="dep-pill current">Movement Audit</span></div>
+  <p>A read-only audit log of every stock movement ever recorded. Filterable by Item, Department, Date Range, and Movement Type. Used by managers to investigate discrepancies.</p>
+</div>
+
+<div id="damage-loss" class="section-block">
+  <h3 class="sub-title">Damage / Loss</h3>
+  <div class="page-path"><span>Asset Management</span><span class="arrow">&#8250;</span><span>Damage/Loss</span></div>
+  <p>Records items that are broken, stolen, or lost. This permanently removes them from the inventory count and records the financial write-off.</p>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h5>Click "Report Damage/Loss"</h5></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h5>Select Item and enter Quantity</h5><p>Enter the reason (Broken, Stolen, Expired, etc.). The system records who logged the entry and when.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h5>Submit</h5><p>The quantity is deducted from stock. The financial write-off value appears in Stock Report.</p></div></div>
+  </div>
+</div>
+
+<div id="stock-report" class="section-block">
+  <h3 class="sub-title">Stock Report</h3>
+  <div class="page-path"><span>Asset Management</span><span class="arrow">&#8250;</span><span>Stock Report</span></div>
+  <div class="dep-chain"><span class="dep-label">Data from</span><span class="dep-pill">All Movements + Damage Entries</span><span class="dep-arrow">&#8594;</span><span class="dep-pill current">Stock Report</span></div>
+  <p>Shows current stock levels for all items. Highlights items below reorder level in red. Can be filtered by Department, Category, or Item. Exportable to Excel for purchase planning.</p>
+</div>
+
+<hr class="section-sep">
+
+<!-- ============================================================ CHAPTER 9: BANQUET & EVENTS -->
+<div class="chapter-label">Chapter 9</div>
+<h2 class="section-title">&#127870; Banquet &amp; Events</h2>
+<div class="callout warn"><span class="callout-icon">&#9888;</span><div>Setup Order: <strong>Venue Master &rarr; Event Types &rarr; Menu Packages &rarr; Addon Services</strong> — then create bookings.</div></div>
+
+<div id="banquet-dashboard" class="section-block">
+  <h3 class="sub-title">Banquet Dashboard</h3>
+  <div class="page-path"><span>Banquet &amp; Events</span><span class="arrow">&#8250;</span><span>Banquet Dashboard</span></div>
+  <p>Overview of upcoming events, venue occupancy, today's events, and revenue summary for banquet operations. The front page of the Banquet module.</p>
+</div>
+
+<div id="banquet-masters" class="section-block">
+  <h3 class="sub-title">Venue Master, Event Types, Menu Packages &amp; Addon Services</h3>
+  <h4 class="step-heading">Venue Master</h4>
+  <div class="page-path"><span>Banquet &amp; Events</span><span class="arrow">&#8250;</span><span>Venue Master</span></div>
+  <table class="field-table">
+    <tr><th>Field</th><th>Description</th></tr>
+    <tr><td>Venue Name</td><td>E.g., "Grand Ballroom", "Rooftop Terrace", "Conference Room A"</td></tr>
+    <tr><td>Capacity</td><td>Maximum number of guests</td></tr>
+    <tr><td>Seating Arrangements</td><td>Theatre, Classroom, U-Shape, Banquet-style options</td></tr>
+    <tr><td>Base Hire Charge</td><td>Venue rental fee (per event, per hour, or per day)</td></tr>
+  </table>
+  <h4 class="step-heading">Event Types</h4>
+  <div class="page-path"><span>Banquet &amp; Events</span><span class="arrow">&#8250;</span><span>Event Types</span></div>
+  <p>Tags for categorizing events. E.g., "Wedding Reception", "Birthday Party", "Corporate Seminar", "Product Launch". Used in Event Type Performance reports.</p>
+  <h4 class="step-heading">Menu Packages</h4>
+  <div class="page-path"><span>Banquet &amp; Events</span><span class="arrow">&#8250;</span><span>Menu Packages</span></div>
+  <p>Pre-defined catering packages with a fixed per-person price. E.g., "Veg Package A — &#8377;850/person", "Non-Veg Premium — &#8377;1,200/person". When attached to a booking, the system auto-calculates the food cost based on Pax count.</p>
+  <h4 class="step-heading">Addon Services</h4>
+  <div class="page-path"><span>Banquet &amp; Events</span><span class="arrow">&#8250;</span><span>Addon Services</span></div>
+  <p>Optional add-ons that can be included in a Banquet Booking. E.g., DJ (&#8377;15,000), Projector &amp; Screen (&#8377;3,000), Floral Decoration (&#8377;8,000).</p>
+</div>
+
+<div id="banquet-availability" class="section-block">
+  <h3 class="sub-title">Banquet Availability Calendar</h3>
+  <div class="page-path"><span>Banquet &amp; Events</span><span class="arrow">&#8250;</span><span>Availability Calendar</span></div>
+  <p>Visual calendar showing which venues are booked on which dates. <strong>Always check this before creating a new event booking</strong> to avoid double-booking a venue.</p>
+</div>
+
+<div id="banquet-new-booking" class="section-block">
+  <h3 class="sub-title">New Event Booking</h3>
+  <div class="page-path"><span>Banquet &amp; Events</span><span class="arrow">&#8250;</span><span>New Event Booking</span></div>
+  <div class="dep-chain">
+    <span class="dep-label">Requires</span>
+    <span class="dep-pill">Venue Master</span>
+    <span class="dep-arrow">+</span>
+    <span class="dep-pill">Event Types</span>
+    <span class="dep-arrow">+</span>
+    <span class="dep-pill">Guest/Client</span>
+    <span class="dep-arrow">&#8594;</span>
+    <span class="dep-pill current">New Event Booking</span>
+  </div>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h5>Check Availability</h5><p>First verify the date on the Banquet Availability Calendar.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h5>Click "New Event Booking"</h5></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h5>Select Event Details</h5>
+      <ul>
+        <li>Venue, Date, Start &amp; End Time</li>
+        <li>Event Type</li>
+        <li>Expected Pax (guest count)</li>
+        <li>Organizer / Client (Guest or B2B Client)</li>
+      </ul>
+    </div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><h5>Add Menu Package</h5><p>Select a package. Total food cost = Package Rate &times; Pax.</p></div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-body"><h5>Add Addons</h5><p>Check all required addon services. Each adds to the total.</p></div></div>
+    <div class="step"><div class="step-num">6</div><div class="step-body"><h5>Record Advance</h5><p>Enter any advance payment made. Select payment mode.</p></div></div>
+    <div class="step"><div class="step-num">7</div><div class="step-body"><h5>Confirm Booking</h5><p>Save. The venue is now blocked on the calendar for this date &amp; time.</p></div></div>
+  </div>
+</div>
+
+<div id="banquet-bookings-list" class="section-block">
+  <h3 class="sub-title">Event Bookings List</h3>
+  <div class="page-path"><span>Banquet &amp; Events</span><span class="arrow">&#8250;</span><span>Event Bookings</span></div>
+  <p>List of all banquet bookings with status (Upcoming, Completed, Cancelled). Click any booking to edit, add payment, or generate invoice.</p>
+</div>
+
+<div id="banquet-collections" class="section-block">
+  <h3 class="sub-title">Banquet Collections</h3>
+  <div class="page-path"><span>Banquet &amp; Events</span><span class="arrow">&#8250;</span><span>Banquet Collections</span></div>
+  <div class="dep-chain"><span class="dep-label">Data from</span><span class="dep-pill">Banquet Bookings with Payments</span><span class="dep-arrow">&#8594;</span><span class="dep-pill current">Banquet Collections</span></div>
+  <p>A payment ledger specific to banquet events. Shows advance received, balance due, and final settlement for each event. Useful for the banquet sales team's daily accounts reconciliation.</p>
+</div>
+
+<div id="banquet-reports" class="section-block">
+  <h3 class="sub-title">Banquet Reports</h3>
+  <table class="field-table">
+    <tr><th>Report</th><th>Path</th><th>What it Shows</th></tr>
+    <tr><td>Banquet GST Register</td><td>Banquet &amp; Events &rarr; Banquet GST Register</td><td>Tax collected on all banquet events — for monthly GST filing</td></tr>
+    <tr><td>Venue Utilization</td><td>Banquet &amp; Events &rarr; Venue Utilization</td><td>How often each venue was booked vs. available. Helps plan capacity.</td></tr>
+    <tr><td>Event Type Performance</td><td>Banquet &amp; Events &rarr; Event Type Performance</td><td>Revenue breakdown by event type (Weddings vs. Corporate)</td></tr>
+    <tr><td>Banquet Outstanding</td><td>Banquet &amp; Events &rarr; Banquet Outstanding</td><td>Events with pending balance — overdue collections alert</td></tr>
+  </table>
+</div>
+
+<hr class="section-sep">
+
+<!-- ============================================================ CHAPTER 10: REPORTS -->
+<div class="chapter-label">Chapter 10</div>
+<h2 class="section-title">&#128202; Reports</h2>
+<div class="callout info"><span class="callout-icon">&#128161;</span><div>All reports have <strong>Date Range</strong> and <strong>Branch</strong> filters at the top. Always set these filters before generating a report. If data appears missing, check that the correct branch and date range are selected.</div></div>
+
+<div id="report-occupancy" class="section-block">
+  <h3 class="sub-title">Occupancy &amp; Revenue</h3>
+  <div class="page-path"><span>Reports</span><span class="arrow">&#8250;</span><span>Occupancy &amp; Revenue</span></div>
+  <div class="dep-chain"><span class="dep-label">Data from</span><span class="dep-pill">Confirmed Room Bookings</span><span class="dep-arrow">&#8594;</span><span class="dep-pill current">This Report</span></div>
+  <p>Shows daily Occupancy % (rooms occupied / total rooms), Revenue per Available Room (RevPAR), and total room revenue for the period. Key metric for management review.</p>
+</div>
+
+<div id="report-monthly" class="section-block">
+  <h3 class="sub-title">Monthly Report</h3>
+  <div class="page-path"><span>Reports</span><span class="arrow">&#8250;</span><span>Monthly Report</span></div>
+  <p>Aggregate summary by month: total bookings, total revenue, cancellations, check-ins, check-outs. Used for month-end management presentations.</p>
+</div>
+
+<div id="report-due-alerts" class="section-block">
+  <h3 class="sub-title">Due Amount Alerts</h3>
+  <div class="page-path"><span>Reports</span><span class="arrow">&#8250;</span><span>Due Amount Alerts</span></div>
+  <div class="dep-chain"><span class="dep-label">Data from</span><span class="dep-pill">In-House Bookings with Outstanding Balance</span><span class="dep-arrow">&#8594;</span><span class="dep-pill current">This Report</span></div>
+  <p>Lists all currently in-house guests who have an unpaid balance. Color-coded by urgency. Front desk should review this every morning to follow up with guests before checkout.</p>
+</div>
+
+<div id="report-business" class="section-block">
+  <h3 class="sub-title">Business Analytics Dashboard</h3>
+  <div class="page-path"><span>Reports</span><span class="arrow">&#8250;</span><span>Business Analytics</span></div>
+  <p>An interactive analytics dashboard with charts for: Revenue Trend (last 30/90 days), Booking Source Mix (pie chart), Room Type Contribution, and Year-over-Year comparison. Designed for management review.</p>
+</div>
+
+<div id="report-room-type" class="section-block">
+  <h3 class="sub-title">Room Type Performance</h3>
+  <div class="page-path"><span>Reports</span><span class="arrow">&#8250;</span><span>Room Type Performance</span></div>
+  <p>Compares revenue and occupancy rate across room types. Helps identify which room categories are most profitable and which are underperforming.</p>
+</div>
+
+<div id="report-outstanding" class="section-block">
+  <h3 class="sub-title">Outstanding Balances</h3>
+  <div class="page-path"><span>Reports</span><span class="arrow">&#8250;</span><span>Outstanding Balances</span></div>
+  <p>Lists all past-stay guests and B2B clients with unsettled invoice balances. Used by the accounts team for collections follow-up.</p>
+</div>
+
+<div id="report-channel" class="section-block">
+  <h3 class="sub-title">Channel/Source Performance</h3>
+  <div class="page-path"><span>Reports</span><span class="arrow">&#8250;</span><span>Channel/Source Performance</span></div>
+  <div class="dep-chain"><span class="dep-label">Data from</span><span class="dep-pill">Booking Source field on each Booking</span><span class="dep-arrow">&#8594;</span><span class="dep-pill current">This Report</span></div>
+  <p>Breaks down bookings and revenue by acquisition channel (Walk-in, OTA, B2B, Phone). Helps management decide where to invest in marketing.</p>
+</div>
+
+<div id="report-guest-details" class="section-block">
+  <h3 class="sub-title">Guest Details</h3>
+  <div class="page-path"><span>Reports</span><span class="arrow">&#8250;</span><span>Guest Details</span></div>
+  <p>Full guest profile export including ID proof details, nationality, visit history. Used for CRM analysis and repeat-guest programs.</p>
+</div>
+
+<div id="report-booking-details" class="section-block">
+  <h3 class="sub-title">Booking Details Report</h3>
+  <div class="page-path"><span>Reports</span><span class="arrow">&#8250;</span><span>Booking Details Report</span></div>
+  <p>Detailed line-by-line export of all bookings for a date range: guest, room, check-in/out, rate, payment status. The most comprehensive operational report.</p>
+</div>
+
+<div id="report-room-price" class="section-block">
+  <h3 class="sub-title">Room Price Details</h3>
+  <div class="page-path"><span>Reports</span><span class="arrow">&#8250;</span><span>Room Price Details</span></div>
+  <p>Shows the actual tariff charged per room per night across bookings. Useful for audit and to verify rate plan adherence.</p>
+</div>
+
+<div id="report-daily-collection" class="section-block">
+  <h3 class="sub-title">Daily Collection Register</h3>
+  <div class="page-path"><span>Reports</span><span class="arrow">&#8250;</span><span>Daily Collection Register</span></div>
+  <div class="dep-chain"><span class="dep-label">Data from</span><span class="dep-pill">All Payments recorded on selected date</span><span class="dep-arrow">&#8594;</span><span class="dep-pill current">This Report</span></div>
+  <div class="callout tip"><span class="callout-icon">&#9989;</span><div>Run this report at the <strong>end of each shift</strong> to verify that Cash, UPI, and Card totals match the physical cash drawer and POS terminal receipts.</div></div>
+  <p>A date-wise ledger of every payment received — broken down by mode (Cash, Card, UPI, Bank Transfer). The primary tool for cashier shift-end reconciliation.</p>
+</div>
+
+<div id="report-gst" class="section-block">
+  <h3 class="sub-title">GST Report</h3>
+  <div class="page-path"><span>Reports</span><span class="arrow">&#8250;</span><span>GST Report</span></div>
+  <div class="dep-chain"><span class="dep-label">Data from</span><span class="dep-pill">Room Invoices + Banquet Invoices</span><span class="dep-arrow">&#8594;</span><span class="dep-pill current">GST Report</span></div>
+  <p>Compiles all GST collected across Room Bookings and Banquet Events. Categorized by CGST, SGST, and IGST. Exportable to Excel for the Accountant's monthly GST portal filing (GSTR-1/3B).</p>
+</div>
+
+<div id="report-cancellation" class="section-block">
+  <h3 class="sub-title">Cancellation Register</h3>
+  <div class="page-path"><span>Reports</span><span class="arrow">&#8250;</span><span>Cancellation Register</span></div>
+  <div class="dep-chain"><span class="dep-label">Data from</span><span class="dep-pill">Cancelled Bookings</span><span class="dep-arrow">&#8594;</span><span class="dep-pill current">This Report</span></div>
+  <p>Lists all cancelled bookings with: Cancellation Date, Policy Applied, Retention Amount, and Refundable Amount. Used for audit and reconciliation.</p>
+</div>
+
+<div id="report-cancellation-refund" class="section-block">
+  <h3 class="sub-title">Cancellation &amp; Refund Register</h3>
+  <div class="page-path"><span>Reports</span><span class="arrow">&#8250;</span><span>Cancellation &amp; Refund Register</span></div>
+  <div class="dep-chain">
+    <span class="dep-label">Data from</span>
+    <span class="dep-pill">Cancelled Bookings</span>
+    <span class="dep-arrow">+</span>
+    <span class="dep-pill">Processed Refunds</span>
+    <span class="dep-arrow">&#8594;</span>
+    <span class="dep-pill current">This Report</span>
+  </div>
+  <p>Combined view of cancellations AND their corresponding refund status. Shows Credit Note amount vs. actual refund processed. Pending refunds will show status as "Awaiting Processing".</p>
+</div>
+
+<div id="report-police" class="section-block">
+  <h3 class="sub-title">Police/Guest Register</h3>
+  <div class="page-path"><span>Reports</span><span class="arrow">&#8250;</span><span>Police/Guest Register</span></div>
+  <div class="dep-chain"><span class="dep-label">Data from</span><span class="dep-pill">Guest Master (ID Proof)</span><span class="dep-arrow">+</span><span class="dep-pill">Check-In Records</span><span class="dep-arrow">&#8594;</span><span class="dep-pill current">Police Register</span></div>
+  <div class="callout danger"><span class="callout-icon">&#128683;</span><div><strong>Legal Requirement.</strong> This report must be generated and submitted to local police/municipality daily in many Indian states. It lists every guest who checked in with their ID proof details.</div></div>
+  <p>Generate by selecting a date. Export to PDF or Excel. Submit to authorities as required. Foreign nationals appear separately (Form-C requirement).</p>
+</div>
+
+<hr class="section-sep">
+
+<!-- ============================================================ CHAPTER 11: DASHBOARD -->
+<div class="chapter-label">Chapter 11</div>
+<h2 class="section-title">&#128200; Main Dashboard</h2>
+
+<div id="dashboard" class="section-block">
+  <h3 class="sub-title">Dashboard</h3>
+  <div class="page-path"><span>Dashboard</span></div>
+  <div class="dep-chain"><span class="dep-label">Data from</span><span class="dep-pill">All Modules</span><span class="dep-arrow">&#8594;</span><span class="dep-pill current">Dashboard</span></div>
+  <p>The home screen after login. What you see here is controlled by your Role (configured in Role Dashboard Config). Typical widgets include:</p>
+  <table class="field-table">
+    <tr><th>Widget</th><th>What it Shows</th></tr>
+    <tr><td>Today's Check-Ins</td><td>Guests arriving today — quick access to check-in them</td></tr>
+    <tr><td>Today's Check-Outs</td><td>Guests departing today — prompt for settlement</td></tr>
+    <tr><td>Available Rooms</td><td>Count of rooms free to sell right now</td></tr>
+    <tr><td>Today's Revenue</td><td>Total payments collected today across all modes</td></tr>
+    <tr><td>Pending Refunds</td><td>Number of refunds awaiting processing</td></tr>
+    <tr><td>Due Amount Alerts</td><td>In-house guests with outstanding balance</td></tr>
+    <tr><td>Upcoming Events (Banquet)</td><td>Banquet bookings scheduled for today/tomorrow</td></tr>
+    <tr><td>Low Stock Alerts</td><td>Asset items below reorder level</td></tr>
+  </table>
+  <div class="callout tip"><span class="callout-icon">&#9989;</span><div>Dashboard widgets are clickable — clicking "Today's Check-Ins" navigates directly to the filtered Bookings list for immediate action.</div></div>
+</div>
+
+<hr class="section-sep">
+<div class="section-block" style="border-left-color: var(--accent); text-align:center; padding: 24px;">
+  <p style="font-size: 1rem; color: var(--muted);">End of eLuxStay User Manual &nbsp;|&nbsp; Version 2.0 &nbsp;|&nbsp; May 2026</p>
+  <p style="font-size: 0.85rem; color: var(--muted);">For technical support, contact your system administrator.</p>
+</div>
+
+</div>
+</div>
+
+<script>
+// Sidebar active link highlight on scroll
+const sections = document.querySelectorAll('[id]');
+const navLinks = document.querySelectorAll('#sidebar nav a');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(a => a.classList.remove('active'));
+      const link = document.querySelector('#sidebar nav a[href="#' + e.target.id + '"]');
+      if (link) link.classList.add('active');
+    }
+  });
+}, { threshold: 0.3 });
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
