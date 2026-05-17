@@ -59,6 +59,7 @@ namespace HotelApp.Web.Repositories
 
     public class BanquetGSTLineRow
     {
+        public string ReceiptNumber { get; set; } = string.Empty;
         public string BanquetBookingNumber { get; set; } = string.Empty;
         public DateTime EventDate { get; set; }
         public DateTime? PaymentDate { get; set; }

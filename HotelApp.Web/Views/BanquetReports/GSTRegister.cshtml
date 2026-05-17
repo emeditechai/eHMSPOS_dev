@@ -58,15 +58,16 @@
             <table class="table data-table mb-0" id="gstTable">
                 <thead>
                     <tr>
-                        <th>Booking #</th><th>Payment Date</th><th>Event Date</th><th>Client</th><th>Type</th>
+                        <th>Receipt #</th><th>Booking #</th><th>Payment Date</th><th>Event Date</th><th>Client</th><th>Type</th>
                         <th>Supply</th><th>Line</th><th>SAC</th>
-                        <th>Taxable ₹</th><th>CGST ₹</th><th>SGST ₹</th><th>IGST ₹</th><th>Total GST ₹</th>
+                        <th>Taxable ₹</th><th>CGST ₹</th><th>SGST ₹</th><th>IGST ₹</th><th>Total GST ₹</th><th>Total Paid ₹</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var r in Model.Rows)
                     {
                         <tr>
+                            <td class="text-muted" style="font-size:11px">@r.ReceiptNumber</td>
                             <td><code>@r.BanquetBookingNumber</code></td>
                             <td>@(r.PaymentDate.HasValue ? r.PaymentDate.Value.ToString("dd MMM yyyy") : "—")</td>
                             <td>@r.EventDate.ToString("dd MMM yyyy")</td>
@@ -80,21 +81,23 @@
                             <td>@r.SGST.ToString("N2")</td>
                             <td>@r.IGST.ToString("N2")</td>
                             <td class="fw-600">@r.TotalGST.ToString("N2")</td>
+                            <td class="fw-600 text-success">@((r.TaxableValue + r.TotalGST).ToString("N2"))</td>
                         </tr>
                     }
                     @if (!Model.Rows.Any())
                     {
-                        <tr><td colspan="13" class="text-center text-muted py-4">No payments received in this period.</td></tr>
+                        <tr><td colspan="15" class="text-center text-muted py-4">No payments received in this period.</td></tr>
                     }
                 </tbody>
                 <tfoot class="table-light fw-600">
                     <tr>
-                        <td colspan="8">Total</td>
+                        <td colspan="9">Total</td>
                         <td>@Model.TotalTaxableValue.ToString("N2")</td>
                         <td>@Model.TotalCGST.ToString("N2")</td>
                         <td>@Model.TotalSGST.ToString("N2")</td>
                         <td>@Model.TotalIGST.ToString("N2")</td>
                         <td>@Model.TotalGST.ToString("N2")</td>
+                        <td>@((Model.TotalTaxableValue + Model.TotalGST).ToString("N2"))</td>
                     </tr>
                 </tfoot>
             </table>
