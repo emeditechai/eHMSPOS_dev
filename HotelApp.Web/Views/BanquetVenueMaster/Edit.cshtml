@@ -5,3 +5,7 @@
     var gstSlabs = ViewBag.GstSlabs as IEnumerable<HotelApp.Web.Models.GstSlab> ?? Enumerable.Empty<HotelApp.Web.Models.GstSlab>();
 }
 @Html.Partial("Create", Model)
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_VenueFormScripts"); }
+}
