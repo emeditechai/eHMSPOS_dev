@@ -1,0 +1,3 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  HotelApp.Web -> /Users/abhikporel/dev/Hotelapp/HotelApp.Web/bin/Debug/net8.0/HotelApp.Web.dll
