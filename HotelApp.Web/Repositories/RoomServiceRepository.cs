@@ -531,5 +531,118 @@ WHERE BookingID = @BookingID
 
             return affected;
         }
+
+        public async Task<int> SettleRoomServiceOrderAsync(int orderId, int branchId)
+        {
+            if (orderId <= 0 || branchId <= 0)
+            {
+                return 0;
+            }
+
+            if (_dbConnection.State != ConnectionState.Open)
+            {
+                _dbConnection.Open();
+            }
+
+            await EnsureRoomServicesColumnsAsync();
+
+            const string sql = @"
+UPDATE dbo.RoomServices
+SET IsSettled = 1,
+    SettleAmount = ActualBillAmount,
+    SettleDate = GETDATE()
+WHERE OrderID = @OrderID
+  AND BranchID = @BranchID
+  AND (IsSettled = 0 OR IsSettled IS NULL);";
+
+            var affected = await _dbConnection.ExecuteAsync(sql, new
+            {
+                OrderID = orderId,
+                BranchID = branchId
+            });
+
+            return affected;
+        }
+
+        public async Task<IReadOnlyList<RoomServiceSettleReportRow>> GetRoomServiceSettleDataAsync(
+            int branchId,
+            DateTime? fromDate,
+            DateTime? toDate,
+            string? bookingNo
+        )
+        {
+            if (branchId <= 0)
+            {
+                return Array.Empty<RoomServiceSettleReportRow>();
+            }
+
+            if (_dbConnection.State != ConnectionState.Open)
+            {
+                _dbConnection.Open();
+            }
+
+            // Ensure IsSettled / SettleAmount / SettleDate columns exist before querying
+            await EnsureRoomServicesColumnsAsync();
+
+            var sql = @"
+SELECT
+    rs.BookingID                                        AS BookingId,
+    b.BookingNumber                                     AS BookingNo,
+    ISNULL(b.PrimaryGuestFirstName, '') + ' ' + ISNULL(b.PrimaryGuestLastName, '')
+                                                        AS GuestName,
+    ISNULL(r.RoomNumber, '')                            AS RoomNo,
+    ISNULL(rt.TypeName, '')                             AS RoomType,
+    rs.OrderID                                          AS OrderId,
+    ISNULL(rs.OrderNo, '-')                             AS OrderNo,
+    ISNULL(rs.MenuItem, '-')                            AS MenuItem,
+    rs.Price,
+    rs.Qty,
+    rs.NetAmount,
+    rs.DiscountAmount,
+    rs.ActualBillAmount,
+    rs.CGSTAmount,
+    rs.SGSTAmount,
+    rs.GSTAmount,
+    rs.OrderDate,
+    ISNULL(rs.IsSettled, 0)                             AS IsSettled,
+    rs.SettleDate
+FROM dbo.RoomServices rs
+INNER JOIN dbo.Bookings b ON b.Id = rs.BookingID
+LEFT JOIN dbo.Rooms r ON r.Id = rs.RoomID
+LEFT JOIN dbo.RoomTypes rt ON rt.Id = r.RoomTypeId
+WHERE rs.BranchID = @BranchId
+  AND rs.OrderID > 0
+  AND (ISNULL(rs.OrderNo, '') <> '' OR ISNULL(rs.MenuItem, '') <> '')";
+
+            if (fromDate.HasValue)
+            {
+                sql += " AND CAST(rs.OrderDate AS DATE) >= CAST(@FromDate AS DATE)";
+            }
+
+            if (toDate.HasValue)
+            {
+                sql += " AND CAST(rs.OrderDate AS DATE) <= CAST(@ToDate AS DATE)";
+            }
+
+            if (!string.IsNullOrWhiteSpace(bookingNo))
+            {
+                sql += " AND b.BookingNumber = @BookingNo";
+            }
+
+            sql += " ORDER BY b.BookingNumber, rs.OrderNo, rs.MenuItem";
+
+            var rows = await _dbConnection.QueryAsync<RoomServiceSettleReportRow>(
+                sql,
+                new
+                {
+                    BranchId = branchId,
+                    FromDate = fromDate,
+                    ToDate = toDate,
+                    BookingNo = bookingNo?.Trim()
+                }
+            );
+
+            return (rows ?? Array.Empty<RoomServiceSettleReportRow>()).ToList();
+        }
     }
 }

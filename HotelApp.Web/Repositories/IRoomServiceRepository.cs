@@ -30,10 +30,15 @@ namespace HotelApp.Web.Repositories
             int branchId
         );
 
-        Task<int> SettleRoomServicesAsync(
-            int bookingId,
+        Task<int> SettleRoomServicesAsync(int bookingId, int branchId, decimal? settleAmountOverride = null);
+
+        Task<int> SettleRoomServiceOrderAsync(int orderId, int branchId);
+
+        Task<IReadOnlyList<RoomServiceSettleReportRow>> GetRoomServiceSettleDataAsync(
             int branchId,
-            decimal? settleAmountOverride = null
+            DateTime? fromDate,
+            DateTime? toDate,
+            string? bookingNo
         );
     }
 
@@ -54,5 +59,28 @@ namespace HotelApp.Web.Repositories
 
         // Note: GST/CGST/SGST are order-level amounts (as returned by the SP),
         // not per-item allocations.
+    }
+
+    public sealed class RoomServiceSettleReportRow
+    {
+        public int BookingId { get; set; }
+        public string BookingNo { get; set; } = string.Empty;
+        public string GuestName { get; set; } = string.Empty;
+        public string RoomNo { get; set; } = string.Empty;
+        public string RoomType { get; set; } = string.Empty;
+        public int OrderId { get; set; }
+        public string OrderNo { get; set; } = string.Empty;
+        public string MenuItem { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+        public int Qty { get; set; }
+        public decimal NetAmount { get; set; }
+        public decimal DiscountAmount { get; set; }
+        public decimal ActualBillAmount { get; set; }
+        public decimal CGSTAmount { get; set; }
+        public decimal SGSTAmount { get; set; }
+        public decimal GSTAmount { get; set; }
+        public DateTime OrderDate { get; set; }
+        public bool IsSettled { get; set; }
+        public DateTime? SettleDate { get; set; }
     }
 }

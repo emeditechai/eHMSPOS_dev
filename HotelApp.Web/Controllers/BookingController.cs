@@ -550,6 +550,147 @@ namespace HotelApp.Web.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> RoomServiceSettle(DateTime? fromDate, DateTime? toDate, string? bookingNo)
+        {
+            // Default: today
+            var from = (fromDate ?? DateTime.Today).Date;
+            var to = (toDate ?? DateTime.Today).Date;
+
+            var rawRows = await _roomServiceRepository.GetRoomServiceSettleDataAsync(
+                CurrentBranchID,
+                from,
+                to,
+                bookingNo?.Trim()
+            );
+
+            // Group into the ViewModel structure: per booking -> per order -> items
+            var bookingGroups = rawRows
+                .GroupBy(r => r.BookingId)
+                .Select(bg =>
+                {
+                    var first = bg.First();
+                    var orderRows = bg
+                        .Select(r => new ViewModels.RoomServiceSettleOrderRow
+                        {
+                            OrderId = r.OrderId,
+                            OrderNo = r.OrderNo,
+                            MenuItem = r.MenuItem,
+                            Price = r.Price,
+                            Qty = r.Qty,
+                            NetAmount = r.NetAmount,
+                            DiscountAmount = r.DiscountAmount,
+                            ActualBillAmount = r.ActualBillAmount,
+                            CGSTAmount = r.CGSTAmount,
+                            SGSTAmount = r.SGSTAmount,
+                            GSTAmount = r.GSTAmount,
+                            OrderDate = r.OrderDate,
+                            IsSettled = r.IsSettled,
+                            SettleDate = r.SettleDate
+                        })
+                        .ToList();
+
+                    return new ViewModels.RoomServiceSettleBookingRow
+                    {
+                        BookingId = bg.Key,
+                        BookingNo = first.BookingNo,
+                        GuestName = (first.GuestName ?? "").Trim(),
+                        RoomNo = first.RoomNo,
+                        RoomType = first.RoomType,
+                        Orders = orderRows
+                    };
+                })
+                .ToList();
+
+            var viewModel = new ViewModels.RoomServiceSettleViewModel
+            {
+                FromDate = from,
+                ToDate = to,
+                BookingNo = bookingNo,
+                Rows = bookingGroups
+            };
+
+            return View(viewModel);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetBookingAutoSuggest(string? term)
+        {
+            if (string.IsNullOrWhiteSpace(term) || term.Length < 2)
+            {
+                return Json(new string[0]);
+            }
+
+            var bookings = await _bookingRepository.GetByBranchAndDateRangeAsync(CurrentBranchID, null, null, take: 500);
+            var matches = bookings
+                .Where(b => !string.IsNullOrWhiteSpace(b.BookingNumber)
+                    && b.BookingNumber.StartsWith(term.Trim(), StringComparison.OrdinalIgnoreCase))
+                .Select(b => b.BookingNumber)
+                .Distinct()
+                .OrderBy(bn => bn)
+                .Take(15)
+                .ToList();
+
+            return Json(matches);
+        }
+
+        /// <summary>
+        /// Settles a single room-service order by OrderId.
+        /// Accepts a form POST so the page can redirect back and re-read from DB (server-driven).
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SettleRoomServiceOrder(
+            int orderId,
+            string? returnFromDate,
+            string? returnToDate,
+            string? returnBookingNo)
+        {
+            string? errorMessage = null;
+
+            if (orderId <= 0)
+            {
+                errorMessage = "Invalid order ID.";
+            }
+            else
+            {
+                try
+                {
+                    var affected = await _roomServiceRepository.SettleRoomServiceOrderAsync(orderId, CurrentBranchID);
+                    if (affected <= 0)
+                    {
+                        errorMessage = "Order not found or already settled.";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    errorMessage = ex.Message;
+                }
+            }
+
+            // Build redirect back to the settle page with the same filters
+            var routeValues = new Microsoft.AspNetCore.Routing.RouteValueDictionary();
+            if (!string.IsNullOrWhiteSpace(returnFromDate)) routeValues["fromDate"]  = returnFromDate;
+            if (!string.IsNullOrWhiteSpace(returnToDate))   routeValues["toDate"]    = returnToDate;
+            if (!string.IsNullOrWhiteSpace(returnBookingNo)) routeValues["bookingNo"] = returnBookingNo;
+
+            if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                TempData["SettleError"] = errorMessage;
+            }
+            else
+            {
+                TempData["SettleSuccess"] = "Order settled successfully.";
+            }
+
+            return RedirectToAction(nameof(RoomServiceSettle), routeValues);
+        }
+
+        public class SettleRoomServiceOrderRequest
+        {
+            public int OrderId { get; set; }
+        }
+
+        [HttpGet]
         public IActionResult PaymentDashboard(DateTime? fromDate, DateTime? toDate)
         {
             // Default to today

@@ -1,0 +1,789 @@
+@model HotelApp.Web.ViewModels.RoomServiceSettleViewModel
+@{
+    ViewData["Title"] = "Room Service Settle";
+    var branchName = ViewBag.CurrentBranchName as string ?? "Head Office";
+    var fromDateStr  = Model.FromDate?.ToString("yyyy-MM-dd") ?? "";
+    var toDateStr    = Model.ToDate?.ToString("yyyy-MM-dd")   ?? "";
+    var bookingNoStr = Model.BookingNo ?? "";
+}
+
+@section Styles {
+<link rel="stylesheet" href="~/css/room-dashboard.css" asp-append-version="true" />
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   ROOT VARIABLES
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+    --brand-dark:  #0f1c3f;
+    --brand-mid:   #1a2f6b;
+    --brand-light: #2845b0;
+    --accent:      #e63946;
+    --accent-soft: #fee2e4;
+    --success:     #059669;
+    --success-bg:  #d1fae5;
+    --warning:     #d97706;
+    --warning-bg:  #fef3c7;
+    --neutral-50:  #f8fafc;
+    --neutral-100: #f1f5f9;
+    --neutral-200: #e2e8f0;
+    --neutral-300: #cbd5e1;
+    --neutral-600: #475569;
+    --neutral-700: #334155;
+    --neutral-900: #0f172a;
+    --radius-sm:   6px;
+    --radius-md:   10px;
+    --radius-lg:   14px;
+    --shadow-sm:   0 1px 4px rgba(0,0,0,.08);
+    --shadow-md:   0 3px 12px rgba(0,0,0,.1);
+    --shadow-lg:   0 6px 24px rgba(15,28,63,.15);
+}
+
+/* ── Page Layout ── */
+.rss-page { padding: 0; }
+
+/* ── Hero Bar ── */
+.rss-hero {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem;
+    background: linear-gradient(135deg, var(--brand-dark) 0%, var(--brand-mid) 60%, var(--brand-light) 100%);
+    border-radius: var(--radius-lg); padding: .75rem 1.2rem; margin-bottom: .75rem;
+    box-shadow: var(--shadow-lg); position: relative; overflow: hidden;
+}
+.rss-hero::before { content:''; position:absolute; right:-50px; top:-50px; width:180px; height:180px; background:rgba(255,255,255,.06); border-radius:50%; }
+.rss-hero-left { display:flex; align-items:center; gap:.75rem; z-index:1; }
+.rss-hero-icon {
+    width: 40px; height: 40px; border-radius: var(--radius-md);
+    background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.25);
+    display: flex; align-items:center; justify-content:center;
+    color: #fff; font-size: 1.1rem; flex-shrink:0;
+}
+.rss-hero-title { font-size: 1.05rem; font-weight: 800; color: #fff; letter-spacing:-.1px; line-height:1.2; }
+.rss-hero-sub { display:flex; align-items:center; gap:.4rem; margin-top:.15rem; flex-wrap:wrap; }
+.rss-hero-badge {
+    display: inline-flex; align-items:center; gap:.25rem;
+    padding: .15rem .5rem; border-radius: 20px;
+    background: rgba(255,255,255,.15); color:#fff;
+    font-size: .68rem; font-weight: 700;
+}
+.rss-hero-date { font-size: .68rem; color: rgba(255,255,255,.65); }
+.rss-hero-right { display:flex; gap:.4rem; z-index:1; flex-wrap:wrap; }
+.rss-hero-btn {
+    display: inline-flex; align-items:center; gap:.3rem;
+    padding: .35rem .8rem; border-radius: var(--radius-sm);
+    font-size: .75rem; font-weight: 700; text-decoration:none; transition: all .15s;
+    background: rgba(255,255,255,.15); color:#fff; border: 1px solid rgba(255,255,255,.25);
+}
+.rss-hero-btn:hover { background: rgba(255,255,255,.25); color:#fff; text-decoration:none; }
+
+/* ── Stat Cards (compact 5-col) ── */
+.rss-stats {
+    display: grid; grid-template-columns: repeat(5,1fr); gap: .5rem; margin-bottom: .75rem;
+}
+@@media(max-width:1100px) { .rss-stats { grid-template-columns: repeat(3,1fr); } }
+@@media(max-width:700px)  { .rss-stats { grid-template-columns: repeat(2,1fr); } }
+@@media(max-width:420px)  { .rss-stats { grid-template-columns: 1fr; } }
+
+.rss-stat-card {
+    border-radius: var(--radius-md); padding: .7rem 1rem; position:relative; overflow:hidden;
+    display:flex; flex-direction:column; gap:.15rem; box-shadow: var(--shadow-sm);
+}
+.rss-stat-card::after {
+    content:''; position:absolute; right:-16px; top:-16px; width:70px; height:70px;
+    background: rgba(255,255,255,.12); border-radius:50%;
+}
+.rss-stat-card.c1 { background: linear-gradient(135deg,#0f6ca4,#1a8ed4); }
+.rss-stat-card.c2 { background: linear-gradient(135deg,#b21f1f,#dc3545); }
+.rss-stat-card.c3 { background: linear-gradient(135deg,#6d28d9,#8b5cf6); }
+.rss-stat-card.c4 { background: linear-gradient(135deg,#0f766e,#14b8a6); }
+.rss-stat-card.c5 { background: linear-gradient(135deg,#b45309,#f59e0b); }
+.rss-sc-lbl { font-size:.65rem; font-weight:700; color:rgba(255,255,255,.75); text-transform:uppercase; letter-spacing:.5px; }
+.rss-sc-val { font-size:1.1rem; font-weight:900; color:#fff; line-height:1.1; }
+.rss-sc-sub { font-size:.62rem; color:rgba(255,255,255,.6); }
+
+/* ── Filter Bar ── */
+.rss-filter-bar {
+    background:#fff; border-radius:var(--radius-md); padding:.6rem 1rem;
+    margin-bottom:.65rem; box-shadow: var(--shadow-sm); border:1px solid var(--neutral-200);
+}
+.rss-filter-form { display:flex; align-items:flex-end; gap:.6rem; flex-wrap:wrap; }
+.rss-fg { display:flex; flex-direction:column; gap:.25rem; }
+.rss-fg label { font-size:.7rem; font-weight:700; color:var(--neutral-700); text-transform:uppercase; letter-spacing:.4px; }
+.rss-fg .fc {
+    padding: .35rem .65rem; border: 1.5px solid var(--neutral-200);
+    border-radius: var(--radius-sm); font-size:.8rem; color:var(--neutral-900);
+    background:#fff; transition:border-color .15s, box-shadow .15s;
+    min-width:150px;
+}
+.rss-fg .fc:focus { outline:none; border-color:var(--brand-light); box-shadow:0 0 0 3px rgba(40,69,176,.1); }
+.rss-filter-actions { display:flex; gap:.4rem; align-items:flex-end; }
+.rss-btn-apply {
+    padding: .37rem .9rem; border-radius:var(--radius-sm); font-size:.78rem; font-weight:700;
+    cursor:pointer; border:none; display:inline-flex; align-items:center; gap:.35rem; transition:all .15s;
+    background: linear-gradient(135deg,var(--brand-mid),var(--accent)); color:#fff;
+}
+.rss-btn-apply:hover { transform:translateY(-1px); box-shadow:0 3px 10px rgba(26,47,107,.3); }
+.rss-btn-clear {
+    padding: .37rem .7rem; border-radius:var(--radius-sm); font-size:.78rem; font-weight:700;
+    cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:.35rem;
+    border: 1.5px solid var(--neutral-300); background:#fff; color:var(--neutral-600); text-decoration:none;
+}
+.rss-btn-clear:hover { background:var(--neutral-50); color:var(--neutral-700); }
+
+/* ── Autocomplete ── */
+.rss-ac-wrap { position:relative; }
+.rss-ac-list {
+    position:absolute; top:100%; left:0; right:0; background:#fff;
+    border:1.5px solid var(--neutral-200); border-top:none; border-radius:0 0 var(--radius-sm) var(--radius-sm);
+    max-height:180px; overflow-y:auto; z-index:9999; display:none;
+    box-shadow:var(--shadow-md);
+}
+.rss-ac-list.open { display:block; }
+.rss-ac-item { padding:6px 10px; cursor:pointer; font-size:.78rem; font-weight:600; color:var(--neutral-700); transition:background .1s; }
+.rss-ac-item:hover,.rss-ac-item.active { background:#eff6ff; color:#1d4ed8; }
+
+/* ── Toolbar ── */
+.rss-toolbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:.5rem; flex-wrap:wrap; gap:.5rem; }
+.rss-count {
+    display:inline-flex; align-items:center; gap:.35rem; padding:.3rem .75rem; border-radius:20px;
+    background:linear-gradient(135deg,#eff6ff,#dbeafe); color:#1d4ed8; font-size:.72rem; font-weight:700;
+    border:1.5px solid #bfdbfe;
+}
+.rss-export-btns { display:flex; gap:.35rem; flex-wrap:wrap; }
+.rss-btn-exp {
+    display:inline-flex; align-items:center; gap:.3rem; padding:.32rem .75rem; border-radius:var(--radius-sm);
+    font-size:.72rem; font-weight:700; border:none; cursor:pointer; transition:all .15s;
+}
+.rss-btn-exp.excel { background:linear-gradient(135deg,#10b981,#059669); color:#fff; }
+.rss-btn-exp.excel:hover { transform:translateY(-1px); box-shadow:0 3px 8px rgba(16,185,129,.35); }
+.rss-btn-exp.pdf   { background:linear-gradient(135deg,#ef4444,#dc2626); color:#fff; }
+.rss-btn-exp.pdf:hover   { transform:translateY(-1px); box-shadow:0 3px 8px rgba(239,68,68,.35); }
+.rss-btn-exp.print { background:linear-gradient(135deg,#6b7280,#4b5563); color:#fff; }
+.rss-btn-exp.print:hover { transform:translateY(-1px); box-shadow:0 3px 8px rgba(107,114,128,.35); }
+
+/* ── Booking Cards (accordion) ── */
+.rss-booking-card {
+    background:#fff; border-radius:var(--radius-md); box-shadow:var(--shadow-sm);
+    margin-bottom:.5rem; overflow:hidden; border:1px solid var(--neutral-200); transition:box-shadow .2s;
+}
+.rss-booking-card:hover { box-shadow:var(--shadow-md); }
+
+.rss-bk-hdr {
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem;
+    padding:.6rem 1rem; cursor:pointer;
+    background:linear-gradient(90deg,var(--brand-dark) 0%,var(--brand-mid) 100%);
+    color:#fff; user-select:none; transition:background .15s;
+}
+.rss-bk-hdr:hover { background:linear-gradient(90deg,#0d1835 0%,#162360 100%); }
+
+.rss-bk-hdr-left { display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; }
+.rss-bk-num {
+    font-size:.82rem; font-weight:800; color:#fff; display:flex; align-items:center; gap:.4rem;
+}
+.rss-bk-num a { color:#93c5fd; text-decoration:none; font-size:.7rem; }
+.rss-bk-num a:hover { color:#bfdbfe; text-decoration:underline; }
+.rss-bk-pill {
+    display:inline-flex; align-items:center; gap:.25rem; padding:.15rem .55rem; border-radius:20px;
+    font-size:.65rem; font-weight:600;
+}
+.rss-pill-guest  { background:rgba(255,255,255,.13); color:rgba(255,255,255,.9); }
+.rss-pill-room   { background:rgba(255,255,255,.13); color:rgba(255,255,255,.9); }
+.rss-pill-type   { background:rgba(255,220,80,.18); color:#ffe082; }
+
+.rss-bk-hdr-right { display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; }
+.rss-bk-totbox { text-align:right; }
+.rss-bk-tot-lbl { font-size:.6rem; color:rgba(255,255,255,.6); font-weight:600; text-transform:uppercase; letter-spacing:.4px; }
+.rss-bk-tot-val { font-size:.9rem; font-weight:900; color:#fff; }
+.rss-bk-tot-sub { font-size:.65rem; color:#a7f3d0; font-weight:700; margin-top:1px; }
+.rss-toggle { width:26px; height:26px; border-radius:6px; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); color:#fff; display:flex; align-items:center; justify-content:center; font-size:.7rem; flex-shrink:0; transition:all .15s; }
+.rss-toggle.open { background:rgba(255,255,255,.22); }
+
+/* ── Detail panel ── */
+.rss-detail { display:none; }
+.rss-detail.open { display:block; }
+
+.rss-order-wrap { border-top: 1px solid var(--neutral-100); padding: .6rem .9rem .3rem; }
+.rss-order-wrap:first-child { border-top: none; }
+
+/* Order header — slim */
+.rss-order-hdr {
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem;
+    padding:.45rem .75rem; margin-bottom:.4rem;
+    background:linear-gradient(90deg,#f0f9ff,#e0f2fe);
+    border-radius:var(--radius-sm); border-left:3px solid #0ea5e9;
+}
+.rss-order-hdr.settled {
+    background:linear-gradient(90deg,#f0fdf4,#dcfce7);
+    border-left-color: var(--success);
+}
+.rss-order-hdr-left { display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; }
+.rss-order-badge { display:inline-flex; align-items:center; gap:.3rem; font-size:.78rem; font-weight:800; color:#0369a1; }
+.rss-order-hdr.settled .rss-order-badge { color: var(--success); }
+.rss-order-date { font-size:.67rem; color:var(--neutral-600); }
+.rss-settled-tag {
+    display:inline-flex; align-items:center; gap:.25rem;
+    padding:.15rem .5rem; border-radius:20px;
+    background: var(--success-bg); color: var(--success);
+    font-size:.65rem; font-weight:700;
+}
+.rss-order-hdr-right { display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; }
+.rss-order-amounts { display:flex; gap:.8rem; flex-wrap:wrap; align-items:center; }
+.rss-oa-item { text-align:right; }
+.rss-oa-lbl { font-size:.6rem; color:var(--neutral-600); text-transform:uppercase; font-weight:600; letter-spacing:.3px; }
+.rss-oa-val { font-size:.8rem; font-weight:800; color:var(--neutral-900); }
+.rss-oa-val.red { color:var(--accent); }
+
+/* Settle button */
+.rss-settle-btn {
+    display:inline-flex; align-items:center; gap:.3rem;
+    padding:.3rem .7rem; border-radius:var(--radius-sm);
+    font-size:.72rem; font-weight:700; cursor:pointer; border:none;
+    background:linear-gradient(135deg,var(--success),#047857); color:#fff;
+    transition:all .15s; white-space:nowrap; flex-shrink:0;
+}
+.rss-settle-btn:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 3px 10px rgba(5,150,105,.35); }
+.rss-settle-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+/* ── Alert bar ── */
+.rss-alert {
+    display:flex; align-items:center; gap:.6rem;
+    padding:.55rem 1rem; border-radius:var(--radius-md); margin-bottom:.6rem;
+    font-size:.8rem; font-weight:700; animation: rss-fadein .3s ease;
+}
+.rss-alert.success { background:var(--success-bg); color:#065f46; border:1px solid #6ee7b7; }
+.rss-alert.error   { background:var(--accent-soft); color:#991b1b; border:1px solid #fca5a5; }
+@@keyframes rss-fadein { from{opacity:0;transform:translateY(-6px);} to{opacity:1;transform:translateY(0);} }
+
+/* ── Items Table — ultra-compact ── */
+.rss-items-tbl { width:100%; border-collapse:collapse; margin-bottom:.4rem; }
+.rss-items-tbl thead tr { background:var(--neutral-50); }
+.rss-items-tbl thead th {
+    padding:5px 8px; font-size:.62rem; font-weight:700; color:var(--neutral-600);
+    text-transform:uppercase; letter-spacing:.4px; text-align:left;
+    border-bottom:1.5px solid var(--neutral-200);
+}
+.rss-items-tbl thead th.tr { text-align:right; }
+.rss-items-tbl tbody td { padding:5px 8px; font-size:.78rem; color:var(--neutral-700); border-bottom:1px solid var(--neutral-100); }
+.rss-items-tbl tbody td.tr { text-align:right; }
+.rss-items-tbl tbody tr:last-child td { border-bottom:none; }
+.rss-items-tbl tbody tr:hover td { background:var(--neutral-50); }
+.rss-item-idx { color:var(--neutral-300); font-size:.68rem; }
+.rss-item-name { font-weight:600; color:var(--neutral-900); }
+.rss-item-amt  { font-weight:800; color:var(--neutral-900); }
+
+/* ── Grand Total Bar ── */
+.rss-grand {
+    background: linear-gradient(135deg,var(--brand-dark),var(--accent));
+    border-radius: var(--radius-md); padding: .65rem 1rem; margin-top: .4rem;
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.6rem;
+    box-shadow: var(--shadow-md);
+}
+.rss-grand-lbl { font-size:.82rem; font-weight:900; color:#fff; display:flex; align-items:center; gap:.4rem; }
+.rss-grand-nums { display:flex; gap:1.4rem; flex-wrap:wrap; }
+.rss-gn-item { text-align:right; }
+.rss-gn-lbl { font-size:.58rem; color:rgba(255,255,255,.6); text-transform:uppercase; font-weight:600; letter-spacing:.4px; }
+.rss-gn-val { font-size:.9rem; font-weight:900; color:#fff; }
+
+/* ── Empty state ── */
+.rss-empty { text-align:center; padding:2.5rem 1rem; color:var(--neutral-600); }
+.rss-empty i { font-size:2rem; margin-bottom:.6rem; opacity:.4; display:block; }
+.rss-empty h4 { font-size:.9rem; font-weight:700; margin:0 0 .3rem; }
+.rss-empty p  { font-size:.78rem; margin:0; }
+
+/* ── Toast notification ── */
+.rss-toast-wrap { position:fixed; bottom:1.2rem; right:1.2rem; z-index:99999; display:flex; flex-direction:column; gap:.4rem; }
+.rss-toast {
+    display:flex; align-items:center; gap:.5rem;
+    padding:.5rem .9rem; border-radius:var(--radius-md);
+    font-size:.78rem; font-weight:700; color:#fff;
+    box-shadow: var(--shadow-lg); animation:rss-toast-in .25s ease;
+    min-width:220px;
+}
+.rss-toast.success { background:linear-gradient(135deg,var(--success),#047857); }
+.rss-toast.error   { background:linear-gradient(135deg,var(--accent),#b91c1c); }
+@@keyframes rss-toast-in { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+@@media print {
+    .rss-hero,.rss-filter-bar,.rss-toolbar,.rss-toggle,.rss-settle-btn,.top-navbar,.app-footer { display:none!important; }
+    .rss-detail { display:block!important; }
+}
+</style>
+}
+
+<div class="rss-page">
+
+@* ── Hero ── *@
+<div class="rss-hero">
+    <div class="rss-hero-left">
+        <div class="rss-hero-icon"><i class="fas fa-concierge-bell"></i></div>
+        <div>
+            <div class="rss-hero-title">Room Service Settle</div>
+            <div class="rss-hero-sub">
+                <span class="rss-hero-badge"><i class="fas fa-code-branch"></i> @branchName</span>
+                <span class="rss-hero-date"><i class="fas fa-calendar-day"></i> @DateTime.Today.ToString("dd MMM yyyy")</span>
+            </div>
+        </div>
+    </div>
+    <div class="rss-hero-right">
+        <a asp-action="List" asp-controller="Booking" class="rss-hero-btn">
+            <i class="fas fa-list"></i> All Bookings
+        </a>
+    </div>
+</div>
+
+@* ── TempData Alerts ── *@
+@if (TempData["SettleSuccess"] != null)
+{
+    <div class="rss-alert success">
+        <i class="fas fa-check-circle"></i> @TempData["SettleSuccess"]
+    </div>
+}
+@if (TempData["SettleError"] != null)
+{
+    <div class="rss-alert error">
+        <i class="fas fa-exclamation-circle"></i> @TempData["SettleError"]
+    </div>
+}
+
+@* ── Summary Stat Cards ── *@
+<div class="rss-stats">
+    <div class="rss-stat-card c1">
+        <div class="rss-sc-lbl">Total Bookings</div>
+        <div class="rss-sc-val">@Model.Rows.Count</div>
+        <div class="rss-sc-sub">With room service</div>
+    </div>
+    <div class="rss-stat-card c2">
+        <div class="rss-sc-lbl">Net Amount</div>
+        <div class="rss-sc-val">₹@Model.TotalNetAmount.ToString("N2")</div>
+        <div class="rss-sc-sub">Before charges</div>
+    </div>
+    <div class="rss-stat-card c3">
+        <div class="rss-sc-lbl">Actual Bill</div>
+        <div class="rss-sc-val">₹@Model.TotalActualBill.ToString("N2")</div>
+        <div class="rss-sc-sub">Billed to booking</div>
+    </div>
+    <div class="rss-stat-card c4">
+        <div class="rss-sc-lbl">Total CGST</div>
+        <div class="rss-sc-val">₹@Model.TotalCGST.ToString("N2")</div>
+        <div class="rss-sc-sub">Central GST</div>
+    </div>
+    <div class="rss-stat-card c5">
+        <div class="rss-sc-lbl">Total GST</div>
+        <div class="rss-sc-val">₹@Model.TotalGST.ToString("N2")</div>
+        <div class="rss-sc-sub">CGST + SGST</div>
+    </div>
+</div>
+
+@* ── Filter Bar ── *@
+<div class="rss-filter-bar">
+    <form method="get" asp-action="RoomServiceSettle" class="rss-filter-form" id="rsFilterForm">
+        <div class="rss-fg">
+            <label for="fromDate">From Date</label>
+            <input type="date" id="fromDate" name="fromDate" class="fc"
+                   value="@Model.FromDate?.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="rss-fg">
+            <label for="toDate">To Date</label>
+            <input type="date" id="toDate" name="toDate" class="fc"
+                   value="@Model.ToDate?.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="rss-fg">
+            <label for="bookingNoInput">Booking No</label>
+            <div class="rss-ac-wrap">
+                <input type="text" id="bookingNoInput" name="bookingNo"
+                       autocomplete="off" placeholder="Search…" class="fc"
+                       value="@Model.BookingNo" />
+                <div class="rss-ac-list" id="rsAcList"></div>
+            </div>
+        </div>
+        <div class="rss-filter-actions">
+            <button type="submit" class="rss-btn-apply">
+                <i class="fas fa-filter"></i> Apply
+            </button>
+            <a asp-action="RoomServiceSettle" class="rss-btn-clear">
+                <i class="fas fa-times"></i> Clear
+            </a>
+        </div>
+    </form>
+</div>
+
+@if (Model.Rows.Count == 0)
+{
+    <div class="rss-empty">
+        <i class="fas fa-concierge-bell"></i>
+        <h4>No Room Service Records</h4>
+        <p>No orders found for the selected filters. Try adjusting date range or booking number.</p>
+    </div>
+}
+else
+{
+    int totalOrders = Model.Rows.Sum(r => r.Orders.Select(o => o.OrderId).Distinct().Count());
+
+    @* ── Toolbar ── *@
+    <div class="rss-toolbar">
+        <span class="rss-count">
+            <i class="fas fa-list"></i>
+            @Model.Rows.Count booking(s) &bull; @totalOrders order(s)
+        </span>
+        <div class="rss-export-btns">
+            <button class="rss-btn-exp excel" onclick="exportExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+            <button class="rss-btn-exp pdf"   onclick="exportPdf()"><i class="fas fa-file-pdf"></i> PDF</button>
+            <button class="rss-btn-exp print"  onclick="window.print()"><i class="fas fa-print"></i> Print</button>
+        </div>
+    </div>
+
+    @* ── Booking Accordion Cards ── *@
+    int cardIdx = 0;
+    @foreach (var booking in Model.Rows)
+    {
+        var orderGroups = booking.Orders.GroupBy(o => o.OrderId).ToList();
+        string panelId = "panel-" + cardIdx;
+        string headId  = "head-"  + cardIdx;
+
+        <div class="rss-booking-card" id="card-@cardIdx">
+
+            @* Header ── *@
+            <div class="rss-bk-hdr" id="@headId" onclick="togglePanel('@panelId','@headId')"
+                 role="button" aria-expanded="false" aria-controls="@panelId">
+                <div class="rss-bk-hdr-left">
+                    <div class="rss-toggle" id="icon-@cardIdx"><i class="fas fa-chevron-right"></i></div>
+
+                    <div class="rss-bk-num">
+                        <i class="fas fa-receipt" style="font-size:.7rem;opacity:.7;"></i>
+                        @booking.BookingNo
+                        <a asp-action="Details" asp-controller="Booking"
+                           asp-route-bookingNumber="@booking.BookingNo"
+                           target="_blank" onclick="event.stopPropagation();" title="View booking">
+                            <i class="fas fa-external-link-alt"></i>
+                        </a>
+                    </div>
+
+                    <span class="rss-bk-pill rss-pill-guest">
+                        <i class="fas fa-user" style="font-size:.6rem;"></i> @booking.GuestName
+                    </span>
+
+                    @if (!string.IsNullOrWhiteSpace(booking.RoomNo))
+                    {
+                        <span class="rss-bk-pill rss-pill-room">
+                            <i class="fas fa-door-open" style="font-size:.6rem;"></i> Room @booking.RoomNo
+                        </span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(booking.RoomType))
+                    {
+                        <span class="rss-bk-pill rss-pill-type">
+                            <i class="fas fa-bed" style="font-size:.6rem;"></i> @booking.RoomType
+                        </span>
+                    }
+                </div>
+
+                <div class="rss-bk-hdr-right">
+                    <div class="rss-bk-totbox">
+                        <div class="rss-bk-tot-lbl">Total Bill</div>
+                        <div class="rss-bk-tot-val">₹@booking.BookingTotalActualBill.ToString("N2")</div>
+                        <div class="rss-bk-tot-sub"><i class="fas fa-percent" style="font-size:.55rem;"></i> GST ₹@booking.BookingTotalGST.ToString("N2")</div>
+                    </div>
+                    <div class="rss-bk-totbox">
+                        <div class="rss-bk-tot-lbl">Orders</div>
+                        <div class="rss-bk-tot-val">@orderGroups.Count</div>
+                        <div class="rss-bk-tot-sub">@booking.Orders.Count item(s)</div>
+                    </div>
+                </div>
+            </div>
+
+            @* Detail panel ── *@
+            <div class="rss-detail" id="@panelId">
+                @foreach (var og in orderGroups)
+                {
+                    var orderItems = og.ToList();
+                    var of = orderItems.First();
+                    string settledClass = of.IsSettled ? "settled" : "";
+                    string btnId = "settle-btn-" + of.OrderId;
+
+                    <div class="rss-order-wrap">
+                        @* Order header *@
+                        <div class="rss-order-hdr @settledClass" id="order-hdr-@of.OrderId">
+                            <div class="rss-order-hdr-left">
+                                <span class="rss-order-badge">
+                                    <i class="fas fa-receipt" style="font-size:.65rem;"></i>
+                                    @of.OrderNo
+                                </span>
+                                <span class="rss-order-date">
+                                    <i class="fas fa-clock" style="font-size:.6rem;"></i>
+                                    @of.OrderDate.ToString("dd MMM yyyy, hh:mm tt")
+                                </span>
+                                @if (of.IsSettled)
+                                {
+                                    <span class="rss-settled-tag">
+                                        <i class="fas fa-check-circle"></i>
+                                        Settled@(of.SettleDate.HasValue ? " " + of.SettleDate.Value.ToString("dd MMM") : "")
+                                    </span>
+                                }
+                            </div>
+                            <div class="rss-order-hdr-right">
+                                <div class="rss-order-amounts">
+                                    <div class="rss-oa-item">
+                                        <div class="rss-oa-lbl">Bill</div>
+                                        <div class="rss-oa-val">₹@of.ActualBillAmount.ToString("N2")</div>
+                                    </div>
+                                    <div class="rss-oa-item">
+                                        <div class="rss-oa-lbl">CGST</div>
+                                        <div class="rss-oa-val">₹@of.CGSTAmount.ToString("N2")</div>
+                                    </div>
+                                    <div class="rss-oa-item">
+                                        <div class="rss-oa-lbl">SGST</div>
+                                        <div class="rss-oa-val">₹@of.SGSTAmount.ToString("N2")</div>
+                                    </div>
+                                    <div class="rss-oa-item">
+                                        <div class="rss-oa-lbl">GST</div>
+                                        <div class="rss-oa-val red">₹@of.GSTAmount.ToString("N2")</div>
+                                    </div>
+                                </div>
+                                @if (!of.IsSettled)
+                                {
+                                    @* Server-driven form POST — redirects back so DB state is re-read *@
+                                    <form asp-action="SettleRoomServiceOrder" asp-controller="Booking"
+                                          method="post" class="rss-settle-form"
+                                          data-order-no="@of.OrderNo">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="orderId"        value="@of.OrderId" />
+                                        <input type="hidden" name="returnFromDate" value="@fromDateStr" />
+                                        <input type="hidden" name="returnToDate"   value="@toDateStr" />
+                                        <input type="hidden" name="returnBookingNo" value="@bookingNoStr" />
+                                        <button type="submit" class="rss-settle-btn" title="Settle this order">
+                                            <i class="fas fa-check-double"></i> Settle
+                                        </button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <button class="rss-settle-btn" disabled>
+                                        <i class="fas fa-lock"></i> Settled
+                                    </button>
+                                }
+                            </div>
+                        </div>
+
+                        @* Items table *@
+                        <table class="rss-items-tbl">
+                            <thead>
+                                <tr>
+                                    <th style="width:30px;">#</th>
+                                    <th>Menu Item</th>
+                                    <th class="tr">Price (₹)</th>
+                                    <th class="tr">Qty</th>
+                                    <th class="tr">Net Amt (₹)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var itemRow in orderItems.Select((item, idx) => new { item, idx }))
+                                {
+                                    <tr>
+                                        <td class="rss-item-idx">@(itemRow.idx + 1)</td>
+                                        <td class="rss-item-name">@itemRow.item.MenuItem</td>
+                                        <td class="tr">@itemRow.item.Price.ToString("N2")</td>
+                                        <td class="tr">@itemRow.item.Qty</td>
+                                        <td class="tr rss-item-amt">@itemRow.item.NetAmount.ToString("N2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+        </div>
+
+        cardIdx++;
+    }
+
+    @* ── Grand Total Bar ── *@
+    <div class="rss-grand">
+        <div class="rss-grand-lbl"><i class="fas fa-sigma"></i> GRAND TOTAL</div>
+        <div class="rss-grand-nums">
+            <div class="rss-gn-item">
+                <div class="rss-gn-lbl">Net Amount</div>
+                <div class="rss-gn-val">₹@Model.TotalNetAmount.ToString("N2")</div>
+            </div>
+            <div class="rss-gn-item">
+                <div class="rss-gn-lbl">Actual Bill</div>
+                <div class="rss-gn-val">₹@Model.TotalActualBill.ToString("N2")</div>
+            </div>
+            <div class="rss-gn-item">
+                <div class="rss-gn-lbl">CGST</div>
+                <div class="rss-gn-val">₹@Model.TotalCGST.ToString("N2")</div>
+            </div>
+            <div class="rss-gn-item">
+                <div class="rss-gn-lbl">SGST</div>
+                <div class="rss-gn-val">₹@Model.TotalSGST.ToString("N2")</div>
+            </div>
+            <div class="rss-gn-item">
+                <div class="rss-gn-lbl">Total GST</div>
+                <div class="rss-gn-val">₹@Model.TotalGST.ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+}
+
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        // ── Accordion ─────────────────────────────────────────────────
+        function togglePanel(panelId, headId) {
+            const panel  = document.getElementById(panelId);
+            const iconEl = document.getElementById(headId.replace('head-','icon-'));
+            if (!panel) return;
+            const isOpen = panel.classList.contains('open');
+            panel.classList.toggle('open', !isOpen);
+            if (iconEl) {
+                iconEl.classList.toggle('open', !isOpen);
+                iconEl.querySelector('i').className = isOpen ? 'fas fa-chevron-right' : 'fas fa-chevron-down';
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', function () {
+            // Auto-expand single booking card
+            const cards = document.querySelectorAll('.rss-booking-card');
+            if (cards.length === 1) {
+                const head = cards[0].querySelector('[id^="head-"]');
+                if (head) head.click();
+            }
+
+            // ── SweetAlert2 confirmation for all Settle forms ──────────
+            document.querySelectorAll('.rss-settle-form').forEach(function (form) {
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    const orderNo  = form.dataset.orderNo || 'this order';
+                    const submitBtn = form.querySelector('button[type="submit"]');
+
+                    Swal.fire({
+                        title: 'Settle Order?',
+                        html: `<p style="margin:0;font-size:.95rem;">Settle order <strong>${orderNo}</strong>?</p><p style="margin:.4rem 0 0;font-size:.82rem;color:#6b7280;">This action cannot be undone.</p>`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#059669',
+                        cancelButtonColor:  '#6b7280',
+                        confirmButtonText:  '<i class="fas fa-check-double"></i> Yes, Settle',
+                        cancelButtonText:   'Cancel',
+                        focusCancel: true
+                    }).then(function (result) {
+                        if (result.isConfirmed) {
+                            if (submitBtn) {
+                                submitBtn.disabled = true;
+                                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Settling…';
+                            }
+                            form.submit();
+                        }
+                    });
+                });
+            });
+        });
+
+        // ── Booking No Autocomplete ───────────────────────────────────
+        (function () {
+            const input = document.getElementById('bookingNoInput');
+            const list  = document.getElementById('rsAcList');
+            if (!input || !list) return;
+            let activeIdx = -1;
+
+            input.addEventListener('input', async function () {
+                const term = this.value.trim();
+                list.innerHTML = ''; list.classList.remove('open'); activeIdx = -1;
+                if (term.length < 2) return;
+                try {
+                    const res  = await fetch('@Url.Action("GetBookingAutoSuggest","Booking")' + '?term=' + encodeURIComponent(term));
+                    const data = await res.json();
+                    if (!data || !data.length) return;
+                    data.forEach(bn => {
+                        const el = document.createElement('div');
+                        el.className = 'rss-ac-item';
+                        el.textContent = bn;
+                        el.addEventListener('mousedown', e => { e.preventDefault(); input.value = bn; list.classList.remove('open'); list.innerHTML = ''; });
+                        list.appendChild(el);
+                    });
+                    list.classList.add('open');
+                } catch {}
+            });
+
+            input.addEventListener('keydown', function (e) {
+                const items = list.querySelectorAll('.rss-ac-item');
+                if      (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = Math.min(activeIdx+1, items.length-1); items.forEach((el,i)=>el.classList.toggle('active',i===activeIdx)); }
+                else if (e.key === 'ArrowUp')   { e.preventDefault(); activeIdx = Math.max(activeIdx-1, 0); items.forEach((el,i)=>el.classList.toggle('active',i===activeIdx)); }
+                else if (e.key === 'Enter' && activeIdx >= 0) { e.preventDefault(); const a=items[activeIdx]; if(a){ input.value=a.textContent; list.classList.remove('open'); list.innerHTML=''; document.getElementById('rsFilterForm').submit(); } }
+                else if (e.key === 'Escape') { list.classList.remove('open'); }
+            });
+
+            document.addEventListener('click', e => { if (!e.target.closest('.rss-ac-wrap')) list.classList.remove('open'); });
+        })();
+
+        // ── Export helpers ────────────────────────────────────────────
+        const dlBlob = (blob, name) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href=url; a.download=name;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(()=>URL.revokeObjectURL(url),600);
+        };
+
+        function collectExportRows() {
+            const rows = [];
+            document.querySelectorAll('.rss-booking-card').forEach(card => {
+                const num   = card.querySelector('.rss-bk-num')?.childNodes[2]?.textContent?.trim() || '';
+                const guest = card.querySelector('.rss-bk-pill.rss-pill-guest')?.textContent?.trim() || '';
+                const room  = card.querySelector('.rss-bk-pill.rss-pill-room')?.textContent?.replace('Room','').trim() || '';
+                const type  = card.querySelector('.rss-bk-pill.rss-pill-type')?.textContent?.trim() || '';
+
+                card.querySelectorAll('.rss-order-wrap').forEach(section => {
+                    const orderNo = section.querySelector('.rss-order-badge')?.textContent?.trim() || '';
+                    const bill    = section.querySelectorAll('.rss-oa-val')[0]?.textContent?.trim() || '';
+                    const cgst    = section.querySelectorAll('.rss-oa-val')[1]?.textContent?.trim() || '';
+                    const sgst    = section.querySelectorAll('.rss-oa-val')[2]?.textContent?.trim() || '';
+                    const gst     = section.querySelectorAll('.rss-oa-val')[3]?.textContent?.trim() || '';
+                    const settled = section.querySelector('.rss-settled-tag') ? 'Yes' : 'No';
+                    section.querySelectorAll('.rss-items-tbl tbody tr').forEach(tr => {
+                        const tds = tr.querySelectorAll('td');
+                        rows.push([num, guest, room, type, orderNo,
+                            tds[1]?.textContent?.trim()||'',
+                            tds[2]?.textContent?.trim()||'',
+                            tds[3]?.textContent?.trim()||'',
+                            tds[4]?.textContent?.trim()||'',
+                            bill, cgst, sgst, gst, settled]);
+                    });
+                });
+            });
+            return rows;
+        }
+
+        function exportExcel() {
+            const from = '@(Model.FromDate?.ToString("yyyy-MM-dd") ?? "")';
+            const to   = '@(Model.ToDate?.ToString("yyyy-MM-dd")   ?? "")';
+            const esc  = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            const headers = ['Booking No','Guest','Room No','Room Type','Order No','Menu Item','Price','Qty','Net Amt','Actual Bill','CGST','SGST','GST','Settled'];
+            let html = '<table border="1"><tr>' + headers.map(h=>`<th>${esc(h)}</th>`).join('') + '</tr>';
+            collectExportRows().forEach(r => { html += '<tr>' + r.map(c=>`<td>${esc(c)}</td>`).join('') + '</tr>'; });
+            html += '</table>';
+            dlBlob(new Blob([`<!doctype html><html><head><meta charset="utf-8"></head><body>${html}</body></html>`], {type:'application/vnd.ms-excel;charset=utf-8;'}),`RoomServiceSettle_${from}_${to}.xls`);
+        }
+
+        async function exportPdf() {
+            if (!window.jspdf?.jsPDF) { alert('PDF library not loaded.'); return; }
+            const from   = '@(Model.FromDate?.ToString("yyyy-MM-dd") ?? "")';
+            const to     = '@(Model.ToDate?.ToString("yyyy-MM-dd")   ?? "")';
+            const jsPDF  = window.jspdf.jsPDF;
+            const doc    = new jsPDF({ orientation:'landscape', unit:'pt', format:'a3' });
+            doc.setFontSize(14); doc.setFont(undefined,'bold');
+            doc.text('Room Service Settle Report', 40, 38);
+            doc.setFontSize(10); doc.setFont(undefined,'normal');
+            doc.text(`Branch: @branchName  |  ${from} to ${to}`, 40, 55);
+            const headers = ['Booking No','Guest','Room No','Room Type','Order No','Menu Item','Price','Qty','Net Amt','Actual Bill','CGST','SGST','GST','Settled'];
+            doc.autoTable({
+                startY:65, head:[headers],
+                body: collectExportRows(),
+                styles:{fontSize:8,cellPadding:3},
+                headStyles:{fillColor:[15,28,63],textColor:255,fontStyle:'bold'},
+                alternateRowStyles:{fillColor:[248,250,252]},
+                columnStyles:{6:{halign:'right'},7:{halign:'right'},8:{halign:'right'},9:{halign:'right'},10:{halign:'right'},11:{halign:'right'},12:{halign:'right'}}
+            });
+            doc.save(`RoomServiceSettle_${from}_${to}.pdf`);
+        }
+    </script>
+}
