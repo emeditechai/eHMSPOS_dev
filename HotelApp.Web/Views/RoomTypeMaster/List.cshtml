@@ -28,6 +28,9 @@
                     <th>Description</th>
                     <th>Max Occupancy</th>
                     <th>Max Room Availability</th>
+                    <th>Bed Type</th>
+                    <th>Area (Sq Ft)</th>
+                    <th>Room View</th>
                     <th>Amenities</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -41,6 +44,9 @@
                         <td>@(roomType.Description ?? "-")</td>
                         <td>@roomType.MaxOccupancy</td>
                         <td>@(roomType.Max_RoomAvailability?.ToString() ?? "-")</td>
+                        <td>@(roomType.BedType ?? "-")</td>
+                        <td>@(roomType.AreaSqFt ?? "-")</td>
+                        <td>@(roomType.RoomView ?? "-")</td>
                         <td>@(roomType.Amenities ?? "-")</td>
                         <td>
                             @if (roomType.IsActive)

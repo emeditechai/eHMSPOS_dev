@@ -267,6 +267,24 @@
                 </div>
 
                 <div class="master-form-group">
+                    <label asp-for="BedType">Bed Type</label>
+                    <input asp-for="BedType" type="text" placeholder="e.g., King Size" readonly="@(isReadOnly ? "readonly" : null)" />
+                    <span asp-validation-for="BedType" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="AreaSqFt">Area (sq ft)</label>
+                    <input asp-for="AreaSqFt" type="text" placeholder="e.g., 350" readonly="@(isReadOnly ? "readonly" : null)" />
+                    <span asp-validation-for="AreaSqFt" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
+                    <label asp-for="RoomView">Room View</label>
+                    <input asp-for="RoomView" type="text" placeholder="e.g., Ocean View" readonly="@(isReadOnly ? "readonly" : null)" />
+                    <span asp-validation-for="RoomView" class="text-danger"></span>
+                </div>
+
+                <div class="master-form-group">
                     <label asp-for="IsActive">Status</label>
                     <select asp-for="IsActive" disabled="@(isReadOnly ? "disabled" : null)">
                         <option value="true">Active</option>

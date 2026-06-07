@@ -9,6 +9,9 @@ namespace HotelApp.Web.Models
         public int MaxOccupancy { get; set; }
         public int? Max_RoomAvailability { get; set; }
         public string? Amenities { get; set; }
+        public string? BedType { get; set; }
+        public string? AreaSqFt { get; set; }
+        public string? RoomView { get; set; }
         public int BranchID { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime CreatedDate { get; set; }

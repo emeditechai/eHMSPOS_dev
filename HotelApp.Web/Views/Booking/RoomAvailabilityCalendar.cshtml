@@ -257,6 +257,14 @@
                     <option value="all" selected>All</option>
                 </select>
             </div>
+            <div class="control-group">
+                <label><i class="fas fa-tag"></i> Source:</label>
+                <select id="sourceFilter" onchange="loadCalendar()">
+                    <option value="WalkIn" selected>Walk-In</option>
+                    <option value="Websites">Websites</option>
+                    <option value="Phone">Phone</option>
+                </select>
+            </div>
             <button class="btn-load-calendar" onclick="loadCalendar()">
                 <i class="fas fa-sync-alt"></i>
                 Load Calendar
@@ -384,6 +392,7 @@
         function fetchCalendarData(startDate, endDate) {
             const promises = [];
             const dates = [];
+            const source = document.getElementById('sourceFilter')?.value || 'WalkIn';
             
             let currentDate = new Date(startDate);
             const endDateObj = new Date(endDate);
@@ -392,7 +401,7 @@
                 const dateStr = currentDate.toISOString().split('T')[0];
                 dates.push(dateStr);
                 promises.push(
-                    fetch(`@Url.Action("GetAvailabilityByDateRange", "Rooms")?startDate=${dateStr}&endDate=${dateStr}`)
+                    fetch(`@Url.Action("GetAvailabilityByDateRange", "Rooms")?startDate=${dateStr}&endDate=${dateStr}&source=${encodeURIComponent(source)}`)
                         .then(response => response.json())
                 );
                 currentDate.setDate(currentDate.getDate() + 1);

@@ -16,7 +16,8 @@ namespace HotelApp.Web.Repositories
         public async Task<IEnumerable<RoomType>> GetAllAsync()
         {
             var sql = @"
-                SELECT Id, TypeName, Description, BaseRate, MaxOccupancy, Max_RoomAvailability, Amenities, BranchID,
+                SELECT Id, TypeName, Description, BaseRate, MaxOccupancy, Max_RoomAvailability, Amenities, 
+                       BedType, AreaSqFt, RoomView, BranchID,
                        IsActive, CreatedDate, LastModifiedDate, CreatedBy, LastModifiedBy
                 FROM RoomTypes
                 ORDER BY TypeName";
@@ -27,7 +28,8 @@ namespace HotelApp.Web.Repositories
         public async Task<IEnumerable<RoomType>> GetByBranchAsync(int branchId)
         {
             var sql = @"
-                SELECT Id, TypeName, Description, BaseRate, MaxOccupancy, Max_RoomAvailability, Amenities, BranchID,
+                SELECT Id, TypeName, Description, BaseRate, MaxOccupancy, Max_RoomAvailability, Amenities, 
+                       BedType, AreaSqFt, RoomView, BranchID,
                        IsActive, CreatedDate, LastModifiedDate, CreatedBy, LastModifiedBy
                 FROM RoomTypes
                 WHERE BranchID = @BranchId
@@ -40,7 +42,7 @@ namespace HotelApp.Web.Repositories
         {
             var sql = @"
                 SELECT Id, TypeName, Description, BaseRate, MaxOccupancy, Max_RoomAvailability, Amenities, 
-                       IsActive, CreatedDate, LastModifiedDate, CreatedBy, LastModifiedBy
+                       BedType, AreaSqFt, RoomView, IsActive, CreatedDate, LastModifiedDate, CreatedBy, LastModifiedBy
                 FROM RoomTypes
                 WHERE Id = @Id";
             
@@ -50,9 +52,11 @@ namespace HotelApp.Web.Repositories
         public async Task<int> CreateAsync(RoomType roomType)
         {
             var sql = @"
-                INSERT INTO RoomTypes (TypeName, Description, BaseRate, MaxOccupancy, Max_RoomAvailability, Amenities, BranchID,
+                INSERT INTO RoomTypes (TypeName, Description, BaseRate, MaxOccupancy, Max_RoomAvailability, Amenities, 
+                                       BedType, AreaSqFt, RoomView, BranchID,
                                        IsActive, CreatedDate, LastModifiedDate, CreatedBy)
-                VALUES (@TypeName, @Description, @BaseRate, @MaxOccupancy, @Max_RoomAvailability, @Amenities, @BranchID,
+                VALUES (@TypeName, @Description, @BaseRate, @MaxOccupancy, @Max_RoomAvailability, @Amenities, 
+                        @BedType, @AreaSqFt, @RoomView, @BranchID,
                         @IsActive, GETDATE(), GETDATE(), @CreatedBy);
                 SELECT CAST(SCOPE_IDENTITY() as int)";
             
@@ -64,6 +68,9 @@ namespace HotelApp.Web.Repositories
                 roomType.MaxOccupancy,
                 roomType.Max_RoomAvailability,
                 roomType.Amenities,
+                roomType.BedType,
+                roomType.AreaSqFt,
+                roomType.RoomView,
                 roomType.BranchID,
                 roomType.IsActive,
                 roomType.CreatedBy
@@ -80,6 +87,9 @@ namespace HotelApp.Web.Repositories
                     MaxOccupancy = @MaxOccupancy,
                     Max_RoomAvailability = @Max_RoomAvailability,
                     Amenities = @Amenities,
+                    BedType = @BedType,
+                    AreaSqFt = @AreaSqFt,
+                    RoomView = @RoomView,
                     IsActive = @IsActive,
                     LastModifiedDate = GETDATE(),
                     LastModifiedBy = @LastModifiedBy
@@ -94,6 +104,9 @@ namespace HotelApp.Web.Repositories
                 roomType.MaxOccupancy,
                 roomType.Max_RoomAvailability,
                 roomType.Amenities,
+                roomType.BedType,
+                roomType.AreaSqFt,
+                roomType.RoomView,
                 roomType.IsActive,
                 roomType.LastModifiedBy
             });

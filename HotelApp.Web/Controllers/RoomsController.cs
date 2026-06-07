@@ -896,7 +896,7 @@ public class RoomsController : BaseController
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAvailabilityByDateRange(DateTime? startDate, DateTime? endDate)
+    public async Task<IActionResult> GetAvailabilityByDateRange(DateTime? startDate, DateTime? endDate, string? source = "WalkIn")
     {
         try
         {
@@ -912,18 +912,21 @@ public class RoomsController : BaseController
 
             // Get all rate masters for this branch with weekend and special day rates
             var allRates = await _rateMasterRepository.GetByBranchAsync(CurrentBranchID);
+
+            // Normalise source: default to WalkIn if blank
+            var effectiveSource = string.IsNullOrWhiteSpace(source) ? "WalkIn" : source.Trim();
             
             var result = availability.Select(kvp => 
             {
                 var roomTypeId = kvp.Key;
                 var roomData = kvp.Value;
                 
-                // B2C: Get the effective rate for this date and room type (WITHOUT discount applied yet)
-                var rateInfo = GetEffectiveRateForDate(allRates, roomTypeId, start, "B2C");
+                // B2C: Get the effective rate for this date and room type filtered by selected source
+                var rateInfo = GetEffectiveRateForDate(allRates, roomTypeId, start, "B2C", effectiveSource);
                 var b2cTaxPercentage = rateInfo.taxPercentage;
 
                 // B2B: Optional rate (same rate-type logic). Only include if a B2B entry exists.
-                var b2bRateInfo = GetEffectiveRateForDate(allRates, roomTypeId, start, "B2B");
+                var b2bRateInfo = GetEffectiveRateForDate(allRates, roomTypeId, start, "B2B", effectiveSource);
                 var hasB2BRate = b2bRateInfo.baseRate > 0;
                 var b2bTaxPercentage = b2bRateInfo.taxPercentage;
                 
@@ -979,7 +982,7 @@ public class RoomsController : BaseController
                 };
             }).ToList();
 
-            return Json(new { success = true, data = result, startDate = start, endDate = end });
+            return Json(new { success = true, data = result, startDate = start, endDate = end, source = effectiveSource });
         }
         catch (Exception ex)
         {
@@ -988,7 +991,7 @@ public class RoomsController : BaseController
     }
 
     private (decimal baseRate, decimal extraPaxRate, string rateType, string? eventName, decimal taxPercentage) GetEffectiveRateForDate(
-        IEnumerable<RateMaster> allRates, int roomTypeId, DateTime date, string customerType)
+        IEnumerable<RateMaster> allRates, int roomTypeId, DateTime date, string customerType, string? source = null)
     {
         static decimal EffectiveTaxPercentage(RateMaster r)
         {
@@ -997,9 +1000,10 @@ public class RoomsController : BaseController
             return split > 0m ? split : r.TaxPercentage;
         }
 
-        // Get rates for this room type
+        // Get rates for this room type, filtered by CustomerType and optionally by Source
         var roomTypeRates = allRates
             .Where(r => r.RoomTypeId == roomTypeId && r.IsActive && r.CustomerType == customerType)
+            .Where(r => string.IsNullOrWhiteSpace(source) || r.Source.Equals(source, StringComparison.OrdinalIgnoreCase))
             .ToList();
         
         if (!roomTypeRates.Any())
