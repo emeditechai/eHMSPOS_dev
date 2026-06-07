@@ -7,6 +7,7 @@ namespace HotelApp.Web.Models
         public DateTime CheckOutDate { get; set; }
         public string CustomerType { get; set; } = string.Empty;
         public string Source { get; set; } = string.Empty;
+        public string? MealType { get; set; }
         public int Adults { get; set; }
         public int Children { get; set; }
         public int BranchID { get; set; }

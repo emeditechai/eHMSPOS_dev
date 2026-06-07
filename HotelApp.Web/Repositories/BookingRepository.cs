@@ -49,6 +49,7 @@ namespace HotelApp.Web.Repositories
                       AND CAST(@CheckInDate AS DATE) >= CAST(StartDate AS DATE)
                       AND DATEADD(DAY, -1, CAST(@CheckOutDate AS DATE)) <= CAST(ISNULL(EndDate, '9999-12-31') AS DATE)
                       AND UPPER(LTRIM(RTRIM(CustomerType))) = UPPER(LTRIM(RTRIM(@CustomerType)))
+                      AND (@MealType IS NULL OR @MealType = '' OR UPPER(LTRIM(RTRIM(ISNULL(MealType, 'EP')))) = UPPER(LTRIM(RTRIM(@MealType))))
                 )
                 SELECT TOP 1 *
                 FROM CandidateRates
@@ -68,6 +69,7 @@ namespace HotelApp.Web.Repositories
                       AND IsActive = 1
                       AND CAST(@CheckInDate AS DATE) BETWEEN CAST(StartDate AS DATE) AND CAST(ISNULL(EndDate, '9999-12-31') AS DATE)
                       AND UPPER(LTRIM(RTRIM(CustomerType))) = UPPER(LTRIM(RTRIM(@CustomerType)))
+                      AND (@MealType IS NULL OR @MealType = '' OR UPPER(LTRIM(RTRIM(ISNULL(MealType, 'EP')))) = UPPER(LTRIM(RTRIM(@MealType))))
                 )
                 SELECT TOP 1 *
                 FROM CandidateRates

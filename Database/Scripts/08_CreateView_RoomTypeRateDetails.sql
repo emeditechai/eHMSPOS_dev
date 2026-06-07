@@ -60,7 +60,7 @@ SELECT
     /* ── Rate Master ─────────────────────────────────────── */
     rm.CustomerType                                         AS [Customer Type],
     rm.Source                                               AS [Source],
-    rm.MealType                                             AS [Meal Type],
+    ISNULL(rm.MealType, 'EP')                               AS [Meal Type],
     rm.BaseRate                                             AS [Base Rate],
     rm.ExtraPaxRate                                         AS [Extra Pax Rate],
     rm.TaxPercentage                                        AS [Tax %],

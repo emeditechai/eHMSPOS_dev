@@ -1859,7 +1859,7 @@ namespace HotelApp.Web.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetRoomTypeRate(int roomTypeId, string customerType, string source, DateTime? checkInDate = null, DateTime? checkOutDate = null)
+        public async Task<IActionResult> GetRoomTypeRate(int roomTypeId, string customerType, string source, string? mealType = null, DateTime? checkInDate = null, DateTime? checkOutDate = null)
         {
             try
             {
@@ -1881,6 +1881,7 @@ namespace HotelApp.Web.Controllers
                     CheckOutDate = effectiveCheckOut,
                     CustomerType = customerType,
                     Source = source,
+                    MealType = mealType,
                     Adults = 2,
                     Children = 0,
                     BranchID = CurrentBranchID,
@@ -2057,6 +2058,7 @@ namespace HotelApp.Web.Controllers
                     CheckOutDate = model.CheckOutDate,
                     CustomerType = model.CustomerType,
                     Source = model.Source,
+                    MealType = line.MealType,
                     Adults = line.Adults,
                     Children = line.Children,
                     BranchID = CurrentBranchID,

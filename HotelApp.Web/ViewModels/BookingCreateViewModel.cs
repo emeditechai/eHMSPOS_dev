@@ -15,6 +15,8 @@ namespace HotelApp.Web.ViewModels
 
         [Range(0, 10)]
         public int Children { get; set; }
+
+        public string? MealType { get; set; }
     }
 
     public class BookingCreateViewModel

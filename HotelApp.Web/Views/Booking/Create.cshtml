@@ -757,6 +757,7 @@
                             <thead>
                                 <tr style="background: #f1f5f9; border-bottom: 2px solid #e2e8f0;">
                                     <th style="padding: 8px 6px; text-align: left; font-weight: 600; color: #475569;">Room Type *</th>
+                                    <th style="padding: 8px 6px; text-align: left; font-weight: 600; color: #475569;">Meal Type</th>
                                     <th style="padding: 8px 6px; text-align: center; font-weight: 600; color: #475569; width: 80px;">Rooms</th>
                                     <th style="padding: 8px 6px; text-align: center; font-weight: 600; color: #475569; width: 80px;">Adults</th>
                                     <th style="padding: 8px 6px; text-align: center; font-weight: 600; color: #475569; width: 80px;">Children</th>
@@ -779,6 +780,15 @@
                                                     }
                                                 </select>
                                             </td>
+                                            <td style="padding: 6px;">
+                                                <select name="RoomLines[@i].MealType" class="form-control room-line-meal" style="min-width: 100px;">
+                                                    <option value="" selected="@(string.IsNullOrEmpty(Model.RoomLines[i].MealType))">Any</option>
+                                                    <option value="EP" selected="@(Model.RoomLines[i].MealType == "EP")">EP (Room Only)</option>
+                                                    <option value="CP" selected="@(Model.RoomLines[i].MealType == "CP")">CP (Breakfast)</option>
+                                                    <option value="MAP" selected="@(Model.RoomLines[i].MealType == "MAP")">MAP (Half Board)</option>
+                                                    <option value="AP" selected="@(Model.RoomLines[i].MealType == "AP")">AP (Full Board)</option>
+                                                </select>
+                                            </td>
                                             <td style="padding: 6px;"><input name="RoomLines[@i].RequiredRooms" type="number" min="1" max="50" value="@Model.RoomLines[i].RequiredRooms" class="form-control text-center room-line-rooms" style="width: 70px;" required /></td>
                                             <td style="padding: 6px;"><input name="RoomLines[@i].Adults" type="number" min="1" max="10" value="@Model.RoomLines[i].Adults" class="form-control text-center room-line-adults" style="width: 70px;" required /></td>
                                             <td style="padding: 6px;"><input name="RoomLines[@i].Children" type="number" min="0" max="10" value="@Model.RoomLines[i].Children" class="form-control text-center room-line-children" style="width: 70px;" /></td>
@@ -797,6 +807,15 @@
                                                 {
                                                     <option value="@room.Id">@room.TypeName</option>
                                                 }
+                                            </select>
+                                        </td>
+                                        <td style="padding: 6px;">
+                                            <select name="RoomLines[0].MealType" class="form-control room-line-meal" style="min-width: 100px;">
+                                                <option value="" selected>Any</option>
+                                                <option value="EP">EP (Room Only)</option>
+                                                <option value="CP">CP (Breakfast)</option>
+                                                <option value="MAP">MAP (Half Board)</option>
+                                                <option value="AP">AP (Full Board)</option>
                                             </select>
                                         </td>
                                         <td style="padding: 6px;"><input name="RoomLines[0].RequiredRooms" type="number" min="1" max="50" value="1" class="form-control text-center room-line-rooms" style="width: 70px;" required /></td>
@@ -1382,6 +1401,15 @@
                 tr.style.borderBottom = '1px solid #e2e8f0';
                 tr.innerHTML = `
                     <td style="padding: 6px;"><select name="RoomLines[${index}].RoomTypeId" class="form-control room-line-type" style="min-width: 140px;" required>${roomTypeOptionsHtml}</select></td>
+                    <td style="padding: 6px;">
+                        <select name="RoomLines[${index}].MealType" class="form-control room-line-meal" style="min-width: 100px;">
+                            <option value="" selected>Any</option>
+                            <option value="EP">EP (Room Only)</option>
+                            <option value="CP">CP (Breakfast)</option>
+                            <option value="MAP">MAP (Half Board)</option>
+                            <option value="AP">AP (Full Board)</option>
+                        </select>
+                    </td>
                     <td style="padding: 6px;"><input name="RoomLines[${index}].RequiredRooms" type="number" min="1" max="50" value="1" class="form-control text-center room-line-rooms" style="width: 70px;" required /></td>
                     <td style="padding: 6px;"><input name="RoomLines[${index}].Adults" type="number" min="1" max="10" value="2" class="form-control text-center room-line-adults" style="width: 70px;" required /></td>
                     <td style="padding: 6px;"><input name="RoomLines[${index}].Children" type="number" min="0" max="10" value="0" class="form-control text-center room-line-children" style="width: 70px;" /></td>
@@ -1418,8 +1446,10 @@
 
             function updateLineRate(row) {
                 const select = row.querySelector('.room-line-type');
+                const mealSelect = row.querySelector('.room-line-meal');
                 const badge = row.querySelector('.line-rate-badge');
                 const roomTypeId = select ? select.value : '';
+                const mealType = mealSelect ? mealSelect.value : '';
                 const customerType = $('#CustomerType').val();
                 const source = $('#Source').val();
                 const checkInDate = $('#CheckInDate').val();
@@ -1437,7 +1467,7 @@
                 $.ajax({
                     url: '@Url.Action("GetRoomTypeRate", "Booking")',
                     type: 'GET',
-                    data: { roomTypeId: roomTypeId, customerType: customerType, source: source, checkInDate: checkInDate, checkOutDate: checkOutDate },
+                    data: { roomTypeId: roomTypeId, customerType: customerType, source: source, mealType: mealType, checkInDate: checkInDate, checkOutDate: checkOutDate },
                     success: function (response) {
                         if (response.success && response.hasRate) {
                             var mealLabel = getMealTypeLabel(response.mealType || 'EP');
@@ -1501,6 +1531,10 @@
                 var select = row.querySelector('.room-line-type');
                 if (select) {
                     select.addEventListener('change', function () { updateLineRate(row); checkRoomAvailability(row); updateSteps(); });
+                }
+                const mealSelect = row.querySelector('.room-line-meal');
+                if (mealSelect) {
+                    mealSelect.addEventListener('change', function () { updateLineRate(row); updateSteps(); });
                 }
                 row.querySelectorAll('.room-line-rooms').forEach(function (inp) {
                     inp.addEventListener('change', function () { checkRoomAvailability(row); updateSteps(); });
