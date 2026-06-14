@@ -13,7 +13,7 @@ public class RemoteLicenseRepository : IRemoteLicenseRepository
 {
     // ⚠ Central license server — do not expose in appsettings / environment variables
     private const string RemoteConnStr =
-        "Server=198.38.81.123;Database=Central_Lic_DB;User Id=sa;Password=Ehospit@lity@#1926;TrustServerCertificate=True;";
+        "Server=103.178.113.61,1232;Database=Central_Lic_DB;User Id=sa;Password=Ehospit@lity@#1926;TrustServerCertificate=True;";
 
     // Ensures the remote LicenseValidationHistory table is created only once per
     // application lifetime, not on every request.

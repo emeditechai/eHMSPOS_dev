@@ -25,7 +25,7 @@ chmod +x run-migration.sh
 ```bash
 cd /Users/abhikporel/dev/Hotelapp/Database/Scripts
 
-sqlcmd -S tcp:198.38.81.123,1433 \
+sqlcmd -S tcp:103.178.113.61,1232 \
        -d HMS_dev \
     -U <db_user> \
     -P '<db_password>' \
@@ -66,7 +66,7 @@ brew install mssql-tools
 ```
 
 ### Connection issues
-- Verify server IP: `198.38.81.123:1433`
+- Verify server IP: `103.178.113.61:1232`
 - Verify database: `HMS_dev`
 - Check network connectivity
 - Ensure SQL Server allows remote connections
